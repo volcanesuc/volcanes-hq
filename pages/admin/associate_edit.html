@@ -1,0 +1,331 @@
+<!-- associate_edit.html -->
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Asociado</title>
+
+  <style>
+    .page {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 16px;
+      padding-bottom: 88px;
+    }
+
+    .meta { color: var(--text-soft, #666); font-size: 12px; margin-top: 4px; }
+    .field { margin: 12px 0; }
+    label { display:block; font-weight: 600; margin-bottom: 6px; color: var(--text, #111); }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border, #ddd);
+      border-radius: 10px;
+      font-size: 14px;
+      box-sizing: border-box;
+      background: var(--card, #fff);
+      color: var(--text, #111);
+    }
+    textarea { min-height: 110px; resize: vertical; }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 720px){ .row { grid-template-columns: 1fr; } }
+
+    .checkline { display:flex; align-items:center; gap:10px; margin-top: 8px; }
+    .checkline input[type="checkbox"]{ width:auto; }
+
+    /* Barra sticky abajo */
+    .form-actions{
+      position: sticky;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      background: var(--bg-soft, #fff);
+      border-top: 1px solid var(--border, #eee);
+      border-radius: 14px 14px 0 0;
+      box-shadow: 0 -6px 18px rgba(0,0,0,.06);
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .spacer{ flex: 1; }
+
+    button{
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border, #ddd);
+      background: var(--card, #fff);
+      color: var(--text, #111);
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button.primary{
+      background: var(--theme-primary, #111);
+      color: #fff;
+      border-color: var(--theme-primary, #111);
+    }
+    button.primary:hover{ background: var(--theme-primary-light, #2c6b61); }
+
+    button.danger{
+      background: transparent;
+      color: #b00020;
+      border-color: #f2c1c7;
+    }
+
+    button:disabled{ opacity:.6; cursor:not-allowed; }
+
+    h1{ margin: 6px 0 0; font-size: 22px; color: var(--text, #111); }
+    .subtitle{ margin: 6px 0 0; color: var(--text-soft, #555); }
+
+    #headerMount{ margin-bottom: 10px; }
+
+    /* Si tu app es dark */
+    body{
+      background: var(--bg, #fff);
+      color: var(--text, #111);
+      font-family: var(--font-main, system-ui);
+    }
+  </style>
+
+</head>
+
+<body>
+  <!-- Si tu loadHeader() inserta header en algún contenedor, dejalo -->
+  <div id="headerMount"></div>
+
+  <main class="page">
+    <div>
+      <h1 id="pageTitle">Nuevo asociado</h1>
+      <p class="subtitle" id="pageSubtitle">Completá los datos del asociado.</p>
+      <div class="meta" id="metaInfo"></div>
+    </div>
+
+    <!-- Form -->
+    <input type="hidden" id="associateId" />
+
+    <div class="field">
+      <label for="fullName">Nombre completo *</label>
+      <input id="fullName" type="text" autocomplete="name" placeholder="Ej: María Pérez" />
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="type">Tipo</label>
+        <select id="type">
+          <option value="other">Otro</option>
+          <option value="employee">Empleado</option>
+          <option value="contractor">Contratista</option>
+          <option value="provider">Proveedor</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="idNumber">Cédula / ID</label>
+        <input id="idNumber" type="text" autocomplete="off" placeholder="Ej: 1-2345-6789" />
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="email" placeholder="correo@dominio.com" />
+      </div>
+
+      <div class="field">
+        <label for="phone">Teléfono</label>
+        <input id="phone" type="tel" autocomplete="tel" placeholder="+506 8888-8888" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="notes">Notas</label>
+      <textarea id="notes" placeholder="Observaciones, horarios, comentarios…"></textarea>
+
+      <div class="checkline">
+        <input id="active" type="checkbox" checked />
+        <label for="active" style="margin:0;font-weight:600;">Activo</label>
+      </div>
+    </div>
+  </main>
+
+  <!-- Acciones abajo (como pediste) -->
+  <div class="form-actions">
+    <button id="btnBack" type="button">Volver</button>
+    <div class="spacer"></div>
+    <button id="btnDeactivate" type="button" class="danger" style="display:none;">Desactivar</button>
+    <button id="btnSave" type="button" class="primary">Guardar</button>
+  </div>
+
+  <!-- Tu lógica -->
+  <script type="module">
+    import { db } from "../auth/firebase.js";
+    import { watchAuth, logout } from "../auth/auth.js";
+    import { loadHeader } from "../components/header.js";
+    import { showLoader, hideLoader } from "../ui/loader.js";
+
+    import {
+      doc,
+      getDoc,
+      updateDoc,
+      addDoc,
+      collection,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    loadHeader("admin");
+    document.getElementById("logoutBtn")?.addEventListener("click", logout);
+
+    const COL = "associates";
+
+    const pageTitle = document.getElementById("pageTitle");
+    const pageSubtitle = document.getElementById("pageSubtitle");
+    const metaInfo = document.getElementById("metaInfo");
+
+    const associateId = document.getElementById("associateId");
+
+    const fullName = document.getElementById("fullName");
+    const type = document.getElementById("type");
+    const email = document.getElementById("email");
+    const phone = document.getElementById("phone");
+    const idNumber = document.getElementById("idNumber");
+    const active = document.getElementById("active");
+    const notes = document.getElementById("notes");
+
+    const btnSave = document.getElementById("btnSave");
+    const btnDeactivate = document.getElementById("btnDeactivate");
+    const btnBack = document.getElementById("btnBack");
+
+    const params = new URLSearchParams(window.location.search);
+    const aid = params.get("aid");
+    const returnTo = params.get("returnTo"); // <- vuelve exacto al tab/origen
+
+    function clean(s){ return (s || "").toString().trim(); }
+
+    function validateEmail(v){
+      if (!v) return true;
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+    }
+
+    function buildPayload(){
+      return {
+        fullName: clean(fullName.value),
+        type: type.value || "other",
+        email: clean(email.value) || null,
+        phone: clean(phone.value) || null,
+        idNumber: clean(idNumber.value) || null,
+        active: !!active.checked,
+        notes: clean(notes.value) || null,
+        updatedAt: serverTimestamp()
+      };
+    }
+
+    function goBack(){
+      if (returnTo) return window.location.replace(decodeURIComponent(returnTo));
+      if (window.history.length > 1) return window.history.back();
+      return window.location.replace("association.html?tab=associates");
+    }
+
+    btnBack.addEventListener("click", goBack);
+
+    watchAuth(async (user) => {
+      if (!user) return;
+      if (aid) await loadAssociate(aid);
+    });
+
+    async function loadAssociate(id){
+      showLoader?.("Cargando asociado…");
+
+      const ref = doc(db, COL, id);
+      const snap = await getDoc(ref);
+
+      if (!snap.exists()){
+        hideLoader?.();
+        alert("No se encontró el asociado.");
+        return goBack();
+      }
+
+      const a = snap.data();
+      associateId.value = snap.id;
+
+      pageTitle.textContent = "Editar asociado";
+      pageSubtitle.textContent = "Actualizá los datos del asociado.";
+      btnDeactivate.style.display = "inline-block";
+
+      fullName.value = a.fullName || "";
+      type.value = a.type || "other";
+      email.value = a.email || "";
+      phone.value = a.phone || "";
+      idNumber.value = a.idNumber || "";
+      active.checked = a.active !== false;
+      notes.value = a.notes || "";
+
+      metaInfo.textContent = `ID: ${snap.id}`;
+      hideLoader?.();
+    }
+
+    btnSave.addEventListener("click", async () => {
+      const name = clean(fullName.value);
+      if (!name) return alert("Falta el nombre completo.");
+
+      const mail = clean(email.value);
+      if (mail && !validateEmail(mail)) return alert("Email inválido.");
+
+      showLoader?.("Guardando…");
+      btnSave.disabled = true;
+
+      try {
+        const payload = buildPayload();
+
+        if (!aid){
+          await addDoc(collection(db, COL), {
+            ...payload,
+            createdAt: serverTimestamp()
+          });
+
+          alert("✅ Asociado creado");
+          return goBack();
+        }
+
+        await updateDoc(doc(db, COL, aid), payload);
+        alert("✅ Guardado");
+        return goBack();
+      } catch (e) {
+        console.error(e);
+        alert("❌ Error guardando: " + (e?.message || e));
+      } finally {
+        btnSave.disabled = false;
+        hideLoader?.();
+      }
+    });
+
+    btnDeactivate.addEventListener("click", async () => {
+      if (!aid) return;
+
+      if (!confirm("¿Marcar este asociado como inactivo?")) return;
+
+      showLoader?.("Actualizando…");
+      btnDeactivate.disabled = true;
+
+      try {
+        await updateDoc(doc(db, COL, aid), {
+          active: false,
+          updatedAt: serverTimestamp()
+        });
+        active.checked = false;
+        alert("✅ Marcado como inactivo");
+      } catch (e) {
+        console.error(e);
+        alert("❌ Error: " + (e?.message || e));
+      } finally {
+        btnDeactivate.disabled = false;
+        hideLoader?.();
+      }
+    });
+  </script>
+</body>
+</html>

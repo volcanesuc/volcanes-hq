@@ -1,0 +1,451 @@
+:root {
+  --theme-primary: #19473f;
+  --theme-accent: #e8ce26;
+  --theme-primary-dark: #12352f;
+  --theme-gray: #f4f4f4;
+}
+
+/* Reset mínimo */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  color: #222;
+  background: white;
+}
+
+/* ======================================================
+   HEADER
+====================================================== */
+
+.landing-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--theme-primary);
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+}
+
+.landing-header h1 {
+  font-family: 'Recons', sans-serif;
+  font-size: 18px;
+  margin: 0;
+  color: white;
+  white-space: nowrap;
+}
+
+.landing-login-btn {
+  background-color: var(--theme-accent);
+  color: var(--theme-primary);
+  border: none;
+  padding: 10px 16px;
+  font-weight: 700;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+/* ======================================================
+   SECCIONES
+====================================================== */
+
+.landing-section {
+  padding: 60px 20px;
+  max-width: 1100px;
+  margin: auto;
+}
+
+/* ======================================================
+   HERO
+====================================================== */
+
+.hero {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  align-items: center;
+}
+
+.hero h2 {
+  font-size: 36px;
+  color: var(--theme-primary);
+}
+
+.hero p {
+  font-size: 18px;
+}
+
+.hero-img {
+  width: 100%;
+  border-radius: 16px;
+}
+
+/* ======================================================
+   CTA BUTTONS (alineados y mismo tamaño)
+====================================================== */
+
+.hero-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1.25rem;
+}
+
+.landing-btn,
+.landing-btn-whatsapp {
+  min-height: 48px;
+  padding: 0 1.6rem;
+  font-weight: 700;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.landing-btn-whatsapp i {
+  font-size: 1.1rem;
+  margin-right: 0.45rem;
+}
+
+/* botón principal */
+.landing-btn {
+  background-color: var(--theme-primary);
+  color: white;
+  border: 2px solid var(--theme-primary);
+}
+
+.landing-btn:hover {
+  background-color: var(--theme-primary-dark);
+}
+
+/* botón WhatsApp (BLANCO con borde verde) */
+.landing-btn-whatsapp {
+  background: white;
+  color: var(--theme-primary);
+  border: 2px solid var(--theme-primary);
+}
+
+.landing-btn-whatsapp:hover {
+  background: var(--theme-primary);
+  color: white;
+}
+
+/* CTA en entrenamientos */
+.trainings-cta {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+/* ======================================================
+   EVENTS / IMAGES
+====================================================== */
+
+.events {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  margin-top: 30px;
+}
+
+.events img {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+/* ======================================================
+   CARDS
+====================================================== */
+
+.landing-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  margin-top: 30px;
+}
+
+.landing-card {
+  background: white;
+  border: 2px solid var(--theme-primary);
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+
+.landing-card h3 {
+  color: var(--theme-primary);
+  margin-bottom: 8px;
+}
+
+/* ======================================================
+   FOOTER
+====================================================== */
+
+.landing-footer {
+  background: var(--theme-primary);
+  color: white;
+  text-align: center;
+  padding: 30px 20px;
+}
+
+/* ======================================================
+   HONORS / PALMARÉS
+====================================================== */
+
+#honorsSection .landing-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+}
+
+.honor-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 1.25rem;
+  text-align: center;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.honor-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.12);
+}
+
+.honor-badge {
+  font-size: 2.5rem;
+}
+
+.honor-position {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+}
+
+.honor-tournament {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.honor-year {
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+
+.honor-gold { border-top: 5px solid var(--theme-accent); }
+.honor-silver { border-top: 5px solid #cfd8dc; }
+.honor-bronze { border-top: 5px solid #cd7f32; }
+.honor-spirit { border-top: 5px solid var(--theme-primary); }
+
+/* ======================================================
+   RESPONSIVE
+====================================================== */
+
+@media (max-width: 768px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* ======================================================
+   PAGE LOADER
+====================================================== */
+
+.page-loader {
+  position: fixed;
+  inset: 0;
+  background: white;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.page-loader.hidden {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* spinner */
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #e0e0e0;
+  border-top-color: var(--theme-primary);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ==============================
+   EVENTS — CLICKABLE
+============================== */
+
+.event-link {
+  display: block;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.event-link img {
+  transition: transform 0.25s ease, filter 0.25s ease;
+}
+
+.event-link:hover img {
+  transform: scale(1.03);
+  filter: brightness(0.95);
+}
+
+.landing-btn-disabled {
+  margin-top: 1.25rem;
+  background: #e0e0e0 !important;
+  color: #777 !important;
+  border: 2px dashed #bbb !important;
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+
+/* ======================================================
+   UNIFORMS CAROUSEL
+====================================================== */
+
+.uniform-img-wrapper {
+  width: 100%;
+  height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.uniform-img-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.uniform-row {
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  gap: 24px;
+}
+
+.uniform-card {
+  flex: 1 1 250px;
+  max-width: 300px;
+}
+.uniform-card,
+.uniform-card * {
+  text-align: center;
+}
+
+.uniform-card .uniform-title,
+.uniform-card h3,
+.uniform-card h4 {
+  margin: .75rem 0 .25rem;
+  font-weight: 700;
+}
+
+.uniform-card .uniform-price,
+.uniform-card p {
+  margin: 0;
+  opacity: .85;
+}
+
+.uniform-card .btn,
+.uniform-card .landing-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: .75rem;
+}
+
+/* Si el botón ocupa todo, quítalo (más bonito centrado) */
+.uniform-card .btn.w-100,
+.uniform-card .landing-btn.w-100 {
+  width: auto !important;
+}
+
+/* ==============================
+   UNIFORMS CAROUSEL — CENTER FIX
+============================== */
+
+/* Centra el contenido del slide completo */
+#uniformsCarousel .carousel-item {
+  padding: 10px 40px; /* espacio para que no tape controles */
+}
+
+/* La fila: que pueda centrarse como bloque */
+#uniformsCarousel .uniform-row {
+  width: 100%;
+  display: flex;
+  justify-content: center;   /* 🔥 centra las cards */
+  align-items: stretch;
+  gap: 24px;
+  flex-wrap: nowrap;
+}
+
+/* Cards: que NO se estiren a lo loco */
+#uniformsCarousel .uniform-card {
+  flex: 0 1 300px;           /* 🔥 ancho “natural” */
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;       /* 🔥 centra contenido (incluye botón) */
+}
+
+/* Info: centra texto y botón */
+#uniformsCarousel .uniform-info {
+  width: 100%;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Botón: centrado siempre */
+#uniformsCarousel .uniform-info .landing-btn {
+  width: auto !important;
+  margin: 12px auto 0;
+}
+
+#uniformsCarousel .carousel-inner {
+  min-height: 380px; /* ajustá según tus imágenes */
+}
+
+@media (max-width: 768px) {
+  #uniformsCarousel .carousel-item {
+    padding: 10px 20px;
+  }
+
+  #uniformsCarousel .uniform-row {
+    gap: 16px;
+  }
+
+  #uniformsCarousel .uniform-card {
+    max-width: 360px;
+  }
+}
+

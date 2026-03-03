@@ -1,0 +1,79 @@
+<div class="modal fade" id="gymRoutineModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title" id="gymRoutineModalTitle">Rutina</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="alert d-none" id="gymRoutineAlert"></div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-md-8">
+            <label class="form-label">Nombre</label>
+            <input class="form-control" id="grName" placeholder="Rutina Lunes PM - Pierna" />
+          </div>
+
+          <div class="col-md-4 d-flex align-items-end">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="grIsPublic" checked>
+              <label class="form-check-label" for="grIsPublic">Pública</label>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Descripción</label>
+            <input class="form-control" id="grDescription" placeholder="Fuerza base + accesorios" />
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+
+            <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-2">
+              <div class="fw-semibold">Ejercicios de la rutina</div>
+
+              <div class="d-flex gap-2 flex-wrap align-items-end">
+                <div style="min-width:260px;">
+                  <label class="form-label small text-muted mb-1">Agregar ejercicio</label>
+                  <select class="form-select" id="grAddExerciseSelect"></select>
+                </div>
+                <button class="btn btn-outline-primary btn-sm" id="grAddExerciseBtn" type="button">+ Agregar</button>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-sm align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th style="width:40px;">#</th>
+                    <th>Ejercicio</th>
+                    <th style="width:90px;">Sets</th>
+                    <th style="width:90px;">Reps</th>
+                    <th style="width:120px;">Dist</th>
+                    <th style="width:100px;">Desc (s)</th>
+                    <th>Notas</th>
+                    <th style="width:120px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="grItemsTbody"></tbody>
+              </table>
+            </div>
+
+            <div class="text-muted small">Tip: Reps o Distancia (uno u otro). Si el ejercicio es por distancia, usa “Dist”.</div>
+
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary" data-bs-dismiss="modal" type="button">Cancelar</button>
+        <button class="btn btn-primary" id="saveGymRoutineBtn" type="button">Guardar rutina</button>
+      </div>
+
+    </div>
+  </div>
+</div>

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cartaglow</title>
+  <script>document.documentElement.classList.add("preload");</script>
+  <style>
+    html.preload, html.preload body { background: #0b0b0c; }
+    html.preload body { visibility: hidden; }
+    html.preload #volcanesLoadingOverlay { visibility: visible; }
+  </style>
+  <script src="/js/ui/loader.preload.js"></script>
+
+  <!-- Open Graph / Social (se setea desde JS también, pero dejamos defaults) -->
+  <meta property="og:title" content="Cartaglow" />
+  <meta property="og:description" content="Torneo Hat MIXTO 7v7" />
+  <meta property="og:image" content="img/logo-cartaglow.jpeg" />
+
+  <!-- Bootstrap -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+
+  <!-- Bootstrap icons -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+    rel="stylesheet"
+  />
+
+  <!-- Reusar tu main.css -->
+  <link rel="stylesheet" href="/css/main.css" />
+
+  <!-- Estilos de Cartaglow -->
+  <link rel="stylesheet" href="/css/cartaglow.css" />
+</head>
+
+<body>
+
+  <!-- Header simple -->
+  <header class="cg-topbar">
+    <a class="cg-brand" href="index.html">
+      <i class="bi bi-arrow-left"></i>
+      <span id="cgClubName">Volcanes Ultimate</span>
+    </a>
+
+    <a class="cg-ig" id="cgInstagramLink" href="#" target="_blank" rel="noopener">
+      <i class="bi bi-instagram"></i>
+      <span class="d-none d-sm-inline">Instagram</span>
+    </a>
+  </header>
+
+  <!-- Hero -->
+  <section class="cg-hero">
+    <div class="container py-5">
+      <div class="row align-items-center g-4">
+
+        <div class="col-12 col-lg-7">
+          <div class="cg-badge" id="cgEditionPill">Cartaglow</div>
+          <h1 class="cg-title" id="cgTitle">—</h1>
+          <p class="cg-subtitle" id="cgSubtitle">—</p>
+
+          <div class="cg-actions">
+            <button id="cgRegisterBtn" class="cg-btn cg-btn-primary" type="button">
+              —
+            </button>
+
+            <a id="cgAddToCalendarBtn" class="cg-btn cg-btn-outline" href="#" target="_blank" rel="noopener">
+              <i class="bi bi-calendar-event me-2"></i>
+              Agregar a calendario
+            </a>
+          </div>
+
+          <div class="cg-note" id="cgRegisterNote">—</div>
+        </div>
+
+        <div class="col-12 col-lg-5">
+          <div class="cg-hero-card">
+            <img id="cgHeroImage" class="cg-hero-img" alt="Cartaglow" />
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Info Cards -->
+  <section class="container py-5">
+    <div class="row g-3" id="cgInfoCards">
+      <!-- JS inyecta cards -->
+    </div>
+  </section>
+
+  <!-- Testimonials -->
+  <section class="cg-section-alt py-5">
+    <div class="container">
+      <div class="d-flex align-items-end justify-content-between gap-3 flex-wrap mb-3">
+        <div>
+          <h2 class="cg-h2" id="cgTestimonialsTitle">—</h2>
+          <p class="cg-muted" id="cgTestimonialsSubtitle">—</p>
+        </div>
+      </div>
+
+      <div class="row g-3" id="cgTestimonials">
+        <!-- JS inyecta testimonios -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Showcase -->
+  <section class="container py-5">
+    <div class="row g-4 align-items-center">
+      <div class="col-12 col-lg-6">
+        <h2 class="cg-h2" id="cgShowcaseTitle">—</h2>
+        <p class="cg-muted" id="cgShowcaseText">—</p>
+        <a id="cgShowcaseLink" class="cg-btn cg-btn-primary" href="#" target="_blank" rel="noopener">
+          Ver álbum
+        </a>
+        <div class="cg-muted mt-2" id="cgShowcaseCredit">—</div>
+      </div>
+
+      <div class="col-12 col-lg-6">
+        <div class="cg-gallery" id="cgGallery">
+          <!-- JS inyecta thumbs -->
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================
+       MEDIA 2025 (VIDEO + GALERÍA)
+  ========================== -->
+  <section class="cg-section-alt py-5" id="cgMedia2025Section">
+    <div class="container">
+      <div class="d-flex align-items-end justify-content-between gap-3 flex-wrap mb-3">
+        <div>
+          <h2 class="cg-h2" id="cgMedia2025Title">—</h2>
+          <p class="cg-muted" id="cgMedia2025Subtitle">—</p>
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap">
+          <a class="cg-btn cg-btn-outline" id="cgMedia2025FinalLink" href="#" target="_blank" rel="noopener">
+            <i class="bi bi-play-circle me-2"></i>
+            Ver final 2025
+          </a>
+
+          <a class="cg-btn cg-btn-primary" id="cgMedia2025GalleryLink" href="#" target="_blank" rel="noopener">
+            <i class="bi bi-images me-2"></i>
+            Galería 2025
+          </a>
+        </div>
+      </div>
+
+      <div class="cg-video-wrap">
+        <div class="ratio ratio-16x9 cg-video-card">
+          <iframe
+            id="cgMedia2025Iframe"
+            title="Final Cartaglow 2025"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowfullscreen
+          ></iframe>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats 2024 -->
+  <section class="cg-section-alt py-5">
+    <div class="container">
+      <div class="d-flex justify-content-between align-items-end gap-3 flex-wrap mb-3">
+        <div>
+          <h2 class="cg-h2" id="cgStatsTitle">—</h2>
+          <p class="cg-muted" id="cgStatsSubtitle">—</p>
+        </div>
+        <a class="cg-btn cg-btn-outline" id="cgStatsSourceLink" href="#" target="_blank" rel="noopener">
+          Ver CSV fuente
+        </a>
+      </div>
+
+      <div class="row g-3 mb-3" id="cgStatsKpis">
+        <!-- JS inyecta KPIs -->
+      </div>
+
+      <div class="cg-table-wrap">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr id="cgStatsHead"></tr>
+          </thead>
+          <tbody id="cgStatsBody"></tbody>
+        </table>
+      </div>
+
+      <div class="cg-muted mt-2" id="cgStatsFootnote">—</div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="cg-footer">
+    <div class="container py-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div class="cg-footer-brand" id="cgFooterText">—</div>
+      <a class="cg-footer-link" href="index.html">Volver al inicio</a>
+    </div>
+  </footer>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Page logic -->
+  <script type="module" src="/js/cartaglow.js"></script>
+</body>
+</html>

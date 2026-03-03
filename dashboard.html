@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard</title>
+
+  <script>document.documentElement.classList.add("preload");</script>
+  <style>
+    html.preload, html.preload body { background:#0b0b0c; margin:0; }
+    html.preload body { visibility: hidden; }
+    html.preload #volcanesLoadingOverlay { visibility: visible; }
+  </style>
+  <script src="/js/ui/loader.preload.js?v=20260226-1"></script>
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/img/apple-touch-icon.png">
+  <!-- Bootstrap -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="/css/dashboard.css" />
+</head>
+
+<body class="loading">
+
+  <!-- HEADER -->
+  <div id="app-header"></div>
+
+  <!-- CONTENIDO -->
+  <main class="container py-4 dashboard-page">
+
+    <!-- ================= KPIs ================= -->
+    <section class="mb-4">
+      <div class="row g-3">
+
+        <div class="col-12 col-md-4">
+          <div class="kpi-box h-100">
+            <div class="kpi-value" id="kpiActivePlayers">—</div>
+            <div class="kpi-label">Jugadores activos</div>
+          </div>
+        </div>
+
+        <div class="col-12 col-md-4">
+          <div class="kpi-box h-100">
+            <div class="kpi-value" id="kpiAvgAttendance">—</div>
+            <div class="kpi-label">Asistencia promedio</div>
+          </div>
+        </div>
+
+        <div class="col-12 col-md-4">
+          <div class="kpi-box h-100">
+            <div class="kpi-value" id="kpiTrainingsCount">—</div>
+            <div class="kpi-label">Entrenamientos realizados</div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ================= BLOQUE CENTRAL ================= -->
+    <section class="mb-4">
+      <div class="row g-4">
+
+        <!-- ALERTAS -->
+        <div class="col-12 col-lg-8">
+          <div class="alerts-card h-100">
+            <h3 class="mb-3">🚨 Alertas del club</h3>
+            <div id="alertsList" class="alerts-list">
+              <li class="list-group-item text-muted">
+                Cargando alertas…
+              </li>
+            </div>
+          </div>
+        </div>
+
+        <!-- PRÓXIMO TORNEO -->
+        <div class="col-12 col-lg-4">
+          <a id="nextTournamentCard" class="next-tournament-card h-100 text-center d-block text-decoration-none" href="#">
+            <h3 class="mb-3">🏆 Próximo torneo</h3>
+            <p class="t-date mb-1" id="nextTournamentDate">Cargando…</p>
+            <p class="t-name mb-0" id="nextTournamentName">—</p>
+          </a>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ================= CUMPLEAÑOS ================= -->
+    <section class="mb-5">
+      <div class="birthdays-card">
+        <h3 class="mb-3">🎂 Cumpleañeros del mes</h3>
+        <div id="birthdaysList">
+          Cargando…
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="text-center text-muted pb-3">
+    <small id="appVersion">v—</small>
+  </footer>
+
+
+
+  <!-- SCRIPTS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module" src="/js/dashboard.js"></script>
+  <script src="/js/layout.js" defer></script>
+
+</body>
+</html>

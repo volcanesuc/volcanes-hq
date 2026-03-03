@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Roster – Volcanes</title>
+  <script>document.documentElement.classList.add("preload");</script>
+  <style>
+    html.preload, html.preload body { background: #0b0b0c; }
+    html.preload body { visibility: hidden; }
+    html.preload #volcanesLoadingOverlay { visibility: visible; }
+  </style>
+  <script src="/js/ui/loader.preload.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/dashboard.css" />
+  <link rel="stylesheet" href="/css/main.css" />
+</head>
+
+<body class="loading">
+  <div id="app-header"></div>
+
+  <main id="content">
+    <div class="container py-4">
+
+      <!-- TÍTULO -->
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h1 class="page-title mb-1">Roster</h1>
+          <small class="text-muted">Gestión de jugadores</small>
+        </div>
+
+        <button class="btn btn-primary" id="addPlayerBtn">
+          + Nuevo jugador
+        </button>
+      </div>
+
+      <!-- RESUMEN ROSTER -->
+      <div class="row g-3 mb-4" id="rosterStats">
+        <!-- TOTAL -->
+        <div class="col-6 col-md-3">
+          <div class="card h-100">
+            <div class="card-body text-center">
+              <small class="text-muted">Jugadores Activos</small>
+              <h3 id="statActive">–</h3>
+              <div class="small">
+                <span class="text-muted" id="statInactive">– inactivos</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- GÉNERO -->
+        <div class="col-6 col-md-3">
+          <div class="card h-100">
+            <div class="card-body text-center">
+              <small class="text-muted">Género</small>
+              <h3>
+                <span id="statMen">–</span> H ·
+                <span id="statWomen">–</span> M
+              </h3>
+            </div>
+          </div>
+        </div>
+
+        <!-- MASTER -->
+        <div class="col-6 col-md-3">
+          <div class="card h-100">
+            <div class="card-body text-center">
+              <small class="text-muted">Master</small>
+              <h3>
+                <span id="statMasterH">–</span> H ·
+                <span id="statMasterM">–</span> M
+              </h3>
+            </div>
+          </div>
+        </div>
+
+        <!-- U24 -->
+        <div class="col-6 col-md-3">
+          <div class="card h-100">
+            <div class="card-body text-center">
+              <small class="text-muted">U24</small>
+              <h3>
+                <span id="statU24H">–</span> H ·
+                <span id="statU24M">–</span> M
+              </h3>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+
+      <!-- TABLA DE JUGADORES-->
+      <!-- MOBILE -->
+      <div id="playersCards" class="d-md-none mb-2"></div>
+      <!-- DESKTOP -->
+      <div class="card">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light text-uppercase small">
+                <tr>
+                    <th data-sort="name" class="sortable">Jugador</th>
+                    <th data-sort="role" class="sortable">Rol</th>
+                    <th data-sort="number" class="sortable">#</th>
+                    <th data-sort="gender" class="sortable">Género</th>
+                    <th data-sort="birthday" class="sortable">Cumpleaños</th>
+                    <th data-sort="active" class="sortable">Estado</th>
+                </tr>
+              </thead>
+              <tbody id="playersTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- MODAL FULLSCREEN -->
+  <div class="modal fade" id="playerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen">
+      <div class="modal-content player-modal">
+
+        <form id="playerForm" class="h-100 d-flex flex-column">
+
+          <!-- HEADER -->
+          <div class="modal-header player-modal__header">
+            <div>
+              <h5 class="modal-title mb-0 text-white" id="modalTitle">Jugador</h5>
+              <small class="player-modal__subtitle text-white" id="playerModalSubtitle">Nuevo / Editar</small>
+            </div>
+
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+
+          <!-- BODY (scroll) -->
+          <div class="modal-body player-modal__body flex-grow-1">
+            <input type="hidden" id="playerId" />
+
+            <div class="row g-3">
+
+              <div class="col-12 col-md-6">
+                <label class="form-label">Nombre</label>
+                <input type="text" id="firstName" class="form-control" required />
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label">Apellido</label>
+                <input type="text" id="lastName" class="form-control" required />
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label">Documento de identidad</label>
+                <input type="text" id="idNumber" class="form-control" placeholder="Ej: 1-2345-6789" />
+              </div>
+
+              <div class="col-12 col-md-4">
+                <label class="form-label">Género</label>
+                <select id="gender" class="form-select">
+                  <option value="">—</option>
+                  <option value="M">Masculino</option>
+                  <option value="F">Femenino</option>
+                  <option value="X">Otro</option>
+                </select>
+              </div>
+
+              <div class="col-12 col-md-4">
+                <label class="form-label">Nacimiento</label>
+                <input type="date" id="birthday" class="form-control" />
+              </div>
+
+              <div class="col-12 col-md-4">
+                <label class="form-label">Número</label>
+                <input type="number" id="number" class="form-control" />
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">Rol</label>
+                <select id="role" class="form-select">
+                  <option value="handler">Handler</option>
+                  <option value="cutter">Cutter</option>
+                  <option value="hybrid">Hybrid</option>
+                </select>
+              </div>
+
+              <div class="col-12">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="active" checked />
+                  <label class="form-check-label" for="active">Jugador activo</label>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- FOOTER -->
+          <div class="modal-footer player-modal__footer">
+            <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">
+              Cancelar
+            </button>
+            <button type="submit" class="btn btn-success">
+              Guardar
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPTS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module" src="/js/roster.js"></script>
+  <script src="/js/layout.js" defer></script>
+</body>
+</html>

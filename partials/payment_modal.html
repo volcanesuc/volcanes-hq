@@ -1,0 +1,52 @@
+<!-- partials/payment_modal.html -->
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content player-modal">
+      <form id="paymentForm">
+        <input type="hidden" id="payPath" />
+        <input type="hidden" id="payDocId" />
+
+        <div class="modal-header player-modal__header">
+          <div>
+            <h5 class="modal-title mb-0" id="payTitle">Agregar pago</h5>
+            <small class="player-modal__subtitle" id="paySubtitle">—</small>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-6">
+              <label class="form-label">Monto</label>
+              <input id="payAmount" type="number" class="form-control" min="0" step="1" required />
+            </div>
+
+            <div class="col-6">
+              <label class="form-label">Fecha</label>
+              <input id="payDate" type="date" class="form-control" required />
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Método</label>
+              <select id="payMethod" class="form-select">
+                <option value="sinpe">SINPE</option>
+                <option value="cash">Efectivo</option>
+                <option value="transfer">Transferencia</option>
+              </select>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Nota (opcional)</label>
+              <input id="payNote" class="form-control" placeholder="Ej: Abono 1/3" />
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer d-flex justify-content-end gap-2">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

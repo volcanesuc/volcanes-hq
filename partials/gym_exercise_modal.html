@@ -1,0 +1,80 @@
+<div class="modal fade" id="gymExerciseModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title" id="gymExerciseModalTitle">Ejercicio</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="alert d-none" id="gymExerciseAlert"></div>
+
+        <div class="row g-2">
+          <div class="col-12">
+            <label class="form-label">Nombre</label>
+            <input class="form-control" id="geName" placeholder="Ej: Back squat" />
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Tipo de series</label>
+            <select class="form-select" id="geSeriesType">
+              <option value="reps">Por reps</option>
+              <option value="distance">Por distancia</option>
+            </select>
+          </div>
+
+          <div class="col-md-3">
+            <label class="form-label">Sets</label>
+            <input type="number" min="1" class="form-control" id="geSets" placeholder="4" />
+          </div>
+
+          <div class="col-md-3" id="geRepsWrap">
+            <label class="form-label">Reps</label>
+            <input type="number" min="1" class="form-control" id="geReps" placeholder="6" />
+          </div>
+
+          <div class="col-md-6 d-none" id="geDistanceWrap">
+            <label class="form-label">Distancia</label>
+            <div class="input-group">
+              <input type="number" min="1" class="form-control" id="geDistance" placeholder="400" />
+              <select class="form-select" id="geDistanceUnit" style="max-width:110px;">
+                <option value="m">m</option>
+                <option value="km">km</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Partes del cuerpo (separadas por coma)</label>
+            <input class="form-control" id="geBodyParts" placeholder="legs, glutes, core" />
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Video</label>
+            <input class="form-control" id="geVideoUrl" placeholder="https://..." />
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Observaciones</label>
+            <textarea class="form-control" id="geNotes" rows="3" placeholder="Cues, técnica, etc."></textarea>
+          </div>
+
+          <div class="col-12">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="geIsPublic" checked>
+              <label class="form-check-label" for="geIsPublic">Público (se puede ver sin login)</label>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary" data-bs-dismiss="modal" type="button">Cancelar</button>
+        <button class="btn btn-primary" id="saveGymExerciseBtn" type="button">Guardar</button>
+      </div>
+
+    </div>
+  </div>
+</div>

@@ -1,0 +1,121 @@
+<div class="modal fade" id="tournamentModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-fullscreen">
+    <div class="modal-content player-modal">
+
+      <form id="tournamentForm" class="h-100 d-flex flex-column">
+        <input type="hidden" id="tournamentId" />
+
+        <div class="modal-header player-modal__header">
+          <div>
+            <h5 class="modal-title mb-0" id="tournamentModalTitle">—</h5>
+            <small class="player-modal__subtitle" id="tournamentModalSubtitle">—</small>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="row g-3">
+
+            <div class="col-md-6">
+              <label id="lblName" class="form-label"></label>
+              <input id="tournamentName" class="form-control" required />
+            </div>
+
+            <div class="col-md-3">
+              <label id="lblDateStart" class="form-label"></label>
+              <input id="dateStart" type="date" class="form-control" required />
+            </div>
+
+            <div class="col-md-3">
+              <label id="lblDateEnd" class="form-label"></label>
+              <input id="dateEnd" type="date" class="form-control" />
+            </div>
+
+            <div class="col-md-4">
+              <label id="lblType" class="form-label"></label>
+              <select id="type" class="form-select"></select>
+            </div>
+
+            <div class="col-md-4">
+              <label id="lblAge" class="form-label"></label>
+              <select id="age" class="form-select"></select>
+            </div>
+
+            <div class="col-md-4">
+              <label id="lblVenue" class="form-label"></label>
+              <select id="venue" class="form-select"></select>
+            </div>
+
+            <div class="col-md-6">
+              <label id="lblLocation" class="form-label"></label>
+              <input id="location" class="form-control" />
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Sitio oficial del torneo</label>
+              <input 
+                id="officialUrl"
+                type="url"
+                class="form-control"
+                placeholder="https://ejemplo.com"
+              />
+              <div class="form-text">
+                Link al torneo en Ultiworld, WFDF, Instagram o web oficial
+              </div>
+            </div>
+
+            <div class="col-md-3">
+              <label id="lblTeamFee" class="form-label"></label>
+              <input id="teamFee" type="number" class="form-control" />
+            </div>
+
+            <div class="col-md-3">
+              <label id="lblPlayerFee" class="form-label"></label>
+              <input id="playerFee" type="number" class="form-control" />
+            </div>
+
+            <div class="col-12">
+              <label id="lblNotes" class="form-label"></label>
+              <textarea id="notes" class="form-control" rows="3"></textarea>
+            </div>
+
+            <div class="col-12 form-check mt-2">
+              <input id="confirmed" type="checkbox" class="form-check-input" />
+              <label id="lblConfirmed" class="form-check-label"></label>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="modal-footer d-flex justify-content-between">
+          <button
+            type="button"
+            id="deleteTournamentBtn"
+            class="btn btn-outline-danger"
+          >
+            Eliminar
+          </button>
+
+          <div class="d-flex gap-2">
+            <button
+              type="button"
+              id="btnCancel"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              id="btnSave"
+              class="btn btn-primary"
+            >
+              Guardar
+            </button>
+          </div>
+        </div>
+
+      </form>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Playbook – Volcanes Ultimate</title>
+  <script>document.documentElement.classList.add("preload");</script>
+  <style>
+    html.preload, html.preload body { background: #0b0b0c; }
+    html.preload body { visibility: hidden; }
+    html.preload #volcanesLoadingOverlay { visibility: visible; }
+  </style>
+  <script src="/js/ui/loader.preload.js"></script>
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/img/apple-touch-icon.png">
+
+  <!-- Bootstrap -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="/css/dashboard.css" />
+</head>
+
+<body class="loading">
+
+  <!-- HEADER -->
+  <div id="app-header"></div>
+
+  <!-- CONTENIDO -->
+  <main class="container py-4">
+
+    <div class="d-flex flex-wrap justify-content-between align-items-end mb-4 gap-3">
+      <div>
+        <h1 class="page-title mb-1">Playbook</h1>
+        <div class="text-muted" id="pageSubtitle">Cargando…</div>
+      </div>
+
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge d-none" id="roleBadge">VIEW</span>
+      </div>
+    </div>
+
+    <!-- Alert -->
+    <div class="alert d-none" id="alertBox" role="alert"></div>
+
+    <!-- Tabs -->
+    <div class="card shadow-sm mb-3">
+      <div class="card-body py-3">
+        <ul class="nav nav-pills gap-2" id="playbookTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tabDrillsBtn" data-bs-toggle="pill" data-bs-target="#tabDrills" type="button" role="tab">
+              Drills
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tabTrainingsBtn" data-bs-toggle="pill" data-bs-target="#tabTrainings" type="button" role="tab">
+              Entrenamientos
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tabGymBtn" data-bs-toggle="pill" data-bs-target="#tabGym" type="button" role="tab">
+              Gimnasio
+            </button>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="tab-content">
+
+      <!-- TAB DRILLS -->
+      <section class="tab-pane fade show active" id="tabDrills" role="tabpanel" aria-labelledby="tabDrillsBtn">
+
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+          <div class="input-group" style="max-width: 520px;">
+            <span class="input-group-text">🔎</span>
+            <input class="form-control" id="drillSearch" placeholder="Buscar drills…" />
+          </div>
+
+          <div class="d-flex align-items-center gap-2">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" role="switch" id="showArchivedSwitch">
+              <label class="form-check-label" for="showArchivedSwitch">Ver archivados</label>
+            </div>
+
+            <button class="btn btn-outline-secondary btn-sm" id="refreshDrillsBtn">Refrescar</button>
+
+            <!-- Admin only (JS lo muestra si canEdit) -->
+            <button class="btn btn-primary btn-sm d-none" id="openCreateDrillBtn" type="button">
+              + Crear drill
+            </button>
+          </div>
+        </div>
+
+        <div class="row g-3" id="drillsList"></div>
+        <div class="text-muted small mt-3 d-none" id="drillsEmpty">No hay drills todavía.</div>
+
+      </section>
+
+      <!-- TAB TRAININGS -->
+      <section class="tab-pane fade" id="tabTrainings" role="tabpanel" aria-labelledby="tabTrainingsBtn">
+
+        <div class="row g-3">
+          <div class="col-12">
+
+            <div class="card">
+              <div class="card-body">
+
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                  <h2 class="h5 mb-0">Entrenamientos preparados</h2>
+
+                  <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary btn-sm" id="refreshTrainingsBtn">Refrescar</button>
+
+                    <!-- Admin only (JS lo muestra si canEdit) -->
+                    <button class="btn btn-primary btn-sm d-none" id="openCreateTrainingBtn" type="button">
+                      + Crear entrenamiento
+                    </button>
+                  </div>
+                </div>
+
+                <div class="input-group mb-2" style="max-width: 520px;">
+                  <span class="input-group-text">🔎</span>
+                  <input class="form-control" id="trainingSearch" placeholder="Buscar por nombre…" />
+                </div>
+
+                <!-- cards/list -->
+                <div class="list-group" id="trainingsList"></div>
+                <div class="text-muted small mt-3 d-none" id="trainingsEmpty">No hay entrenamientos preparados.</div>
+
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </section>
+      <!-- TAB GIMNASIO -->
+      <section class="tab-pane fade" id="tabGym" role="tabpanel" aria-labelledby="tabGymBtn">
+
+        <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+          <div>
+            <h2 class="h5 mb-0">Gimnasio</h2>
+            <div class="text-muted small">Ejercicios, rutinas y semanas (compartibles)</div>
+          </div>
+
+          <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-outline-secondary btn-sm" id="refreshGymBtn">Refrescar</button>
+
+            <!-- admin only -->
+            <button class="btn btn-outline-primary btn-sm d-none" id="openCreateGymExerciseBtn" type="button">+ Ejercicio</button>
+            <button class="btn btn-outline-primary btn-sm d-none" id="openCreateGymRoutineBtn" type="button">+ Rutina</button>
+            <button class="btn btn-primary btn-sm d-none" id="openCreateGymWeekBtn" type="button">+ Semana</button>
+          </div>
+        </div>
+
+        <div class="row g-3">
+          <!-- Ejercicios -->
+          <div class="col-12 col-lg-4">
+            <div class="card">
+              <div class="card-body">
+                <div class="fw-semibold mb-2">Ejercicios</div>
+                <div class="input-group mb-2">
+                  <span class="input-group-text">🔎</span>
+                  <input class="form-control" id="gymExerciseSearch" placeholder="Buscar ejercicio…" />
+                </div>
+                <div class="list-group" id="gymExercisesList"></div>
+                <div class="text-muted small mt-2 d-none" id="gymExercisesEmpty">No hay ejercicios.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Rutinas -->
+          <div class="col-12 col-lg-4">
+            <div class="card">
+              <div class="card-body">
+                <div class="fw-semibold mb-2">Rutinas</div>
+                <div class="input-group mb-2">
+                  <span class="input-group-text">🔎</span>
+                  <input class="form-control" id="gymRoutineSearch" placeholder="Buscar rutina…" />
+                </div>
+                <div class="list-group" id="gymRoutinesList"></div>
+                <div class="text-muted small mt-2 d-none" id="gymRoutinesEmpty">No hay rutinas.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Semanas -->
+          <div class="col-12 col-lg-4">
+            <div class="card">
+              <div class="card-body">
+                <div class="fw-semibold mb-2">Planes de Gimnasio</div>
+                <div class="input-group mb-2">
+                  <span class="input-group-text">🔎</span>
+                  <input class="form-control" id="gymWeekSearch" placeholder="Buscar plan..." />
+                </div>
+                <div class="list-group" id="gymWeeksList"></div>
+                <div class="text-muted small mt-2 d-none" id="gymWeeksEmpty">No hay planes de gimnasio.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ✅ MOUNT PARA PARTIALS (modales) -->
+  <div id="modalMount"></div>
+  
+  <!-- SCRIPTS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module" src="/js/features/playbook/playbook.js"></script>
+  <script src="/js/layout.js" defer></script>
+</body>
+</html>

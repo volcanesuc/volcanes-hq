@@ -1,0 +1,445 @@
+/* =========================================================
+   MAIN.CSS — Volcanes Ultimate (limpio)
+   Base global + header + tablas + botones + loader
+========================================================= */
+
+/* =========================
+   VARIABLES GLOBALES
+========================= */
+:root {
+  --theme-primary: #19473f;
+  --theme-primary-dark: #12352f;
+  --theme-primary-light: #2c6b61;
+  --theme-accent: #e8ce26;
+  --theme-gray: #f4f4f4;
+  --bg: #0b0f0e;
+  --bg-soft: #fafafa;
+  --card: #151c1a;
+  --text: #ffffff;
+  --text-soft: #6b7280;
+  --border: #1f2a28;
+  --font-title: "Recons", system-ui, -apple-system, sans-serif;
+  --font-body: system-ui, -apple-system, sans-serif;
+  --bs-primary: var(--theme-primary);
+}
+
+/* =========================
+   RESET + BASE
+========================= */
+* { box-sizing: border-box; }
+
+body{
+  margin: 0;
+  font-family: var(--font-body, system-ui, -apple-system, sans-serif);
+  color: var(--text, #222);
+  background: var(--bg, var(--card));
+}
+
+/* =========================
+   TIPOGRAFÍA
+========================= */
+@font-face {
+  font-family: "Recons";
+  src: url("/fonts/Recons-Regular.woff2") format("woff2"),
+       url("/fonts/Recons-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
+
+/* títulos del sistema */
+.page-title,
+.topbar .logo-link,
+#app-header .top-tab,
+.offcanvas-title{
+  font-family: var(--font-title, system-ui, -apple-system, sans-serif);
+}
+
+/* 👇 tabs bootstrap pills (playbook + association) */
+.nav-pills .nav-link{
+  font-family: var(--font-title, system-ui, -apple-system, sans-serif);
+  font-weight: 700;
+  letter-spacing: .03em;
+}
+
+/* =========================
+   UTILIDADES
+========================= */
+.text-success { color: var(--theme-primary-light) !important; }
+.text-warning { color: var(--theme-accent) !important; }
+
+/* =========================
+   LOADER GLOBAL
+========================= */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, var(--theme-primary) 95%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+body:not(.loading) .loading-overlay { display: none; }
+
+.spinner-border {
+  color: var(--theme-accent);
+  width: 3rem;
+  height: 3rem;
+}
+
+/* =========================
+   COMPONENTES BASE
+========================= */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+}
+
+.card h3 {
+  color: var(--theme-primary);
+  font-weight: 700;
+}
+
+/* =========================
+   TABLAS
+========================= */
+.table thead {
+  background-color: var(--theme-primary);
+  color: var(--card);
+}
+
+.table tbody tr:hover {
+   background-color: var(--bg-soft);
+}
+
+/* =========================
+   BOTONES
+========================= */
+.btn-primary {
+  background-color: var(--theme-primary);
+  border-color: var(--theme-primary);
+}
+
+.btn-primary:hover {
+  background-color: var(--theme-primary-dark);
+  border-color: var(--theme-primary-dark);
+}
+
+.btn-outline-primary {
+  color: var(--theme-primary);
+  border-color: var(--theme-primary);
+}
+
+.btn-outline-primary:hover {
+  background-color: var(--theme-accent);
+  border-color: var(--theme-accent);
+  color: var(--theme-primary);
+}
+
+/* =========================
+   HEADER / NAV PRINCIPAL
+========================= */
+.topbar {
+  background: var(--theme-primary);
+  color: var(--card);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 1rem;
+}
+
+.logo {
+  font-family: "Recons";
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.logout-btn {
+  background: var(--theme-accent);
+  color: var(--theme-primary);
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.logout-btn:hover{
+  background: var(--theme-accent);
+  filter: brightness(1.05);
+}
+
+/* =========================
+   SORTABLE TABLE HEADERS
+========================= */
+th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+th.sortable::after {
+  content: " ⇅";
+  font-size: 0.7em;
+  opacity: 0.4;
+}
+
+th.sortable.sorted-asc::after { content: " ↑"; }
+th.sortable.sorted-desc::after { content: " ↓"; }
+
+/* =========================
+   NAV TABS (alineados)
+========================= */
+.nav-tabs {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.nav-tabs a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  height: 36px;
+  padding: 0 0.75rem;
+
+  font-family: "Recons";
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+
+  color: var(--card);
+  text-decoration: none;
+
+  border-radius: 999px;
+  border: 1px solid transparent;
+
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.nav-tabs a:hover { background: rgba(255,255,255,0.15); }
+
+.nav-tabs a.active {
+  background: var(--theme-accent);
+  color: var(--theme-primary);
+  font-weight: 800;
+  border-color: rgba(0,0,0,0.08);
+}
+
+/* =========================
+   OFFCANVAS (drawer)
+========================= */
+.offcanvas{
+  background: var(--card);
+}
+
+.offcanvas-title {
+  font-family: "Recons";
+  color: var(--theme-primary);
+}
+
+.offcanvas-body a {
+  display: block;
+  padding: 0.75rem 0;
+  font-weight: 600;
+  color: var(--theme-primary);
+  text-decoration: none;
+}
+
+.offcanvas-body a:hover { color: var(--theme-primary-dark); }
+
+.offcanvas-body a.active {
+  color: var(--theme-primary-dark);
+  font-weight: 700;
+}
+
+/* Hamburger */
+.hamburger {
+  background: none;
+  border: none;
+  color: var(--card);
+  font-size: 1.6rem;
+  line-height: 1;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+/* Responsive header controls */
+@media (max-width: 768px) {
+  .nav-tabs { display: none; }
+  .hamburger { display: block; }
+}
+
+@media (min-width: 769px) {
+  .hamburger { display: none; }
+}
+
+
+/* =========================
+   Header: logo-link blanco (clickeable)
+========================= */
+#app-header .logo-link,
+#app-header .logo-link:visited {
+  color: var(--card) !important;
+  text-decoration: none !important;
+}
+
+#app-header .logo-link:hover,
+#app-header .logo-link:focus {
+  color: var(--theme-accent) !important;
+  text-decoration: none !important;
+}
+
+
+/* Header brand / Volcanes */
+.app-header a,
+.app-header a:visited {
+  color: var(--card);                 /* blanco */
+  text-decoration: none;       /* sin underline */
+}
+
+.app-header a:hover {
+  color: var(--theme-accent); 
+  text-decoration: none;
+}
+
+.app-header a:active {
+  color: var(--card);
+}
+
+/* =========================
+   HEADER GLOBAL (no choca con Bootstrap)
+========================= */
+
+#app-header .topbar{
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--theme-primary);
+  color: var(--card);
+}
+
+#app-header .left{
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#app-header .logo-link{
+  text-decoration: none;
+  color: inherit;
+  font-weight: 900;
+  letter-spacing: .2px;
+}
+
+#app-header .hamburger{
+  border: 0;
+  background: rgba(255,255,255,0.12);
+  color: var(--card);
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 20px;
+  line-height: 1;
+}
+
+#app-header .logout-btn{
+  border: 0;
+  background: rgba(255,255,255,0.12);
+  color: var(--card);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-weight: 800;
+}
+
+/* Mantener consistente el espacio del botón a la derecha */
+#weekAccordion .accordion-header .btn {
+  white-space: nowrap;
+}
+
+/* Evitar que el bloque derecho crezca de más */
+#weekAccordion .accordion-header > div.pe-2 {
+  flex: 0 0 auto;
+}
+
+/* Desktop tabs (clase propia, NO Bootstrap) */
+#app-header .top-tabs{
+  display: none; /* mobile */
+  gap: 8px;
+  align-items: center;
+}
+
+#app-header .top-tab{
+  text-decoration: none;
+  color: var(--card);
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-weight: 800;
+  opacity: .92;
+}
+
+#app-header .top-tab.active{
+  background: var(--theme-accent);
+  color: var(--theme-primary);
+}
+
+/* Desktop */
+@media (min-width: 768px){
+  #app-header .hamburger{ display: none; }
+  #app-header .top-tabs{ display: inline-flex; }
+}
+
+/* Mobile drawer links */
+#app-header .mobile-links a{
+  display: block;
+  padding: 12px 10px;
+  border-radius: 10px;
+  text-decoration: none;
+  font-weight: 900;
+  color: var(--theme-primary);
+}
+
+#app-header .mobile-links .mobile-link{
+  font-family: var(--font-title, system-ui, -apple-system, sans-serif);
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+#app-header .mobile-links a.active{
+  background: var(--theme-accent);
+  color: var(--theme-primary);
+}
+
+/* =========================
+   FOOTER / META
+========================= */
+.app-version {
+  font-size: 0.75rem;
+  color: var(--theme-primary);
+  opacity: 0.7;
+}
+
+/* =========================
+   NEW LOADER
+========================= */
+
+/* Preload: oculta UI hasta que JS quite el loader */
+html.preload body {
+  opacity: 0;
+}
+
+/* pero el overlay sí debe verse */
+html.preload #volcanesLoadingOverlay {
+  opacity: 1;
+}

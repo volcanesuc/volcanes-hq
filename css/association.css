@@ -1,0 +1,175 @@
+/* =========================================
+   ASSOCIATION PAGE
+   ========================================= */
+
+.association-page {
+  background: #f7f8fa;
+}
+
+/* Page title */
+.page-title {
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.page-subtitle {
+  color: #6b7280;
+  font-size: 0.95rem;
+}
+
+/* Tabs container card */
+#associationTabs {
+  flex-wrap: wrap;
+}
+
+#associationTabs .nav-link {
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-weight: 500;
+  color: #374151;
+  background: #f1f3f5;
+}
+
+#associationTabs .nav-link:hover {
+  background: #e9ecef;
+}
+
+#associationTabs .nav-link.active {
+  background: #111827;
+  color: #fff;
+}
+
+/* Panels */
+.assoc-panel {
+  animation: fadeIn 0.18s ease;
+}
+
+/* Cards inside panels */
+.assoc-panel .card {
+  border: 0;
+  border-radius: 14px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+}
+
+/* KPI boxes */
+.kpi-box {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+}
+
+/* Table */
+.table thead th {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: #6b7280;
+}
+
+.table td {
+  vertical-align: middle;
+}
+
+/* Badges */
+.badge-soft {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.badge-soft.green {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.badge-soft.yellow {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+.badge-soft.red {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.badge-soft.gray {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+/* Mono text */
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* Small tighten */
+.tight {
+  line-height: 1.15;
+}
+
+/* Fade animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Loader */
+body.loading {
+  cursor: progress;
+}
+
+.modal-body {
+  padding-bottom: 80px;
+}
+
+/* ===== Modal host ===== */
+.mh-backdrop{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: 2000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 18px 12px;
+  overflow: auto;
+}
+
+.mh-shell{
+  width: min(1200px, 100%);
+}
+
+.mh-frame{
+  width: 100%;
+  height: 520px;           /* fallback inicial */
+  max-height: 90vh;        /* por si el modal es grande */
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+}
+
+.mh-frame{
+  background: transparent !important;
+}
+.mh-shell{
+  background: transparent !important;
+}
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+  .page-title {
+    font-size: 1.4rem;
+  }
+
+  #associationTabs {
+    gap: 6px;
+  }
+}

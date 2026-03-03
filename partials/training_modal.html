@@ -1,0 +1,82 @@
+<div class="modal fade" id="trainingModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">Nuevo entrenamiento</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+
+        <div class="row g-2 mb-3">
+          <div class="col-12 col-md-4">
+            <label class="form-label">Fecha</label>
+            <input id="trainingDate" type="date" class="form-control" />
+          </div>
+        </div>
+
+        <div id="quickTextSection" class="mb-3">
+          <label class="form-label">Lista rápida (WhatsApp)</label>
+          <textarea id="attendanceText" class="form-control" rows="3" placeholder="Pegá acá el texto..."></textarea>
+          <div class="mt-2">
+            <button id="processBtn" class="btn btn-outline-primary btn-sm">Procesar</button>
+          </div>
+        </div>
+
+        <hr class="my-3" />
+
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div class="fw-semibold">Asistencia</div>
+          <div class="text-muted small">Marcá presentes</div>
+        </div>
+        <div id="playersList" class="mt-2"></div>
+
+        <!-- ✅ NUEVO -->
+        <hr class="my-3" />
+        <div class="fw-semibold mb-2">Playbook</div>
+
+        <div class="row g-3">
+          <div class="col-12 col-lg-6">
+            <div class="d-flex justify-content-between align-items-center gap-2">
+              <div class="small text-muted">Entrenamientos completos</div>
+              <input id="pbTrainingSearch" class="form-control form-control-sm" style="max-width:220px" placeholder="Buscar..." />
+            </div>
+            <div id="pbTrainingsList" class="list-group mt-2"></div>
+          </div>
+
+          <div class="col-12 col-lg-6">
+            <div class="d-flex justify-content-between align-items-center gap-2">
+              <div class="small text-muted">Drills</div>
+              <input id="pbDrillSearch" class="form-control form-control-sm" style="max-width:220px" placeholder="Buscar..." />
+            </div>
+            <div id="pbDrillsList" class="list-group mt-2"></div>
+          </div>
+        </div>
+
+        <hr class="my-3" />
+
+        <div class="row g-3">
+          <div class="col-12 col-lg-6">
+            <label class="form-label">Qué se trabajó (texto libre)</label>
+            <input id="trainingSummary" class="form-control" placeholder="Ej: scrimmage + zona + cardio..." />
+            <div class="form-text">
+              Si no seleccionás drills/entrenos del playbook, describilo acá.
+            </div>
+          </div>
+          <div class="col-12 col-lg-6">
+            <label class="form-label">Notas internas</label>
+            <input id="trainingNotes" class="form-control" placeholder="Solo interno..." />
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button id="saveTrainingBtn" class="btn btn-primary">Guardar</button>
+      </div>
+
+    </div>
+  </div>
+</div>

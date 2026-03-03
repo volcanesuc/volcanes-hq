@@ -1,0 +1,56 @@
+.subscription-plans-page .filters-card{
+  background: #fff;
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.06);
+}
+
+.subscription-plans-page table thead th{
+  color: var(--theme-primary, #19473f);
+  font-weight: 800;
+}
+
+.badge-soft{
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-weight: 700;
+  background: rgba(25, 71, 63, 0.08);
+  color: var(--theme-primary, #19473f);
+}
+
+.badge-soft.yellow{
+  background: rgba(232, 206, 38, 0.25);
+  color: var(--theme-primary, #19473f);
+}
+
+.badge-soft.gray{
+  background: rgba(0,0,0,0.06);
+  color: rgba(0,0,0,0.7);
+}
+
+.options-box{
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 14px;
+  padding: 12px;
+  background: rgba(25, 71, 63, 0.03);
+}
+
+.options-title{
+  font-weight: 800;
+  color: var(--theme-primary, #19473f);
+  margin-bottom: 8px;
+}
+
+.options-row{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  align-items: center;
+}
+
+.option-item{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}

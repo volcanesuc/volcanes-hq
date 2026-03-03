@@ -1,0 +1,77 @@
+<!-- /partials/training_editor.html -->
+<div class="modal fade" id="trainingEditorModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title mb-0" id="trainingEditorTitle">Entrenamiento</h5>
+          <div class="text-muted small" id="trainingEditorHint">—</div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="alert alert-danger d-none" id="trainingEditorError"></div>
+
+        <form id="trainingEditorForm" class="row g-3">
+          <div class="col-12 col-lg-6">
+            <label class="form-label" for="teName">Nombre *</label>
+            <input class="form-control" id="teName" required maxlength="120" />
+          </div>
+
+          <div class="col-12 col-lg-3">
+            <label class="form-label" for="teDate">Fecha *</label>
+            <input class="form-control" id="teDate" type="date" required />
+          </div>
+
+          <div class="col-12 col-lg-3 d-flex align-items-end">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" role="switch" id="teIsPublic">
+              <label class="form-check-label" for="teIsPublic">Público (link compartible)</label>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label" for="teNotes">Notas</label>
+            <textarea class="form-control" id="teNotes" rows="2"></textarea>
+          </div>
+
+          <hr class="my-2" />
+
+          <!-- Drill picker -->
+          <div class="col-12 col-lg-6">
+            <div class="fw-semibold mb-2">Agregar drills</div>
+
+            <div class="input-group mb-2">
+              <span class="input-group-text">🔎</span>
+              <input class="form-control" id="teDrillSearch" placeholder="Buscar drills por nombre/autor…" />
+            </div>
+
+            <div class="list-group" id="teDrillResults" style="max-height: 360px; overflow:auto;"></div>
+            <div class="text-muted small mt-2 d-none" id="teDrillResultsEmpty">No hay resultados.</div>
+          </div>
+
+          <!-- Selected drills -->
+          <div class="col-12 col-lg-6">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <div class="fw-semibold">Drills del entrenamiento</div>
+              <div class="text-muted small"><span id="teSelectedCount">0</span> seleccionado(s)</div>
+            </div>
+
+            <div class="list-group" id="teSelectedDrills" style="max-height: 420px; overflow:auto;"></div>
+            <div class="text-muted small mt-2 d-none" id="teSelectedEmpty">Aún no agregaste drills.</div>
+
+            <div class="small text-muted mt-2">
+              Tip: usá ↑/↓ para ordenar. El orden se respeta al compartir el link.
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary" data-bs-dismiss="modal" type="button">Cancelar</button>
+        <button class="btn btn-primary" id="teSaveBtn" type="button">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>

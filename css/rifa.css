@@ -1,0 +1,30 @@
+.number {
+  font-weight: bold;
+  white-space: pre-line;
+  border-radius: 10px;
+}
+
+.number.vendido {
+  background-color: #dc3545 !important;
+  color: #fff !important;
+  text-decoration: line-through;
+}
+
+.number.pendiente {
+  background-color: #fadb14 !important;
+  color: #000 !important;
+}
+
+.number.disabled {
+  cursor: not-allowed;
+}
+
+.number {
+  line-height: 1.2;
+}
+
+.number br + * {
+  font-size: 0.75rem;
+  font-weight: normal;
+}
+

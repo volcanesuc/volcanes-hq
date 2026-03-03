@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Asociación – Volcanes Ultimate</title>
+
+  <script>document.documentElement.classList.add("preload");</script>
+  <style>
+    html.preload, html.preload body { background: #0b0b0c; }
+    html.preload body { visibility: hidden; }
+    html.preload #volcanesLoadingOverlay { visibility: visible; }
+  </style>
+  <script src="/js/ui/loader.preload.js"></script>
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+  <!-- Estilos globales -->
+  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="/css/dashboard.css" />
+
+  <!-- Estilos de esta pantalla (si querés separar) -->
+  <link rel="stylesheet" href="/css/association.css" />
+</head>
+
+<body class="loading association-page">
+
+  <!-- HEADER GLOBAL -->
+  <div id="app-header"></div>
+
+  <main class="container py-4">
+
+    <!-- Page header -->
+    <div class="d-flex flex-column flex-md-row align-items-md-end justify-content-between gap-2 mb-3">
+      <div>
+        <h1 class="page-title mb-1" id="pageTitle">Asociación</h1>
+        <p class="page-subtitle mb-0" id="pageSubtitle">
+          Membresías, pagos y planes del club
+        </p>
+      </div>
+
+      <!-- Quick actions (opcional, para después) -->
+      <div class="d-flex gap-2">
+        <button class="btn btn-outline-success btn-sm d-none" id="btnNewMembership">
+          + Nueva membresía
+        </button>
+        <button class="btn btn-success btn-sm d-none" id="btnValidatePending">
+          Validar pendientes
+        </button>
+      </div>
+    </div>
+
+    <!-- Sub-tabs -->
+    <div class="card shadow-sm mb-3">
+      <div class="card-body py-3">
+
+        <ul class="nav nav-pills gap-2" id="associationTabs">
+          <li class="nav-item">
+            <a class="nav-link" href="association.html?tab=plans" data-tab="plans">
+              Planes
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="association.html?tab=associates" data-tab="associates">
+              Miembros
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="association.html?tab=memberships" data-tab="memberships">
+              Membresías
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="association.html?tab=payments" data-tab="payments">
+              Pagos
+            </a>
+          </li>
+        </ul>
+
+      </div>
+    </div>
+
+    <!-- Content container -->
+    <section id="associationContent">
+
+      <!-- ASSOCIATES -->
+      <div class="assoc-panel"  data-panel="associates"></div>
+
+      <!-- MEMBERSHIPS -->
+      <div class="assoc-panel d-none" data-panel="memberships"></div>
+
+      <!-- PAYMENTS -->
+      <div class="assoc-panel d-none" data-panel="payments"></div>
+
+      <!-- PLANS -->
+      <div class="assoc-panel d-none" data-panel="plans"></div>
+
+    </section>
+
+  </main>
+
+  <!-- Modal Host (Asociados / reusable) -->
+  <div id="modalHost" class="mh-backdrop d-none" aria-hidden="true">
+    <div class="mh-shell" role="dialog" aria-modal="true">
+      <iframe id="modalFrame" class="mh-frame" src="about:blank"></iframe>
+    </div>
+  </div>
+
+
+  <!-- Bootstrap JS -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+    defer
+  ></script>
+
+  <!-- Page module -->
+  <script type="module" src="/js/association.js"></script>
+</body>
+</html>

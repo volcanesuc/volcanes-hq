@@ -1,0 +1,213 @@
+/* css/tournament_roster.css */
+
+:root{
+  --roster-main: var(--theme-primary);
+  --roster-accent: var(--theme-accent);
+}
+
+.roster-hero{
+  border-radius: 18px;
+  padding: 16px;
+  background: color-mix(in srgb, var(--roster-main) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--roster-main) 14%, transparent);
+}
+
+.roster-hero__kicker{
+  font-size: .78rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: rgba(0,0,0,.55);
+}
+
+.roster-hero__title{
+  font-size: 1.35rem;
+  font-weight: 900;
+  margin-top: 4px;
+}
+
+.roster-hero__sub{
+  margin-top: 6px;
+  color: rgba(0,0,0,.65);
+}
+
+.panel{
+  border-radius: 18px;
+  border: 1px solid rgba(0,0,0,.08);
+  background: #fff;
+  padding: 14px;
+}
+
+.panel__title{
+  font-weight: 900;
+  font-size: 1.05rem;
+}
+
+.panel__sub{
+  font-size: .9rem;
+  margin-top: 2px;
+}
+
+.pill{
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: .85rem;
+  border: 1px solid color-mix(in srgb, var(--roster-main) 22%, transparent);
+  background: color-mix(in srgb, var(--roster-main) 6%, transparent);
+  white-space: nowrap;
+}
+
+.pill--yellow{
+  border-color: color-mix(in srgb, var(--roster-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--roster-accent) 18%, transparent);
+}
+
+
+.roster-row{
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 16px;
+  padding: 12px;
+  margin-bottom: 10px;
+  background: #fff;
+}
+
+.roster-row__top{
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.roster-row__name{
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.roster-row__meta{
+  color: rgba(0,0,0,.62);
+  font-size: .88rem;
+  margin-top: 4px;
+}
+
+.roster-row__actions{
+  display: flex;
+  gap: 8px;
+  align-items: start;
+}
+
+.roster-row__badges{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.btn-primary{
+  background: var(--roster-main);
+  border-color: var(--roster-main);
+}
+
+.btn-primary:hover{
+  filter: brightness(0.95);
+}
+
+.btn-outline-primary{
+  color: var(--roster-main);
+  border-color: color-mix(in srgb, var(--roster-main) 40%, transparent);
+}
+
+.btn-outline-primary:hover{
+  background: color-mix(in srgb, var(--roster-main) 8%, transparent);
+}
+
+.player-pick{
+  display:flex;
+  justify-content: space-between;
+  align-items:center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 14px;
+  margin-bottom: 10px;
+  background: #fff;
+}
+
+.player-pick__name{
+  font-weight: 800;
+}
+
+.player-pick__sub{
+  color: rgba(0,0,0,.62);
+  font-size: .86rem;
+  margin-top: 2px;
+}
+
+.legend-filter {
+  opacity: 0.6;
+  transition: all 0.15s ease;
+}
+
+.legend-filter:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.legend-filter.is-active{
+  opacity: 1;
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--roster-main) 35%, transparent);
+}
+
+.roster-filters {
+  margin-top: .25rem;
+}
+
+.roster-filters__top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:.5rem;
+  margin-bottom:.4rem;
+}
+
+.roster-filters__label{
+  font-weight:600;
+  display:flex;
+  align-items:center;
+  gap:.4rem;
+}
+
+.roster-filters__chips{
+  display:flex;
+  flex-wrap:wrap;
+  gap:.5rem;
+}
+
+.legend-filter{
+  cursor:pointer;
+  border: none;
+  background: transparent;
+  opacity: .75;
+  transition: transform .12s ease, opacity .12s ease, box-shadow .12s ease;
+}
+
+.legend-filter:hover{
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
+.legend-filter.is-active{
+  opacity: 1;
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 2px rgba(25,71,63,.35);
+}
+
+.legend-filter.is-active i{
+  transform: scale(1.05);
+}
+
+.roster-filters__hint{
+  margin-top:.4rem;
+  font-size:.85rem;
+  color: rgba(0,0,0,.6);
+}

@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Asociado</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+
+  <style>
+    html, body { height: 100%; }
+    .card-modal { margin: 0; }
+
+    .body { max-height: calc(85vh - 140px); overflow:auto; }
+
+    body{ margin:0; background: transparent; }
+    .card-modal{
+      background:#fff;
+      border-radius:6px;
+      overflow:hidden;
+      width:100%;
+    }
+    .top{
+      padding:16px 18px 10px;
+      border-bottom:1px solid #e9ecef;
+      position:relative;
+    }
+    .kicker{ font-size:13px; color:#6c757d; }
+    .title{ font-size:22px; font-weight:600; margin:0; }
+    .btn-x{
+      position:absolute; right:12px; top:10px;
+      border:0; background:transparent;
+      font-size:26px; line-height:1;
+      opacity:.7;
+    }
+    .btn-x:hover{ opacity:1; }
+    .body{ padding:14px 18px; }
+    .footer{
+      padding:14px 18px;
+      border-top:1px solid #e9ecef;
+      display:flex;
+      justify-content:flex-end;
+      gap:10px;
+    }
+    .form-label{ font-size:13px; }
+  </style>
+</head>
+<body>
+  <div class="card-modal">
+    <div class="top">
+      <div class="kicker">Asociado</div>
+      <h1 class="title" id="modalTitle">Nuevo asociado</h1>
+      <button class="btn-x" id="btnClose" type="button" aria-label="Cerrar">×</button>
+    </div>
+
+    <div class="body">
+      <ul class="nav nav-tabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabGeneral" type="button" role="tab">
+            General
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabNotas" type="button" role="tab">
+            Notas
+          </button>
+        </li>
+      </ul>
+
+      <div class="tab-content pt-3">
+        <div class="tab-pane fade show active" id="tabGeneral" role="tabpanel">
+          <input type="hidden" id="associateId"/>
+
+          <div class="row g-3">
+            <div class="col-12 col-md-8">
+              <label class="form-label">Nombre</label>
+              <input id="fullName" class="form-control" placeholder="Nombre completo"/>
+            </div>
+
+            <div class="col-6 col-md-2">
+              <label class="form-label">Tipo</label>
+              <select id="type" class="form-select">
+                <option value="player">Jugador/a</option>
+                <option value="supporter">Supporter</option>
+                <option value="parent">Encargado/a</option>
+                <option value="other" selected>Otro</option>
+              </select>
+            </div>
+
+            <div class="col-6 col-md-2">
+              <label class="form-label">Estado</label>
+              <div class="form-check mt-2">
+                <input class="form-check-input" type="checkbox" id="active" checked>
+                <label class="form-check-label" for="active">Activo</label>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label">Email</label>
+              <input id="email" class="form-control" placeholder="correo@dominio.com"/>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label">Teléfono</label>
+              <input id="phone" class="form-control" placeholder="+506 ..."/>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label">Cédula / ID</label>
+              <input id="idNumber" class="form-control" placeholder="1-2345-6789"/>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-pane fade" id="tabNotas" role="tabpanel">
+          <label class="form-label">Notas</label>
+          <textarea id="notes" class="form-control" rows="7" placeholder="Observaciones..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <button class="btn btn-outline-secondary" id="btnCancel" type="button">Cancelar</button>
+      <button class="btn btn-success" id="btnSave" type="button">
+        <i class="bi bi-check2 me-1"></i> Guardar
+      </button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module" src="/js/features/associate_modal.js"></script>
+</body>
+</html>
