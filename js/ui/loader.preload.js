@@ -79,13 +79,14 @@
       overlay.innerHTML = overlayMarkup();
       document.body.appendChild(overlay);
     }
+
     // visible desde el inicio
-    overlay.classList.add("is-visible");
     document.body.classList.add("loading");
+    overlay.style.display = "flex";
     return overlay;
   }
 
-  function boot() {function boot() {
+  function boot() {
     ensureStyles();
     const overlay = ensureOverlay();
 
@@ -96,7 +97,6 @@
         if (el) el.textContent = text || "Cargando…";
       },
       release() {
-        overlay.classList.remove("is-visible");
         overlay.setAttribute("aria-hidden", "true");
         overlay.style.display = "none";
         document.documentElement.classList.remove("preload");
@@ -104,11 +104,10 @@
       }
     };
 
-    // ✅ failsafe duro (dejarlo largo para no “parpadear”)
+    // failsafe duro (largo para evitar parpadeo)
     setTimeout(() => {
-      // solo si sigue en preload
       if (document.documentElement.classList.contains("preload")) {
-        window.__preload?.release();
+        window.__preload?.release?.();
       }
     }, 15000);
   }
