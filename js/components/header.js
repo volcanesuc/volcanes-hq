@@ -24,6 +24,11 @@ export async function loadHeader(activeTab, cfgOverride) {
   const MENU = CLUB_DATA.header.menu || [];
   const HOME_HREF = toAbsHref(CLUB_DATA.header.homeHref || "dashboard.html");
 
+   const isIndex =
+      location.pathname === "/" ||
+      location.pathname.endsWith("/index.html") ||
+      location.pathname.endsWith("/");
+
   // cfgOverride > remote config > fallback
   let cfg = cfgOverride;
   if (!cfg) {
@@ -107,7 +112,7 @@ export async function loadHeader(activeTab, cfgOverride) {
       </div>
 
       <nav class="top-tabs">
-        ${renderLinksDesktop()}
+        ${isIndex ? "" : renderLinksDesktop()}
       </nav>
 
       <div class="header-cta d-flex align-items-center gap-2" id="headerCta"></div>
@@ -128,7 +133,7 @@ export async function loadHeader(activeTab, cfgOverride) {
 
       <div class="offcanvas-body">
         <div class="mobile-links">
-          ${renderLinksMobile()}
+          ${isIndex ? "" : renderLinksMobile()}
         </div>
 
         <hr />
@@ -158,11 +163,6 @@ export async function loadHeader(activeTab, cfgOverride) {
     }
 
     const logoutLabel = CLUB_DATA.header?.logout?.label || "SALIR";
-
-    const isIndex =
-      location.pathname === "/" ||
-      location.pathname.endsWith("/index.html") ||
-      location.pathname.endsWith("/");
 
     if (!user) {
       // NO logueado: solo Google
