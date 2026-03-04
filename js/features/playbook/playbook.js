@@ -89,8 +89,7 @@ watchAuth(async () => {
     }
   } finally {
     // hideLoader();
-    window.__preload?.release?.();     // ✅ REVELA la página
-    // (ya no toqués body.loading aquí; el preload se encarga)
+    window.__preload?.release?.();     //REVELA la página
   }
 });
 
