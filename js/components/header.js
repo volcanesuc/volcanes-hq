@@ -48,9 +48,8 @@ export async function loadHeader(activeTab, cfgOverride) {
   const renderLinksDesktop = () =>
     VISIBLE_MENU.map(
       (item) => `
-        <a href="${toAbsHref(item.href)}" class="top-tab ${
-        activeTab === item.id ? "active" : ""
-      }">
+        <a href="${toAbsHref(item.href)}" class="top-tab ${activeTab === item.id ? "active" : ""
+        }">
           ${item.label}
         </a>
       `
@@ -59,9 +58,8 @@ export async function loadHeader(activeTab, cfgOverride) {
   const renderLinksMobile = () =>
     VISIBLE_MENU.map(
       (item) => `
-        <a href="${toAbsHref(item.href)}" class="mobile-link ${
-        activeTab === item.id ? "active" : ""
-      }">
+        <a href="${toAbsHref(item.href)}" class="mobile-link ${activeTab === item.id ? "active" : ""
+        }">
           ${item.label}
         </a>
       `
@@ -98,9 +96,14 @@ export async function loadHeader(activeTab, cfgOverride) {
           aria-label="Abrir menú"
         >☰</button>
 
-        <a class="logo logo-link" href="${HOME_HREF}" title="Ir al inicio">
-          ${CLUB_DATA.header.logoText || "Club"}
-        </a>
+        ${isIndex
+          ? `<span class="logo logo-link" style="cursor:default" aria-label="Inicio">
+              ${CLUB_DATA.header.logoText || "Club"}
+            </span>`
+          : `<a class="logo logo-link" href="${HOME_HREF}" title="Ir al inicio">
+              ${CLUB_DATA.header.logoText || "Club"}
+            </a>`
+        }
       </div>
 
       <nav class="top-tabs">
@@ -112,9 +115,14 @@ export async function loadHeader(activeTab, cfgOverride) {
 
     <div class="offcanvas offcanvas-start" tabindex="-1" id="mobileMenu" aria-labelledby="mobileMenuLabel">
       <div class="offcanvas-header">
-        <a class="offcanvas-title logo-link" id="mobileMenuLabel" href="${HOME_HREF}" title="Ir al inicio">
-          ${CLUB_DATA.header.mobileTitle || CLUB_DATA.header.logoText || "Club"}
-        </a>
+        ${isIndex
+          ? `<span class="offcanvas-title logo-link" id="mobileMenuLabel" style="cursor:default" aria-label="Inicio">
+              ${CLUB_DATA.header.mobileTitle || CLUB_DATA.header.logoText || "Club"}
+            </span>`
+          : `<a class="offcanvas-title logo-link" id="mobileMenuLabel" href="${HOME_HREF}" title="Ir al inicio">
+              ${CLUB_DATA.header.mobileTitle || CLUB_DATA.header.logoText || "Club"}
+            </a>`
+        }
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
       </div>
 
@@ -159,16 +167,16 @@ export async function loadHeader(activeTab, cfgOverride) {
     if (!user) {
       // NO logueado: solo Google
       cta.innerHTML = `
-        <button id="googleLoginBtn" class="btn btn-light btn-sm d-flex align-items-center gap-2">
+        <button id="googleLoginBtn" class="btn btn-light btn-sm mod-flex align-items-center gap-2">
           <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="16" height="16" alt="Google">
-          Ingresar con Google
+          Ingresar
         </button>
       `;
 
       mcta.innerHTML = `
         <button id="googleLoginBtnMobile" class="btn btn-light w-100 d-flex align-items-center justify-content-center gap-2">
           <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="16" height="16" alt="Google">
-          Ingresar con Google
+          Ingresar
         </button>
       `;
 
