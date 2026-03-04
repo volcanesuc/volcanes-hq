@@ -372,11 +372,6 @@ form.onsubmit = async e => {
     active: fields.active.checked
   };
 
-  if (!data.idNumber) {
-    alert("Ingresa la cédula.");
-    return;
-  }
-
   if (fields.id.value) {
     await updateDoc(
       doc(db, "club_players", fields.id.value),
