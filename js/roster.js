@@ -28,7 +28,6 @@ const { cfg, redirected } = await guardPage("roster");
 if (!redirected) {
   await loadHeader("roster", cfg);
 }
-ensureRoleOptions();
 
 // Logout
 document.getElementById("logoutBtn")?.addEventListener("click", logout);
@@ -50,6 +49,8 @@ const fields = {
   role: document.getElementById("role"),
   active: document.getElementById("active")
 };
+
+ensureRoleOptions();
 
 // Array plano de jugadores (clave para sorting)
 let players = [];
@@ -399,10 +400,12 @@ form.onsubmit = async e => {
 const ROLE_FALLBACK = APP_CONFIG?.playerRoles?.[0]?.id ?? "player";
 
 function ensureRoleOptions() {
-  const sel = fields.role;
+  const sel = document.getElementById("role");
   if (!sel) return;
 
   const roles = APP_CONFIG?.playerRoles ?? [];
+  const ROLE_FALLBACK = roles?.[0]?.id ?? "player";
+
   sel.innerHTML = "";
 
   if (!roles.length) {
