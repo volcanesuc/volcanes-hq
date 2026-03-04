@@ -4,8 +4,7 @@ import { db } from "../auth/firebase.js";
 
 import {
   GoogleAuthProvider,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   onAuthStateChanged,
   signOut,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -18,21 +17,19 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const provider = new GoogleAuthProvider();
-
-// evita correr getRedirectResult 2 veces
-let _redirectHandled = false;
-
 const STORAGE_KEY = "google_login_paths";
 
 /* =========================================================
-   Google Login (redirect)
+   Google Login (POPUP)
+   - Si users/{uid}.onboardingComplete === true => dashboard
+   - Si no => public/register.html?google=1
 ========================================================= */
 export async function loginWithGoogle(opts = {}) {
   const dashboardPath = opts.dashboardPath ?? "dashboard.html";
-  const registerPath = opts.registerPath ?? "public/register.html";
+  const registerPath = opts.registerPath ?? "public/register.html?google=1";
 
   try {
-    // guardá paths para usarlos cuando regrese del redirect
+    // (opcional) guardá paths por si querés usarlos igual
     sessionStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({ dashboardPath, registerPath })
@@ -40,88 +37,86 @@ export async function loginWithGoogle(opts = {}) {
 
     provider.setCustomParameters({ prompt: "select_account" });
 
-    // 👇 navega a Google (no popup)
-    await signInWithRedirect(auth, provider);
-  } catch (err) {
-    console.error("loginWithGoogle error:", err?.code, err?.message, err);
-    alert(`Error al iniciar sesión: ${err?.code || ""} ${err?.message || ""}`);
-  }
-}
+    // ✅ POPUP
+    const cred = await signInWithPopup(auth, provider);
+    const user = cred?.user;
+    if (!user) return null;
 
-/* =========================================================
-   Handle redirect result (call once on app boot)
-   - Si users/{uid}.onboardingComplete === true => dashboard
-   - Si no => public/register.html?google=1
-========================================================= */
-export async function handleGoogleRedirectResult() {
-  if (_redirectHandled) return null;
-  _redirectHandled = true;
+    // Prefill siempre
+    sessionStorage.setItem(
+      "prefill_register",
+      JSON.stringify({
+        fullName: user.displayName || "",
+        email: user.email || "",
+        phone: user.phoneNumber || "",
+      })
+    );
 
-  // si no hay redirect result, devuelve null y no hace nada
-  let cred = null;
-  try {
-    cred = await getRedirectResult(auth);
-  } catch (err) {
-    console.error("getRedirectResult error:", err?.code, err?.message, err);
-    // no bloquea la app; solo reporta
-    return null;
-  }
+    // paths guardados (o defaults)
+    const stored = safeJson(sessionStorage.getItem(STORAGE_KEY)) || {};
+    const dash = stored.dashboardPath ?? dashboardPath;
+    const reg = stored.registerPath ?? registerPath;
 
-  if (!cred?.user) return null;
+    const userRef = doc(db, "users", user.uid);
+    const snap = await getDoc(userRef);
 
-  const user = cred.user;
+    const email = (user.email || "").toLowerCase();
 
-  // paths guardados (o defaults)
-  const stored = safeJson(sessionStorage.getItem(STORAGE_KEY)) || {};
-  const dashboardPath = stored.dashboardPath ?? "dashboard.html";
-  const registerPath = stored.registerPath ?? "public/register.html?google=1";
+    if (snap.exists()) {
+      const data = snap.data() || {};
+      const done = data.onboardingComplete === true;
 
-  const userRef = doc(db, "users", user.uid);
-  const snap = await getDoc(userRef);
+      // mantener email actualizado
+      if (email && data.email !== email) {
+        await setDoc(
+          userRef,
+          { email, updatedAt: serverTimestamp() },
+          { merge: true }
+        );
+      }
 
-  const email = (user.email || "").toLowerCase();
-
-  // siempre prefill
-  sessionStorage.setItem(
-    "prefill_register",
-    JSON.stringify({
-      fullName: user.displayName || "",
-      email: user.email || "",
-      phone: user.phoneNumber || "",
-    })
-  );
-
-  if (snap.exists()) {
-    const data = snap.data() || {};
-    const done = data.onboardingComplete === true;
-
-    // mantener email actualizado
-    if (email && data.email !== email) {
-      await setDoc(
-        userRef,
-        { email, updatedAt: serverTimestamp() },
-        { merge: true }
-      );
+      window.location.href = done ? dash : reg;
+      return cred;
     }
 
-    window.location.href = done ? dashboardPath : registerPath;
+    // no existe => crear doc mínimo y mandar a register
+    await setDoc(
+      userRef,
+      {
+        email: email || null,
+        onboardingComplete: false,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    window.location.href = reg;
     return cred;
+
+  } catch (err) {
+    console.error("loginWithGoogle popup error:", err?.code, err?.message, err);
+
+    // popup bloqueado
+    if (err?.code === "auth/popup-blocked") {
+      // si querés, podés mostrar UI inline en vez de alert
+      // showToast("Permití popups e intentá de nuevo");
+      return null;
+    }
+
+    // request anterior cancelada (normal si spamean click)
+    if (err?.code === "auth/cancelled-popup-request") return null;
+
+    // 🔥 NO alert en permission-denied (esto pasa por rules/bootstrapping)
+    if (err?.code === "permission-denied") {
+      // opcional: si querés mostrar algo NO intrusivo
+      // showToast("No tenés permisos todavía. Intentá de nuevo o contactá al admin.");
+      return null;
+    }
+
+    // en general: no alert (si querés, lo manejás con UI tipo banner)
+    return null;
   }
-
-  // no existe => crear doc mínimo y mandar a register
-  await setDoc(
-    userRef,
-    {
-      email: email || null,
-      onboardingComplete: false,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
-
-  window.location.href = registerPath;
-  return cred;
 }
 
 function safeJson(s) {

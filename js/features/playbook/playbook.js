@@ -37,7 +37,7 @@ const COL_PLAYBOOK_TRAININGS = "playbook_trainings";
    State
 ========================= */
 let $ = {};
-let clubId = CLUB_DATA?.club?.id || "volcanes";
+let clubId = CLUB_DATA?.club?.id || "club";
 
 let canEdit = false;
 let drills = [];

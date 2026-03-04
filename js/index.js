@@ -6,7 +6,6 @@ import { showLoader, hideLoader, updateLoaderMessage } from "./ui/loader.js";
 import { db } from "/js/auth/firebase.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-
 /* =========================================================
    HEADER
 ========================================================= */
@@ -151,7 +150,7 @@ if (eventsSection && CLUB_DATA.landing.events?.length) {
 
     event.images.forEach(src => {
     const link = document.createElement("a");
-    link.href = "pages/public/cartaglow.html";
+    link.href = "pages/public/tournament_info.html";
     link.className = "event-link";
 
     const img = document.createElement("img");

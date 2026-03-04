@@ -26,7 +26,7 @@ const COL_PLANS     = "gym_weeks";
 let $ = {};
 let _ctx = {
   db: null,
-  clubId: "volcanes",
+  clubId: "club",
   canEdit: false,
 };
 

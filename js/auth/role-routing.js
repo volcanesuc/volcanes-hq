@@ -11,7 +11,7 @@ import {
 
 function clubId() {
   // ajustá si tu APP_CONFIG usa otro nombre
-  return APP_CONFIG?.clubId || APP_CONFIG?.club?.id || "volcanes";
+  return APP_CONFIG?.clubId || APP_CONFIG?.club?.id || "Club";
 }
 
 async function ensureUserDoc(firebaseUser) {

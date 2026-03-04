@@ -1,6 +1,6 @@
 // js/components/header.js
 import { auth } from "../auth/firebase.js";
-import { loginWithGoogle, logout, handleGoogleRedirectResult } from "../auth/auth.js";
+import { loginWithGoogle, logout } from "../auth/auth.js";
 import { routeAfterGoogleLogin } from "../auth/role-routing.js";
 
 import { CLUB_DATA } from "../strings.js";
@@ -99,7 +99,7 @@ export async function loadHeader(activeTab, cfgOverride) {
         >☰</button>
 
         <a class="logo logo-link" href="${HOME_HREF}" title="Ir al inicio">
-          ${CLUB_DATA.header.logoText || "Volcanes"}
+          ${CLUB_DATA.header.logoText || "Club"}
         </a>
       </div>
 
@@ -113,7 +113,7 @@ export async function loadHeader(activeTab, cfgOverride) {
     <div class="offcanvas offcanvas-start" tabindex="-1" id="mobileMenu" aria-labelledby="mobileMenuLabel">
       <div class="offcanvas-header">
         <a class="offcanvas-title logo-link" id="mobileMenuLabel" href="${HOME_HREF}" title="Ir al inicio">
-          ${CLUB_DATA.header.mobileTitle || CLUB_DATA.header.logoText || "Volcanes"}
+          ${CLUB_DATA.header.mobileTitle || CLUB_DATA.header.logoText || "Club"}
         </a>
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
       </div>
@@ -174,7 +174,7 @@ export async function loadHeader(activeTab, cfgOverride) {
 
       const doLogin = async () => {
         try {
-          // redirect flow: esto navega fuera; no hay "return user"
+          // popup flow: abre ventana y vuelve con credencial
           await loginWithGoogle();
         } catch (e) {
           console.error(e);

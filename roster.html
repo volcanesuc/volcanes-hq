@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Roster – Volcanes</title>
+  <title>Roster</title>
   <script>document.documentElement.classList.add("preload");</script>
   <style>
     html.preload, html.preload body { background: #0b0b0c; }
     html.preload body { visibility: hidden; }
-    html.preload #volcanesLoadingOverlay { visibility: visible; }
+    html.preload #clubLoadingOverlay { visibility: visible; }
   </style>
   <script src="/js/ui/loader.preload.js"></script>
 
@@ -173,17 +173,13 @@
               </div>
 
               <div class="col-12 col-md-4">
-                <label class="form-label">Número</label>
+                <label class="form-label">Número de Camisa</label>
                 <input type="number" id="number" class="form-control" />
               </div>
 
               <div class="col-12">
                 <label class="form-label">Rol</label>
-                <select id="role" class="form-select">
-                  <option value="handler">Handler</option>
-                  <option value="cutter">Cutter</option>
-                  <option value="hybrid">Hybrid</option>
-                </select>
+                <select id="role" class="form-select"></select>
               </div>
 
               <div class="col-12">

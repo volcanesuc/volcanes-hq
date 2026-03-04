@@ -17,6 +17,7 @@ import { loadHeader } from "./components/header.js";
 
 import { showLoader, hideLoader } from "./ui/loader.js";
 import { Player } from "./models/player.js";
+import { APP_CONFIG } from "./config/config.js";
 
 /*************************************************
  * INIT
@@ -27,7 +28,7 @@ const { cfg, redirected } = await guardPage("roster");
 if (!redirected) {
   await loadHeader("roster", cfg);
 }
-
+ensureRoleOptions();
 
 // Logout
 document.getElementById("logoutBtn")?.addEventListener("click", logout);
@@ -106,8 +107,8 @@ function applySort() {
         break;
 
       case "role":
-        valA = a.role ?? "";
-        valB = b.role ?? "";
+        valA = (a.roleLabel || "").toLowerCase();
+        valB = (b.roleLabel || "").toLowerCase();
         break;
 
       case "gender":
@@ -274,7 +275,7 @@ table.onclick = e => {
   fields.number.value = p.number ?? "";
   fields.gender.value = p.gender ?? "";
   fields.birthday.value = p.birthday ?? "";
-  fields.role.value = p.role ?? "cutter";
+  fields.role.value = p.role ?? ROLE_FALLBACK;
   fields.active.checked = p.active;
 
   modal.show();
@@ -297,7 +298,7 @@ document.getElementById("playersCards").onclick = e => {
   fields.number.value = p.number ?? "";
   fields.gender.value = p.gender ?? "";
   fields.birthday.value = p.birthday ?? "";
-  fields.role.value = p.role ?? "cutter";
+  fields.role.value = p.role ?? ROLE_FALLBACK;
   fields.active.checked = p.active;
 
   modal.show();
@@ -348,6 +349,7 @@ document.getElementById("addPlayerBtn").onclick = () => {
   fields.id.value = "";
   fields.idNumber.value = "";
   fields.active.checked = true;
+  fields.role.value = ROLE_FALLBACK;
   modal.show();
 };
 
@@ -361,11 +363,11 @@ form.onsubmit = async e => {
   const data = {
     firstName: fields.firstName.value.trim(),
     lastName: fields.lastName.value.trim(),
-    idNumber: (fields.idNumber.value || "").trim() || null,
+    idNumber: fields.idNumber.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()  || null,
     number: Number(fields.number.value) || null,
     gender: fields.gender.value || null,
     birthday: fields.birthday.value || null,
-    role: fields.role.value,
+    role: fields.role.value || ROLE_FALLBACK,
     active: fields.active.checked
   };
 
@@ -389,6 +391,35 @@ form.onsubmit = async e => {
   modal.hide();
   loadPlayers();
 };
+
+/*************************************************
+ * ROLES (FROM CONFIG)
+ *************************************************/
+
+const ROLE_FALLBACK = APP_CONFIG?.playerRoles?.[0]?.id ?? "player";
+
+function ensureRoleOptions() {
+  const sel = fields.role;
+  if (!sel) return;
+
+  const roles = APP_CONFIG?.playerRoles ?? [];
+  sel.innerHTML = "";
+
+  if (!roles.length) {
+    const opt = document.createElement("option");
+    opt.value = ROLE_FALLBACK;
+    opt.textContent = "Player";
+    sel.appendChild(opt);
+    return;
+  }
+
+  roles.forEach(r => {
+    const opt = document.createElement("option");
+    opt.value = r.id;
+    opt.textContent = r.label ?? r.id;
+    sel.appendChild(opt);
+  });
+}
 
 /*************************************************
  * AUTH FLOW

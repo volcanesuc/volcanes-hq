@@ -1,7 +1,7 @@
 // js/ui/loader.component.js
 import { APP_CONFIG } from "../config/config.js";
 
-const OVERLAY_ID = "volcanesLoadingOverlay"; 
+const OVERLAY_ID = "clubLoadingOverlay"; 
 const STYLE_ID = "loaderStyles";
 
 function ensureStyles() {
@@ -114,14 +114,25 @@ function ensureStyles() {
   document.head.appendChild(style);
 }
 
+function readCssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
 function applyThemeVars() {
-  const colors = APP_CONFIG?.theme?.colors || {};
   const root = document.documentElement;
 
-  // si no existen, caemos a defaults internos “seguros”
-  root.style.setProperty("--loader-primary", colors.primary || "#19473f");
-  root.style.setProperty("--loader-accent", colors.accent || "#e8ce26");
-  root.style.setProperty("--loader-ring", "#ffffff"); // tu pedido: borde blanco
+  const cssPrimary = readCssVar("--loader-primary") || readCssVar("--theme-primary");
+  const cssAccent  = readCssVar("--loader-accent")  || readCssVar("--theme-accent");
+  const cssRing    = readCssVar("--loader-ring"); // si no existe, blanco
+
+  const colors = APP_CONFIG?.theme?.colors || {};
+  const primary = cssPrimary || colors.primary || "#19473f";
+  const accent  = cssAccent  || colors.accent  || "#e8ce26";
+  const ring    = cssRing || "#ffffff";
+
+  root.style.setProperty("--loader-primary", primary);
+  root.style.setProperty("--loader-accent", accent);
+  root.style.setProperty("--loader-ring", ring);
 }
 
 function ensureOverlay() {

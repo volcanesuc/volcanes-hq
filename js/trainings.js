@@ -19,7 +19,7 @@ import { showLoader, hideLoader, updateLoaderMessage } from "./ui/loader.js";
 /* =========================
    CONFIG / COLS
 ========================= */
-const clubId = "volcanes"; // TODO: sacarlo de CLUB_DATA
+const clubId = "club"; // TODO: sacarlo de CLUB_DATA
 const COL_TRAININGS = "trainings";
 const COL_PLAYERS = "club_players";
 const COL_DRILLS = "drills";

@@ -1,7 +1,7 @@
 //js\config\config.js
 // 
 export const APP_CONFIG = {
-  version: "0.3",
+  version: "0.4",
 
   club: {
     id: "volcanes",
@@ -10,6 +10,14 @@ export const APP_CONFIG = {
     tournamentsCollection: "tournaments",
     trainingsCollection: "trainings"
   },
+  
+  sport: "ultimate",
+
+  playerRoles: [
+    { id: "handler", label: "Handler" },
+    { id: "cutter",  label: "Cutter" },
+    { id: "hybrid",  label: "Hybrid" }
+  ],
 
   //deben ser reemplazados tambien en: main.css -> root para que carguen por defecto
   theme: {
@@ -29,12 +37,12 @@ export const APP_CONFIG = {
     },
 
     font: {
-      name: "Recons",
-      url: "/fonts/Recons-Regular.woff2",
-      ttf: "/fonts/Recons-Regular.ttf"
+      name: "ClubFont",
+      url: "/fonts/club-font.woff2",
+      ttf: "/fonts/club-font.ttf"
     },
 
-    logo: "/img/logos/volcano_logo.jpg"
+    logo: "/img/logos/club_logo.png"
   },
   // Firebase (centralizado)
   firebase: {
@@ -45,7 +53,7 @@ export const APP_CONFIG = {
     messagingSenderId: "991215068881",
     appId: "1:991215068881:web:6fb46dab34bf1a572a47f0",
     measurementId: "G-6ZYXBJW3JY"
-  }
+  },
 };
 
 /* ========================================

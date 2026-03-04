@@ -1,5 +1,5 @@
 /* =========================================================
-   MAIN.CSS — Volcanes Ultimate (limpio)
+   MAIN.CSS
    Base global + header + tablas + botones + loader
 ========================================================= */
 
@@ -18,9 +18,12 @@
   --text: #ffffff;
   --text-soft: #6b7280;
   --border: #1f2a28;
-  --font-title: "Recons", system-ui, -apple-system, sans-serif;
+  --font-title: "ClubFont", system-ui, -apple-system, sans-serif;
   --font-body: system-ui, -apple-system, sans-serif;
   --bs-primary: var(--theme-primary);
+  --loader-primary: var(--theme-primary);
+  --loader-accent:  var(--theme-accent);
+  --loader-ring:    #ffffff;
 }
 
 /* =========================
@@ -39,11 +42,12 @@ body{
    TIPOGRAFÍA
 ========================= */
 @font-face {
-  font-family: "Recons";
-  src: url("/fonts/Recons-Regular.woff2") format("woff2"),
-       url("/fonts/Recons-Regular.ttf") format("truetype");
-  font-weight: 400;
+  font-family: 'ClubFont';
+  src: url('/fonts/club-font.woff2') format('woff2'),
+       url('/fonts/club-font.ttf') format('truetype');
+  font-weight: normal;
   font-style: normal;
+  font-display: swap;
 }
 
 /* títulos del sistema */
@@ -152,7 +156,7 @@ body:not(.loading) .loading-overlay { display: none; }
 }
 
 .logo {
-  font-family: "Recons";
+  font-family: "ClubFont";
   font-size: 1.4rem;
   font-weight: 700;
   letter-spacing: 1px;
@@ -207,7 +211,7 @@ th.sortable.sorted-desc::after { content: " ↓"; }
   height: 36px;
   padding: 0 0.75rem;
 
-  font-family: "Recons";
+  font-family: "ClubFont";
   font-size: 0.9rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -239,7 +243,7 @@ th.sortable.sorted-desc::after { content: " ↓"; }
 }
 
 .offcanvas-title {
-  font-family: "Recons";
+  font-family: "ClubFont";
   color: var(--theme-primary);
 }
 
@@ -297,7 +301,7 @@ th.sortable.sorted-desc::after { content: " ↓"; }
 }
 
 
-/* Header brand / Volcanes */
+/* Header brand */
 .app-header a,
 .app-header a:visited {
   color: var(--card);                 /* blanco */
@@ -440,6 +444,6 @@ html.preload body {
 }
 
 /* pero el overlay sí debe verse */
-html.preload #volcanesLoadingOverlay {
+html.preload #clubLoadingOverlay {
   opacity: 1;
 }

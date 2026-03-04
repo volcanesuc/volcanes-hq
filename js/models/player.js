@@ -1,11 +1,4 @@
-// js/models/player.js
-
-export const PLAYER_ROLES = {
-  HANDLER: "handler",
-  CUTTER: "cutter",
-  HYBRID: "hybrid"
-};
-
+import { APP_CONFIG } from "../config/config.js";
 
 export class Player {
   constructor(id, data = {}) {
@@ -18,7 +11,22 @@ export class Player {
     this.gender = data.gender ?? null;
     this.birthday = data.birthday ?? null;
     this.active = data.active ?? true;
-    this.role = data.role ?? PLAYER_ROLES.HYBRID;
+
+    // 🔥 role ahora es string libre pero validado
+    this.role = data.role ?? this.getDefaultRole();
+  }
+
+  /* =========================
+     ROLE LOGIC
+  ========================= */
+
+  getDefaultRole() {
+    return APP_CONFIG?.playerRoles?.[0]?.id ?? "player";
+  }
+
+  get roleLabel() {
+    const role = APP_CONFIG?.playerRoles?.find(r => r.id === this.role);
+    return role?.label ?? "Player";
   }
 
   /* =========================
@@ -34,17 +42,6 @@ export class Player {
     return this.lastName
       ? `${this.firstName} ${this.lastName[0]}.`
       : this.firstName || "—";
-  }
-
-  get roleLabel() {
-    switch (this.role) {
-      case PLAYER_ROLES.HANDLER:
-        return "Handler";
-      case PLAYER_ROLES.CUTTER:
-        return "Cutter";
-      default:
-        return "Hybrid";
-    }
   }
 
   /* =========================

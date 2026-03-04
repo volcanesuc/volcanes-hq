@@ -75,9 +75,9 @@ export const CLUB_DATA = {
         description:
           "Torneo tipo hat mixto, de un solo día, enfocado en comunidad y espíritu de juego.",
         images: [
-          "img/cartaglow/cartaglow00.jpg",
-          "img/cartaglow/cartaglow01.jpg",
-          "img/cartaglow/cartaglow02.jpg"
+          "img/tournament/image_00.jpg",
+          "img/tournament/image_01.jpg",
+          "img/tournament/image_02.jpg"
         ]
       }
     ],

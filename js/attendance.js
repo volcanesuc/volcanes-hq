@@ -265,7 +265,7 @@ async function generatePdf() {
       margin: { left: 40, right: 40 }
     });
 
-    const filename = `CACUC_Asistencia_${(start || "inicio").replaceAll("-", "")}_${(end || "hoy").replaceAll("-", "")}.pdf`;
+    const filename = `Reporte_Asistencia_${(start || "inicio").replaceAll("-", "")}_${(end || "hoy").replaceAll("-", "")}.pdf`;
     doc.save(filename);
   } catch (e) {
     console.error(e);
