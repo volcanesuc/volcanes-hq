@@ -526,22 +526,37 @@ async function saveTraining() {
 function bindEvents() {
   $.saveBtn?.addEventListener("click", saveTraining);
   $.processBtn?.addEventListener("click", processQuickText);
-    // filtros
-  $.search?.addEventListener("input", refreshListUI);
-  $.monthFilter?.addEventListener("change", refreshListUI);
-  $.sortFilter?.addEventListener("change", refreshListUI);
-  $.dateFrom?.addEventListener("change", refreshListUI);
-  $.dateTo?.addEventListener("change", refreshListUI);
 
-  $.clearFiltersBtn?.addEventListener("click", () => {
-    console.log('clearFiltersBtn', "clean filters button pressed");
-    clearFilters();
+  // filtros
+  $.search?.addEventListener("input", () => {
+    refreshListUI();
     updateClearBtnState();
   });
 
+  $.monthFilter?.addEventListener("change", () => {
+    refreshListUI();
+    updateClearBtnState();
+  });
+
+  $.sortFilter?.addEventListener("change", () => {
+    refreshListUI();
+    updateClearBtnState();
+  });
+
+  $.dateFrom?.addEventListener("change", () => {
+    refreshListUI();
+    updateClearBtnState();
+  });
+
+  $.dateTo?.addEventListener("change", () => {
+    refreshListUI();
+    updateClearBtnState();
+  });
+
+  $.clearFiltersBtn?.addEventListener("click", clearFilters);
+  
   // cuando se cierra, reset (sin re-abrir)
   $.modal?.addEventListener("hidden.bs.modal", () => {
-    // reset silencioso
     currentTrainingId = null;
     attendees = [];
     selectedDrillIds = [];
@@ -565,11 +580,8 @@ function bindEvents() {
     renderPlaybookSelectors();
   });
 
-  // botón "+ Nuevo entrenamiento" ya abre por data-bs-target, pero queremos setear estado limpio
-  // escuchamos el show del modal y si no hay currentTrainingId, dejamos "nuevo"
   $.modal?.addEventListener("show.bs.modal", () => {
     if (!currentTrainingId) {
-      // estado nuevo
       attendees = [];
       selectedDrillIds = [];
       selectedPlaybookTrainingIds = [];
@@ -757,6 +769,7 @@ function clearFilters() {
   if ($.dateFrom) $.dateFrom.value = "";
   if ($.dateTo) $.dateTo.value = "";
   refreshListUI();
+  updateClearBtnState();
 }
 
 function updateClearBtnState() {
