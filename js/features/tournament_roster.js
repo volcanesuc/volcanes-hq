@@ -37,6 +37,13 @@ const PLAYERS_COL = APP_CONFIG?.club?.playersCollection || "club_players";
 // ✅ Invitados globales (reutilizables entre torneos)
 const GUESTS_COL = APP_CONFIG?.club?.guestsCollection || "guest_players";
 
+// ✅ Roles desde config
+const PLAYER_ROLES = Array.isArray(APP_CONFIG?.playerRoles) ? APP_CONFIG.playerRoles : [];
+const ROLE_IDS = PLAYER_ROLES.map(r => String(r?.id || "").trim().toLowerCase()).filter(Boolean);
+const HAS_HANDLER_ROLE = ROLE_IDS.includes("handler");
+const HAS_CUTTER_ROLE = ROLE_IDS.includes("cutter");
+const HAS_HYBRID_ROLE = ROLE_IDS.includes("hybrid");
+
 /* ==========================
    DOM
 ========================== */
@@ -306,7 +313,7 @@ async function loadGuests() {
       id: g.id,
       name: (g.name || "").trim(),
       nickname: g.loanFrom ? `Préstamo: ${g.loanFrom}` : "",
-      role: g.role || "hybrid",
+      role: g.role || getDefaultRoleId(),
       number: g.number ?? null,
       gender: g.gender ?? null,
       active: g.active !== false,
@@ -404,34 +411,29 @@ function render() {
 
 function renderRosterCounters(visibleList) {
   // Puedes decidir si contar sobre roster completo o sobre lo visible (filtrado)
-  const base = roster;         // stats globales
-  // const base = visibleList; // <- descomenta si quieres stats por filtros
+  const base = roster;
+  // const base = visibleList;
 
   const total = base.length;
 
   const m = base.filter(r => isMale(r.gender)).length;
   const f = base.filter(r => isFemale(r.gender)).length;
 
-  const handlers = base.filter(r => isHandler(r.role)).length;
-  const cutters = base.filter(r => isCutter(r.role)).length;
+  const handlers = base.filter(r => countsForConfiguredBucket(r.role, "handler")).length;
+  const cutters = base.filter(r => countsForConfiguredBucket(r.role, "cutter")).length;
 
   const guestsCount = base.filter(r => r.isGuest).length;
-
   const paidCount = base.filter(r => r.feeIsPaid).length;
   const pendingCount = base.filter(r => !r.feeIsPaid).length;
 
-  // pintar en badges (abajo)
   if (statTotal) statTotal.textContent = String(total);
   if (statF) statF.textContent = String(f);
   if (statM) statM.textContent = String(m);
   if (statHandlers) statHandlers.textContent = String(handlers);
   if (statCutters) statCutters.textContent = String(cutters);
 
-  // arriba ya no mostramos el mega texto
   if (pageSubtitle) pageSubtitle.textContent = "";
-
 }
-
 
 /* ==========================
    RENDER: RIGHT PANEL (PICKER)
@@ -503,7 +505,7 @@ async function addToRoster(itemId) {
       loanFrom: item.isGuest ? (item.loanFrom || "") : "",
       name: item.name,
       number: item.number ?? null,
-      role: item.role || "hybrid",
+      role: item.role || getDefaultRoleId(),
       gender: item.gender ?? null,
       status: "convocado",
 
@@ -604,7 +606,7 @@ async function createGuestFlow() {
   if (!name || !name.trim()) return;
 
   const gender = (prompt("Género (M/F) (opcional):") || "").trim();
-  const role = (prompt("Rol (handler/cutter/hybrid) (opcional):") || "hybrid").trim();
+  const role = (prompt("Rol (handler/cutter/hybrid) (opcional):") || getDefaultRoleId()).trim();
   const loanFrom = (prompt("¿Préstamo de qué club? (opcional):") || "").trim();
   const numberRaw = (prompt("Número (opcional):") || "").trim();
   const number = numberRaw ? Number(numberRaw) : null;
@@ -615,7 +617,7 @@ async function createGuestFlow() {
     await setDoc(newRef, {
       name: name.trim(),
       gender: gender || null,
-      role: role || "hybrid",
+      role: role || getDefaultRoleId(),
       loanFrom: loanFrom || "",
       number: Number.isFinite(number) ? number : null,
       active: true,
@@ -649,7 +651,6 @@ function rosterRow(r) {
   const paid = toNumberOrZero(r.paidTotal);
   const balance = Math.max(0, total - paid);
 
-  // 💰 estado visual
   let feePill = "";
   let feeDetail = "";
 
@@ -658,12 +659,10 @@ function rosterRow(r) {
     feeDetail = "";
   } 
   else if (balance <= 0) {
-    // 🟢 PAGADO
     feePill = `<span class="pill pill--good">Fee pagado</span>`;
     feeDetail = "";
   } 
   else {
-    // 🔴 DEBE
     feePill = `<span class="pill">Pagado ₡${paid.toLocaleString("es-CR")} | Debe ₡${balance.toLocaleString("es-CR")}</span>`;
     feeDetail = "";
   }
@@ -684,7 +683,6 @@ function rosterRow(r) {
             <i class="bi bi-arrow-repeat"></i>
           </button>
 
-          <!-- ✅ abonos -->
           <button class="btn btn-sm btn-outline-success" title="Agregar abono" data-pay="${escapeHtml(r.id)}">
             <i class="bi bi-cash-coin"></i>
           </button>
@@ -776,21 +774,18 @@ function initLegendFiltersUX() {
   const countEl = document.getElementById("filtersCount");
 
   function refreshUI() {
-    // Sync checks con activeLegendFilters
     checks.forEach(chk => {
       const key = chk.dataset?.filter;
       if (!key) return;
       chk.checked = activeLegendFilters.has(key);
     });
 
-    // Count badge
     const n = activeLegendFilters.size;
     if (countEl) {
       countEl.textContent = String(n);
       countEl.style.display = n > 0 ? "" : "none";
     }
 
-    // Hint
     syncLegendUI();
   }
 
@@ -809,7 +804,6 @@ function initLegendFiltersUX() {
     });
   }
 
-  // Limpiar
   document.getElementById("clearLegendFilters")?.addEventListener("click", () => {
     activeLegendFilters.clear();
     refreshUI();
@@ -818,7 +812,6 @@ function initLegendFiltersUX() {
 
   refreshUI();
 }
-
 
 function syncLegendUI() {
   if (clearLegendFiltersBtn) {
@@ -891,7 +884,6 @@ function matchesLegendFilters(r) {
   return true;
 }
 
-
 function showError(msg) {
   if (!errorBox) return;
   errorBox.textContent = msg;
@@ -912,7 +904,6 @@ function toNumberOrZero(v) {
   return Number.isFinite(n) ? n : 0;
 }
 
-// counters helpers
 function isMale(g) {
   const v = String(g || "").trim().toLowerCase();
   return ["m", "male", "masculino", "hombre", "man"].includes(v);
@@ -923,12 +914,29 @@ function isFemale(g) {
   return ["f", "female", "femenino", "mujer", "woman"].includes(v);
 }
 
-function isHandler(role) {
-  return role === "handler";
+function normalizeRoleId(role) {
+  return String(role || "").trim().toLowerCase();
 }
 
-function isCutter(role) {
-  return role === "cutter";
+function getDefaultRoleId() {
+  return APP_CONFIG?.playerRoles?.[0]?.id ?? "player";
+}
+
+function countsForConfiguredBucket(role, bucketId) {
+  const roleId = normalizeRoleId(role);
+  const bucket = normalizeRoleId(bucketId);
+
+  if (!roleId || !bucket) return false;
+
+  if (roleId === bucket) return true;
+
+  // Si hay hybrid configurado, cuenta como ambos:
+  if (roleId === "hybrid") {
+    if (bucket === "handler" && HAS_HANDLER_ROLE) return true;
+    if (bucket === "cutter" && HAS_CUTTER_ROLE) return true;
+  }
+
+  return false;
 }
 
 function normalizeUrl(url) {

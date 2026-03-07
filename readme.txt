@@ -18,6 +18,7 @@ En Firebase:
 
 - Database:
 crear club_config collection con index_settings y public_registration
+crear index: trainings: {up} clubId, {down} date, {down} __name__
 
 - Authentication:
 habilitar el google sign in y el anonymous
