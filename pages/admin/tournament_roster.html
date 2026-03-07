@@ -92,7 +92,7 @@
     <div class="alert alert-warning d-none" id="errorBox"></div>
 
     <!-- Context hint -->
-    <section class="mb-3">
+    <section class="mb-3" id="contextHint">
       <div class="text-muted small d-flex align-items-center gap-2">
         <i class="bi bi-people"></i>
         Administra convocados, confirmados y abonos del fee
@@ -103,7 +103,7 @@
     <section class="row g-3">
 
       <!-- Roster list -->
-      <div class="col-12 col-xl-7">
+      <div class="col-12 col-xl-7" id="rosterPanelCol">
         <div class="panel">
 
           <!-- Header roster -->
@@ -124,13 +124,8 @@
                   ♀ <strong id="statF">—</strong> · ♂ <strong id="statM">—</strong>
                 </span>
 
-                <span class="badge text-bg-light border" title="Handlers">
-                  Handlers <strong id="statHandlers">—</strong>
-                </span>
+                <div id="roleCounters" class="d-flex gap-2 flex-wrap align-items-center"></div>
 
-                <span class="badge text-bg-light border" title="Cutters">
-                  Cutters <strong id="statCutters">—</strong>
-                </span>
               </div>
             </div>
 
@@ -153,7 +148,7 @@
                 <div class="fw-semibold mb-2">Mostrar</div>
 
                 <!-- Status -->
-                <div class="mb-2">
+                <div class="mb-2" id="filterBlockStatus">
                   <div class="text-muted small mb-1">Estado</div>
 
                   <div class="form-check">
@@ -172,10 +167,10 @@
                   </div>
                 </div>
 
-                <hr class="my-2">
+                <hr class="my-2" id="filterDividerStatus">
 
                 <!-- Fee -->
-                <div class="mb-2">
+                <div class="mb-2" id="filterBlockFee">
                   <div class="text-muted small mb-1">Fee</div>
 
                   <div class="form-check">
@@ -189,21 +184,12 @@
                   </div>
                 </div>
 
-                <hr class="my-2">
+                <hr class="my-2" id="filterDividerFee">
 
                 <!-- Rol -->
                 <div class="mb-2">
                   <div class="text-muted small mb-1">Rol</div>
-
-                  <div class="form-check">
-                    <input class="form-check-input roster-filter-check" type="checkbox" id="f_role_handler" data-filter="role:handler">
-                    <label class="form-check-label" for="f_role_handler">Handlers</label>
-                  </div>
-
-                  <div class="form-check">
-                    <input class="form-check-input roster-filter-check" type="checkbox" id="f_role_cutter" data-filter="role:cutter">
-                    <label class="form-check-label" for="f_role_cutter">Cutters</label>
-                  </div>
+                  <div id="roleFiltersMount"></div>
                 </div>
 
                 <hr class="my-2">
@@ -255,7 +241,7 @@
       </div>
 
       <!-- Players panel -->
-      <div class="col-12 col-xl-5">
+      <div class="col-12 col-xl-5" id="playersPanelCol">
         <div class="panel">
 
           <!-- Header -->

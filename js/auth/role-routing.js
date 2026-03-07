@@ -1,6 +1,5 @@
 // js/auth/role-routing.js
 import { db } from "./firebase.js";
-import { APP_CONFIG } from "../config/config.js";
 
 import {
   doc,
@@ -9,29 +8,33 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-function clubId() {
-  // ajustá si tu APP_CONFIG usa otro nombre
-  return APP_CONFIG?.clubId || APP_CONFIG?.club?.id || "Club";
-}
+const USERS_COL = "users";
+const USER_ROLES_COL = "user_roles";
 
 async function ensureUserDoc(firebaseUser) {
-  const uid = firebaseUser.uid;
-  const ref = doc(db, "users", uid);
+  const uid = firebaseUser?.uid;
+  if (!uid) throw new Error("No hay firebaseUser.uid");
+
+  const ref = doc(db, USERS_COL, uid);
   const snap = await getDoc(ref);
 
   if (snap.exists()) {
     const data = snap.data() || {};
+
     if (data.onboardingComplete === undefined) {
-      const patch = { onboardingComplete: false, updatedAt: serverTimestamp() };
+      const patch = {
+        onboardingComplete: false,
+        updatedAt: serverTimestamp()
+      };
       await setDoc(ref, patch, { merge: true });
       return { created: false, data: { ...data, ...patch } };
     }
+
     return { created: false, data };
   }
 
   const payload = {
     uid,
-    clubId: clubId(),
     email: firebaseUser.email || null,
     displayName: firebaseUser.displayName || null,
     photoURL: firebaseUser.photoURL || null,
@@ -47,40 +50,56 @@ async function ensureUserDoc(firebaseUser) {
   return { created: true, data: payload };
 }
 
+export async function getUserRole(uid) {
+  if (!uid) return null;
+
+  const ref = doc(db, USER_ROLES_COL, uid);
+  const snap = await getDoc(ref);
+
+  if (!snap.exists()) return null;
+
+  const data = snap.data() || {};
+
+  return {
+    active: data.active === true,
+    role: String(data.role || "viewer").trim().toLowerCase(),
+    raw: data
+  };
+}
+
 /**
  * Regla:
- * 1) Si existe user_roles/{uid} y active=true y clubId match -> dashboard
- * 2) Si user existe en Google pero sin rol: ensure users/{uid} -> register
- * 3) Si recién creado igual -> register
+ * 1) Asegura users/{uid}
+ * 2) Si onboardingComplete !== true -> register
+ * 3) Si onboardingComplete === true y user_roles/{uid}.active === true -> dashboard
+ * 4) Si onboardingComplete === true pero no tiene rol activo -> register?norole=1
  */
 export async function routeAfterGoogleLogin(firebaseUser) {
-  const uid = firebaseUser.uid;
+  if (!firebaseUser?.uid) {
+    window.location.href = "/public/register.html?error=nouser";
+    return;
+  }
 
-  // 1) asegurar users/{uid}
   const ensured = await ensureUserDoc(firebaseUser);
   const createdFlag = ensured.created ? "1" : "0";
 
   const data = ensured.data || {};
   const onboardingDone = data.onboardingComplete === true;
 
-  // 2) Si NO terminó onboarding → SIEMPRE register
+  // No ha terminado onboarding
   if (!onboardingDone) {
     window.location.href = `/public/register.html?created=${createdFlag}`;
     return;
   }
 
-  // 3) Si terminó onboarding → validar rol
-  const roleRef = doc(db, "user_roles", uid);
-  const roleSnap = await getDoc(roleRef);
+  // Ya terminó onboarding -> revisar rol
+  const roleInfo = await getUserRole(firebaseUser.uid);
 
-  if (roleSnap.exists()) {
-    const r = roleSnap.data();
-    if (r?.active === true && r?.clubId === clubId()) {
-      window.location.href = "/dashboard.html";
-      return;
-    }
+  if (roleInfo?.active === true) {
+    window.location.href = "/dashboard.html";
+    return;
   }
 
-  // completo pero sin rol
+  // Terminó onboarding pero no tiene rol activo
   window.location.href = `/public/register.html?created=${createdFlag}&norole=1`;
 }
