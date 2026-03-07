@@ -1,7 +1,7 @@
 // js/features/tournament_roster.js
 import { db } from "../auth/firebase.js";
 import { watchAuth, logout } from "../auth/auth.js";
-import { getCurrentPermissions } from "../auth/permissions.js";
+import { getCurrentPermissions, applyVisibilityMap } from "../auth/permissions.js";
 import { APP_CONFIG } from "../config/config.js";
 import { showLoader, hideLoader } from "../ui/loader.js";
 import { loadHeader } from "../components/header.js";
@@ -341,9 +341,11 @@ function applyRoleUI() {
   const canCreateGuests = !!permissions?.canCreateGuests;
   const isViewerOnly = !canManageRoster;
 
-  editTournamentBtn?.classList.toggle("d-none", !canEditTournament);
-  toggleTeamFeeBtn?.classList.toggle("d-none", !canManagePayments);
-  addGuestBtn?.classList.toggle("d-none", !canCreateGuests);
+  applyVisibilityMap(permissions, {
+    canEditTournament: editTournamentBtn,
+    canManagePayments: toggleTeamFeeBtn,
+    canCreateGuests: addGuestBtn
+  });
 
   if (playersPanelCol) {
     playersPanelCol.classList.toggle("d-none", isViewerOnly);
