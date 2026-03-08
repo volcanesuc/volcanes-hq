@@ -114,7 +114,7 @@ function renderHeader(plan) {
   const title =
     plan.title ||
     plan.name ||
-    (plan.monthKey ? `Plan de gimnasio – Mes ${plan.monthKey}` : "Plan de gimnasio");
+    (plan.monthKey ? `Plan de Gimnasio – Mes ${plan.monthKey}` : "Plan de Gimnasio");
 
   if ($.planTitle) $.planTitle.textContent = title;
 

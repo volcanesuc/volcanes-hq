@@ -878,7 +878,7 @@ function planTitle(p) {
   return (
     (p.title || "").trim() ||
     (p.name || "").trim() ||
-    (p.monthKey ? `Plan de gimnasio – ${monthKeyToLabel(p.monthKey)}` : "Plan de gimnasio")
+    (p.monthKey ? `Plan de Gimnasio – ${monthKeyToLabel(p.monthKey)}` : "Plan de Gimnasio")
   );
 }
 

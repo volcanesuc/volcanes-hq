@@ -1009,7 +1009,7 @@ function autoPlanTitle(monthKey) {
     "07":"Julio","08":"Agosto","09":"Septiembre","10":"Octubre","11":"Noviembre","12":"Diciembre"
   };
   const mm = months[m] || `Mes ${m || ""}`.trim();
-  return `Plan de gimnasio – ${mm} ${y || ""}`.trim();
+  return `Plan de Gimnasio – ${mm} ${y || ""}`.trim();
 }
 
 /* =========================
