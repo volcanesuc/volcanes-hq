@@ -2,7 +2,7 @@
 import { db } from "/js/auth/firebase.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { showLoader, hideLoader, updateLoaderMessage } from "/js/ui/loader.js";
-import { APP_CONFIG } from "./config/config.js";
+import { APP_CONFIG } from "/js/config/config.js";
 
 /* =========================
    DOM

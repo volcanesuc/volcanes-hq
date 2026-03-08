@@ -1,4 +1,3 @@
-c
 // ✅ Vista pública de una rutina (gym_routines)
 // ✅ Si routine.exerciseItems trae nulls, usa defaults del ejercicio (gym_exercises)
 // ✅ Si rutina no es pública -> muestra aviso

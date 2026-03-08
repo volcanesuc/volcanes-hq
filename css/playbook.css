@@ -1,0 +1,44 @@
+.gym-exercise-row {
+  padding-top: .7rem;
+  padding-bottom: .7rem;
+}
+
+.gym-exercise-item {
+  min-width: 0;
+}
+
+.gym-exercise-main {
+  min-width: 0;
+}
+
+.gym-exercise-main .fw-semibold {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gym-exercise-actions {
+  white-space: nowrap;
+}
+
+@media (max-width: 767.98px) {
+  .gym-exercise-item {
+    align-items: flex-start !important;
+  }
+
+  .gym-exercise-main .fw-semibold {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    line-height: 1.2;
+  }
+
+  .gym-exercise-actions {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  .gym-exercise-actions .btn {
+    min-width: 86px;
+  }
+}

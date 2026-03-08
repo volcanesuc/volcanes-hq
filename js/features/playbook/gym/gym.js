@@ -283,21 +283,42 @@ function renderExercises() {
   }
   $.gymExercisesEmpty?.classList.add("d-none");
 
+  ensureMediaModal();
+
   for (const ex of filtered) {
     const item = document.createElement("div");
-    item.className = "list-group-item";
+    item.className = "list-group-item gym-exercise-row";
+
+    const mediaUrl = safeUrl(ex.videoUrl || "");
 
     item.innerHTML = `
-      <div class="d-flex justify-content-between gap-2 flex-wrap">
-        <div ${_ctx.canEdit ? `data-edit-exercise="${escapeHtml(ex.id)}" style="cursor:pointer"` : ""}>
-          <div class="fw-semibold">${escapeHtml(ex.name || "—")}</div>
-          <div class="text-muted small">${fmtExerciseDefaults(ex)}</div>
-          ${ex.notes ? `<div class="small mt-1">${escapeHtml(ex.notes)}</div>` : ``}
+      <div class="gym-exercise-item d-flex justify-content-between align-items-center gap-2">
+        <div
+          class="gym-exercise-main flex-grow-1 min-w-0"
+          ${_ctx.canEdit ? `data-edit-exercise="${escapeHtml(ex.id)}" style="cursor:pointer"` : ""}
+        >
+          <div class="fw-semibold text-truncate">${escapeHtml(ex.name || "—")}</div>
         </div>
 
-        <div class="d-flex gap-2 align-items-start flex-wrap">
-          ${ex.videoUrl ? `<a class="btn btn-sm btn-outline-secondary" href="${escapeHtml(ex.videoUrl)}" target="_blank" rel="noopener">Video</a>` : ``}
-          ${_ctx.canEdit ? `<button class="btn btn-sm btn-primary" data-edit-exercise-btn="${escapeHtml(ex.id)}">Editar</button>` : ``}
+        <div class="gym-exercise-actions d-flex align-items-center gap-2 flex-shrink-0">
+          ${
+            mediaUrl
+              ? `<button
+                  type="button"
+                  class="btn btn-sm btn-outline-secondary"
+                  data-open-media="${escapeHtml(mediaUrl)}"
+                  data-media-title="${escapeHtml(ex.name || "Media")}"
+                >
+                  Ver
+                </button>`
+              : ``
+          }
+
+          ${
+            _ctx.canEdit
+              ? `<button class="btn btn-sm btn-primary" data-edit-exercise-btn="${escapeHtml(ex.id)}">Editar</button>`
+              : ``
+          }
         </div>
       </div>
     `;
@@ -306,6 +327,7 @@ function renderExercises() {
   }
 
   bindExerciseButtons();
+  bindExerciseMediaButtons();
 }
 
 function bindExerciseButtons() {
@@ -332,22 +354,236 @@ function bindExerciseButtons() {
   });
 }
 
-function fmtExerciseDefaults(ex) {
-  const st = (ex.seriesType || "reps").toString();
-  const parts = [];
 
-  if (st === "distance") {
-    parts.push(`Distancia: ${escapeHtml(ex.distance ?? "—")} ${escapeHtml(ex.distanceUnit ?? "")}`.trim());
-  } else {
-    parts.push(`Sets: ${escapeHtml(ex.sets ?? "—")}`);
-    parts.push(`Reps: ${escapeHtml(fmtMaybeText(ex.reps))}`);
+function bindExerciseMediaButtons() {
+  $.gymExercisesList?.querySelectorAll("[data-open-media]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+
+      const rawUrl = btn.getAttribute("data-open-media");
+      const title = btn.getAttribute("data-media-title") || "Media";
+
+      if (!rawUrl) return;
+
+      openMediaModal(rawUrl, title);
+    });
+  });
+}
+
+function ensureMediaModal() {
+  if (document.getElementById("gymMediaModal")) return;
+
+  const modal = document.createElement("div");
+  modal.innerHTML = `
+    <div class="modal fade" id="gymMediaModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-xl modal-fullscreen-sm-down">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="gymMediaModalTitle">Media</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+
+          <div class="modal-body">
+            <div id="gymMediaContainer"></div>
+          </div>
+
+          <div class="modal-footer justify-content-between">
+            <a
+              id="gymMediaOpenNewTab"
+              class="btn btn-outline-secondary"
+              href="#"
+              target="_blank"
+              rel="noopener"
+            >
+              Abrir en pestaña nueva
+            </a>
+            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal.firstElementChild);
+
+  const modalEl = document.getElementById("gymMediaModal");
+  modalEl?.addEventListener("hidden.bs.modal", () => {
+    const box = document.getElementById("gymMediaContainer");
+    if (box) box.innerHTML = "";
+  });
+}
+
+function openMediaModal(rawUrl, title = "Media") {
+  ensureMediaModal();
+
+  const cleanUrl = safeUrl(rawUrl);
+  if (!cleanUrl) {
+    window.open(rawUrl, "_blank", "noopener");
+    return;
   }
 
-  if (ex.restSec !== null && ex.restSec !== undefined) {
-    parts.push(`Descanso: ${escapeHtml(ex.restSec)}s`);
+  const titleEl = document.getElementById("gymMediaModalTitle");
+  const box = document.getElementById("gymMediaContainer");
+  const openNewTab = document.getElementById("gymMediaOpenNewTab");
+  const modalEl = document.getElementById("gymMediaModal");
+
+  if (!box || !modalEl) return;
+
+  if (titleEl) titleEl.textContent = title || "Media";
+  if (openNewTab) openNewTab.href = cleanUrl;
+
+  const mediaType = detectMediaType(cleanUrl);
+  box.innerHTML = renderMediaContent(mediaType, cleanUrl, title);
+
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  modal.show();
+}
+
+function detectMediaType(url) {
+  const lower = url.toLowerCase();
+
+  if (/\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?|#|$)/i.test(lower)) {
+    return "image";
   }
 
-  return parts.join(" · ");
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, "").toLowerCase();
+
+    if (
+      host.includes("gstatic.com") ||
+      host.includes("googleusercontent.com") ||
+      host.includes("imgur.com") ||
+      host.includes("cloudinary.com")
+    ) {
+      return "image";
+    }
+
+    if (
+      host === "youtube.com" ||
+      host === "m.youtube.com" ||
+      host === "youtu.be" ||
+      host === "youtube-nocookie.com" ||
+      host === "vimeo.com" ||
+      host === "player.vimeo.com"
+    ) {
+      return "video";
+    }
+  } catch {}
+
+  return "unknown";
+}
+
+function renderMediaContent(type, rawUrl, title = "Media") {
+  if (type === "image") {
+    return `
+      <div class="text-center">
+        <img
+          src="${escapeHtml(rawUrl)}"
+          alt="${escapeHtml(title)}"
+          class="img-fluid rounded"
+          style="max-height:75vh; width:auto;"
+        />
+      </div>
+    `;
+  }
+
+  if (type === "video") {
+    const embedUrl = toEmbeddableVideoUrl(rawUrl);
+
+    if (embedUrl) {
+      return `
+        <div style="position:relative;width:100%;padding-top:56.25%;background:#000;border-radius:.5rem;overflow:hidden;">
+          <iframe
+            src="${escapeHtml(embedUrl)}"
+            title="${escapeHtml(title)}"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowfullscreen
+            referrerpolicy="strict-origin-when-cross-origin"
+            style="position:absolute;inset:0;width:100%;height:100%;border:0;"
+          ></iframe>
+        </div>
+      `;
+    }
+  }
+
+  return `
+    <div>
+      <div style="position:relative;width:100%;padding-top:56.25%;background:#f8f9fa;border-radius:.5rem;overflow:hidden;">
+        <iframe
+          src="${escapeHtml(rawUrl)}"
+          title="${escapeHtml(title)}"
+          style="position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff;"
+          referrerpolicy="strict-origin-when-cross-origin"
+        ></iframe>
+      </div>
+      <div class="text-muted small mt-2">
+        Si no carga aquí, abrilo en pestaña nueva.
+      </div>
+    </div>
+  `;
+}
+
+function toEmbeddableVideoUrl(url) {
+  const clean = safeUrl(url);
+  if (!clean) return "";
+
+  try {
+    const u = new URL(clean);
+    const host = u.hostname.replace(/^www\./, "").toLowerCase();
+
+    if (host === "youtube.com" || host === "m.youtube.com") {
+      const v = u.searchParams.get("v");
+      if (v) return `https://www.youtube.com/embed/${encodeURIComponent(v)}`;
+      if (u.pathname.startsWith("/embed/")) return clean;
+
+      if (u.pathname.startsWith("/shorts/")) {
+        const id = u.pathname.split("/")[2];
+        if (id) return `https://www.youtube.com/embed/${encodeURIComponent(id)}`;
+      }
+    }
+
+    if (host === "youtu.be") {
+      const id = u.pathname.replace("/", "").trim();
+      if (id) return `https://www.youtube.com/embed/${encodeURIComponent(id)}`;
+    }
+
+    if (host === "vimeo.com") {
+      const id = u.pathname.replace(/\//g, "").trim();
+      if (id) return `https://player.vimeo.com/video/${encodeURIComponent(id)}`;
+    }
+
+    if (host === "player.vimeo.com" && u.pathname.startsWith("/video/")) {
+      return clean;
+    }
+
+    if (host === "youtube-nocookie.com") {
+      return clean;
+    }
+
+    return "";
+  } catch {
+    return "";
+  }
+}
+
+function safeUrl(url) {
+  const u = (url || "").toString().trim();
+  if (!u) return "";
+
+  if (!/^https?:\/\//i.test(u)) {
+    try {
+      return new URL(`https://${u}`).toString();
+    } catch {
+      return "";
+    }
+  }
+
+  try {
+    return new URL(u).toString();
+  } catch {
+    return "";
+  }
 }
 
 function fmtMaybeText(v) {
