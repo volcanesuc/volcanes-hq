@@ -25,7 +25,8 @@ if (!redirected) {
 document.getElementById("logoutBtn")?.addEventListener("click", logout);
 
 const S = TOURNAMENT_STRINGS;
-const TOURNAMENTS_COL = APP_CONFIG?.club?.tournamentsCollection || "tournaments";
+const COL = APP_CONFIG.collections;
+const TOURNAMENTS_COL = COL.tournaments;
 
 /* ==========================
    DOM

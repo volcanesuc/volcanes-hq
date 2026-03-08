@@ -24,6 +24,8 @@ import { Player } from "./models/player.js";
 /*************************************************
  * INIT
  *************************************************/
+const COL = APP_CONFIG.collections;
+const PLAYERS_COL = COL.players;
 
 // Header del dashboard
 const { cfg, redirected } = await guardPage("roster");
@@ -89,7 +91,7 @@ let currentSort = {
  *************************************************/
 
 async function loadPlayers() {
-  const snap = await getDocs(collection(db, "club_players"));
+  const snap = await getDocs(collection(db, PLAYERS_COL));
 
   players = snap.docs.map(d =>
     Player.fromFirestore(d)
@@ -557,12 +559,12 @@ form.onsubmit = async e => {
 
   if (fields.id.value) {
     await updateDoc(
-      doc(db, "club_players", fields.id.value),
+      doc(db, PLAYERS_COL, fields.id.value),
       new Player(null, data).toFirestore()
     );
   } else {
     await setDoc(
-      doc(collection(db, "club_players")),
+      doc(collection(db, PLAYERS_COL)),
       new Player(null, data).toFirestore()
     );
   }

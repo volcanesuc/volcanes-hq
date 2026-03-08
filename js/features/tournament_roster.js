@@ -32,9 +32,11 @@ const S = TOURNAMENT_STRINGS;
 /* ==========================
    COLLECTIONS FROM CONFIG
 ========================== */
-const TOURNAMENTS_COL = APP_CONFIG?.club?.tournamentsCollection || "tournaments";
-const PLAYERS_COL = APP_CONFIG?.club?.playersCollection || "club_players";
-const GUESTS_COL = APP_CONFIG?.club?.guestsCollection || "guest_players";
+const COL = APP_CONFIG.collections;
+
+const TOURNAMENTS_COL = COL.tournaments;
+const PLAYERS_COL = COL.players;
+const GUESTS_COL = COL.guests;
 
 const PLAYER_ROLES = Array.isArray(APP_CONFIG?.playerRoles) ? APP_CONFIG.playerRoles : [];
 

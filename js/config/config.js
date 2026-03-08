@@ -6,9 +6,29 @@ export const APP_CONFIG = {
   club: {
     id: "volcanes",
     name: "Volcanes Ultimate",
-    playersCollection: "club_players",
-    tournamentsCollection: "tournaments",
-    trainingsCollection: "trainings"
+  },
+
+  collections: {
+    associates: "associates",
+    players: "club_players",
+    guests: "guest_players",
+
+    attendance: "club_attendance",
+
+    tournaments: "tournaments",
+    trainings: "trainings",
+
+    drills: "drills",
+    playbookTrainings: "playbook_trainings",
+
+    gymRoutines: "gym_routines",
+    gymPlans: "gym_weeks",
+    gymExercises: "gym_exercises",
+
+    subscriptionPlans: "subscription_plans",
+    memberships: "memberships",
+    membershipInstallments: "membership_installments",
+    membershipPaymentSubmissions: "membership_payment_submissions",
   },
   
   sport: "ultimate",

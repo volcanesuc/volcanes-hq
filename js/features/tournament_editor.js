@@ -15,7 +15,8 @@ import { showLoader, hideLoader } from "../ui/loader.js";
 import { TOURNAMENT_STRINGS } from "../strings.js";
 
 const S = TOURNAMENT_STRINGS;
-const TOURNAMENTS_COL = APP_CONFIG?.club?.tournamentsCollection || "tournaments";
+const COL = APP_CONFIG.collections;
+const TOURNAMENTS_COL = COL.tournaments;
 
 /* =========================================================
    TOURNAMENT EDITOR (MODAL)

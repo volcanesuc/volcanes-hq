@@ -1,6 +1,7 @@
 /* ================= IMPORTS ================= */
 
 import { db } from "./auth/firebase.js";
+import { APP_CONFIG } from "./config/config.js";
 
 import {
   collection,
@@ -13,6 +14,14 @@ import {
   where,
   deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+/* ================= CONFIG / COLLECTIONS ================= */
+
+const COL = APP_CONFIG.collections || {};
+
+const PLAYERS_COL = COL.players || "club_players";
+const TRAININGS_COL = COL.trainings || "club_trainings";
+const ATTENDANCE_COL = COL.attendance || "club_attendance";
 
 /* ================= DOM ================= */
 
@@ -45,7 +54,7 @@ function normalize(str) {
 /* ================= LOAD PLAYERS ================= */
 
 async function loadPlayers() {
-  const snapshot = await getDocs(collection(db, "club_players"));
+  const snapshot = await getDocs(collection(db, PLAYERS_COL));
 
   players = snapshot.docs.map(d => ({
     id: d.id,
@@ -124,17 +133,15 @@ saveBtn.onclick = async () => {
   saveBtn.disabled = true;
 
   try {
-    // 1️⃣ entreno
     await setDoc(
-      doc(db, "club_trainings", date),
+      doc(db, TRAININGS_COL, date),
       { date, createdAt: serverTimestamp() },
       { merge: true }
     );
 
-    // 2️⃣ borrar asistencia previa
     const prev = await getDocs(
       query(
-        collection(db, "club_attendance"),
+        collection(db, ATTENDANCE_COL),
         where("trainingId", "==", date)
       )
     );
@@ -143,13 +150,12 @@ saveBtn.onclick = async () => {
       await deleteDoc(d.ref);
     }
 
-    // 3️⃣ guardar presentes
     const checked = document.querySelectorAll(
       "input[type=checkbox][data-player-id]:checked"
     );
 
     for (const cb of checked) {
-      await addDoc(collection(db, "club_attendance"), {
+      await addDoc(collection(db, ATTENDANCE_COL), {
         trainingId: date,
         playerId: cb.dataset.playerId,
         present: true
@@ -157,7 +163,6 @@ saveBtn.onclick = async () => {
     }
 
     alert(`Entreno guardado ✅ (${checked.length} presentes)`);
-
   } catch (e) {
     console.error(e);
     alert("❌ Error guardando entreno");

@@ -57,12 +57,14 @@ window.addEventListener("unhandledrejection", releaseUI);
 /* =========================
    Config / Collections
 ========================= */
-const COL_PLANS = "subscription_plans";
-const COL_ASSOC = "associates";
-const COL_PLAYERS = "club_players";
-const COL_MEMBERSHIPS = "memberships";
-const COL_INSTALLMENTS = "membership_installments";
-const COL_SUBMISSIONS = "membership_payment_submissions";
+const COL = APP_CONFIG.collections;
+
+const COL_PLANS = COL.subscriptionPlans;
+const COL_ASSOC = COL.associates;
+const COL_PLAYERS = COL.players;
+const COL_MEMBERSHIPS = COL.memberships;
+const COL_INSTALLMENTS = COL.membershipInstallments;
+const COL_SUBMISSIONS = COL.membershipPaymentSubmissions;
 
 // Config doc
 const CFG_DOC = doc(db, "club_config", "public_registration");

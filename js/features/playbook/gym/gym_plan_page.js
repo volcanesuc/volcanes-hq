@@ -2,12 +2,14 @@
 import { db } from "/js/auth/firebase.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { showLoader, hideLoader, updateLoaderMessage } from "/js/ui/loader.js";
+import { APP_CONFIG } from "./config/config.js";
 
 /* =========================
    DOM
 ========================= */
-const COL_PLANS = "gym_weeks";
-const COL_ROUTINES = "gym_routines";
+const COL = APP_CONFIG.collections;
+const COL_PLANS = COL.gymPlans;
+const COL_ROUTINES = COL.gymRoutines;
 
 const $ = {
   planTitle: document.getElementById("planTitle"),

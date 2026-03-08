@@ -58,11 +58,14 @@ function setNextTournamentError(msg) {
 async function loadDashboard() {
   setNextTournamentLoading();
 
-  const TOURNAMENTS_COL = APP_CONFIG?.club?.tournamentsCollection || "tournaments";
+  const COL = APP_CONFIG.collections;
 
-  // arrancamos todo en paralelo
-  const playersP = getDocs(collection(db, "club_players"));
-  const trainingsP = getDocs(collection(db, "trainings"));
+  const PLAYERS_COL = COL.players;
+  const TRAININGS_COL = COL.trainings;
+  const TOURNAMENTS_COL = COL.tournaments;
+
+  const playersP = getDocs(collection(db, PLAYERS_COL));
+  const trainingsP = getDocs(collection(db, TRAININGS_COL));
   const tournamentsP = getDocs(collection(db, TOURNAMENTS_COL));
 
   const [playersRes, trainingsRes, tournamentsRes] = await Promise.allSettled([

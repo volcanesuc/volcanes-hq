@@ -10,7 +10,7 @@ import {
   where,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
+import { APP_CONFIG } from "./config/config.js";
 import { db } from "./auth/firebase.js";
 import { guardPage } from "./page-guard.js";
 import { loadHeader } from "./components/header.js";
@@ -19,10 +19,12 @@ import { showLoader, hideLoader, updateLoaderMessage } from "./ui/loader.js";
 /* =========================
    CONFIG / COLS
 ========================= */
-const COL_TRAININGS = "trainings";
-const COL_PLAYERS = "club_players";
-const COL_DRILLS = "drills";
-const COL_PLAYBOOK_TRAININGS = "playbook_trainings";
+const COL = APP_CONFIG.collections;
+
+const COL_TRAININGS = COL.trainings;
+const COL_PLAYERS = COL.players;
+const COL_DRILLS = COL.drills;
+const COL_PLAYBOOK_TRAININGS = COL.playbookTrainings;
 
 /* =========================
    STATE
@@ -252,9 +254,13 @@ async function loadTrainings() {
     collection(db, COL_TRAININGS),
     orderBy("date", "desc")
   );
-  snapshot.forEach(d => trainings.push({ id: d.id, ...d.data() }));
 
-  // KPIs + filtros + render
+  const snapshot = await getDocs(q);
+
+  snapshot.forEach(d => {
+    trainings.push({ id: d.id, ...d.data() });
+  });
+
   calcKPIs(trainings);
   fillMonthOptions(trainings);
   refreshListUI();

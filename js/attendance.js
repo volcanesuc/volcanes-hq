@@ -18,8 +18,9 @@ if (!redirected) {
 /* ==========================
    COLLECTIONS (CONFIG)
 ========================== */
-const PLAYERS_COL = APP_CONFIG?.club?.playersCollection || "club_players";
-const TRAININGS_COL = APP_CONFIG?.club?.trainingsCollection || "trainings";
+const COL = APP_CONFIG.collections;
+const TRAININGS_COL = COL.trainings;
+const PLAYERS_COL = COL.players;
 
 /* ==========================
    DOM
