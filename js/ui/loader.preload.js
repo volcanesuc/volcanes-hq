@@ -29,14 +29,26 @@
       }
       #${OVERLAY_ID} .loader{ width:96px; height:96px; }
       #${OVERLAY_ID} svg{ width:100%; height:100%; }
-      #${OVERLAY_ID} .disc{ fill:#19473f; } /* fallback */
-      #${OVERLAY_ID} .inner-ring{ fill:none; stroke:#fff; stroke-width:3; opacity:.92; }
+
+      #${OVERLAY_ID} .disc{
+        fill: var(--loader-primary, var(--theme-primary, #19473f));
+      }
+
+      #${OVERLAY_ID} .inner-ring{
+        fill:none;
+        stroke: var(--loader-ring, #fff);
+        stroke-width:3;
+        opacity:.92;
+      }
+
       #${OVERLAY_ID} .star{
-        fill:#e8ce26; /* fallback */
+        fill: var(--loader-accent, var(--theme-accent, #e8ce26));
         transform-origin:32px 32px;
         animation: loader-spin 3s linear infinite;
       }
+
       @keyframes loader-spin { to { transform: rotate(360deg); } }
+
       #${OVERLAY_ID} .loader-text{
         font-size:.98rem; color: rgba(255,255,255,0.86);
         text-align:center; max-width:320px;
@@ -79,10 +91,8 @@
       overlay.innerHTML = overlayMarkup();
       document.body.appendChild(overlay);
     }
-
-    // visible desde el inicio
+    overlay.classList.add("is-visible");
     document.body.classList.add("loading");
-    overlay.style.display = "flex";
     return overlay;
   }
 
@@ -90,29 +100,23 @@
     ensureStyles();
     const overlay = ensureOverlay();
 
-    // ✅ API global: la app controla cuándo soltar la UI
-    window.__preload = {
-      setMessage(text) {
-        const el = document.getElementById(`${OVERLAY_ID}Message`);
-        if (el) el.textContent = text || "Cargando…";
-      },
-      release() {
-        overlay.setAttribute("aria-hidden", "true");
-        overlay.style.display = "none";
-        document.documentElement.classList.remove("preload");
-        document.body.classList.remove("loading");
-      }
+    const release = () => {
+      overlay.classList.remove("is-visible");
+      overlay.setAttribute("aria-hidden", "true");
+      overlay.style.display = "none";
+      document.documentElement.classList.remove("preload");
+      document.body.classList.remove("loading");
     };
 
-    // failsafe duro (largo para evitar parpadeo)
-    setTimeout(() => {
-      if (document.documentElement.classList.contains("preload")) {
-        window.__preload?.release?.();
-      }
-    }, 15000);
+    if (document.readyState === "complete" || document.readyState === "interactive") {
+      setTimeout(release, 0);
+    } else {
+      window.addEventListener("DOMContentLoaded", () => setTimeout(release, 0), { once: true });
+    }
+
+    setTimeout(release, 2000);
   }
 
-  // Ejecutar lo antes posible, incluso si body aún no existe
   if (document.body) {
     boot();
   } else {

@@ -21,12 +21,12 @@ const NUMBERS_COL_PATH = `raffles/${RAFFLE_ID}/numbers`;
 const TOTAL_NUMBERS = 100;
 
 const firebaseConfig = {
-  apiKey: "AIzaSyABSy5kImaF9VyNisu2vkihm2y4mfYGodw",
-  authDomain: "rifavolcanes.firebaseapp.com",
-  projectId: "rifavolcanes",
+  apiKey: "TODO:",
+  authDomain: "TODO:",
+  projectId: "TODO:",
 };
 
-const ADMIN_PASSWORD = "sub20.";
+const ADMIN_PASSWORD = "password";
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);

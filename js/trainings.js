@@ -73,6 +73,10 @@ const $ = {
 
   clearFiltersBtn: document.getElementById("clearFiltersBtn"),
 
+  addTrainingBtn: document.getElementById("addTrainingBtn"),
+  filtersCollapse: document.getElementById("trainingFiltersCollapse"),
+  filtersToggle: document.getElementById("trainingFiltersToggle"),
+
 };
 
 let modalInstance = null;
@@ -92,6 +96,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     ensurePlaybookUI();
     bindCollapseCarets();
+    bindResponsiveUI();
 
     updateLoaderMessage("Cargando jugadores…");
     await loadPlayers();
@@ -222,15 +227,31 @@ async function loadPlaybookData() {
   // drills activos
   const qDrills = query(
     collection(db, COL_DRILLS),
+    where("clubId", "==", clubId),
     where("isActive", "==", true)
   );
   const s1 = await getDocs(qDrills);
   pbDrills = s1.docs.map(d => ({ id: d.id, ...d.data() }));
   pbDrills.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 
-  // playbook trainings
-  const s2 = await getDocs(collection(db, COL_PLAYBOOK_TRAININGS));
+  // playbook trainings (con clubId)
+  const qPB = query(
+    collection(db, COL_PLAYBOOK_TRAININGS),
+    where("clubId", "==", clubId)
+  );
+  const s2 = await getDocs(qPB);
   pbTrainings = s2.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  // ✅ fallback migración: si no hay nada, traé todos y quedate con los que
+  // tienen clubId==clubId o no tienen clubId (docs viejos)
+  if (!pbTrainings.length) {
+    console.warn("[trainings] 0 playbook_trainings con clubId, intentando fallback (migración).");
+    const all = await getDocs(collection(db, COL_PLAYBOOK_TRAININGS));
+    pbTrainings = all.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(x => !x.clubId || x.clubId === clubId);
+  }
+
   pbTrainings.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 }
 
@@ -244,13 +265,29 @@ async function loadTrainings() {
   $.cards.innerHTML = "";
   trainings = [];
 
-  const q = query(
+  // 1) intento con clubId (lo actual)
+  const q1 = query(
     collection(db, COL_TRAININGS),
+    where("clubId", "==", clubId),
     orderBy("date", "desc")
   );
 
-  const snapshot = await getDocs(q);
-  snapshot.forEach(d => trainings.push({ id: d.id, ...d.data() }));
+  let snapshot = await getDocs(q1);
+
+  // 2) fallback migración: si no hay nada, trae todo y filtra local
+  if (snapshot.empty) {
+    console.warn("[trainings] 0 trainings con clubId; fallback (migración).");
+
+    const all = await getDocs(collection(db, COL_TRAININGS));
+    trainings = all.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      // legacy: sin clubId o clubId correcto
+      .filter(t => !t.clubId || t.clubId === clubId)
+      // orden desc por date
+      .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  } else {
+    snapshot.forEach(d => trainings.push({ id: d.id, ...d.data() }));
+  }
 
   // KPIs + filtros + render
   calcKPIs(trainings);
@@ -480,6 +517,7 @@ async function saveTraining() {
   }
 
   const payload = {
+    clubId,
     date,
     month: date.slice(0, 7),
     attendees,
@@ -716,7 +754,7 @@ function renderTrainings(list) {
           <div class="text-muted small">${detailsHtml || "Entrenamiento"}</div>
           <div class="d-flex justify-content-between mt-2">
             <span class="small">👥 ${count} asistentes</span>
-            <span class="text-primary small">Editar →</span>
+            <span class="text-primary small">Abrir</span>
           </div>
         </div>
       </div>
@@ -783,6 +821,33 @@ function updateClearBtnState() {
     (($.dateTo?.value || "") !== "");
 
   $.clearFiltersBtn.disabled = !hasFilters;
+}
+
+function setupResponsiveFiltersCollapse() {
+  if (!$.filtersCollapse) return;
+
+  const collapse = bootstrap.Collapse.getOrCreateInstance($.filtersCollapse, {
+    toggle: false,
+  });
+
+  if (window.innerWidth <= 576) {
+    collapse.hide();
+    $.filtersToggle?.setAttribute("aria-expanded", "false");
+  } else {
+    collapse.show();
+    $.filtersToggle?.setAttribute("aria-expanded", "true");
+  }
+}
+
+let filtersResizeTimer = null;
+
+function bindResponsiveUI() {
+  setupResponsiveFiltersCollapse();
+
+  window.addEventListener("resize", () => {
+    clearTimeout(filtersResizeTimer);
+    filtersResizeTimer = setTimeout(setupResponsiveFiltersCollapse, 120);
+  });
 }
 
 /* =========================

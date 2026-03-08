@@ -19,6 +19,15 @@ export const APP_CONFIG = {
     { id: "hybrid",  label: "Hybrid" }
   ],
 
+  roster: {
+    filters: {
+      genders: [
+        { value: "F", label: "Femenino" },
+        { value: "M", label: "Masculino" }
+      ]
+    }
+  },
+
   //deben ser reemplazados tambien en: main.css -> root para que carguen por defecto
   theme: {
     colors: {

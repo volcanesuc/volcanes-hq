@@ -59,7 +59,7 @@ const PARTIAL_WEEK_EDITOR = "/partials/gym_week_editor.html";
 ========================= */
 let _ctx = {
   db: null,
-  clubId: "club",
+  clubId: "pujaguas",
   canEdit: false,
   modalMountId: "modalMount",
 };

@@ -28,29 +28,29 @@
       <div class="container py-4">
 
         <!-- TÍTULO + FILTRO GLOBAL -->
-        <div class="d-flex flex-wrap justify-content-between align-items-end mb-4 gap-3">
+        <div class="attendance-page-head mb-4">
           <div>
             <h1 class="page-title mb-1">Control de asistencia</h1>
             <small class="text-muted">Resumen de la participación del equipo en los entrenamientos realizados.</small>
           </div>
 
-          <div class="d-flex flex-wrap align-items-end gap-2">
-            <div>
-              <label class="form-label small text-muted mb-1">Desde</label>
-              <input type="date" id="startDate" class="form-control" style="max-width: 190px" />
+          <div class="attendance-filters">
+            <div class="attendance-filter-field">
+              <label for="startDate" class="form-label small text-muted mb-1">Desde</label>
+              <input type="date" id="startDate" class="form-control" />
             </div>
 
-            <div>
-              <label class="form-label small text-muted mb-1">Hasta</label>
-              <input type="date" id="endDate" class="form-control" style="max-width: 190px" />
+            <div class="attendance-filter-field">
+              <label for="endDate" class="form-label small text-muted mb-1">Hasta</label>
+              <input type="date" id="endDate" class="form-control" />
             </div>
 
-            <button id="clearFilter" class="btn btn-outline-primary btn-sm mb-1" type="button">
+            <button id="clearFilter" class="btn btn-outline-primary attendance-filter-btn" type="button">
               Limpiar
             </button>
 
-            <button id="btnPdf" class="btn btn-primary btn-sm mb-1" type="button">
-              📄 Generar PDF
+            <button id="btnPdf" class="btn btn-primary attendance-filter-btn attendance-pdf-btn" type="button">
+              <i class="bi bi-file-earmark-pdf"></i> PDF
             </button>
           </div>
         </div>

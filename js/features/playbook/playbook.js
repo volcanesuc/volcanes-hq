@@ -59,12 +59,7 @@ cacheDom();
 bindEvents();
 
 watchAuth(async () => {
-  // Mensaje del preload (si existe)
-  window.__preload?.setMessage?.("Cargando playbook…");
-
-  // opcional: loader interno (yo lo quitaría para no pelearse con el preload)
-  // showLoader();
-
+  showLoader();
   try {
     canEdit = isAdminFromCfg(cfg);
     setRoleUI();
@@ -73,13 +68,8 @@ watchAuth(async () => {
       ? (S.ui?.subtitleAdmin || "Admin")
       : (S.ui?.subtitleViewer || "Viewer");
 
-    window.__preload?.setMessage?.("Cargando drills…");
     await loadDrills();
-
-    window.__preload?.setMessage?.("Cargando entrenamientos…");
     await loadTrainings();
-
-    window.__preload?.setMessage?.("Cargando gimnasio…");
     try {
       await initGymTab({ db, clubId, canEdit, modalMountId: "modalMount" });
       await initGymEditors({ db, clubId, canEdit, modalMountId: "modalMount" });
@@ -88,8 +78,8 @@ watchAuth(async () => {
       showAlert("La pestaña Gimnasio falló al cargar. Ver consola.", "warning");
     }
   } finally {
-    // hideLoader();
-    window.__preload?.release?.();     //REVELA la página
+    hideLoader();
+    document.body.classList.remove("loading");
   }
 });
 

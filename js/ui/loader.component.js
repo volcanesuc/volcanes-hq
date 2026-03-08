@@ -175,5 +175,10 @@ export function hideLoaderOverlay() {
   if (!ov) return;
   ov.classList.remove("is-visible");
   ov.setAttribute("aria-hidden", "true");
-  ov.style.display = "none";
+
+  window.setTimeout(() => {
+    if (!ov.classList.contains("is-visible")) {
+      ov.style.display = "none";
+    }
+  }, 220);
 }

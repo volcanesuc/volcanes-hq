@@ -190,7 +190,7 @@ function drillCard(d) {
     }
 
     if (tvTitle) tvTitle.textContent = t.name || "Entrenamiento";
-    if (tvSubtitle) tvSubtitle.textContent = "Volcanes Ultimate";
+    if (tvSubtitle) tvSubtitle.textContent = "Pujaguas Ultimate";
     if (tvDate) tvDate.textContent = fmtDate(t.date);
     if (tvNotes) tvNotes.textContent = t.notes || "—";
     if (tvPublicState) tvPublicState.textContent = "Público";

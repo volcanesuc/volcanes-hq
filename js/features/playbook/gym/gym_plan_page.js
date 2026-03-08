@@ -3,6 +3,9 @@ import { db } from "/js/auth/firebase.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { showLoader, hideLoader, updateLoaderMessage } from "/js/ui/loader.js";
 
+/* =========================
+   DOM
+========================= */
 const COL_PLANS = "gym_weeks";
 const COL_ROUTINES = "gym_routines";
 
@@ -16,6 +19,9 @@ const $ = {
   errorBox: document.getElementById("errorBox"),
   copyLinkBtn: document.getElementById("copyLinkBtn"),
 };
+
+let currentPlanSlots = [];
+let currentRoutinesById = new Map();
 
 /* =========================
    BOOT
@@ -58,7 +64,9 @@ async function boot() {
       updateLoaderMessage("Cargando rutinas…");
       const routinesById = await fetchRoutinesById(routineIds);
 
-      renderSlots(slots, routinesById);
+      currentPlanSlots = slots;
+      currentRoutinesById = routinesById;
+      renderSlots(currentPlanSlots, currentRoutinesById);
       return;
     }
 
@@ -148,11 +156,62 @@ function renderSlots(slots, routinesById) {
   $.routinesList.innerHTML = "";
   $.emptyState?.classList.add("d-none");
 
+  const isMobile = window.innerWidth < 768;
+
+  if (isMobile) {
+    const list = document.createElement("div");
+    list.className = "gym-slots-mobile";
+
+    for (const s of slots) {
+      const rid = (s?.routineId || "").toString();
+      const r = routinesById.get(rid) || null;
+
+      const routineName = r?.name || (rid ? "Rutina (no accesible)" : "—");
+      const label = (s?.label || "").toString().trim() || "—";
+      const order = Number(s?.order ?? 0) || "—";
+      const isPublic = r?.isPublic === true;
+
+      const card = document.createElement("div");
+      card.className = "card gym-slot-card mb-2";
+
+      card.innerHTML = `
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start gap-3 mb-2">
+            <div>
+              <div class="gym-slot-order">#${escapeHtml(order)}</div>
+              <div class="gym-slot-label">${escapeHtml(label)}</div>
+            </div>
+            ${
+              isPublic
+                ? `<a class="btn btn-sm btn-outline-secondary" href="/gym_routine.html?id=${encodeURIComponent(
+                    r.id
+                  )}" target="_blank" rel="noopener">Ver rutina</a>`
+                : `${r ? `<span class="text-muted small">🔒 Privada</span>` : ``}`
+            }
+          </div>
+
+          <div class="gym-slot-routine-name">${escapeHtml(routineName)}</div>
+          ${
+            r?.description
+              ? `<div class="gym-slot-routine-desc text-muted small mt-1">${escapeHtml(r.description)}</div>`
+              : ``
+          }
+          ${!r && rid ? `<div class="text-muted small mt-1">ID: ${escapeHtml(rid)}</div>` : ``}
+        </div>
+      `;
+
+      list.appendChild(card);
+    }
+
+    $.routinesList.appendChild(list);
+    return;
+  }
+
   const wrapper = document.createElement("div");
   wrapper.className = "table-responsive";
 
   wrapper.innerHTML = `
-    <table class="table table-sm align-middle">
+    <table class="table table-sm align-middle gym-slots-table">
       <thead class="table-light">
         <tr>
           <th style="width:60px;">#</th>
@@ -177,7 +236,6 @@ function renderSlots(slots, routinesById) {
     const routineName = r?.name || (rid ? "Rutina (no accesible)" : "—");
     const label = (s?.label || "").toString().trim() || "—";
     const order = Number(s?.order ?? 0) || "";
-
     const isPublic = r?.isPublic === true;
 
     const tr = document.createElement("tr");
@@ -262,4 +320,9 @@ function escapeHtml(str) {
 /* =========================
    RUN
 ========================= */
+window.addEventListener("resize", () => {
+  if (currentPlanSlots.length) {
+    renderSlots(currentPlanSlots, currentRoutinesById);
+  }
+});
 boot();

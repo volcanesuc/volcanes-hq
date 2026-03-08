@@ -1,6 +1,7 @@
 // js/tournaments.js
 import { db } from "./auth/firebase.js";
 import { watchAuth, logout } from "./auth/auth.js";
+import { getCurrentPermissions, applyVisibilityByPermission } from "./auth/permissions.js";
 import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { APP_CONFIG } from "./config/config.js";
 import { showLoader, hideLoader } from "./ui/loader.js";
@@ -59,6 +60,7 @@ async function ensureEditor() {
 /* ==========================
    DATA
 ========================== */
+let permissions = null;
 let allTournaments = [];
 
 /* ==========================
@@ -67,6 +69,10 @@ let allTournaments = [];
 watchAuth(async () => {
   showLoader();
   try {
+    permissions = await getCurrentPermissions();
+
+    applyVisibilityByPermission(permissions, "canEditTournament", addBtn);
+
     await loadTournaments();
     render();
   } catch (e) {
@@ -136,17 +142,18 @@ function renderTable(list) {
               <td>${badgeLabel(S.fields.venue.options?.[t.venue] ?? t.venue)}</td>
               <td>${fees}</td>
               <td class="text-end">
-                <!-- Editar torneo -->
-                <button class="btn btn-sm btn-outline-primary" data-edit="${t.id}" title="Editar">
-                  <i class="bi bi-pencil"></i>
-                </button>
+                ${permissions?.canEditTournament ? `
+                  <button class="btn btn-sm btn-outline-primary" data-edit="${t.id}" title="Editar">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                ` : ""}
 
-                <!-- Roster / Jugadores -->
-                <a class="btn btn-sm btn-outline-success ms-2"
-                   href="${rosterUrl(t.id)}"
-                   title="Roster">
-                   <i class="bi bi-people"></i>
+                <a class="btn btn-sm btn-outline-success ${permissions?.canEditTournament ? "ms-2" : ""}"
+                  href="${rosterUrl(t.id)}"
+                  title="Roster">
+                  <i class="bi bi-people"></i>
                 </a>
+
                 ${
                   official
                     ? `<a class="btn btn-sm btn-outline-dark ms-2"
@@ -165,13 +172,15 @@ function renderTable(list) {
         .join("")
     : `<tr><td colspan="7" class="text-muted p-3">${escapeHtml(S.page.empty)}</td></tr>`;
 
-  tableEl.querySelectorAll("[data-edit]").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const id = btn.getAttribute("data-edit");
-      const ed = await ensureEditor();
-      ed.openEditById(id);
+  if (permissions?.canEditTournament) {
+    tableEl.querySelectorAll("[data-edit]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-edit");
+        const ed = await ensureEditor();
+        ed.openEditById(id);
+      });
     });
-  });
+  }
 }
 
 function renderCards(list) {
@@ -203,10 +212,9 @@ function renderCards(list) {
                 <div class="text-muted small">${fees}</div>
 
                 <div class="d-flex gap-2">
-                  <!-- Roster / Jugadores -->
                   <a class="btn btn-sm btn-outline-success"
-                     href="${rosterUrl(t.id)}"
-                     title="Roster">
+                    href="${rosterUrl(t.id)}"
+                    title="Roster">
                     <i class="bi bi-people"></i>
                   </a>
 
@@ -222,10 +230,11 @@ function renderCards(list) {
                       : ``
                   }
 
-                  <!-- Editar torneo -->
-                  <button class="btn btn-sm btn-outline-primary" data-edit="${t.id}" title="Editar">
-                    <i class="bi bi-pencil"></i>
-                  </button>
+                  ${permissions?.canEditTournament ? `
+                    <button class="btn btn-sm btn-outline-primary" data-edit="${t.id}" title="Editar">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                  ` : ""}
                 </div>
               </div>
             </div>
@@ -234,19 +243,23 @@ function renderCards(list) {
         .join("")
     : `<div class="text-muted p-2">${escapeHtml(S.page.empty)}</div>`;
 
-  cardsEl.querySelectorAll("[data-edit]").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const id = btn.getAttribute("data-edit");
-      const ed = await ensureEditor();
-      ed.openEditById(id);
+  if (permissions?.canEditTournament) {
+    cardsEl.querySelectorAll("[data-edit]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-edit");
+        const ed = await ensureEditor();
+        ed.openEditById(id);
+      });
     });
-  });
+  }
 }
 
 /* ==========================
    EVENTS
 ========================== */
 addBtn?.addEventListener("click", async () => {
+  if (!permissions?.canEditTournament) return;
+
   const ed = await ensureEditor();
   ed.openNew();
 });

@@ -7,6 +7,7 @@ import { CLUB_DATA } from "../strings.js";
 import { loadHeaderTabsConfig, filterMenuByConfig } from "../remote-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
+
 /*
   Header único:
   - Tabs filtrados por remote config
@@ -23,11 +24,6 @@ export async function loadHeader(activeTab, cfgOverride) {
 
   const MENU = CLUB_DATA.header.menu || [];
   const HOME_HREF = toAbsHref(CLUB_DATA.header.homeHref || "dashboard.html");
-
-   const isIndex =
-      location.pathname === "/" ||
-      location.pathname.endsWith("/index.html") ||
-      location.pathname.endsWith("/");
 
   // cfgOverride > remote config > fallback
   let cfg = cfgOverride;
@@ -53,8 +49,9 @@ export async function loadHeader(activeTab, cfgOverride) {
   const renderLinksDesktop = () =>
     VISIBLE_MENU.map(
       (item) => `
-        <a href="${toAbsHref(item.href)}" class="top-tab ${activeTab === item.id ? "active" : ""
-        }">
+        <a href="${toAbsHref(item.href)}" class="top-tab ${
+        activeTab === item.id ? "active" : ""
+      }">
           ${item.label}
         </a>
       `
@@ -63,8 +60,9 @@ export async function loadHeader(activeTab, cfgOverride) {
   const renderLinksMobile = () =>
     VISIBLE_MENU.map(
       (item) => `
-        <a href="${toAbsHref(item.href)}" class="mobile-link ${activeTab === item.id ? "active" : ""
-        }">
+        <a href="${toAbsHref(item.href)}" class="mobile-link ${
+        activeTab === item.id ? "active" : ""
+      }">
           ${item.label}
         </a>
       `
@@ -101,18 +99,13 @@ export async function loadHeader(activeTab, cfgOverride) {
           aria-label="Abrir menú"
         >☰</button>
 
-        ${isIndex
-          ? `<span class="logo logo-link" style="cursor:default" aria-label="Inicio">
-              ${CLUB_DATA.header.logoText || "Club"}
-            </span>`
-          : `<a class="logo logo-link" href="${HOME_HREF}" title="Ir al inicio">
-              ${CLUB_DATA.header.logoText || "Club"}
-            </a>`
-        }
+        <a class="logo logo-link" href="${HOME_HREF}" title="Ir al inicio">
+          ${CLUB_DATA.header.logoText || "Club"}
+        </a>
       </div>
 
       <nav class="top-tabs">
-        ${isIndex ? "" : renderLinksDesktop()}
+        ${renderLinksDesktop()}
       </nav>
 
       <div class="header-cta d-flex align-items-center gap-2" id="headerCta"></div>
@@ -120,20 +113,15 @@ export async function loadHeader(activeTab, cfgOverride) {
 
     <div class="offcanvas offcanvas-start" tabindex="-1" id="mobileMenu" aria-labelledby="mobileMenuLabel">
       <div class="offcanvas-header">
-        ${isIndex
-          ? `<span class="offcanvas-title logo-link" id="mobileMenuLabel" style="cursor:default" aria-label="Inicio">
-              ${CLUB_DATA.header.mobileTitle || CLUB_DATA.header.logoText || "Club"}
-            </span>`
-          : `<a class="offcanvas-title logo-link" id="mobileMenuLabel" href="${HOME_HREF}" title="Ir al inicio">
-              ${CLUB_DATA.header.mobileTitle || CLUB_DATA.header.logoText || "Club"}
-            </a>`
-        }
+        <a class="offcanvas-title logo-link" id="mobileMenuLabel" href="${HOME_HREF}" title="Ir al inicio">
+          ${CLUB_DATA.header.mobileTitle || CLUB_DATA.header.logoText || "Club"}
+        </a>
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
       </div>
 
       <div class="offcanvas-body">
         <div class="mobile-links">
-          ${isIndex ? "" : renderLinksMobile()}
+          ${renderLinksMobile()}
         </div>
 
         <hr />
@@ -164,10 +152,15 @@ export async function loadHeader(activeTab, cfgOverride) {
 
     const logoutLabel = CLUB_DATA.header?.logout?.label || "SALIR";
 
+    const isIndex =
+      location.pathname === "/" ||
+      location.pathname.endsWith("/index.html") ||
+      location.pathname.endsWith("/");
+
     if (!user) {
       // NO logueado: solo Google
       cta.innerHTML = `
-        <button id="googleLoginBtn" class="btn btn-light btn-sm mod-flex align-items-center gap-2">
+        <button id="googleLoginBtn" class="btn btn-light btn-sm d-flex align-items-center gap-2">
           <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="16" height="16" alt="Google">
           Ingresar
         </button>

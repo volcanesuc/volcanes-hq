@@ -4,6 +4,7 @@
  *************************************************/
 import { db } from "./auth/firebase.js";
 import { watchAuth, logout } from "./auth/auth.js";
+import { getCurrentPermissions, applyVisibilityByPermission } from "./auth/permissions.js";
 import {
   collection,
   getDocs,
@@ -12,12 +13,13 @@ import {
   updateDoc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+import { APP_CONFIG } from "./config/config.js";
+
 import { guardPage } from "./page-guard.js";
 import { loadHeader } from "./components/header.js";
 
 import { showLoader, hideLoader } from "./ui/loader.js";
 import { Player } from "./models/player.js";
-import { APP_CONFIG } from "./config/config.js";
 
 /*************************************************
  * INIT
@@ -29,6 +31,7 @@ if (!redirected) {
   await loadHeader("roster", cfg);
 }
 
+
 // Logout
 document.getElementById("logoutBtn")?.addEventListener("click", logout);
 
@@ -36,6 +39,9 @@ document.getElementById("logoutBtn")?.addEventListener("click", logout);
 const table = document.getElementById("playersTable");
 const modal = new bootstrap.Modal("#playerModal");
 const form = document.getElementById("playerForm");
+const addPlayerBtn = document.getElementById("addPlayerBtn");
+
+let permissions = null;
 
 // Campos del formulario
 const fields = {
@@ -50,10 +56,24 @@ const fields = {
   active: document.getElementById("active")
 };
 
-ensureRoleOptions();
-
 // Array plano de jugadores (clave para sorting)
 let players = [];
+
+// Filtros
+const filters = {
+  search: document.getElementById("rosterSearch"),
+  gender: document.getElementById("rosterGenderFilter"),
+  role: document.getElementById("rosterRoleFilter"),
+  clear: document.getElementById("rosterClearFilters")
+};
+
+let rosterFilterEventsBound = false;
+
+function getGenderLabel(gender) {
+  const cfg = getRosterFilterConfig();
+  const found = cfg.genders.find(g => g.value === gender);
+  return found?.label || "—";
+}
 
 /*************************************************
  * SORT STATE
@@ -78,6 +98,148 @@ async function loadPlayers() {
   applySort();
   render();
   updateSortIndicators();
+}
+
+/*************************************************
+ * HELPERS
+ *************************************************/
+
+function formatBirthdayMonthDay(value) {
+  if (!value) return "—";
+
+  const s = String(value).trim();
+  if (!s) return "—";
+
+  // Caso YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const [, mm, dd] = s.split("-");
+    const months = [
+      "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+      "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"
+    ];
+    const monthIdx = Number(mm) - 1;
+    const day = Number(dd);
+    return monthIdx >= 0 && monthIdx < 12 ? `${months[monthIdx]} ${day}` : s;
+  }
+
+  // fallback por si viniera otro formato parseable
+  const d = new Date(s);
+  if (!Number.isNaN(d.getTime())) {
+    return d.toLocaleDateString("es-CR", {
+      month: "short",
+      day: "numeric"
+    });
+  }
+
+  return s;
+}
+
+function normalizeText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function getRosterFilterConfig() {
+  const rosterCfg = APP_CONFIG?.roster || {};
+  const filtersCfg = rosterCfg.filters || {};
+
+  const rolesFromConfig = Array.isArray(APP_CONFIG?.playerRoles) && APP_CONFIG.playerRoles.length
+    ? APP_CONFIG.playerRoles.map(r => ({
+        value: r.id,
+        label: r.label
+      }))
+    : [
+        { value: "cutter", label: "Cutter" },
+        { value: "hybrid", label: "Hybrid" },
+        { value: "handler", label: "Handler" }
+      ];
+
+  return {
+    genders: Array.isArray(filtersCfg.genders) && filtersCfg.genders.length
+      ? filtersCfg.genders
+      : [
+          { value: "F", label: "Femenino" },
+          { value: "M", label: "Masculino" }
+        ],
+
+    roles: rolesFromConfig
+  };
+}
+
+function populateRosterFilters() {
+  const cfg = getRosterFilterConfig();
+
+  if (filters.gender) {
+    filters.gender.innerHTML = `
+      <option value="">Todos</option>
+      ${cfg.genders
+        .map(g => `<option value="${g.value}">${g.label}</option>`)
+        .join("")}
+    `;
+  }
+
+  if (filters.role) {
+    filters.role.innerHTML = `
+      <option value="">Todos</option>
+      ${cfg.roles
+        .map(r => `<option value="${r.value}">${r.label}</option>`)
+        .join("")}
+    `;
+  }
+}
+
+function bindRosterFilterEvents() {
+  if (rosterFilterEventsBound) return;
+  rosterFilterEventsBound = true;
+
+  filters.search?.addEventListener("input", render);
+  filters.gender?.addEventListener("change", render);
+  filters.role?.addEventListener("change", render);
+
+  filters.clear?.addEventListener("click", () => {
+    if (filters.search) filters.search.value = "";
+    if (filters.gender) filters.gender.value = "";
+    if (filters.role) filters.role.value = "";
+    render();
+  });
+}
+
+function getFilteredPlayers() {
+  const term = normalizeText(filters.search?.value);
+  const gender = filters.gender?.value || "";
+  const role = filters.role?.value || "";
+
+  return players.filter(p => {
+    const fullName = normalizeText(`${p.firstName || ""} ${p.lastName || ""}`);
+    const matchesName = !term || fullName.includes(term);
+    const matchesGender = !gender || (p.gender || "") === gender;
+    const matchesRole = !role || (p.role || "") === role;
+
+    return matchesName && matchesGender && matchesRole;
+  });
+}
+
+function getPlayerInitials(player) {
+  const first = String(player?.firstName || "").trim();
+  const last = String(player?.lastName || "").trim();
+
+  const firstInitial = first ? first.charAt(0).toUpperCase() : "";
+  const lastInitial = last ? last.charAt(0).toUpperCase() : "";
+
+  const initials = `${firstInitial}${lastInitial}`.trim();
+  return initials || "—";
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 /*************************************************
@@ -108,8 +270,8 @@ function applySort() {
         break;
 
       case "role":
-        valA = (a.roleLabel || "").toLowerCase();
-        valB = (b.roleLabel || "").toLowerCase();
+        valA = a.role ?? "";
+        valB = b.role ?? "";
         break;
 
       case "gender":
@@ -142,19 +304,30 @@ function applySort() {
  *************************************************/
 
 function render() {
-  table.innerHTML = players
+  const filteredPlayers = getFilteredPlayers();
+
+  table.innerHTML = filteredPlayers
     .map(
       p => `
-      <tr data-id="${p.id}" class="player-row" style="cursor:pointer">
-        <td class="fw-semibold">${p.fullName}</td>
+      <tr data-id="${p.id}" class="player-row" style="cursor:${permissions?.canEditPlayers ? "pointer" : "default"}">
         <td>
-          <span class="badge bg-info text-dark">
-            ${p.roleLabel}
+          <div class="player-cell">
+            <div class="player-avatar" aria-hidden="true">
+              ${escapeHtml(getPlayerInitials(p))}
+            </div>
+            <div class="player-cell-text">
+              <div class="player-cell-name fw-semibold">${escapeHtml(p.fullName)}</div>
+            </div>
+          </div>
+        </td>
+        <td>
+          <span class="badge role-badge">
+            ${escapeHtml(p.roleLabel)}
           </span>
         </td>
-        <td>${p.number ?? "—"}</td>
-        <td>${p.gender ?? "—"}</td>
-        <td>${p.birthday ?? "—"}</td>
+        <td>${escapeHtml(p.number ?? "—")}</td>
+        <td>${escapeHtml(getGenderLabel(p.gender))}</td>
+        <td>${escapeHtml(formatBirthdayMonthDay(p.birthday))}</td>
         <td>
           <span class="badge ${p.active ? "bg-success" : "bg-secondary"}">
             ${p.active ? "Activo" : "Inactivo"}
@@ -164,31 +337,40 @@ function render() {
     `
     )
     .join("");
-    updateRosterStats(); //muestra contadores
-    renderMobileCards();
+
+  updateRosterStats(filteredPlayers);
+  renderMobileCards(filteredPlayers);
 }
 
-function renderMobileCards() {
+function renderMobileCards(list = players) {
   const container = document.getElementById("playersCards");
   if (!container) return;
 
-  container.innerHTML = players.map(p => `
-    <div class="card mb-2 player-card" data-id="${p.id}">
-      <div class="card-body p-3">
-        <div class="d-flex justify-content-between align-items-start">
-          <div>
-            <div class="fw-semibold">${p.fullName}</div>
-            <div class="text-muted small">
-              ${p.roleLabel} · #${p.number ?? "—"}
+  container.innerHTML = list.map(p => `
+    <div class="card mb-2 player-card" data-id="${p.id}" style="cursor:${permissions?.canEditPlayers ? "pointer" : "default"}">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start gap-3">
+          <div class="d-flex align-items-start gap-3 flex-grow-1 min-w-0">
+            <div class="player-avatar" aria-hidden="true">
+              ${escapeHtml(getPlayerInitials(p))}
+            </div>
+
+            <div class="flex-grow-1 min-w-0">
+              <div class="player-name">${escapeHtml(p.fullName)}</div>
+              <div class="player-extra mt-2">
+                <span class="player-chip role-chip">${escapeHtml(p.roleLabel)}</span>
+                <span class="player-chip gender-chip">${escapeHtml(getGenderLabel(p.gender))}</span>
+                <span class="player-chip">${escapeHtml(formatBirthdayMonthDay(p.birthday))}</span>
+              </div>
             </div>
           </div>
-          <span class="badge ${p.active ? "bg-success" : "bg-secondary"}">
-            ${p.active ? "Activo" : "Inactivo"}
-          </span>
-        </div>
 
-        <div class="mt-2 small text-muted">
-          ${p.gender ?? "—"} · ${p.birthday ?? "—"}
+          <div class="player-top-right text-end">
+            <div class="player-number-row">
+              <span class="status-dot ${p.active ? "is-active" : "is-inactive"}"></span>
+              <span class="player-number">#${escapeHtml(p.number ?? "—")}</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -212,15 +394,15 @@ function calculateAge(birthday) {
   return age;
 }
 
-function updateRosterStats() {
-  const list = Object.values(players);
+function updateRosterStats(source = players) {
+  const list = Array.isArray(source) ? source : Object.values(source);
   const activeList = list.filter(p => p.active);
 
   const total = list.length;
   const active = activeList.length;
   const inactive = total - active;
 
-  const men = activeList.filter(p => p.gender === "M" ).length;
+  const men = activeList.filter(p => p.gender === "M").length;
   const women = activeList.filter(p => p.gender === "F").length;
 
   let masterH = 0;
@@ -232,11 +414,9 @@ function updateRosterStats() {
     const age = calculateAge(p.birthday);
     if (age === null || !p.gender) return;
 
-    // MASTER
     if (p.gender === "M" && age >= 33) masterH++;
     if (p.gender === "F" && age >= 30) masterM++;
 
-    // U24
     if (age < 24) {
       if (p.gender === "M") u24H++;
       if (p.gender === "F") u24M++;
@@ -245,13 +425,10 @@ function updateRosterStats() {
 
   document.getElementById("statActive").textContent = `${active} activos`;
   document.getElementById("statInactive").textContent = `${inactive} inactivos`;
-
   document.getElementById("statMen").textContent = men;
   document.getElementById("statWomen").textContent = women;
-
   document.getElementById("statMasterH").textContent = masterH;
   document.getElementById("statMasterM").textContent = masterM;
-
   document.getElementById("statU24H").textContent = u24H;
   document.getElementById("statU24M").textContent = u24M;
 }
@@ -262,6 +439,8 @@ function updateRosterStats() {
  *************************************************/
 
 table.onclick = e => {
+  if (!permissions?.canEditPlayers) return;
+
   const row = e.target.closest(".player-row");
   if (!row) return;
 
@@ -276,7 +455,7 @@ table.onclick = e => {
   fields.number.value = p.number ?? "";
   fields.gender.value = p.gender ?? "";
   fields.birthday.value = p.birthday ?? "";
-  fields.role.value = p.role ?? ROLE_FALLBACK;
+  fields.role.value = p.role ?? "cutter";
   fields.active.checked = p.active;
 
   modal.show();
@@ -287,6 +466,8 @@ table.onclick = e => {
  *************************************************/
 
 document.getElementById("playersCards").onclick = e => {
+  if (!permissions?.canEditPlayers) return;
+  
   const card = e.target.closest(".player-card");
   if (!card) return;
 
@@ -299,7 +480,7 @@ document.getElementById("playersCards").onclick = e => {
   fields.number.value = p.number ?? "";
   fields.gender.value = p.gender ?? "";
   fields.birthday.value = p.birthday ?? "";
-  fields.role.value = p.role ?? ROLE_FALLBACK;
+  fields.role.value = p.role ?? "cutter";
   fields.active.checked = p.active;
 
   modal.show();
@@ -345,12 +526,13 @@ function updateSortIndicators() {
  * NUEVO JUGADOR
  *************************************************/
 
-document.getElementById("addPlayerBtn").onclick = () => {
+addPlayerBtn.onclick = () => {
+  if (!permissions?.canEditPlayers) return;
+
   form.reset();
   fields.id.value = "";
   fields.idNumber.value = "";
   fields.active.checked = true;
-  fields.role.value = ROLE_FALLBACK;
   modal.show();
 };
 
@@ -360,15 +542,16 @@ document.getElementById("addPlayerBtn").onclick = () => {
 
 form.onsubmit = async e => {
   e.preventDefault();
+  if (!permissions?.canEditPlayers) return;
 
   const data = {
     firstName: fields.firstName.value.trim(),
     lastName: fields.lastName.value.trim(),
-    idNumber: fields.idNumber.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()  || null,
+    idNumber: (fields.idNumber.value || "").trim() || null,
     number: Number(fields.number.value) || null,
     gender: fields.gender.value || null,
     birthday: fields.birthday.value || null,
-    role: fields.role.value || ROLE_FALLBACK,
+    role: fields.role.value,
     active: fields.active.checked
   };
 
@@ -389,43 +572,19 @@ form.onsubmit = async e => {
 };
 
 /*************************************************
- * ROLES (FROM CONFIG)
- *************************************************/
-
-const ROLE_FALLBACK = APP_CONFIG?.playerRoles?.[0]?.id ?? "player";
-
-function ensureRoleOptions() {
-  const sel = document.getElementById("role");
-  if (!sel) return;
-
-  const roles = APP_CONFIG?.playerRoles ?? [];
-  const ROLE_FALLBACK = roles?.[0]?.id ?? "player";
-
-  sel.innerHTML = "";
-
-  if (!roles.length) {
-    const opt = document.createElement("option");
-    opt.value = ROLE_FALLBACK;
-    opt.textContent = "Player";
-    sel.appendChild(opt);
-    return;
-  }
-
-  roles.forEach(r => {
-    const opt = document.createElement("option");
-    opt.value = r.id;
-    opt.textContent = r.label ?? r.id;
-    sel.appendChild(opt);
-  });
-}
-
-/*************************************************
  * AUTH FLOW
  *************************************************/
 
 watchAuth(async () => {
   showLoader();
   try {
+    permissions = await getCurrentPermissions();
+
+    applyVisibilityByPermission(permissions, "canEditPlayers", addPlayerBtn);
+
+    populateRosterFilters();
+    bindRosterFilterEvents();
+
     await loadPlayers();
   } finally {
     hideLoader();

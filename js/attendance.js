@@ -1,6 +1,7 @@
 // attendance.js
 import { db } from "./auth/firebase.js";
 import { watchAuth, logout } from "./auth/auth.js";
+import { getCurrentPermissions, applyVisibilityByPermission } from "./auth/permissions.js";
 import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { APP_CONFIG } from "./config/config.js";
 import { showLoader, hideLoader } from "./ui/loader.js";
@@ -41,13 +42,14 @@ const closeChartBtn = document.getElementById("closeChartBtn");
 /* ==========================
    STATE
 ========================== */
+let permissions = null;
+
 let allTrainings = {};
 let allPlayers = {};
 let attendanceChart;
 
 let filteredTrainings = [];
 let filteredPlayersArr = [];
-
 
 /* ==========================
    FILTERS START AND END DATE
@@ -86,6 +88,10 @@ document.getElementById("logoutBtn")?.addEventListener("click", logout);
 watchAuth(async () => {
   showLoader();
   try {
+    
+    permissions = await getCurrentPermissions();
+    applyVisibilityByPermission(permissions, "canExportAttendancePdf", btnPdf);
+
     await loadAttendance();
     applyFilter(); // render inicial
   } catch (e) {
@@ -215,6 +221,8 @@ function applyFilter() {
 ========================== */
 
 async function generatePdf() {
+  if (!permissions?.canExportAttendancePdf) return;
+
   try {
     const start = startDate?.value || "";
     const end = endDate?.value || "";

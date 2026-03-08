@@ -555,6 +555,7 @@ async function loadPublicRegConfig() {
    updateSubmitState();
   return { requireInfoDeclaration, requireTerms, termsUrl, enableMembershipPayment};
 }
+
 /* =========================
    Plans
 ========================= */

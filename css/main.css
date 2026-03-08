@@ -7,10 +7,10 @@
    VARIABLES GLOBALES
 ========================= */
 :root {
-  --theme-primary: #19473f;
-  --theme-primary-dark: #12352f;
-  --theme-primary-light: #2c6b61;
-  --theme-accent: #e8ce26;
+  --theme-primary: #370638;
+  --theme-primary-dark: #2f0330;
+  --theme-primary-light: #570b58;
+  --theme-accent: #ffba0d;
   --theme-gray: #f4f4f4;
   --bg: #0b0f0e;
   --bg-soft: #fafafa;

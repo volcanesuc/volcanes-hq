@@ -262,11 +262,124 @@
   margin: 0;
 }
 
+/* ======================================================
+   ATTENDANCE HEADER + FILTERS
+====================================================== */
+
+.attendance-page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.attendance-filters {
+  display: grid;
+  grid-template-columns: 190px 190px auto auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.attendance-filter-field {
+  min-width: 0;
+}
+
+.attendance-filter-btn {
+  min-height: 38px;
+  white-space: nowrap;
+}
+
+.attendance-pdf-btn {
+  font-weight: 700;
+}
+
+@media (max-width: 768px) {
+  .attendance-page-head {
+    align-items: stretch;
+  }
+
+  .attendance-filters {
+    width: 100%;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .attendance-filter-btn {
+    width: 100%;
+  }
+
+  .attendance-pdf-btn {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 576px) {
+  .attendance-page {
+    padding-top: 1rem !important;
+  }
+
+  .attendance-page-head {
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .attendance-page-head .page-title {
+    font-size: 2rem;
+    line-height: 1.05;
+  }
+
+  .attendance-filters {
+    width: 100%;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .attendance-filter-field,
+  .attendance-filter-field .form-control,
+  .attendance-filter-btn,
+  .attendance-pdf-btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .attendance-filter-btn {
+    min-height: 44px;
+  }
+
+  .attendance-pdf-btn {
+    grid-column: auto;
+  }
+}
+
 /* KPI clickable */
 .kpi-clickable{ cursor: pointer; }
 .kpi-clickable:hover{
   transform: translateY(-1px);
   transition: 0.12s ease;
+}
+
+@media (max-width: 576px) {
+  .attendance-page .kpi-card,
+  .trainings-page .kpi-card {
+    border-radius: 14px;
+  }
+
+  .attendance-page .kpi-card .card-body,
+  .trainings-page .kpi-card .card-body {
+    padding: 12px 14px;
+  }
+
+  .attendance-page .kpi-value,
+  .trainings-page .kpi-value {
+    font-size: 1.4rem;
+    line-height: 1.1;
+  }
+
+  .attendance-page .kpi-label,
+  .trainings-page .kpi-label {
+    font-size: 0.8rem;
+  }
 }
 
 /* Search responsive */
@@ -325,6 +438,122 @@ mark.search-hit {
 .trainings-page mark.search-hit{
   padding: 0 .15em;
   border-radius: .25rem;
+}
+
+.trainings-page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.trainings-page .clear-filters-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.training-add-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.training-add-btn .label-mobile {
+  display: none;
+}
+
+.training-filters-panel {
+  overflow: hidden;
+}
+
+.training-filters-toggle {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text, #1f2328);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.training-filters-toggle:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.training-filters-toggle:active {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.training-filters-body {
+  padding-top: 0;
+}
+
+.training-filters-chevron {
+  transition: transform 0.2s ease;
+  font-size: 1rem;
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+.training-filters-toggle[aria-expanded="true"] .training-filters-chevron {
+  transform: rotate(180deg);
+}
+
+.clear-mobile {
+  display: none;
+}
+
+@media (max-width: 576px) {
+  .trainings-page {
+    padding-top: 1rem !important;
+  }
+
+  .trainings-page-head {
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .trainings-page-head .page-title {
+    font-size: 2rem;
+    line-height: 1.05;
+  }
+
+  .training-add-btn {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .training-add-btn .label-desktop {
+    display: none;
+  }
+
+  .training-add-btn .label-mobile {
+    display: inline;
+  }
+
+  .training-filters-body .row {
+    row-gap: 12px !important;
+  }
+
+  .clear-desktop {
+    display: none;
+  }
+
+  .clear-mobile {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
 }
 
 /* =========================
@@ -653,6 +882,55 @@ mark.search-hit {
 }
 
 /* ======================================================
+   ROSTER FILTERS — igual a Trainings
+====================================================== */
+
+.roster-filters-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+  overflow: hidden;
+}
+
+.roster-filters-toggle {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text, #1f2328);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.roster-filters-toggle:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.roster-filters-toggle:active {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.roster-filters-body {
+  padding-top: 0;
+}
+
+#rosterFiltersToggle[aria-expanded="true"] .training-filters-chevron {
+  transform: rotate(180deg);
+}
+
+@media (max-width: 576px) {
+  .roster-filters-body .row {
+    row-gap: 12px !important;
+  }
+}
+
+/* ======================================================
    PLAYER MODAL (ROSTER) — FULLSCREEN
    (versión CLARA para dashboard SaaS)
 ====================================================== */
@@ -707,6 +985,149 @@ mark.search-hit {
 
 .player-modal .form-check-label{
   color: var(--text-soft);
+}
+
+#playersCards .player-card {
+  position: relative;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 16px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.04);
+  overflow: hidden;
+  background: var(--card, #fff);
+}
+
+#playersCards .player-card .card-body {
+  padding: 1rem;
+}
+
+/* Nombre jugador */
+
+#playersCards .player-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--text, #111827);
+}
+
+/* Top right (# + status) */
+
+#playersCards .player-top-right {
+  flex-shrink: 0;
+}
+
+#playersCards .player-number-row {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  font-weight: 800;
+}
+
+#playersCards .player-number {
+  font-size: 1rem;
+  color: var(--text, #111827);
+}
+
+/* Status dot */
+
+#playersCards .status-dot {
+  width: .7rem;
+  height: .7rem;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+#playersCards .status-dot.is-active {
+  background: #16a34a;
+}
+
+#playersCards .status-dot.is-inactive {
+  background: #9ca3af;
+}
+
+/* Chips container */
+
+#playersCards .player-extra {
+  margin-top: .65rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+}
+
+/* Chips base */
+
+#playersCards .player-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: .28rem .6rem;
+  border-radius: 999px;
+  font-size: .78rem;
+  font-weight: 700;
+  background: var(--bg-soft, #f3f4f6);
+  color: var(--text, #111827);
+}
+
+/* Rol chip usa primary-light del theme */
+
+#playersCards .player-chip.role-chip,
+.role-badge {
+  background: color-mix(in srgb, var(--theme-primary) 12%, white) !important;
+  color: var(--theme-primary) !important;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 18%, white);
+  font-weight: 700;
+}
+
+.role-badge {
+  border-radius: 999px;
+  padding: .42rem .7rem;
+}
+/* Gender chip */
+
+#playersCards .player-chip.gender-chip {
+  background: var(--bg-soft, #f3f4f6);
+  color: var(--text-soft, #6b7280);
+}
+
+/* Avatar compartido mobile + desktop */
+.player-avatar,
+#playersCards .player-avatar {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--theme-primary) 12%, white);
+  color: var(--theme-primary);
+  font-size: .9rem;
+  font-weight: 800;
+  line-height: 1;
+  border: 2px solid color-mix(in srgb, var(--theme-primary) 24%, white);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.45);
+}
+
+.table .player-avatar {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  font-size: .82rem;
+}
+
+/* Tabla desktop */
+.player-cell {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  min-width: 0;
+}
+
+.player-cell-text {
+  min-width: 0;
+}
+
+.player-cell-name {
+  color: var(--text, #111827);
+  line-height: 1.2;
 }
 
 /* ======================================================
@@ -802,6 +1223,60 @@ mark.search-hit {
   overflow: auto;
   padding-right: .25rem; /* evita que el scroll tape inputs */
 }
+
+/* ======================================================
+   GYM PLAN — slots mobile
+====================================================== */
+
+.gym-slot-card {
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 22px rgba(0,0,0,.05);
+  background: var(--card);
+}
+
+.gym-slot-card .card-body {
+  padding: 1rem;
+}
+
+.gym-slot-order {
+  font-size: .82rem;
+  font-weight: 800;
+  color: var(--text-soft);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.gym-slot-label {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.2;
+  margin-top: .15rem;
+}
+
+.gym-slot-routine-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--theme-primary);
+  line-height: 1.25;
+}
+
+.gym-slot-routine-desc {
+  line-height: 1.45;
+}
+
+.gym-slots-table td,
+.gym-slots-table th {
+  vertical-align: middle;
+}
+
+@media (max-width: 767.98px) {
+  .gym-slot-card .btn {
+    white-space: nowrap;
+  }
+}
+
 
 /* ======================================================
    RESPONSIVE (HOME + attendance)
