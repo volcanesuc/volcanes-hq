@@ -42,3 +42,26 @@
     min-width: 86px;
   }
 }
+
+.pb-add-btn {
+  width: 108px;
+  min-width: 108px;
+  height: 40px;
+  white-space: nowrap;
+  text-align: center;
+  line-height: 1.1;
+  padding: 0.375rem 0.75rem;
+}
+
+.pb-add-btn i {
+  font-size: 0.95rem;
+}
+
+@media (max-width: 576px) {
+  .pb-add-btn {
+    width: 96px;
+    min-width: 96px;
+    height: 38px;
+    padding: 0.35rem 0.6rem;
+  }
+}

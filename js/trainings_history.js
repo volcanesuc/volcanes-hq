@@ -680,8 +680,9 @@ function renderPlaybookSelectors() {
           </div>
         </div>
 
-        <button class="btn btn-outline-primary btn-sm" type="button">
-          <i class="bi bi-plus-lg"></i> Usar plan
+        <button class="btn btn-outline-primary btn-sm flex-shrink-0 d-inline-flex align-items-center justify-content-center gap-1 pb-add-btn" type="button">
+          <i class="bi bi-plus-lg"></i>
+          <span>Usar plan</span>
         </button>
       </div>
     `;
@@ -748,8 +749,9 @@ function renderPlaybookSelectors() {
           ${tagsHtml}
         </div>
 
-        <button class="btn btn-outline-primary btn-sm flex-shrink-0" type="button">
-          <i class="bi bi-plus-lg"></i> Agregar
+        <button class="btn btn-outline-primary btn-sm flex-shrink-0 d-inline-flex align-items-center justify-content-center gap-1 pb-add-btn" type="button">
+          <i class="bi bi-plus-lg"></i>
+          <span>Agregar</span>
         </button>
       </div>
     `;
