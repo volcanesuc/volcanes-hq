@@ -121,6 +121,9 @@ function cacheDom() {
 
     playersList: document.getElementById("playersList"),
     participantsCounter: document.getElementById("participantsCounter"),
+    participantsCollapse: document.getElementById("participantsCollapse"),
+    participantsCollapsedHint: document.getElementById("participantsCollapsedHint"),
+    participantsCollapseToggle: document.getElementById("participantsCollapseToggle"),
 
     sessionItemsList: document.getElementById("sessionItemsList"),
     sessionItemsEmpty: document.getElementById("sessionItemsEmpty"),
@@ -273,7 +276,6 @@ function bindEvents() {
   $.pbDrillSearch?.addEventListener("input", renderPlaybookSelectors);
 
   $.manualItemForm?.addEventListener("submit", onSubmitManualItem);
-  $.createPlaybookDrillForm?.addEventListener("submit", onSubmitCreatePlaybookDrill);
 
   $.addManualSessionItemBtn?.addEventListener("click", () => {
     if (!$.manualItemModal) {
@@ -304,6 +306,14 @@ function bindEvents() {
 });
 
   $.createPlaybookDrillForm?.addEventListener("submit", onSubmitCreatePlaybookDrill);
+
+  $.participantsCollapse?.addEventListener("shown.bs.collapse", () => {
+    $.participantsCollapsedHint?.classList.add("d-none");
+  });
+
+  $.participantsCollapse?.addEventListener("hidden.bs.collapse", () => {
+    $.participantsCollapsedHint?.classList.remove("d-none");
+  });
 
   // filtros
   $.search?.addEventListener("input", () => {
@@ -368,6 +378,8 @@ function openNewTraining() {
   renderSessionItems();
 
   modalInstance = bootstrap.Modal.getOrCreateInstance($.modal);
+  setupParticipantsCollapseByViewport();
+  refreshParticipantsCollapseHint();
   modalInstance.show();
 }
 
@@ -418,6 +430,8 @@ function openEditTraining(training) {
   renderSessionItems();
 
   modalInstance = bootstrap.Modal.getOrCreateInstance($.modal);
+  setupParticipantsCollapseByViewport();
+  refreshParticipantsCollapseHint();
   modalInstance.show();
 }
 
@@ -441,6 +455,7 @@ function silentResetTrainingForm() {
   renderParticipantsCounter();
   renderPlaybookSelectors();
   renderSessionItems();
+  refreshParticipantsCollapseHint();
 }
 
 /* =========================
@@ -1133,10 +1148,14 @@ let filtersResizeTimer = null;
 
 function bindResponsiveUI() {
   setupResponsiveFiltersCollapse();
+  setupParticipantsCollapseByViewport();
 
   window.addEventListener("resize", () => {
     clearTimeout(filtersResizeTimer);
-    filtersResizeTimer = setTimeout(setupResponsiveFiltersCollapse, 120);
+    filtersResizeTimer = setTimeout(() => {
+      setupResponsiveFiltersCollapse();
+      setupParticipantsCollapseByViewport();
+    }, 120);
   });
 }
 
@@ -1219,6 +1238,30 @@ function humanDaysAgo(n) {
   if (n === 1) return "hace 1 día";
   if (n < 0) return "próximo";
   return `hace ${n} días`;
+}
+
+function setupParticipantsCollapseByViewport() {
+  if (!$.participantsCollapse) return;
+
+  const collapse = bootstrap.Collapse.getOrCreateInstance($.participantsCollapse, {
+    toggle: false,
+  });
+
+  if (window.innerWidth <= 768) {
+    collapse.hide();
+    $.participantsCollapsedHint?.classList.remove("d-none");
+    $.participantsCollapseToggle?.setAttribute("aria-expanded", "false");
+  } else {
+    collapse.show();
+    $.participantsCollapsedHint?.classList.add("d-none");
+    $.participantsCollapseToggle?.setAttribute("aria-expanded", "true");
+  }
+}
+
+function refreshParticipantsCollapseHint() {
+  if (!$.participantsCollapse || !$.participantsCollapsedHint) return;
+  const isShown = $.participantsCollapse.classList.contains("show");
+  $.participantsCollapsedHint.classList.toggle("d-none", isShown);
 }
 
 /* =========================
