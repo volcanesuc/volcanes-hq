@@ -273,18 +273,32 @@ function bindEvents() {
   $.pbDrillSearch?.addEventListener("input", renderPlaybookSelectors);
 
   $.addManualSessionItemBtn?.addEventListener("click", () => {
+    if (!$.manualItemModal) {
+      console.error("[trainings] manualSessionItemModal no existe en el DOM");
+      return;
+    }
+
     resetManualItemForm();
-    manualItemModalInstance = bootstrap.Modal.getOrCreateInstance($.manualItemModal);
+    manualItemModalInstance = new bootstrap.Modal($.manualItemModal, {
+      backdrop: true,
+      focus: true
+    });
     manualItemModalInstance.show();
   });
 
-  $.manualItemForm?.addEventListener("submit", onSubmitManualItem);
-
   $.openCreateDrillModalBtn?.addEventListener("click", () => {
-    resetCreateDrillForm();
-    createDrillModalInstance = bootstrap.Modal.getOrCreateInstance($.createPlaybookDrillModal);
-    createDrillModalInstance.show();
+    if (!$.createPlaybookDrillModal) {
+      console.error("[trainings] createPlaybookDrillModal no existe en el DOM");
+      return;
+    }
+
+  resetCreateDrillForm();
+  createDrillModalInstance = new bootstrap.Modal($.createPlaybookDrillModal, {
+    backdrop: true,
+    focus: true
   });
+  createDrillModalInstance.show();
+});
 
   $.createPlaybookDrillForm?.addEventListener("submit", onSubmitCreatePlaybookDrill);
 
