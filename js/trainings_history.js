@@ -118,6 +118,7 @@ function cacheDom() {
     attendanceText: document.getElementById("attendanceText"),
     processBtn: document.getElementById("processBtn"),
     quickTextSection: document.getElementById("quickTextSection"),
+    quickTextInner: document.getElementById("quickTextInner"),
 
     playersList: document.getElementById("playersList"),
     participantsCounter: document.getElementById("participantsCounter"),
@@ -356,7 +357,7 @@ function openNewTraining() {
 
   $.modalTitle.textContent = "Nuevo entrenamiento";
   $.modalSubtitle.textContent = "Registrar sesión realizada, asistencia y material trabajado";
-  $.quickTextSection.style.display = "block";
+  if ($.quickTextInner) $.quickTextInner.style.display = "";
 
   sessionItems = [];
   attendees = [];
@@ -388,7 +389,6 @@ function openEditTraining(training) {
 
   $.modalTitle.textContent = "Editar entrenamiento";
   $.modalSubtitle.textContent = "Ajusta asistencia, orden de la sesión y material realizado";
-  $.quickTextSection.style.display = "none";
 
   $.trainingId.value = training.id;
   $.trainingDate.value = training.date || "";
@@ -429,9 +429,12 @@ function openEditTraining(training) {
   renderPlaybookSelectors();
   renderSessionItems();
 
-  modalInstance = bootstrap.Modal.getOrCreateInstance($.modal);
-  setupParticipantsCollapseByViewport();
+  if ($.quickTextInner) $.quickTextInner.style.display = "none";
+
+  bootstrap.Collapse.getOrCreateInstance($.participantsCollapse, { toggle: false }).hide();
   refreshParticipantsCollapseHint();
+
+  modalInstance = bootstrap.Modal.getOrCreateInstance($.modal);
   modalInstance.show();
 }
 
@@ -455,6 +458,7 @@ function silentResetTrainingForm() {
   renderParticipantsCounter();
   renderPlaybookSelectors();
   renderSessionItems();
+  if ($.quickTextInner) $.quickTextInner.style.display = "";
   refreshParticipantsCollapseHint();
 }
 
