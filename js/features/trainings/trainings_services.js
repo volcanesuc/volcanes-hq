@@ -14,7 +14,6 @@ export const TrainingsService = {
   async list({ db, clubId }) {
     const qy = query(
       collection(db, "trainings"),
-      where("clubId", "==", clubId),
       orderBy("date", "desc")
     );
     const snap = await getDocs(qy);

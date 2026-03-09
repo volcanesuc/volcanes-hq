@@ -9,7 +9,6 @@ export const PlaybookService = {
   async listDrills({ db, clubId }) {
     const qy = query(
       collection(db, "drills"),
-      where("clubId", "==", clubId),
       where("isActive", "==", true)
     );
     const snap = await getDocs(qy);

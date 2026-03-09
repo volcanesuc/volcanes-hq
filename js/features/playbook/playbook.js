@@ -47,6 +47,9 @@ let trainingEditor = null;
 
 let drillEditor = { id: null, bound: false };
 
+let selectedDrillTagKeys = new Set();
+let drillTagCatalog = [];
+
 /* =========================
    INIT
 ========================= */
@@ -133,6 +136,8 @@ function cacheDom() {
     drillVolume: document.getElementById("drillVolume"),
     drillRest: document.getElementById("drillRest"),
     drillRecs: document.getElementById("drillRecs"),
+    drillTags: document.getElementById("drillTags"),
+    drillTagsFilter: document.getElementById("drillTagsFilter"),
 
     openCreateDrillBtn: document.getElementById("openCreateDrillBtn"),
     createDrillModal: document.getElementById("createDrillModal"),
@@ -185,7 +190,13 @@ async function loadDrills() {
   const qy = query(collection(db, COL_DRILLS), ...filters);
   const snap = await getDocs(qy);
 
-  drills = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  drills = snap.docs.map(d => {
+    const row = { id: d.id, ...d.data() };
+    row.tags = normalizeDrillTags(row);
+    return row;
+  });
+
+  drillTagCatalog = buildDrillTagCatalog(drills);
 
   drills.sort((a, b) => {
     const da = a.createdAt?.toDate?.() ?? (a.createdAt ? new Date(a.createdAt) : new Date(0));
@@ -194,6 +205,62 @@ async function loadDrills() {
   });
 
   renderDrills();
+}
+
+function renderDrillTagFilters() {
+  const el = $.drillTagsFilter;
+  if (!el) return;
+
+  if (!drillTagCatalog.length) {
+    el.innerHTML = `<span class="text-muted small">Sin tags todavía.</span>`;
+    return;
+  }
+
+  const allSelected = selectedDrillTagKeys.size === 0;
+
+  const clearPill = `
+    <span
+      data-tag-clear="1"
+      class="d-inline-flex align-items-center gap-1"
+      style="
+        background:${allSelected ? "#212529" : "#fff"};
+        color:${allSelected ? "#fff" : "#212529"};
+        border:1px solid #ced4da;
+        border-radius:999px;
+        padding:.25rem .6rem;
+        font-size:.75rem;
+        font-weight:600;
+        line-height:1;
+        cursor:pointer;
+      "
+    >
+      Todos
+    </span>
+  `;
+
+  el.innerHTML = clearPill + renderTagPills(drillTagCatalog, {
+    clickable: true,
+    selectedKeys: selectedDrillTagKeys,
+  });
+
+  el.querySelector("[data-tag-clear]")?.addEventListener("click", () => {
+    selectedDrillTagKeys = new Set();
+    renderDrillTagFilters();
+    renderDrills();
+  });
+
+  el.querySelectorAll("[data-tag-filter]").forEach(node => {
+    node.addEventListener("click", () => {
+      const key = node.getAttribute("data-tag-filter");
+      if (!key) return;
+
+      if (selectedDrillTagKeys.has(key)) selectedDrillTagKeys.delete(key);
+      else selectedDrillTagKeys.add(key);
+
+      renderDrillTagFilters();
+      renderDrills();
+    });
+  });
 }
 
 /* =========================
@@ -249,7 +316,20 @@ async function loadTrainings() {
 ========================= */
 function renderDrills() {
   const term = norm($.drillSearch?.value);
-  const filtered = term ? drills.filter(d => drillMatches(d, term)) : drills;
+
+  let filtered = term ? drills.filter(d => drillMatches(d, term)) : [...drills];
+
+  if (selectedDrillTagKeys.size) {
+    filtered = filtered.filter(d => {
+      const keys = new Set((d.tags || []).map(t => t.key));
+      for (const key of selectedDrillTagKeys) {
+        if (!keys.has(key)) return false;
+      }
+      return true;
+    });
+  }
+
+  renderDrillTagFilters();
 
   if ($.drillsList) $.drillsList.innerHTML = "";
 
@@ -267,10 +347,14 @@ function renderDrills() {
     const video = safeUrl(d.teamVideoUrl);
     const active = d.isActive !== false;
 
-    // ✅ clickable para editar (solo admin)
+    //para editar (solo admin)
     const clickable = canEdit
       ? `data-edit-drill="${escapeHtml(d.id)}" style="cursor:pointer"`
       : "";
+
+    const tagsHtml = Array.isArray(d.tags) && d.tags.length
+      ? `<div class="d-flex flex-wrap gap-2 mt-2">${renderTagPills(d.tags)}</div>`
+      : `<div class="text-muted small mt-2">Sin tags</div>`;
 
     card.innerHTML = `
       <div class="card h-100" ${clickable}>
@@ -287,6 +371,7 @@ function renderDrills() {
                   ? `<a href="${escapeHtml(video)}" target="_blank" rel="noopener">Video</a>`
                   : `<span class="text-muted">Sin video</span>`}
               </div>
+              ${tagsHtml}
             </div>
 
             <div class="text-end">
@@ -498,6 +583,7 @@ async function ensureCreateDrillModal() {
   $.drillVolume = document.getElementById("drillVolume");
   $.drillRest = document.getElementById("drillRest");
   $.drillRecs = document.getElementById("drillRecs");
+  $.drillTags = document.getElementById("drillTags");
 
   $.createDrillModal = document.getElementById("createDrillModal");
   $.saveCreateDrillBtn = document.getElementById("saveCreateDrillBtn");
@@ -527,6 +613,8 @@ async function createDrillFromForm() {
 
   const name = ($.drillName?.value || "").trim();
   const authorName = ($.drillAuthor?.value || "").trim();
+  const tags = parseTagsInput($.drillTags?.value);
+
   if (!name || !authorName) {
     showAlert(S.errors?.required || "Campos requeridos.", "warning");
     return;
@@ -542,9 +630,9 @@ async function createDrillFromForm() {
     volume: ($.drillVolume?.value || "").trim(),
     restAfter: ($.drillRest?.value || "").trim(),
     recommendations: ($.drillRecs?.value || "").trim(),
+    tags,
 
-    // nuevos flags
-    isPublic: true,         // default
+    isPublic: true,
     isActive: true,
 
     createdAt: serverTimestamp(),
@@ -590,6 +678,7 @@ async function ensureDrillEditorModal() {
     recs: document.getElementById("deRecs"),
     isPublic: document.getElementById("deIsPublic"),
     saveBtn: document.getElementById("saveDrillEditorBtn"),
+    tags: document.getElementById("deTags"),
     formEl,
   };
 
@@ -630,7 +719,8 @@ async function openDrillEditor(drillId) {
   ui.volume.value = d.volume || "";
   ui.rest.value = d.restAfter || "";
   ui.recs.value = d.recommendations || "";
-  ui.isPublic.checked = d.isPublic !== false; // default true
+  ui.isPublic.checked = d.isPublic !== false;
+  ui.tags.value = tagsToInputValue(d.tags);
 
   const modal = bootstrap.Modal.getOrCreateInstance(ui.modalEl);
   modal.show();
@@ -643,6 +733,7 @@ async function saveDrillEdits(ui) {
 
   const name = (ui.name.value || "").trim();
   const authorName = (ui.author.value || "").trim();
+  const tags = parseTagsInput(ui.tags.value);
 
   if (!name || !authorName) {
     showAlert(S.errors?.required || "Campos requeridos.", "warning");
@@ -659,6 +750,7 @@ async function saveDrillEdits(ui) {
     volume: (ui.volume.value || "").trim(),
     restAfter: (ui.rest.value || "").trim(),
     recommendations: (ui.recs.value || "").trim(),
+    tags,
     isPublic: ui.isPublic.checked === true,
     updatedAt: serverTimestamp(),
   }, { merge: true });
@@ -765,4 +857,141 @@ function escapeHtml(str) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function normalizeTagLabel(label) {
+  return String(label || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // quita acentos
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function tagToKey(label) {
+  return normalizeTagLabel(label)
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function prettyTagLabel(label) {
+  const clean = String(label || "").trim().replace(/\s+/g, " ");
+  if (!clean) return "";
+  return clean.charAt(0).toUpperCase() + clean.slice(1);
+}
+
+function colorFromString(str) {
+  const s = String(str || "");
+  let hash = 0;
+  for (let i = 0; i < s.length; i++) {
+    hash = s.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue} 65% 55%)`;
+}
+
+function parseTagsInput(value) {
+  const parts = String(value || "")
+    .split(",")
+    .map(x => x.trim())
+    .filter(Boolean);
+
+  const map = new Map();
+
+  for (const raw of parts) {
+    const key = tagToKey(raw);
+    if (!key) continue;
+
+    const label = prettyTagLabel(raw);
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        label,
+        color: colorFromString(key),
+      });
+    }
+  }
+
+  return Array.from(map.values());
+}
+
+function tagsToInputValue(tags) {
+  if (!Array.isArray(tags)) return "";
+  return tags
+    .map(t => typeof t === "string" ? t : (t?.label || ""))
+    .filter(Boolean)
+    .join(", ");
+}
+
+function normalizeDrillTags(drill) {
+  const rawTags = Array.isArray(drill?.tags) ? drill.tags : [];
+
+  const map = new Map();
+
+  for (const item of rawTags) {
+    const rawLabel = typeof item === "string" ? item : (item?.label || item?.name || "");
+    const key = item?.key || tagToKey(rawLabel);
+    if (!key) continue;
+
+    map.set(key, {
+      key,
+      label: prettyTagLabel(rawLabel || key.replaceAll("-", " ")),
+      color: item?.color || colorFromString(key),
+    });
+  }
+
+  return Array.from(map.values());
+}
+
+function buildDrillTagCatalog(items) {
+  const map = new Map();
+
+  for (const drill of items) {
+    const tags = normalizeDrillTags(drill);
+    for (const tag of tags) {
+      if (!map.has(tag.key)) {
+        map.set(tag.key, { ...tag, count: 1 });
+      } else {
+        map.get(tag.key).count += 1;
+      }
+    }
+  }
+
+  return Array.from(map.values()).sort((a, b) => {
+    if (b.count !== a.count) return b.count - a.count;
+    return a.label.localeCompare(b.label, "es");
+  });
+}
+
+function renderTagPills(tags = [], options = {}) {
+  const { clickable = false, selectedKeys = new Set() } = options;
+
+  return tags.map(tag => {
+    const isSelected = selectedKeys.has(tag.key);
+    const style = `
+      --tag-color:${escapeHtml(tag.color)};
+      background:${isSelected ? "var(--tag-color)" : "color-mix(in srgb, var(--tag-color) 14%, white)"};
+      color:${isSelected ? "#fff" : "#222"};
+      border:1px solid color-mix(in srgb, var(--tag-color) 55%, #cfcfcf);
+      border-radius:999px;
+      padding:.25rem .6rem;
+      font-size:.75rem;
+      font-weight:600;
+      line-height:1;
+      ${clickable ? "cursor:pointer;" : ""}
+    `.replace(/\s+/g, " ").trim();
+
+    const attrs = clickable
+      ? `data-tag-filter="${escapeHtml(tag.key)}"`
+      : "";
+
+    return `
+      <span class="d-inline-flex align-items-center gap-1" style="${style}" ${attrs}>
+        <span>${escapeHtml(tag.label)}</span>
+        ${tag.count ? `<span class="opacity-75">(${tag.count})</span>` : ""}
+      </span>
+    `;
+  }).join("");
 }
