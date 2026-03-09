@@ -217,7 +217,7 @@ function renderDesktopSection({ key, title, subtitle, countClass, list }) {
 }
 
 function renderDesktopRow(t) {
-  const fees = formatFees(t.teamFee, t.playerFee);
+  const fees = formatFees(t.teamFee, t.playerFee, t.feeCurrency);
   const official = safeUrl(t.officialUrl);
 
   return `
@@ -504,18 +504,17 @@ function formatDate(ymd) {
   }).format(date);
 }
 
-function formatFees(teamFee, playerFee) {
-  const cur = S.fees?.currency || "₡";
+function formatFees(teamFee, playerFee, feeCurrency = "CRC") {
+  const cur = feeCurrency === "USD" ? "$" : "₡";
+  const locale = feeCurrency === "USD" ? "en-US" : "es-CR";
+
   const tfLabel = S.fees?.team || "Team";
   const pfLabel = S.fees?.player || "Player";
 
-  const tf = teamFee != null
-    ? `${tfLabel} ${cur}${Number(teamFee).toLocaleString("es-CR")}`
-    : null;
-
-  const pf = playerFee != null
-    ? `${pfLabel} ${cur}${Number(playerFee).toLocaleString("es-CR")}`
-    : null;
+  const tf =
+    teamFee != null ? `${tfLabel} ${cur}${Number(teamFee).toLocaleString(locale)}` : null;
+  const pf =
+    playerFee != null ? `${pfLabel} ${cur}${Number(playerFee).toLocaleString(locale)}` : null;
 
   if (tf && pf) return `${tf} · ${pf}`;
   return tf || pf || "—";

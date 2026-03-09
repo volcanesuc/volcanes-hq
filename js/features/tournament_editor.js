@@ -37,7 +37,8 @@ export function createTournamentEditor() {
     age: document.getElementById("age"),
     venue: document.getElementById("venue"),
     location: document.getElementById("location"),
-    officialUrl: document.getElementById("officialUrl"), // ✅ NUEVO
+    officialUrl: document.getElementById("officialUrl"),
+    feeCurrency: document.getElementById("feeCurrency"),
     teamFee: document.getElementById("teamFee"),
     playerFee: document.getElementById("playerFee"),
     notes: document.getElementById("notes"),
@@ -53,7 +54,7 @@ export function createTournamentEditor() {
     lblAge: document.getElementById("lblAge"),
     lblVenue: document.getElementById("lblVenue"),
     lblLocation: document.getElementById("lblLocation"),
-    // lblOfficialUrl: opcional si lo agregás a strings/html
+    lblFeeCurrency: document.getElementById("lblFeeCurrency"),
     lblTeamFee: document.getElementById("lblTeamFee"),
     lblPlayerFee: document.getElementById("lblPlayerFee"),
     lblNotes: document.getElementById("lblNotes"),
@@ -77,7 +78,8 @@ export function createTournamentEditor() {
     f.age.value = "open";
     f.venue.value = "outdoor";
     f.location.value = "";
-    if (f.officialUrl) f.officialUrl.value = ""; // ✅ NUEVO
+    if (f.officialUrl) f.officialUrl.value = "";
+    if (f.feeCurrency) f.feeCurrency.value = "CRC";
     f.teamFee.value = "";
     f.playerFee.value = "";
     f.notes.value = "";
@@ -93,7 +95,8 @@ export function createTournamentEditor() {
     f.age.value = t.age || "open";
     f.venue.value = t.venue || "outdoor";
     f.location.value = t.location || "";
-    if (f.officialUrl) f.officialUrl.value = t.officialUrl || ""; // ✅ NUEVO
+    if (f.officialUrl) f.officialUrl.value = t.officialUrl || "";
+    if (f.feeCurrency) f.feeCurrency.value = t.feeCurrency || "CRC";
     f.teamFee.value = t.teamFee ?? "";
     f.playerFee.value = t.playerFee ?? "";
     f.notes.value = t.notes || "";
@@ -154,7 +157,8 @@ export function createTournamentEditor() {
         age: f.age.value,
         venue: f.venue.value,
         location: (f.location.value || "").trim(),
-        officialUrl: normalizeUrl(f.officialUrl?.value), // ✅ NUEVO
+        officialUrl: normalizeUrl(f.officialUrl?.value),
+        feeCurrency: normalizeCurrency(f.feeCurrency?.value),
         teamFee: toNumberOrNull(f.teamFee.value),
         playerFee: toNumberOrNull(f.playerFee.value),
         notes: (f.notes.value || "").trim(),
@@ -243,11 +247,13 @@ function applyStrings(f, deleteBtn) {
   f.lblLocation.textContent = `${S.fields.location.label} (opcional)`;
   f.location.placeholder = S.fields.location.placeholder || "";
 
-  // ✅ Opcional: si querés strings para el label del sitio oficial
-  // Si no, el label fijo del HTML se queda tal cual.
   if (S.fields?.officialUrl?.label && f.officialUrl) {
     const lbl = document.querySelector('label[for="officialUrl"]');
     if (lbl) lbl.textContent = S.fields.officialUrl.label;
+  }
+
+  if (f.lblFeeCurrency) {
+    f.lblFeeCurrency.textContent = S.fields?.feeCurrency?.label || "Moneda";
   }
 
   f.lblTeamFee.textContent = S.fields.teamFee.label;
@@ -265,6 +271,13 @@ function applyStrings(f, deleteBtn) {
   fillSelect(f.type, S.fields.type.options);
   fillSelect(f.age, S.fields.age.options);
   fillSelect(f.venue, S.fields.venue.options);
+
+  if (f.feeCurrency) {
+    fillSelect(f.feeCurrency, {
+      CRC: "Colones (₡)",
+      USD: "Dólares ($)"
+    });
+  }
 }
 
 function fillSelect(selectEl, optionsObj) {
@@ -283,7 +296,11 @@ function toNumberOrNull(v) {
   return Number.isFinite(n) ? n : null;
 }
 
-// ✅ NUEVO: normaliza url para guardar consistente
+function normalizeCurrency(v) {
+  const value = String(v || "").trim().toUpperCase();
+  return value === "USD" ? "USD" : "CRC";
+}
+
 function normalizeUrl(v) {
   const u = String(v || "").trim();
   if (!u) return "";

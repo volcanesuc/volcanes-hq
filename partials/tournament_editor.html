@@ -65,13 +65,21 @@
             </div>
 
             <div class="col-md-3">
+              <label id="lblFeeCurrency" class="form-label">Moneda</label>
+              <select id="feeCurrency" class="form-select">
+                <option value="CRC">Colones (₡)</option>
+                <option value="USD">Dólares ($)</option>
+              </select>
+            </div>
+
+            <div class="col-md-3">
               <label id="lblTeamFee" class="form-label"></label>
-              <input id="teamFee" type="number" class="form-control" />
+              <input id="teamFee" type="number" step="0.01" min="0" class="form-control" />
             </div>
 
             <div class="col-md-3">
               <label id="lblPlayerFee" class="form-label"></label>
-              <input id="playerFee" type="number" class="form-control" />
+              <input id="playerFee" type="number" step="0.01" min="0" class="form-control" />
             </div>
 
             <div class="col-12">

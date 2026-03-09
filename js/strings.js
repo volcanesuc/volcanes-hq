@@ -250,6 +250,9 @@ export const TOURNAMENT_STRINGS = {
     },
     confirmed: {
       label: "Torneo confirmado"
+    },
+    feeCurrency: {
+      label: "Moneda"
     }
   },
 
