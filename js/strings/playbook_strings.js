@@ -2,8 +2,8 @@
 export const PLAYBOOK_STRINGS = {
   ui: {
     loading: "Cargando Playbook…",
-    subtitleAdmin: "Podés crear/editar drills y planes de entrenamiento.",
-    subtitleViewer: "Modo: Solo lectura",
+    subtitleAdmin: "Biblioteca de ejercicios y estructuras de práctica",
+    subtitleViewer: "Modo: Solo lectura | Biblioteca de ejercicios y estructuras de práctica",
   },
   ok: {
     drillCreated: "Drill guardado.",

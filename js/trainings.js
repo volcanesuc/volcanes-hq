@@ -10,14 +10,16 @@ import {
   where,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
 import { APP_CONFIG } from "./config/config.js";
 import { db } from "./auth/firebase.js";
 import { guardPage } from "./page-guard.js";
 import { loadHeader } from "./components/header.js";
 import { showLoader, hideLoader, updateLoaderMessage } from "./ui/loader.js";
+import { loadPartialOnce } from "/js/ui/loadPartial.js";
 
 /* =========================
-   CONFIG / COLS
+   CONFIG
 ========================= */
 const COL = APP_CONFIG.collections;
 
@@ -25,6 +27,12 @@ const COL_TRAININGS = COL.trainings;
 const COL_PLAYERS = COL.players;
 const COL_DRILLS = COL.drills;
 const COL_PLAYBOOK_TRAININGS = COL.playbookTrainings;
+
+const CLUB_ID =
+  APP_CONFIG?.clubId ||
+  APP_CONFIG?.club?.id ||
+  APP_CONFIG?.brand?.clubId ||
+  "volcanes";
 
 /* =========================
    STATE
@@ -34,60 +42,23 @@ let attendees = [];
 let trainings = [];
 let currentTrainingId = null;
 
-// playbook data
 let pbDrills = [];
 let pbTrainings = [];
-let selectedDrillIds = [];
-let selectedPlaybookTrainingIds = [];
 
-/* =========================
-   DOM
-========================= */
-const $ = {
-  table: document.getElementById("trainingsTable"),
-  cards: document.getElementById("trainingsCards"),
+// lista principal ordenada de la sesión realizada
+let sessionItems = [];
 
-  modal: document.getElementById("trainingModal"),
-  modalTitle: document.querySelector("#trainingModal .modal-title"),
-
-  trainingDate: document.getElementById("trainingDate"),
-  summary: document.getElementById("trainingSummary"),
-  notes: document.getElementById("trainingNotes"),
-
-  quickTextSection: document.getElementById("quickTextSection"),
-  attendanceText: document.getElementById("attendanceText"),
-  processBtn: document.getElementById("processBtn"),
-
-  playersList: document.getElementById("playersList"),
-  saveBtn: document.getElementById("saveTrainingBtn"),
-
-    // KPIs
-  kpiTotal: document.getElementById("kpiTotalTrainings"),
-  kpiAvg: document.getElementById("kpiAvgAttendance"),
-  kpiLast: document.getElementById("kpiLastTraining"),
-
-  // filtros
-  search: document.getElementById("trainingSearch"),
-  monthFilter: document.getElementById("monthFilter"),
-  sortFilter: document.getElementById("sortFilter"),
-  dateFrom: document.getElementById("dateFrom"),
-  dateTo: document.getElementById("dateTo"),
-
-  clearFiltersBtn: document.getElementById("clearFiltersBtn"),
-
-  addTrainingBtn: document.getElementById("addTrainingBtn"),
-  filtersCollapse: document.getElementById("trainingFiltersCollapse"),
-  filtersToggle: document.getElementById("trainingFiltersToggle"),
-
-};
-
+// dom refs
+let $ = {};
 let modalInstance = null;
+let manualItemModalInstance = null;
+let createDrillModalInstance = null;
 
 /* =========================
    INIT
 ========================= */
 document.addEventListener("DOMContentLoaded", async () => {
-  showLoader("Cargando entrenos…");
+  showLoader("Cargando historial…");
 
   try {
     const { cfg, redirected } = await guardPage("trainings");
@@ -96,7 +67,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     updateLoaderMessage("Cargando header…");
     await loadHeader("trainings", cfg);
 
-    ensurePlaybookUI();
+    updateLoaderMessage("Cargando modal…");
+    await ensureTrainingModalPartial();
+    cacheDom();
+
     bindCollapseCarets();
     bindResponsiveUI();
 
@@ -112,80 +86,94 @@ document.addEventListener("DOMContentLoaded", async () => {
     bindEvents();
   } catch (e) {
     console.error("[trainings] init error:", e);
-    // opcional: mostrar un mensaje en la UI
   } finally {
-    hideLoader(); // 🔥 quita html.preload y destapa el body
+    hideLoader();
   }
 });
 
-
 /* =========================
-   PLAYBOOK UI (inject into modal)
+   PARTIAL / DOM
 ========================= */
-function ensurePlaybookUI() {
-  const summaryEl = document.getElementById("trainingSummary");
-  if (!summaryEl) return;
+async function ensureTrainingModalPartial() {
+  const mount = document.getElementById("trainingModalMount");
+  if (!mount) return;
 
-  const summaryBlock = summaryEl.closest(".mb-3");
-  if (!summaryBlock) return;
+  await loadPartialOnce("/partials/training_session_modal.html", "trainingModalMount");
+}
 
-  if (document.getElementById("pbTrainingsList")) return;
+function cacheDom() {
+  $ = {
+    table: document.getElementById("trainingsTable"),
+    cards: document.getElementById("trainingsCards"),
 
-  const wrap = document.createElement("div");
-  wrap.className = "mb-3";
+    addTrainingBtn: document.getElementById("addTrainingBtn"),
 
-  wrap.innerHTML = `
-    <div class="d-flex align-items-center justify-content-between">
-      <button
-        class="btn btn-link p-0 text-decoration-none d-flex align-items-center gap-2"
-        type="button"
-        data-bs-toggle="collapse"
-        data-bs-target="#playbookCollapse"
-        aria-expanded="true"
-        aria-controls="playbookCollapse"
-      >
-        <span class="fw-semibold">Playbook</span>
-        <span class="collapse-caret" data-caret-for="playbookCollapse">▾</span>
-      </button>
-    </div>
+    modal: document.getElementById("trainingModal"),
+    modalTitle: document.getElementById("trainingModalTitle"),
+    modalSubtitle: document.getElementById("trainingModalSubtitle"),
 
-    <div id="playbookCollapse" class="collapse show mt-2">
-      <div class="row g-3">
-        <div class="col-12 col-lg-6">
-          <div class="d-flex justify-content-between align-items-center gap-2">
-            <div class="small text-muted">Entrenamientos completos</div>
-            <input id="pbTrainingSearch" class="form-control form-control-sm" style="max-width:220px" placeholder="Buscar..." />
-          </div>
-          <div id="pbTrainingsList" class="list-group mt-2"></div>
-        </div>
+    form: document.getElementById("trainingForm"),
+    trainingId: document.getElementById("trainingId"),
+    trainingDate: document.getElementById("trainingDate"),
+    attendanceText: document.getElementById("attendanceText"),
+    processBtn: document.getElementById("processBtn"),
+    quickTextSection: document.getElementById("quickTextSection"),
 
-        <div class="col-12 col-lg-6">
-          <div class="d-flex justify-content-between align-items-center gap-2">
-            <div class="small text-muted">Drills</div>
-            <input id="pbDrillSearch" class="form-control form-control-sm" style="max-width:220px" placeholder="Buscar..." />
-          </div>
-          <div id="pbDrillsList" class="list-group mt-2"></div>
-        </div>
-      </div>
+    playersList: document.getElementById("playersList"),
+    participantsCounter: document.getElementById("participantsCounter"),
 
-      <div class="form-text mt-2">
-        Seleccioná drills/entrenos del playbook, o describí todo en el resumen.
-      </div>
-    </div>
-  `;
+    sessionItemsList: document.getElementById("sessionItemsList"),
+    sessionItemsEmpty: document.getElementById("sessionItemsEmpty"),
+    sessionItemsCount: document.getElementById("sessionItemsCount"),
+    sessionEstimatedTime: document.getElementById("sessionEstimatedTime"),
+    sessionRestTime: document.getElementById("sessionRestTime"),
 
-  summaryBlock.parentNode.insertBefore(wrap, summaryBlock);
+    addManualSessionItemBtn: document.getElementById("addManualSessionItemBtn"),
+    openCreateDrillModalBtn: document.getElementById("openCreateDrillModalBtn"),
 
-  // binds search
-  document.getElementById("pbTrainingSearch")?.addEventListener("input", renderPlaybookSelectors);
-  document.getElementById("pbDrillSearch")?.addEventListener("input", renderPlaybookSelectors);
+    pbTrainingSearch: document.getElementById("pbTrainingSearch"),
+    pbDrillSearch: document.getElementById("pbDrillSearch"),
+    pbTrainingsList: document.getElementById("pbTrainingsList"),
+    pbDrillsList: document.getElementById("pbDrillsList"),
 
-  // bind carets (para que rote)
-  bindCollapseCarets();
+    notes: document.getElementById("trainingNotes"),
+    saveBtn: document.getElementById("saveTrainingBtn"),
+
+    manualItemModal: document.getElementById("manualSessionItemModal"),
+    manualItemForm: document.getElementById("manualSessionItemForm"),
+    manualItemName: document.getElementById("manualItemName"),
+    manualItemObjective: document.getElementById("manualItemObjective"),
+    manualItemVolume: document.getElementById("manualItemVolume"),
+    manualItemMinutes: document.getElementById("manualItemMinutes"),
+    manualItemRestAfter: document.getElementById("manualItemRestAfter"),
+
+    createPlaybookDrillModal: document.getElementById("createPlaybookDrillModal"),
+    createPlaybookDrillForm: document.getElementById("createPlaybookDrillForm"),
+    newDrillName: document.getElementById("newDrillName"),
+    newDrillObjective: document.getElementById("newDrillObjective"),
+    newDrillVolume: document.getElementById("newDrillVolume"),
+    newDrillMinutes: document.getElementById("newDrillMinutes"),
+    newDrillRestAfter: document.getElementById("newDrillRestAfter"),
+
+    // KPIs
+    kpiTotal: document.getElementById("kpiTotalTrainings"),
+    kpiAvg: document.getElementById("kpiAvgAttendance"),
+    kpiLast: document.getElementById("kpiLastTraining"),
+
+    // filtros
+    search: document.getElementById("trainingSearch"),
+    monthFilter: document.getElementById("monthFilter"),
+    sortFilter: document.getElementById("sortFilter"),
+    dateFrom: document.getElementById("dateFrom"),
+    dateTo: document.getElementById("dateTo"),
+    clearFiltersBtn: document.getElementById("clearFiltersBtn"),
+    filtersCollapse: document.getElementById("trainingFiltersCollapse"),
+    filtersToggle: document.getElementById("trainingFiltersToggle"),
+  };
 }
 
 /* =========================
-   LOAD PLAYERS
+   LOADERS
 ========================= */
 async function loadPlayers() {
   const list = $.playersList;
@@ -204,7 +192,9 @@ async function loadPlayers() {
       active: d.data().active !== false,
     }))
     .filter(p => p.active)
-    .sort((a, b) => `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`));
+    .sort((a, b) =>
+      `${a.firstName || ""} ${a.lastName || ""}`.localeCompare(`${b.firstName || ""} ${b.lastName || ""}`)
+    );
 
   for (const p of players) {
     const label = document.createElement("label");
@@ -220,29 +210,33 @@ async function loadPlayers() {
   document.querySelectorAll(".attendance-check").forEach(cb => {
     cb.addEventListener("change", onAttendanceChange);
   });
+
+  renderParticipantsCounter();
 }
 
-/* =========================
-   LOAD PLAYBOOK (drills + playbook trainings)
-========================= */
 async function loadPlaybookData() {
-  // drills activos
   const qDrills = query(
     collection(db, COL_DRILLS),
     where("isActive", "==", true)
   );
+
   const s1 = await getDocs(qDrills);
-  pbDrills = s1.docs.map(d => ({ id: d.id, ...d.data() }));
+  pbDrills = s1.docs.map(d => ({
+    id: d.id,
+    ...d.data(),
+  }));
   pbDrills.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 
   const s2 = await getDocs(collection(db, COL_PLAYBOOK_TRAININGS));
-  pbTrainings = s2.docs.map(d => ({ id: d.id, ...d.data() }));
+  pbTrainings = s2.docs.map(d => ({
+    id: d.id,
+    ...d.data(),
+  }));
   pbTrainings.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+  renderPlaybookSelectors();
 }
 
-/* =========================
-   LOAD TRAININGS (list)
-========================= */
 async function loadTrainings() {
   if (!$.table || !$.cards) return;
 
@@ -256,7 +250,6 @@ async function loadTrainings() {
   );
 
   const snapshot = await getDocs(q);
-
   snapshot.forEach(d => {
     trainings.push({ id: d.id, ...d.data() });
   });
@@ -264,276 +257,36 @@ async function loadTrainings() {
   calcKPIs(trainings);
   fillMonthOptions(trainings);
   refreshListUI();
-  bindEditEvents();
   updateClearBtnState();
-}
-
-function bindEditEvents() {
-  document.querySelectorAll(".training-row, .training-card").forEach(el => {
-    el.onclick = () => {
-      const id = el.dataset.id;
-      const training = trainings.find(t => t.id === id);
-      if (!training) return;
-      openEditTraining(training);
-    };
-  });
-}
-
-/* =========================
-   MODAL: open/edit/reset
-========================= */
-function openNewTraining() {
-  currentTrainingId = null;
-
-  if ($.modalTitle) $.modalTitle.innerText = "Nuevo entrenamiento";
-  $.quickTextSection && ($.quickTextSection.style.display = "block");
-
-  // reset state
-  attendees = [];
-  selectedDrillIds = [];
-  selectedPlaybookTrainingIds = [];
-
-  // clear fields
-  if ($.trainingDate) $.trainingDate.value = "";
-  if ($.summary) $.summary.value = "";
-  if ($.notes) $.notes.value = "";
-  if ($.attendanceText) $.attendanceText.value = "";
-
-  // uncheck all
-  document.querySelectorAll(".attendance-check").forEach(cb => (cb.checked = false));
-
-  // clear searches
-  const tSearch = document.getElementById("pbTrainingSearch");
-  const dSearch = document.getElementById("pbDrillSearch");
-  if (tSearch) tSearch.value = "";
-  if (dSearch) dSearch.value = "";
-
-  renderPlaybookSelectors();
-  bootstrap.Collapse.getOrCreateInstance(document.getElementById("playersCollapse"), { toggle: false }).show();
-  bootstrap.Collapse.getOrCreateInstance(document.getElementById("playbookCollapse"), { toggle: false }).show();
-
-  showModal();
-}
-
-function openEditTraining(training) {
-  currentTrainingId = training.id;
-
-  if ($.modalTitle) $.modalTitle.innerText = "Editar entrenamiento";
-  $.quickTextSection && ($.quickTextSection.style.display = "none");
-
-  // fields
-  if ($.trainingDate) $.trainingDate.value = training.date ?? "";
-  if ($.summary) $.summary.value = training.summary ?? "";
-  if ($.notes) $.notes.value = training.notes ?? "";
-  if ($.attendanceText) $.attendanceText.value = "";
-
-  attendees = Array.isArray(training.attendees) ? [...training.attendees] : [];
-
-  // ✅ nuevas selecciones
-  selectedDrillIds = Array.isArray(training.drillIds) ? [...training.drillIds] : [];
-  selectedPlaybookTrainingIds = Array.isArray(training.playbookTrainingIds) ? [...training.playbookTrainingIds] : [];
-
-  // checkboxes de asistencia
-  document.querySelectorAll(".attendance-check").forEach(cb => {
-    cb.checked = attendees.includes(cb.dataset.id);
-  });
-
-  // clear searches
-  const tSearch = document.getElementById("pbTrainingSearch");
-  const dSearch = document.getElementById("pbDrillSearch");
-  if (tSearch) tSearch.value = "";
-  if (dSearch) dSearch.value = "";
-
-  renderPlaybookSelectors();
-  bootstrap.Collapse.getOrCreateInstance(document.getElementById("playersCollapse"), { toggle: false }).hide();
-  bootstrap.Collapse.getOrCreateInstance(document.getElementById("playbookCollapse"), { toggle: false }).hide();
-
-  showModal();
-}
-
-function showModal() {
-  if (!$.modal) return;
-  modalInstance = bootstrap.Modal.getOrCreateInstance($.modal);
-  modalInstance.show();
-}
-
-function resetModal() {
-  // si cerraron el modal, lo dejamos listo para "nuevo"
-  openNewTraining(); // abre modal, NO queremos eso
-  // entonces re-hacemos un reset "silencioso"
-  currentTrainingId = null;
-  attendees = [];
-  selectedDrillIds = [];
-  selectedPlaybookTrainingIds = [];
-
-  if ($.modalTitle) $.modalTitle.innerText = "Nuevo entrenamiento";
-  $.quickTextSection && ($.quickTextSection.style.display = "block");
-
-  if ($.trainingDate) $.trainingDate.value = "";
-  if ($.summary) $.summary.value = "";
-  if ($.notes) $.notes.value = "";
-  if ($.attendanceText) $.attendanceText.value = "";
-
-  document.querySelectorAll(".attendance-check").forEach(cb => (cb.checked = false));
-
-  const tSearch = document.getElementById("pbTrainingSearch");
-  const dSearch = document.getElementById("pbDrillSearch");
-  if (tSearch) tSearch.value = "";
-  if (dSearch) dSearch.value = "";
-
-  renderPlaybookSelectors();
-}
-
-/* =========================
-   PLAYBOOK SELECTORS (render)
-========================= */
-function renderPlaybookSelectors() {
-  const mountT = document.getElementById("pbTrainingsList");
-  const mountD = document.getElementById("pbDrillsList");
-  if (!mountT || !mountD) return;
-
-  const tTerm = norm(document.getElementById("pbTrainingSearch")?.value);
-  const dTerm = norm(document.getElementById("pbDrillSearch")?.value);
-
-  const tFiltered = tTerm ? pbTrainings.filter(x => norm(x.name).includes(tTerm)) : pbTrainings;
-  const dFiltered = dTerm ? pbDrills.filter(x => (norm(x.name) + " " + norm(x.authorName)).includes(dTerm)) : pbDrills;
-
-  mountT.innerHTML = "";
-  mountD.innerHTML = "";
-
-  for (const t of tFiltered) {
-    const checked = selectedPlaybookTrainingIds.includes(t.id);
-    const el = document.createElement("label");
-    el.className = "list-group-item d-flex gap-2 align-items-start";
-    el.innerHTML = `
-      <input class="form-check-input mt-1" type="checkbox" ${checked ? "checked" : ""}>
-      <div>
-        <div class="fw-semibold">${escapeHtml(t.name || "—")}</div>
-      </div>
-    `;
-    el.querySelector("input").addEventListener("change", () => {
-      toggleId(selectedPlaybookTrainingIds, t.id);
-    });
-    mountT.appendChild(el);
-  }
-
-  for (const d of dFiltered) {
-    const checked = selectedDrillIds.includes(d.id);
-    const el = document.createElement("label");
-    el.className = "list-group-item d-flex gap-2 align-items-start";
-    el.innerHTML = `
-      <input class="form-check-input mt-1" type="checkbox" ${checked ? "checked" : ""}>
-      <div>
-        <div class="fw-semibold">${escapeHtml(d.name || "—")}</div>
-        <div class="text-muted small">${escapeHtml(d.objective || "—")}</div>
-      </div>
-    `;
-    el.querySelector("input").addEventListener("change", () => {
-      toggleId(selectedDrillIds, d.id);
-    });
-    mountD.appendChild(el);
-  }
-}
-
-function toggleId(arr, id) {
-  const i = arr.indexOf(id);
-  if (i >= 0) arr.splice(i, 1);
-  else arr.push(id);
-}
-
-/* =========================
-   ATTENDANCE
-========================= */
-function onAttendanceChange(e) {
-  const playerId = e.target.dataset.id;
-  if (e.target.checked) {
-    if (!attendees.includes(playerId)) attendees.push(playerId);
-  } else {
-    attendees = attendees.filter(id => id !== playerId);
-  }
-}
-
-/* =========================
-   QUICK TEXT (WhatsApp)
-========================= */
-function processQuickText() {
-  const text = ($.attendanceText?.value || "").toLowerCase();
-
-  players.forEach(player => {
-    const fullName = `${player.firstName} ${player.lastName}`.toLowerCase();
-    const checkbox = document.querySelector(`.attendance-check[data-id="${player.id}"]`);
-    if (!checkbox) return;
-
-    if (text.includes(player.firstName.toLowerCase()) || text.includes(fullName)) {
-      checkbox.checked = true;
-      if (!attendees.includes(player.id)) attendees.push(player.id);
-    }
-  });
-}
-
-/* =========================
-   SAVE
-========================= */
-async function saveTraining() {
-  const date = $.trainingDate?.value;
-  if (!date) return alert("Selecciona una fecha");
-
-  const hasPick = selectedDrillIds.length || selectedPlaybookTrainingIds.length;
-  const hasSummary = ($.summary?.value || "").trim().length > 0;
-
-  // ✅ regla: o seleccionás o describís en summary
-  if (!hasPick && !hasSummary) {
-    alert("Seleccioná drills/entrenos del playbook o escribí qué se trabajó en el resumen.");
-    return;
-  }
-
-  const payload = {
-    date,
-    month: date.slice(0, 7),
-    attendees,
-    playbookTrainingIds: [...selectedPlaybookTrainingIds],
-    drillIds: [...selectedDrillIds],
-    summary: ($.summary?.value || "").trim(),
-    notes: ($.notes?.value || "").trim(),
-    active: true,
-  };
-
-  $.saveBtn.disabled = true;
-
-  try {
-    if (currentTrainingId) {
-      await updateDoc(doc(db, COL_TRAININGS, currentTrainingId), {
-        ...payload,
-        updatedAt: serverTimestamp(),
-      });
-    } else {
-      await addDoc(collection(db, COL_TRAININGS), {
-        ...payload,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-    }
-
-    // cerrar
-    bootstrap.Modal.getInstance($.modal)?.hide();
-
-    // reset + reload list
-    resetModal();
-    await loadTrainings();
-  } catch (e) {
-    console.error(e);
-    alert("❌ Error guardando entreno");
-  } finally {
-    $.saveBtn.disabled = false;
-  }
 }
 
 /* =========================
    EVENTS
 ========================= */
 function bindEvents() {
-  $.saveBtn?.addEventListener("click", saveTraining);
+  $.addTrainingBtn?.addEventListener("click", openNewTraining);
+  $.form?.addEventListener("submit", onSubmitTrainingForm);
+
   $.processBtn?.addEventListener("click", processQuickText);
+
+  $.pbTrainingSearch?.addEventListener("input", renderPlaybookSelectors);
+  $.pbDrillSearch?.addEventListener("input", renderPlaybookSelectors);
+
+  $.addManualSessionItemBtn?.addEventListener("click", () => {
+    resetManualItemForm();
+    manualItemModalInstance = bootstrap.Modal.getOrCreateInstance($.manualItemModal);
+    manualItemModalInstance.show();
+  });
+
+  $.manualItemForm?.addEventListener("submit", onSubmitManualItem);
+
+  $.openCreateDrillModalBtn?.addEventListener("click", () => {
+    resetCreateDrillForm();
+    createDrillModalInstance = bootstrap.Modal.getOrCreateInstance($.createPlaybookDrillModal);
+    createDrillModalInstance.show();
+  });
+
+  $.createPlaybookDrillForm?.addEventListener("submit", onSubmitCreatePlaybookDrill);
 
   // filtros
   $.search?.addEventListener("input", () => {
@@ -562,45 +315,723 @@ function bindEvents() {
   });
 
   $.clearFiltersBtn?.addEventListener("click", clearFilters);
-  
-  // cuando se cierra, reset (sin re-abrir)
+
   $.modal?.addEventListener("hidden.bs.modal", () => {
-    currentTrainingId = null;
-    attendees = [];
-    selectedDrillIds = [];
-    selectedPlaybookTrainingIds = [];
-
-    if ($.modalTitle) $.modalTitle.innerText = "Nuevo entrenamiento";
-    $.quickTextSection && ($.quickTextSection.style.display = "block");
-
-    if ($.trainingDate) $.trainingDate.value = "";
-    if ($.summary) $.summary.value = "";
-    if ($.notes) $.notes.value = "";
-    if ($.attendanceText) $.attendanceText.value = "";
-
-    document.querySelectorAll(".attendance-check").forEach(cb => (cb.checked = false));
-
-    const tSearch = document.getElementById("pbTrainingSearch");
-    const dSearch = document.getElementById("pbDrillSearch");
-    if (tSearch) tSearch.value = "";
-    if (dSearch) dSearch.value = "";
-
-    renderPlaybookSelectors();
-  });
-
-  $.modal?.addEventListener("show.bs.modal", () => {
-    if (!currentTrainingId) {
-      attendees = [];
-      selectedDrillIds = [];
-      selectedPlaybookTrainingIds = [];
-      renderPlaybookSelectors();
-    }
+    silentResetTrainingForm();
   });
 }
-/* =========================
-   HELPERS
-========================= */
 
+/* =========================
+   OPEN / EDIT
+========================= */
+function openNewTraining() {
+  currentTrainingId = null;
+
+  $.modalTitle.textContent = "Nuevo entrenamiento";
+  $.modalSubtitle.textContent = "Registrar sesión realizada, asistencia y material trabajado";
+  $.quickTextSection.style.display = "block";
+
+  sessionItems = [];
+  attendees = [];
+
+  $.trainingId.value = "";
+  $.trainingDate.value = "";
+  $.attendanceText.value = "";
+  $.notes.value = "";
+
+  document.querySelectorAll(".attendance-check").forEach(cb => {
+    cb.checked = false;
+  });
+
+  $.pbTrainingSearch.value = "";
+  $.pbDrillSearch.value = "";
+
+  renderParticipantsCounter();
+  renderPlaybookSelectors();
+  renderSessionItems();
+
+  modalInstance = bootstrap.Modal.getOrCreateInstance($.modal);
+  modalInstance.show();
+}
+
+function openEditTraining(training) {
+  currentTrainingId = training.id;
+
+  $.modalTitle.textContent = "Editar entrenamiento";
+  $.modalSubtitle.textContent = "Ajusta asistencia, orden de la sesión y material realizado";
+  $.quickTextSection.style.display = "none";
+
+  $.trainingId.value = training.id;
+  $.trainingDate.value = training.date || "";
+  $.attendanceText.value = "";
+  $.notes.value = training.notes || "";
+
+  attendees = Array.isArray(training.attendees) ? [...training.attendees] : [];
+
+  // nuevo modelo
+  if (Array.isArray(training.sessionItems) && training.sessionItems.length) {
+    sessionItems = training.sessionItems.map(item => ({
+      uid: item.uid || cryptoRandomId(),
+      type: item.type || "manual",
+      source: item.source || "manual",
+      sourceId: item.sourceId || null,
+      parentTrainingId: item.parentTrainingId || null,
+      parentTrainingName: item.parentTrainingName || null,
+      name: item.name || "",
+      objective: item.objective || "",
+      volume: item.volume || "",
+      estimatedMinutes: toNumberOrNull(item.estimatedMinutes),
+      restAfter: item.restAfter || "",
+      restMinutes: toNumberOrNull(item.restMinutes),
+    }));
+  } else {
+    // no fallback complejo; dejamos vacío si no tiene sessionItems
+    sessionItems = [];
+  }
+
+  document.querySelectorAll(".attendance-check").forEach(cb => {
+    cb.checked = attendees.includes(cb.dataset.id);
+  });
+
+  $.pbTrainingSearch.value = "";
+  $.pbDrillSearch.value = "";
+
+  renderParticipantsCounter();
+  renderPlaybookSelectors();
+  renderSessionItems();
+
+  modalInstance = bootstrap.Modal.getOrCreateInstance($.modal);
+  modalInstance.show();
+}
+
+function silentResetTrainingForm() {
+  currentTrainingId = null;
+  attendees = [];
+  sessionItems = [];
+
+  if ($.trainingId) $.trainingId.value = "";
+  if ($.trainingDate) $.trainingDate.value = "";
+  if ($.attendanceText) $.attendanceText.value = "";
+  if ($.notes) $.notes.value = "";
+
+  document.querySelectorAll(".attendance-check").forEach(cb => {
+    cb.checked = false;
+  });
+
+  if ($.pbTrainingSearch) $.pbTrainingSearch.value = "";
+  if ($.pbDrillSearch) $.pbDrillSearch.value = "";
+
+  renderParticipantsCounter();
+  renderPlaybookSelectors();
+  renderSessionItems();
+}
+
+/* =========================
+   SESSION ITEMS
+========================= */
+function renderSessionItems() {
+  const mount = $.sessionItemsList;
+  if (!mount) return;
+
+  mount.innerHTML = "";
+
+  const hasItems = sessionItems.length > 0;
+  $.sessionItemsEmpty.style.display = hasItems ? "none" : "block";
+
+  sessionItems.forEach((item, index) => {
+    const card = document.createElement("div");
+    card.className = "session-item-card";
+    card.dataset.uid = item.uid;
+
+    const sourceBadge = getSessionItemSourceBadge(item);
+
+    card.innerHTML = `
+      <div class="session-item-card__top">
+        <div class="d-flex align-items-start gap-3 flex-grow-1">
+          <div class="session-item-order">${index + 1}</div>
+
+          <div class="flex-grow-1">
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+              <div class="session-item-title">${escapeHtml(item.name || "Actividad")}</div>
+              ${sourceBadge}
+            </div>
+
+            ${item.parentTrainingName ? `
+              <div class="small text-muted mb-2">
+                Plan de origen: ${escapeHtml(item.parentTrainingName)}
+              </div>
+            ` : ""}
+
+            <div class="mb-2">
+              <label class="form-label form-label-sm">Objetivo</label>
+              <textarea class="form-control form-control-sm session-item-input" data-field="objective" rows="2">${escapeHtml(item.objective || "")}</textarea>
+            </div>
+
+            <div class="row g-2">
+              <div class="col-12 col-md-4">
+                <label class="form-label form-label-sm">Volumen</label>
+                <input class="form-control form-control-sm session-item-input" data-field="volume" value="${escapeHtml(item.volume || "")}" placeholder="Ej: 5 vueltas / 10 min" />
+              </div>
+
+              <div class="col-12 col-md-4">
+                <label class="form-label form-label-sm">Duración estimada (min)</label>
+                <input type="number" min="0" step="1" class="form-control form-control-sm session-item-input" data-field="estimatedMinutes" value="${escapeHtml(item.estimatedMinutes ?? "")}" placeholder="0" />
+              </div>
+
+              <div class="col-12 col-md-4">
+                <label class="form-label form-label-sm">Descanso después</label>
+                <input class="form-control form-control-sm session-item-input" data-field="restAfter" value="${escapeHtml(item.restAfter || "")}" placeholder="Ej: 2 minutos" />
+              </div>
+
+              <div class="col-12 col-md-4">
+                <label class="form-label form-label-sm">Descanso (min)</label>
+                <input type="number" min="0" step="1" class="form-control form-control-sm session-item-input" data-field="restMinutes" value="${escapeHtml(item.restMinutes ?? "")}" placeholder="0" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="session-item-actions">
+          <button class="btn btn-outline-secondary btn-sm" type="button" data-action="move-up" ${index === 0 ? "disabled" : ""}>
+            <i class="bi bi-arrow-up"></i>
+          </button>
+          <button class="btn btn-outline-secondary btn-sm" type="button" data-action="move-down" ${index === sessionItems.length - 1 ? "disabled" : ""}>
+            <i class="bi bi-arrow-down"></i>
+          </button>
+          <button class="btn btn-outline-danger btn-sm" type="button" data-action="remove">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </div>
+    `;
+
+    bindSessionItemCardEvents(card, item.uid);
+    mount.appendChild(card);
+  });
+
+  updateSessionSummaryStrip();
+}
+
+function bindSessionItemCardEvents(card, uid) {
+  card.querySelectorAll(".session-item-input").forEach(input => {
+    input.addEventListener("input", e => {
+      const field = e.target.dataset.field;
+      const item = sessionItems.find(x => x.uid === uid);
+      if (!item || !field) return;
+
+      if (field === "estimatedMinutes" || field === "restMinutes") {
+        item[field] = toNumberOrNull(e.target.value);
+      } else {
+        item[field] = e.target.value;
+      }
+
+      updateSessionSummaryStrip();
+      refreshListUI();
+    });
+  });
+
+  card.querySelectorAll("[data-action]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const action = btn.dataset.action;
+      const index = sessionItems.findIndex(x => x.uid === uid);
+      if (index < 0) return;
+
+      if (action === "remove") {
+        sessionItems.splice(index, 1);
+      } else if (action === "move-up" && index > 0) {
+        [sessionItems[index - 1], sessionItems[index]] = [sessionItems[index], sessionItems[index - 1]];
+      } else if (action === "move-down" && index < sessionItems.length - 1) {
+        [sessionItems[index + 1], sessionItems[index]] = [sessionItems[index], sessionItems[index + 1]];
+      }
+
+      renderSessionItems();
+    });
+  });
+}
+
+function updateSessionSummaryStrip() {
+  const count = sessionItems.length;
+  const estimated = sessionItems.reduce((acc, item) => acc + (toNumberOrNull(item.estimatedMinutes) || 0), 0);
+  const rest = sessionItems.reduce((acc, item) => acc + (toNumberOrNull(item.restMinutes) || 0), 0);
+
+  if ($.sessionItemsCount) $.sessionItemsCount.textContent = String(count);
+  if ($.sessionEstimatedTime) $.sessionEstimatedTime.textContent = `${estimated} min`;
+  if ($.sessionRestTime) $.sessionRestTime.textContent = `${rest} min`;
+}
+
+function getSessionItemSourceBadge(item) {
+  if (item.source === "playbook_training") {
+    return `<span class="badge text-bg-primary-subtle text-primary-emphasis">Plan</span>`;
+  }
+  if (item.source === "playbook_drill") {
+    return `<span class="badge text-bg-success-subtle text-success-emphasis">Drill Playbook</span>`;
+  }
+  return `<span class="badge text-bg-secondary">Manual</span>`;
+}
+
+function createSessionItemFromDrill(drill, extra = {}) {
+  return {
+    uid: cryptoRandomId(),
+    type: "drill",
+    source: extra.source || "playbook_drill",
+    sourceId: drill?.id || null,
+    parentTrainingId: extra.parentTrainingId || null,
+    parentTrainingName: extra.parentTrainingName || null,
+    name: drill?.name || "Drill",
+    objective: drill?.objective || "",
+    volume: drill?.volume || "",
+    estimatedMinutes: toNumberOrNull(drill?.estimatedMinutes ?? drill?.durationMinutes ?? null),
+    restAfter: drill?.restAfter || "",
+    restMinutes: extractMinutes(drill?.restAfter),
+  };
+}
+
+function createManualSessionItem(data = {}) {
+  return {
+    uid: cryptoRandomId(),
+    type: "manual",
+    source: "manual",
+    sourceId: null,
+    parentTrainingId: null,
+    parentTrainingName: null,
+    name: data.name || "Actividad manual",
+    objective: data.objective || "",
+    volume: data.volume || "",
+    estimatedMinutes: toNumberOrNull(data.estimatedMinutes),
+    restAfter: data.restAfter || "",
+    restMinutes: toNumberOrNull(data.restMinutes),
+  };
+}
+
+/* =========================
+   PLAYBOOK PICKERS
+========================= */
+function renderPlaybookSelectors() {
+  if (!$.pbTrainingsList || !$.pbDrillsList) return;
+
+  const tTerm = norm($.pbTrainingSearch?.value);
+  const dTerm = norm($.pbDrillSearch?.value);
+
+  const tFiltered = tTerm
+    ? pbTrainings.filter(x => norm(x.name).includes(tTerm))
+    : pbTrainings;
+
+  const dFiltered = dTerm
+    ? pbDrills.filter(x => `${norm(x.name)} ${norm(x.objective)} ${norm(x.authorName)}`.includes(dTerm))
+    : pbDrills;
+
+  $.pbTrainingsList.innerHTML = "";
+  $.pbDrillsList.innerHTML = "";
+
+  for (const t of tFiltered) {
+    const item = document.createElement("div");
+    item.className = "list-group-item";
+
+    const drillCount = Array.isArray(t.drillIds) ? t.drillIds.length : 0;
+
+    item.innerHTML = `
+      <div class="d-flex justify-content-between align-items-start gap-3">
+        <div class="min-w-0">
+          <div class="fw-semibold">${escapeHtml(t.name || "—")}</div>
+          <div class="text-muted small">
+            ${drillCount} drill${drillCount === 1 ? "" : "s"}
+          </div>
+        </div>
+
+        <button class="btn btn-outline-primary btn-sm" type="button">
+          <i class="bi bi-plus-lg"></i> Usar plan
+        </button>
+      </div>
+    `;
+
+    item.querySelector("button").addEventListener("click", () => {
+      addPlaybookTrainingToSession(t.id);
+    });
+
+    $.pbTrainingsList.appendChild(item);
+  }
+
+  for (const d of dFiltered) {
+    const item = document.createElement("div");
+    item.className = "list-group-item";
+
+    item.innerHTML = `
+      <div class="d-flex justify-content-between align-items-start gap-3">
+        <div class="min-w-0">
+          <div class="fw-semibold">${escapeHtml(d.name || "—")}</div>
+          <div class="text-muted small">${escapeHtml(d.objective || "Sin objetivo")}</div>
+          <div class="text-muted x-small mt-1">
+            Volumen: ${escapeHtml(d.volume || "—")} · Descanso: ${escapeHtml(d.restAfter || "—")}
+          </div>
+        </div>
+
+        <button class="btn btn-outline-primary btn-sm" type="button">
+          <i class="bi bi-plus-lg"></i> Agregar
+        </button>
+      </div>
+    `;
+
+    item.querySelector("button").addEventListener("click", () => {
+      addDrillToSession(d.id);
+    });
+
+    $.pbDrillsList.appendChild(item);
+  }
+}
+
+function addDrillToSession(drillId) {
+  const drill = pbDrills.find(x => x.id === drillId);
+  if (!drill) return;
+
+  sessionItems.push(createSessionItemFromDrill(drill, { source: "playbook_drill" }));
+  renderSessionItems();
+}
+
+function addPlaybookTrainingToSession(playbookTrainingId) {
+  const training = pbTrainings.find(x => x.id === playbookTrainingId);
+  if (!training) return;
+
+  const drillIds = Array.isArray(training.drillIds) ? training.drillIds : [];
+  if (!drillIds.length) return;
+
+  drillIds.forEach(drillId => {
+    const drill = pbDrills.find(x => x.id === drillId);
+    if (!drill) return;
+
+    sessionItems.push(
+      createSessionItemFromDrill(drill, {
+        source: "playbook_training",
+        parentTrainingId: training.id,
+        parentTrainingName: training.name || "",
+      })
+    );
+  });
+
+  renderSessionItems();
+}
+
+/* =========================
+   PARTICIPANTES
+========================= */
+function onAttendanceChange(e) {
+  const playerId = e.target.dataset.id;
+  if (!playerId) return;
+
+  if (e.target.checked) {
+    if (!attendees.includes(playerId)) attendees.push(playerId);
+  } else {
+    attendees = attendees.filter(id => id !== playerId);
+  }
+
+  renderParticipantsCounter();
+}
+
+function renderParticipantsCounter() {
+  if (!$.participantsCounter) return;
+  $.participantsCounter.textContent = `${attendees.length} seleccionados`;
+}
+
+/* =========================
+   WHATSAPP QUICK TEXT
+========================= */
+function processQuickText() {
+  const text = ($.attendanceText?.value || "").toLowerCase();
+
+  players.forEach(player => {
+    const fullName = `${player.firstName} ${player.lastName}`.toLowerCase();
+    const checkbox = document.querySelector(`.attendance-check[data-id="${player.id}"]`);
+    if (!checkbox) return;
+
+    if (text.includes((player.firstName || "").toLowerCase()) || text.includes(fullName)) {
+      checkbox.checked = true;
+      if (!attendees.includes(player.id)) attendees.push(player.id);
+    }
+  });
+
+  attendees = [...new Set(attendees)];
+  renderParticipantsCounter();
+}
+
+/* =========================
+   MANUAL ITEM MODAL
+========================= */
+function resetManualItemForm() {
+  $.manualItemForm?.reset();
+}
+
+function onSubmitManualItem(e) {
+  e.preventDefault();
+
+  const name = ($.manualItemName?.value || "").trim();
+  if (!name) {
+    alert("Ponle nombre a la actividad.");
+    return;
+  }
+
+  sessionItems.push(
+    createManualSessionItem({
+      name,
+      objective: ($.manualItemObjective?.value || "").trim(),
+      volume: ($.manualItemVolume?.value || "").trim(),
+      estimatedMinutes: ($.manualItemMinutes?.value || "").trim(),
+      restAfter: ($.manualItemRestAfter?.value || "").trim(),
+      restMinutes: extractMinutes($.manualItemRestAfter?.value || ""),
+    })
+  );
+
+  manualItemModalInstance?.hide();
+  renderSessionItems();
+}
+
+/* =========================
+   CREATE PLAYBOOK DRILL MODAL
+========================= */
+function resetCreateDrillForm() {
+  $.createPlaybookDrillForm?.reset();
+}
+
+async function onSubmitCreatePlaybookDrill(e) {
+  e.preventDefault();
+
+  const name = ($.newDrillName?.value || "").trim();
+  const objective = ($.newDrillObjective?.value || "").trim();
+
+  if (!name) {
+    alert("El drill necesita nombre.");
+    return;
+  }
+
+  const payload = {
+    name,
+    objective,
+    volume: ($.newDrillVolume?.value || "").trim(),
+    estimatedMinutes: toNumberOrNull($.newDrillMinutes?.value),
+    restAfter: ($.newDrillRestAfter?.value || "").trim(),
+    authorName: "Staff",
+    clubId: CLUB_ID,
+    isActive: true,
+    isPublic: false,
+    recommendations: "",
+    tacticalBoardUrl: "",
+    teamVideoUrl: "",
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+
+  try {
+    const ref = await addDoc(collection(db, COL_DRILLS), payload);
+
+    pbDrills.unshift({
+      id: ref.id,
+      ...payload,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    pbDrills.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    renderPlaybookSelectors();
+
+    const savedDrill = pbDrills.find(x => x.id === ref.id);
+    if (savedDrill) {
+      sessionItems.push(createSessionItemFromDrill(savedDrill, { source: "playbook_drill" }));
+      renderSessionItems();
+    }
+
+    createDrillModalInstance?.hide();
+  } catch (err) {
+    console.error(err);
+    alert("No se pudo crear el drill.");
+  }
+}
+
+/* =========================
+   SAVE
+========================= */
+async function onSubmitTrainingForm(e) {
+  e.preventDefault();
+  await saveTraining();
+}
+
+async function saveTraining() {
+  const date = $.trainingDate?.value || "";
+
+  if (!date) {
+    alert("Selecciona una fecha.");
+    return;
+  }
+
+  if (!sessionItems.length) {
+    alert("Agrega al menos un drill o actividad a la sesión.");
+    return;
+  }
+
+  const cleanedSessionItems = sessionItems.map(item => ({
+    uid: item.uid || cryptoRandomId(),
+    type: item.type || "manual",
+    source: item.source || "manual",
+    sourceId: item.sourceId || null,
+    parentTrainingId: item.parentTrainingId || null,
+    parentTrainingName: item.parentTrainingName || null,
+    name: (item.name || "").trim(),
+    objective: (item.objective || "").trim(),
+    volume: (item.volume || "").trim(),
+    estimatedMinutes: toNumberOrNull(item.estimatedMinutes),
+    restAfter: (item.restAfter || "").trim(),
+    restMinutes: toNumberOrNull(item.restMinutes),
+  }));
+
+  const drillIds = [
+    ...new Set(
+      cleanedSessionItems
+        .filter(x => x.sourceId && (x.source === "playbook_drill" || x.source === "playbook_training"))
+        .map(x => x.sourceId)
+    ),
+  ];
+
+  const playbookTrainingIds = [
+    ...new Set(
+      cleanedSessionItems
+        .filter(x => x.parentTrainingId)
+        .map(x => x.parentTrainingId)
+    ),
+  ];
+
+  const autoSummary = cleanedSessionItems
+    .map((item, idx) => `${idx + 1}. ${item.name}`)
+    .join(" · ");
+
+  const payload = {
+    date,
+    month: date.slice(0, 7),
+    attendees: [...new Set(attendees)],
+    sessionItems: cleanedSessionItems,
+    drillIds,
+    playbookTrainingIds,
+    summary: autoSummary,
+    notes: ($.notes?.value || "").trim(),
+    active: true,
+    clubId: CLUB_ID,
+    estimatedSessionMinutes: cleanedSessionItems.reduce((acc, item) => acc + (item.estimatedMinutes || 0), 0),
+    totalRestMinutes: cleanedSessionItems.reduce((acc, item) => acc + (item.restMinutes || 0), 0),
+    updatedAt: serverTimestamp(),
+  };
+
+  $.saveBtn.disabled = true;
+
+  try {
+    if (currentTrainingId) {
+      await updateDoc(doc(db, COL_TRAININGS, currentTrainingId), payload);
+    } else {
+      await addDoc(collection(db, COL_TRAININGS), {
+        ...payload,
+        createdAt: serverTimestamp(),
+      });
+    }
+
+    bootstrap.Modal.getOrCreateInstance($.modal).hide();
+    await loadTrainings();
+  } catch (err) {
+    console.error(err);
+    alert("Error guardando entrenamiento.");
+  } finally {
+    $.saveBtn.disabled = false;
+  }
+}
+
+/* =========================
+   LIST / TABLE
+========================= */
+function renderTrainings(list) {
+  $.table.innerHTML = "";
+  $.cards.innerHTML = "";
+
+  const totalAll = trainings.length;
+
+  list.forEach((t) => {
+    const idxInAll = trainings.findIndex(x => x.id === t.id);
+    const label = trainingLabel(t, idxInAll >= 0 ? idxInAll : 0, totalAll);
+    const rawDetails = shortTitle(trainingDisplayText(t));
+    const detailsHtml = highlightText(rawDetails, $.search?.value || "");
+    const count = Array.isArray(t.attendees) ? t.attendees.length : 0;
+
+    $.table.innerHTML += `
+      <tr data-id="${escapeHtml(t.id)}" class="training-row" style="cursor:pointer">
+        <td class="date-col">${escapeHtml(label)}</td>
+        <td class="name-col">${detailsHtml}</td>
+        <td class="att-col"><span class="att-pill">${count}</span></td>
+      </tr>
+    `;
+
+    $.cards.innerHTML += `
+      <div class="card mb-2 training-card" data-id="${escapeHtml(t.id)}" style="cursor:pointer">
+        <div class="card-body p-3">
+          <div class="fw-semibold">${escapeHtml(label)}</div>
+          <div class="text-muted small">${detailsHtml || "Sesión"}</div>
+          <div class="d-flex justify-content-between mt-2">
+            <span class="small">👥 ${count} asistentes</span>
+            <span class="text-primary small">Abrir</span>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  bindEditEvents();
+}
+
+function bindEditEvents() {
+  document.querySelectorAll(".training-row, .training-card").forEach(el => {
+    el.onclick = () => {
+      const id = el.dataset.id;
+      const training = trainings.find(t => t.id === id);
+      if (!training) return;
+      openEditTraining(training);
+    };
+  });
+}
+
+function refreshListUI() {
+  const filtered = applyFilters(trainings);
+  renderTrainings(filtered);
+}
+
+function buildSearchText(t) {
+  const base = trainingDisplayText(t);
+  const notes = (t.notes || "").toString();
+  return norm(`${base} ${notes}`);
+}
+
+function applyFilters(list) {
+  let out = [...list];
+
+  const month = $.monthFilter?.value || "";
+  if (month) out = out.filter(t => (t.month || "") === month);
+
+  const from = $.dateFrom?.value || "";
+  const to = $.dateTo?.value || "";
+  if (from) out = out.filter(t => (t.date || "") >= from);
+  if (to) out = out.filter(t => (t.date || "") <= to);
+
+  const term = norm($.search?.value || "");
+  if (term) out = out.filter(t => buildSearchText(t).includes(term));
+
+  const sort = $.sortFilter?.value || "date_desc";
+  out.sort((a, b) => {
+    const aCount = Array.isArray(a.attendees) ? a.attendees.length : 0;
+    const bCount = Array.isArray(b.attendees) ? b.attendees.length : 0;
+
+    if (sort === "date_asc") return (a.date || "").localeCompare(b.date || "");
+    if (sort === "att_desc") return bCount - aCount;
+    if (sort === "att_asc") return aCount - bCount;
+    return (b.date || "").localeCompare(a.date || "");
+  });
+
+  return out;
+}
+
+/* =========================
+   KPIS / FILTER UI
+========================= */
 function calcKPIs(list) {
   const total = list.length;
 
@@ -616,16 +1047,6 @@ function calcKPIs(list) {
   if ($.kpiTotal) $.kpiTotal.textContent = total.toString();
   if ($.kpiAvg) $.kpiAvg.textContent = total ? avg.toFixed(1) : "0.0";
   if ($.kpiLast) $.kpiLast.textContent = lastISO ? `${lastHuman} · ${ago}` : "—";
-}
-
-function monthLabel(yyyyMm) {
-  // "2026-02" => "Febrero 2026"
-  if (!yyyyMm) return "—";
-  const [y, m] = yyyyMm.split("-");
-  const d = new Date(`${yyyyMm}-01T00:00:00`);
-  const month = d.toLocaleDateString("es-CR", { month: "long" });
-  const capMonth = month.charAt(0).toUpperCase() + month.slice(1);
-  return `${capMonth} ${y}`;
 }
 
 function fillMonthOptions(list) {
@@ -652,124 +1073,6 @@ function fillMonthOptions(list) {
   $.monthFilter.value = current;
 }
 
-function buildSearchText(t) {
-  // incluye summary o drills/playbook names (trainingDisplayText ya los concatena)
-  const base = trainingDisplayText(t);
-  const notes = (t.notes || "").toString();
-  // podés sumar más campos si querés
-  return norm(`${base} ${notes}`);
-}
-
-function applyFilters(list) {
-  let out = [...list];
-
-  // month
-  const month = $.monthFilter?.value || "";
-  if (month) out = out.filter(t => (t.month || "") === month);
-
-  // date range
-  const from = $.dateFrom?.value || "";
-  const to = $.dateTo?.value || "";
-  if (from) out = out.filter(t => (t.date || "") >= from);
-  if (to) out = out.filter(t => (t.date || "") <= to);
-
-  // search
-  const term = norm($.search?.value || "");
-  if (term) out = out.filter(t => buildSearchText(t).includes(term));
-
-  // sort
-  const sort = $.sortFilter?.value || "date_desc";
-  out.sort((a, b) => {
-    const aCount = Array.isArray(a.attendees) ? a.attendees.length : 0;
-    const bCount = Array.isArray(b.attendees) ? b.attendees.length : 0;
-
-    if (sort === "date_asc") return (a.date || "").localeCompare(b.date || "");
-    if (sort === "att_desc") return bCount - aCount;
-    if (sort === "att_asc") return aCount - bCount;
-    // default date_desc
-    return (b.date || "").localeCompare(a.date || "");
-  });
-
-  return out;
-}
-
-function renderTrainings(list) {
-  $.table.innerHTML = "";
-  $.cards.innerHTML = "";
-
-  const totalAll = trainings.length; // para el label Entreno #n consistente con tu lógica original
-
-  list.forEach((t) => {
-    const idxInAll = trainings.findIndex(x => x.id === t.id);
-    const label = trainingLabel(t, idxInAll >= 0 ? idxInAll : 0, totalAll);
-    const rawDetails = shortTitle(trainingDisplayText(t));
-    const term = $.search?.value || "";
-    const detailsHtml = highlightText(rawDetails, term);
-    const count = Array.isArray(t.attendees) ? t.attendees.length : 0;
-
-    // DESKTOP ROW (sin Estado)
-    $.table.innerHTML += `
-      <tr data-id="${escapeHtml(t.id)}" class="training-row" style="cursor:pointer">
-        <td class="date-col">${escapeHtml(label)}</td>
-        <td class="name-col">${detailsHtml}</td>
-        <td class="att-col"><span class="att-pill">${count}</span></td>
-      </tr>
-    `;
-
-    // MOBILE CARD (sin Estado)
-    $.cards.innerHTML += `
-      <div class="card mb-2 training-card" data-id="${escapeHtml(t.id)}" style="cursor:pointer">
-        <div class="card-body p-3">
-          <div class="fw-semibold">${escapeHtml(label)}</div>
-          <div class="text-muted small">${detailsHtml || "Entrenamiento"}</div>
-          <div class="d-flex justify-content-between mt-2">
-            <span class="small">👥 ${count} asistentes</span>
-            <span class="text-primary small">Abrir</span>
-          </div>
-        </div>
-      </div>
-    `;
-  });
-
-  bindEditEvents(); // re-bindea click
-}
-
-function refreshListUI() {
-  const filtered = applyFilters(trainings);
-  renderTrainings(filtered);
-}
-
-function daysAgo(iso) {
-  const d = parseISODate(iso);
-  if (!d) return null;
-  const today = new Date();
-  const a = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const b = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const diffMs = b - a;
-  return Math.round(diffMs / (1000 * 60 * 60 * 24));
-}
-
-function humanDaysAgo(n) {
-  if (n == null) return "";
-  if (n === 0) return "hoy";
-  if (n === 1) return "hace 1 día";
-  if (n < 0) return "próximo"; // por si metieron fecha futura
-  return `hace ${n} días`;
-}
-
-function escapeRegExp(str) {
-  return String(str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function highlightText(text, term) {
-  const safeText = escapeHtml(text ?? "");
-  const t = norm(term);
-  if (!t) return safeText;
-
-  const re = new RegExp(`(${escapeRegExp(t)})`, "ig");
-  return safeText.replace(re, `<mark class="search-hit">$1</mark>`);
-}
-
 function clearFilters() {
   if ($.search) $.search.value = "";
   if ($.monthFilter) $.monthFilter.value = "";
@@ -784,11 +1087,11 @@ function updateClearBtnState() {
   if (!$.clearFiltersBtn) return;
 
   const hasFilters =
-    (norm($.search?.value) !== "") ||
-    (($.monthFilter?.value || "") !== "") ||
-    (($.sortFilter?.value || "date_desc") !== "date_desc") ||
-    (($.dateFrom?.value || "") !== "") ||
-    (($.dateTo?.value || "") !== "");
+    norm($.search?.value) !== "" ||
+    ($.monthFilter?.value || "") !== "" ||
+    ($.sortFilter?.value || "date_desc") !== "date_desc" ||
+    ($.dateFrom?.value || "") !== "" ||
+    ($.dateTo?.value || "") !== "";
 
   $.clearFiltersBtn.disabled = !hasFilters;
 }
@@ -820,17 +1123,102 @@ function bindResponsiveUI() {
   });
 }
 
+function bindCollapseCarets() {
+  if (bindCollapseCarets._bound) return;
+  bindCollapseCarets._bound = true;
+
+  document.addEventListener("shown.bs.collapse", (e) => {
+    const id = e.target?.id;
+    if (!id) return;
+    document.querySelectorAll(`[data-caret-for="${id}"]`).forEach(el => {
+      el.textContent = "▾";
+    });
+  });
+
+  document.addEventListener("hidden.bs.collapse", (e) => {
+    const id = e.target?.id;
+    if (!id) return;
+    document.querySelectorAll(`[data-caret-for="${id}"]`).forEach(el => {
+      el.textContent = "▸";
+    });
+  });
+}
+
 /* =========================
-   UTILS
+   DISPLAY HELPERS
+========================= */
+function trainingDisplayText(t) {
+  if (Array.isArray(t.sessionItems) && t.sessionItems.length) {
+    return t.sessionItems.map((item, idx) => `${idx + 1}. ${item.name}`).join(", ");
+  }
+
+  if (t.summary) return t.summary.trim();
+
+  return "-";
+}
+
+function trainingLabel(t, idx, total) {
+  const n = total - idx;
+  return `Entreno #${n}: ${fmtHumanDayMonth(t.date)}`;
+}
+
+function monthLabel(yyyyMm) {
+  if (!yyyyMm) return "—";
+  const [y] = yyyyMm.split("-");
+  const d = new Date(`${yyyyMm}-01T00:00:00`);
+  const month = d.toLocaleDateString("es-CR", { month: "long" });
+  const capMonth = month.charAt(0).toUpperCase() + month.slice(1);
+  return `${capMonth} ${y}`;
+}
+
+function parseISODate(iso) {
+  if (!iso) return null;
+  const d = new Date(`${iso}T00:00:00`);
+  return isNaN(d) ? null : d;
+}
+
+function fmtHumanDayMonth(iso) {
+  const d = parseISODate(iso);
+  if (!d) return "—";
+  const month = d.toLocaleDateString("es-CR", { month: "long" });
+  const day = d.toLocaleDateString("es-CR", { day: "2-digit" });
+  const capMonth = month.charAt(0).toUpperCase() + month.slice(1);
+  return `${capMonth} ${day}`;
+}
+
+function daysAgo(iso) {
+  const d = parseISODate(iso);
+  if (!d) return null;
+  const today = new Date();
+  const a = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const b = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const diffMs = b - a;
+  return Math.round(diffMs / (1000 * 60 * 60 * 24));
+}
+
+function humanDaysAgo(n) {
+  if (n == null) return "";
+  if (n === 0) return "hoy";
+  if (n === 1) return "hace 1 día";
+  if (n < 0) return "próximo";
+  return `hace ${n} días`;
+}
+
+/* =========================
+   GENERIC HELPERS
 ========================= */
 function norm(s) {
-  return (s || "").toString().toLowerCase().trim();
+  return String(s || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 }
 
 function shortTitle(s) {
   const t = (s || "").toString().trim();
   if (!t) return "-";
-  return t.length > 60 ? t.slice(0, 60) + "…" : t;
+  return t.length > 80 ? `${t.slice(0, 80)}…` : t;
 }
 
 function escapeHtml(str) {
@@ -842,80 +1230,37 @@ function escapeHtml(str) {
     .replaceAll("'", "&#039;");
 }
 
-function getDrillName(id) {
-  const d = pbDrills.find(x => x.id === id);
-  return d?.name || null;
+function escapeRegExp(str) {
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function getPlaybookTrainingName(id) {
-  const t = pbTrainings.find(x => x.id === id);
-  return t?.name || null;
+function highlightText(text, term) {
+  const safeText = escapeHtml(text ?? "");
+  const cleanTerm = term || "";
+  if (!cleanTerm.trim()) return safeText;
+
+  const re = new RegExp(`(${escapeRegExp(cleanTerm.trim())})`, "ig");
+  return safeText.replace(re, `<mark class="search-hit">$1</mark>`);
 }
 
-function trainingDisplayText(t) {
-  const summary = (t.summary || "").trim();
-  if (summary) return summary;
-
-  const names = [];
-
-  // primero entrenamientos completos
-  if (Array.isArray(t.playbookTrainingIds)) {
-    for (const id of t.playbookTrainingIds) {
-      const nm = getPlaybookTrainingName(id);
-      if (nm) names.push(nm);
-    }
-  }
-
-  // luego drills sueltos
-  if (Array.isArray(t.drillIds)) {
-    for (const id of t.drillIds) {
-      const nm = getDrillName(id);
-      if (nm) names.push(nm);
-    }
-  }
-
-  if (!names.length) return "-";
-  return names.join(", ");
+function cryptoRandomId() {
+  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+  return `it_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function parseISODate(iso) {
-  // iso: "YYYY-MM-DD"
-  if (!iso) return null;
-  const d = new Date(iso + "T00:00:00");
-  return isNaN(d) ? null : d;
+function toNumberOrNull(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
 }
 
-function fmtHumanDayMonth(iso) {
-  const d = parseISODate(iso);
-  if (!d) return "—";
-  // "febrero 24" -> capitalizamos mes
-  const month = d.toLocaleDateString("es-CR", { month: "long" });
-  const day = d.toLocaleDateString("es-CR", { day: "2-digit" });
-  const capMonth = month.charAt(0).toUpperCase() + month.slice(1);
-  return `${capMonth} ${day}`;
-}
+function extractMinutes(text) {
+  const t = String(text || "").trim().toLowerCase();
+  if (!t) return null;
 
-function trainingLabel(t, idx, total) {
-  // idx viene del render (0..total-1) en orden DESC.
-  // Queremos #1 el más viejo => número = total - idx
-  const n = total - idx;
-  return `Entreno #${n}: ${fmtHumanDayMonth(t.date)}`;
-}
+  const match = t.match(/(\d+)/);
+  if (!match) return null;
 
-function bindCollapseCarets() {
-  // evita doble bind
-  if (bindCollapseCarets._bound) return;
-  bindCollapseCarets._bound = true;
-
-  document.addEventListener("shown.bs.collapse", (e) => {
-    const id = e.target?.id;
-    if (!id) return;
-    document.querySelectorAll(`[data-caret-for="${id}"]`).forEach(el => (el.textContent = "▾"));
-  });
-
-  document.addEventListener("hidden.bs.collapse", (e) => {
-    const id = e.target?.id;
-    if (!id) return;
-    document.querySelectorAll(`[data-caret-for="${id}"]`).forEach(el => (el.textContent = "▸"));
-  });
+  const n = Number(match[1]);
+  return Number.isFinite(n) ? n : null;
 }

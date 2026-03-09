@@ -1,0 +1,184 @@
+.trainings-page .training-add-btn {
+  white-space: nowrap;
+}
+
+/* ========= modal fullscreen ========= */
+.training-session-modal {
+  border: 0;
+  border-radius: 0;
+}
+
+.training-session-modal__header {
+  background: linear-gradient(90deg, #0d4b41 0%, #0b3d36 100%);
+  color: #fff;
+  border-bottom: 0;
+  padding: 1rem 1.25rem;
+}
+
+.training-session-modal__body {
+  background: #f7f8fa;
+  padding: 1.25rem;
+}
+
+.training-session-modal__footer {
+  border-top: 1px solid #e8ebef;
+  background: #fff;
+}
+
+/* ========= cards internas ========= */
+.training-form-card {
+  border: 1px solid #e8ebef;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(16, 24, 40, 0.04);
+}
+
+.training-form-card .card-body {
+  padding: 1rem;
+}
+
+/* ========= participantes ========= */
+.attendance-list--modal {
+  max-height: calc(100vh - 270px);
+  overflow: auto;
+  border: 1px solid #edf0f3;
+  border-radius: 12px;
+  padding: .5rem;
+  background: #fff;
+}
+
+/* ========= session strip ========= */
+.session-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .75rem;
+}
+
+.session-summary-strip__item {
+  background: #f8fafc;
+  border: 1px solid #e7edf4;
+  border-radius: 12px;
+  padding: .75rem .9rem;
+}
+
+.session-summary-strip__item .label {
+  display: block;
+  font-size: .78rem;
+  color: #667085;
+  margin-bottom: .1rem;
+}
+
+.session-summary-strip__item .value {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #101828;
+}
+
+/* ========= session items ========= */
+.session-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.session-items-empty {
+  border: 1px dashed #cfd8e3;
+  border-radius: 14px;
+  padding: 1rem;
+  text-align: center;
+  color: #667085;
+  background: #fbfcfe;
+}
+
+.session-item-card {
+  border: 1px solid #e6ebf2;
+  border-radius: 16px;
+  background: #fff;
+  padding: 1rem;
+}
+
+.session-item-card__top {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.session-item-order {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: #0d6efd12;
+  color: #0d6efd;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+
+.session-item-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.session-item-actions {
+  display: flex;
+  flex-direction: column;
+  gap: .45rem;
+  flex: 0 0 auto;
+}
+
+.form-label-sm {
+  font-size: .78rem;
+  color: #667085;
+  margin-bottom: .25rem;
+}
+
+/* ========= pickers ========= */
+.training-picker-list {
+  max-height: 420px;
+  overflow: auto;
+  border: 1px solid #ebeff3;
+  border-radius: 14px;
+}
+
+.training-picker-list .list-group-item {
+  border-left: 0;
+  border-right: 0;
+}
+
+.training-picker-list .x-small {
+  font-size: .76rem;
+}
+
+/* ========= responsive ========= */
+@media (max-width: 991.98px) {
+  .session-item-card__top {
+    flex-direction: column;
+  }
+
+  .session-item-actions {
+    flex-direction: row;
+    justify-content: flex-end;
+    width: 100%;
+  }
+
+  .attendance-list--modal {
+    max-height: 380px;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .session-summary-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .training-session-modal__body {
+    padding: .85rem;
+  }
+
+  .training-form-card .card-body {
+    padding: .9rem;
+  }
+}

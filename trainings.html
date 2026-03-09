@@ -3,7 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Entrenamientos</title>
+    <title>Historial de Entrenamientos</title>
+
     <script>document.documentElement.classList.add("preload");</script>
     <style>
       html.preload, html.preload body { background: #0b0b0c; }
@@ -22,35 +23,33 @@
     />
     <link rel="stylesheet" href="/css/dashboard.css" />
     <link rel="stylesheet" href="/css/main.css" />
+    <link rel="stylesheet" href="/css/trainings.css" />
   </head>
 
   <body class="loading">
-    <!-- HEADER -->
     <div id="app-header"></div>
 
     <main class="container py-4 trainings-page">
 
-    <!-- TÍTULO + CTA -->
-    <div class="trainings-page-head mb-4">
-      <div>
+      <div class="trainings-page-head mb-4">
+        <div>
           <h1 class="page-title mb-1">Historial de Entrenamientos</h1>
-          <small class="text-muted">Bitácora de sesiones de entrenamientos realizados (usada para llevar control de asistencia).</small>
+          <small class="text-muted">
+            Bitácora de sesiones realizadas y control de asistencia del equipo.
+          </small>
         </div>
 
-      <button
-        id="addTrainingBtn"
-        class="btn btn-primary training-add-btn"
-        data-bs-toggle="modal"
-        data-bs-target="#trainingModal"
-        type="button"
-      >
-        <i class="bi bi-plus-lg"></i>
-        <span class="label-desktop">Registrar entrenamiento</span>
-        <span class="label-mobile">Registrar</span>
-      </button>
-    </div>
+        <button
+          id="addTrainingBtn"
+          class="btn btn-primary training-add-btn"
+          type="button"
+        >
+          <i class="bi bi-plus-lg"></i>
+          <span class="label-desktop">Registrar entrenamiento</span>
+          <span class="label-mobile">Registrar</span>
+        </button>
+      </div>
 
-      <!-- ================= KPIs ================= -->
       <section class="mb-3">
         <div class="row g-3">
           <div class="col-12 col-md-4">
@@ -82,7 +81,6 @@
         </div>
       </section>
 
-      <!-- ================= BUSCAR + FILTROS ================= -->
       <section class="mb-3">
         <div class="card filters-card training-filters-panel">
           <button
@@ -107,13 +105,12 @@
 
                 <div class="col-12 col-lg-3">
                   <label class="form-label small text-muted mb-1">Buscar por contenido</label>
-
                   <div class="input-group">
                     <span class="input-group-text" aria-hidden="true">🔎</span>
                     <input
                       id="trainingSearch"
                       class="form-control"
-                      placeholder="Buscar en resumen / drills / playbook…"
+                      placeholder="Buscar en sesión / drills / notas…"
                     />
                   </div>
                 </div>
@@ -164,10 +161,8 @@
         </div>
       </section>
 
-      <!-- TABLA ENTRENAMIENTOS -->
-      <!-- MOBILE -->
-      <div id="trainingsCards" class="d-md-none  mb-2"></div>
-      <!-- DESKTOP -->
+      <div id="trainingsCards" class="d-md-none mb-2"></div>
+
       <div class="card d-none d-md-block">
         <div class="card-body p-0">
           <div class="table-responsive">
@@ -175,11 +170,11 @@
               <thead class="text-uppercase small">
                 <tr>
                   <th>Fecha</th>
-                  <th>Nombre</th>
+                  <th>Sesión realizada</th>
                   <th>Asistentes</th>
                 </tr>
               </thead>
-              <tbody id="trainingsTable"> <!-- JS --> </tbody>
+              <tbody id="trainingsTable"></tbody>
             </table>
           </div>
         </div>
@@ -188,121 +183,11 @@
       <span id="appVersion" class="text-muted small d-block mt-3"></span>
     </main>
 
-    <!-- MODAL NUEVO / EDITAR ENTRENAMIENTO -->
-    <div class="modal fade" id="trainingModal" tabindex="-1">
-      <div class="modal-dialog
-            modal-dialog-scrollable
-            modal-fullscreen-md-down
-            modal-lg">
-        <div class="modal-content">
+    <!-- partial mount -->
+    <div id="trainingModalMount"></div>
 
-          <div class="modal-header">
-            <h5 class="modal-title">Nuevo entrenamiento</h5>
-            <button class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-
-          <div class="modal-body">
-
-            <!-- FECHA -->
-            <div class="mb-3">
-              <label class="form-label">Fecha del entrenamiento</label>
-              <input type="date" id="trainingDate" class="form-control">
-            </div>
-
-            <!-- TEXTO RÁPIDO -->
-            <div id="quickTextSection">
-              <div class="mb-3">
-                <label class="form-label">
-                  Lista rápida (WhatsApp)
-                </label>
-                <textarea
-                  id="attendanceText"
-                  rows="3"
-                  class="form-control"
-                  placeholder="Pega acá la lista de WhatsApp con los participantes del entrenamiento"
-                ></textarea>
-              </div>
-
-              <button id="processBtn" class="btn btn-outline-primary mb-3">
-                Procesar texto
-              </button>
-
-              <hr>
-            </div>
-
-            <!-- CHECKLIST -->
-            <div class="d-flex align-items-center justify-content-between mb-2">
-              <button
-                class="btn btn-link p-0 text-decoration-none d-flex align-items-center gap-2"
-                type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#playersCollapse"
-                aria-expanded="true"
-                aria-controls="playersCollapse"
-              >
-                <span class="fw-semibold">Participantes</span>
-                <span class="collapse-caret" data-caret-for="playersCollapse">▾</span>
-              </button>
-            </div>
-
-            <div id="playersCollapse" class="collapse show">
-              <div class="attendance-box">
-                <div id="playersList" class="attendance-list"></div>
-              </div>
-            </div>
-
-              <!-- RESUMEN DEL ENTRENAMIENTO -->
-            <div class="mb-3">
-              <label class="form-label fw-semibold">
-                ¿Qué se trabajó en el entrenamiento?
-              </label>
-              <textarea
-                id="trainingSummary"
-                rows="3"
-                class="form-control"
-                placeholder="Ej: ofensiva vertical, defensas de zona, cortes profundos..."
-              ></textarea>
-            </div>
-
-            <!-- NOTAS -->
-            <div class="mb-3">
-              <label class="form-label">
-                Notas internas
-              </label>
-              <textarea
-                id="trainingNotes"
-                rows="2"
-                class="form-control"
-                placeholder="Ej: poco quorum, lluvia, probar nueva línea..."
-              ></textarea>
-            </div>
-
-          </div>
-
-          <div class="modal-footer">
-            <button
-              class="btn btn-secondary"
-              data-bs-dismiss="modal"
-            >
-              Cancelar
-            </button>
-
-            <button
-              id="saveTrainingBtn"
-              class="btn btn-success"
-            >
-              Guardar entrenamiento
-            </button>
-          </div>
-
-        </div>
-      </div>
-    </div>
-
-    <!-- SCRIPTS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script type="module" src="/js/trainings.js"></script>
     <script src="/js/layout.js" defer></script>
-
   </body>
 </html>

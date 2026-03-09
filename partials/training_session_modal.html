@@ -1,0 +1,298 @@
+<div class="modal fade" id="trainingModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-fullscreen">
+    <div class="modal-content training-session-modal">
+
+      <form id="trainingForm" class="h-100 d-flex flex-column">
+        <input type="hidden" id="trainingId" />
+
+        <div class="modal-header player-modal__header training-session-modal__header">
+          <div>
+            <h5 class="modal-title mb-0" id="trainingModalTitle">Registrar sesión realizada</h5>
+            <small class="player-modal__subtitle" id="trainingModalSubtitle">
+              Registrar sesión realizada, asistencia y material trabajado
+            </small>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body training-session-modal__body">
+          <div class="row g-4">
+
+            <div class="col-12 col-xl-8">
+              <div class="row g-3">
+
+                <div class="col-12 col-md-4">
+                  <label class="form-label">Fecha del entrenamiento</label>
+                  <input type="date" id="trainingDate" class="form-control" />
+                </div>
+
+                <div class="col-12">
+                  <div id="quickTextSection" class="card training-form-card">
+                    <div class="card-body">
+                      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                        <div>
+                          <div class="fw-semibold">Lista rápida (WhatsApp)</div>
+                          <div class="text-muted small">Pega la lista para marcar participantes más rápido.</div>
+                        </div>
+                        <button id="processBtn" type="button" class="btn btn-outline-primary btn-sm">
+                          <i class="bi bi-magic"></i> Procesar texto
+                        </button>
+                      </div>
+
+                      <textarea
+                        id="attendanceText"
+                        rows="4"
+                        class="form-control"
+                        placeholder="Pega acá la lista de WhatsApp con los participantes del entrenamiento"
+                      ></textarea>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-12">
+                  <div class="card training-form-card">
+                    <div class="card-body">
+                      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                        <div>
+                          <div class="fw-semibold">Sesión realizada</div>
+                          <div class="text-muted small">
+                            Ordena lo trabajado. Puedes agregar drills del playbook o escribir actividades manuales.
+                          </div>
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-2">
+                          <button
+                            class="btn btn-outline-secondary btn-sm"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#playbookMaterialCollapse"
+                            aria-expanded="true"
+                            aria-controls="playbookMaterialCollapse"
+                          >
+                            <i class="bi bi-journal-text"></i>
+                            Usar material del playbook
+                          </button>
+
+                          <button id="addManualSessionItemBtn" class="btn btn-outline-primary btn-sm" type="button">
+                            <i class="bi bi-plus-lg"></i>
+                            Agregar actividad manual
+                          </button>
+
+                          <button id="openCreateDrillModalBtn" class="btn btn-outline-success btn-sm" type="button">
+                            <i class="bi bi-plus-square"></i>
+                            Crear drill en playbook
+                          </button>
+                        </div>
+                      </div>
+
+                      <div class="session-summary-strip mb-3">
+                        <div class="session-summary-strip__item">
+                          <span class="label">Items</span>
+                          <span class="value" id="sessionItemsCount">0</span>
+                        </div>
+                        <div class="session-summary-strip__item">
+                          <span class="label">Tiempo estimado</span>
+                          <span class="value" id="sessionEstimatedTime">0 min</span>
+                        </div>
+                        <div class="session-summary-strip__item">
+                          <span class="label">Descanso acumulado</span>
+                          <span class="value" id="sessionRestTime">0 min</span>
+                        </div>
+                      </div>
+
+                      <div id="sessionItemsList" class="session-items-list"></div>
+
+                      <div id="sessionItemsEmpty" class="session-items-empty">
+                        Aún no has agregado drills o actividades a esta sesión.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-12">
+                  <div id="playbookMaterialCollapse" class="collapse show">
+                    <div class="card training-form-card">
+                      <div class="card-body">
+                        <div class="fw-semibold mb-1">
+                          Usar material del playbook (drills y planes de entrenamiento completos)
+                        </div>
+                        <div class="text-muted small mb-3">
+                          Al seleccionar un drill o un plan, se agrega arriba en la lista de la sesión para que puedas reordenarlo y editarlo.
+                        </div>
+
+                        <div class="row g-3">
+                          <div class="col-12 col-xl-6">
+                            <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                              <div class="small text-muted">Planes de entrenamiento</div>
+                              <input
+                                id="pbTrainingSearch"
+                                class="form-control form-control-sm"
+                                placeholder="Buscar planes..."
+                                style="max-width: 220px"
+                              />
+                            </div>
+                            <div id="pbTrainingsList" class="list-group training-picker-list"></div>
+                          </div>
+
+                          <div class="col-12 col-xl-6">
+                            <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                              <div class="small text-muted">Drills</div>
+                              <input
+                                id="pbDrillSearch"
+                                class="form-control form-control-sm"
+                                placeholder="Buscar drills..."
+                                style="max-width: 220px"
+                              />
+                            </div>
+                            <div id="pbDrillsList" class="list-group training-picker-list"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-12">
+                  <div class="card training-form-card">
+                    <div class="card-body">
+                      <div class="fw-semibold mb-2">Notas internas</div>
+                      <textarea
+                        id="trainingNotes"
+                        rows="4"
+                        class="form-control"
+                        placeholder="Ej: poco quorum, lluvia, cancha ocupada, ajuste táctico, etc."
+                      ></textarea>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <div class="col-12 col-xl-4">
+              <div class="card training-form-card h-100">
+                <div class="card-body d-flex flex-column">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                      <div class="fw-semibold">Participantes</div>
+                      <div class="text-muted small">Asistencia del entrenamiento</div>
+                    </div>
+                    <span class="badge text-bg-light" id="participantsCounter">0 seleccionados</span>
+                  </div>
+
+                  <div id="playersList" class="attendance-list attendance-list--modal flex-grow-1"></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="modal-footer training-session-modal__footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            Cancelar
+          </button>
+          <button id="saveTrainingBtn" type="submit" class="btn btn-success">
+            Guardar entrenamiento
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- modal chico para actividad manual -->
+<div class="modal fade" id="manualSessionItemModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form id="manualSessionItemForm">
+        <div class="modal-header">
+          <h5 class="modal-title">Agregar actividad manual</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Nombre</label>
+            <input id="manualItemName" class="form-control" placeholder="Ej: Calentamiento / Lanzamiento / Activación" />
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Objetivo</label>
+            <textarea id="manualItemObjective" class="form-control" rows="2" placeholder="Ej: activar, movilidad, cardio suave..."></textarea>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label class="form-label">Volumen</label>
+              <input id="manualItemVolume" class="form-control" placeholder="Ej: 10 min / 4 repeticiones / 5 vueltas" />
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label">Duración estimada (min)</label>
+              <input id="manualItemMinutes" type="number" min="0" step="1" class="form-control" placeholder="Ej: 10" />
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Descanso después</label>
+              <input id="manualItemRestAfter" class="form-control" placeholder="Ej: 2 min / agua / sin descanso" />
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Agregar a la sesión</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- modal chico para crear drill persistente -->
+<div class="modal fade" id="createPlaybookDrillModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form id="createPlaybookDrillForm">
+        <div class="modal-header">
+          <h5 class="modal-title">Crear drill en Playbook</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Nombre</label>
+            <input id="newDrillName" class="form-control" placeholder="Nombre del drill" />
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Objetivo</label>
+            <textarea id="newDrillObjective" class="form-control" rows="2" placeholder="Objetivo del drill"></textarea>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label class="form-label">Volumen</label>
+              <input id="newDrillVolume" class="form-control" placeholder="Ej: 5 vueltas" />
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label">Duración estimada (min)</label>
+              <input id="newDrillMinutes" type="number" min="0" step="1" class="form-control" placeholder="Ej: 12" />
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Descanso después</label>
+              <input id="newDrillRestAfter" class="form-control" placeholder="Ej: 2 minutos" />
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-success">Guardar drill</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
