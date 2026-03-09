@@ -135,6 +135,7 @@ function cacheDom() {
     drillObjective: document.getElementById("drillObjective"),
     drillVolume: document.getElementById("drillVolume"),
     drillRest: document.getElementById("drillRest"),
+    drillMinPlayers: document.getElementById("drillMinPlayers"),
     drillRecs: document.getElementById("drillRecs"),
     drillTags: document.getElementById("drillTags"),
     drillTagsFilter: document.getElementById("drillTagsFilter"),
@@ -408,6 +409,10 @@ function renderDrills() {
               <div>${escapeHtml(d.restAfter || "—")}</div>
             </div>
           </div>
+          <div class="col-12 col-md-4">
+            <div class="small text-muted">Mínimo de personas</div>
+            <div>${d.minPlayers > 0 ? escapeHtml(d.minPlayers) : "—"}</div>
+          </div>
 
           <div class="mt-2">
             <div class="small text-muted">Recomendaciones</div>
@@ -454,9 +459,19 @@ function renderDrills() {
 
 
 function drillMatches(d, term) {
+  const tagLabels = Array.isArray(d.tags) ? d.tags.map(t => t.label).join(" ") : "";
+
   const hay = [
-    d.name, d.authorName, d.objective, d.volume, d.restAfter, d.recommendations
+    d.name,
+    d.authorName,
+    d.objective,
+    d.volume,
+    d.minPlayers,
+    d.restAfter,
+    d.recommendations,
+    tagLabels,
   ].map(norm).join(" ");
+
   return hay.includes(term);
 }
 
@@ -582,6 +597,7 @@ async function ensureCreateDrillModal() {
   $.drillObjective = document.getElementById("drillObjective");
   $.drillVolume = document.getElementById("drillVolume");
   $.drillRest = document.getElementById("drillRest");
+  $.drillMinPlayers = document.getElementById("drillMinPlayers");
   $.drillRecs = document.getElementById("drillRecs");
   $.drillTags = document.getElementById("drillTags");
 
@@ -613,6 +629,7 @@ async function createDrillFromForm() {
 
   const name = ($.drillName?.value || "").trim();
   const authorName = ($.drillAuthor?.value || "").trim();
+  const minPlayers = parsePositiveInt($.drillMinPlayers?.value);
   const tags = parseTagsInput($.drillTags?.value);
 
   if (!name || !authorName) {
@@ -629,6 +646,7 @@ async function createDrillFromForm() {
     objective: ($.drillObjective?.value || "").trim(),
     volume: ($.drillVolume?.value || "").trim(),
     restAfter: ($.drillRest?.value || "").trim(),
+    minPlayers: minPlayers ?? 0,
     recommendations: ($.drillRecs?.value || "").trim(),
     tags,
 
@@ -675,6 +693,7 @@ async function ensureDrillEditorModal() {
     objective: document.getElementById("deObjective"),
     volume: document.getElementById("deVolume"),
     rest: document.getElementById("deRest"),
+    minPlayers: document.getElementById("deMinPlayers"),
     recs: document.getElementById("deRecs"),
     isPublic: document.getElementById("deIsPublic"),
     saveBtn: document.getElementById("saveDrillEditorBtn"),
@@ -718,6 +737,7 @@ async function openDrillEditor(drillId) {
   ui.objective.value = d.objective || "";
   ui.volume.value = d.volume || "";
   ui.rest.value = d.restAfter || "";
+  ui.minPlayers.value = d.minPlayers || "";
   ui.recs.value = d.recommendations || "";
   ui.isPublic.checked = d.isPublic !== false;
   ui.tags.value = tagsToInputValue(d.tags);
@@ -733,6 +753,7 @@ async function saveDrillEdits(ui) {
 
   const name = (ui.name.value || "").trim();
   const authorName = (ui.author.value || "").trim();
+  const minPlayers = parsePositiveInt(ui.minPlayers.value);
   const tags = parseTagsInput(ui.tags.value);
 
   if (!name || !authorName) {
@@ -749,6 +770,7 @@ async function saveDrillEdits(ui) {
     objective: (ui.objective.value || "").trim(),
     volume: (ui.volume.value || "").trim(),
     restAfter: (ui.rest.value || "").trim(),
+    minPlayers: minPlayers ?? 0,
     recommendations: (ui.recs.value || "").trim(),
     tags,
     isPublic: ui.isPublic.checked === true,
@@ -857,6 +879,12 @@ function escapeHtml(str) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+//usada para el min players
+function parsePositiveInt(value) {
+  const n = Number.parseInt(String(value ?? "").trim(), 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 function normalizeTagLabel(label) {
