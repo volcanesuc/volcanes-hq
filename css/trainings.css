@@ -6,44 +6,56 @@
 .training-session-modal {
   border: 0;
   border-radius: 0;
+  background: var(--card);
 }
 
-.training-session-modal__header {
-  background: linear-gradient(90deg, #0d4b41 0%, #0b3d36 100%);
+.modal .training-session-modal__header {
+  background: var(--theme-primary) !important;
   color: #fff;
   border-bottom: 0;
   padding: 1rem 1.25rem;
 }
 
+.training-session-modal__header .modal-title,
+.training-session-modal__header .player-modal__subtitle {
+  color: #fff;
+}
+
+.training-session-modal__header .btn-close {
+  filter: invert(1);
+}
+
 .training-session-modal__body {
-  background: #f7f8fa;
+  background: var(--bg-soft);
   padding: 1.25rem;
 }
 
 .training-session-modal__footer {
-  border-top: 1px solid #e8ebef;
-  background: #fff;
+  border-top: 1px solid var(--border);
+  background: var(--card);
 }
 
 /* ========= cards internas ========= */
 .training-form-card {
-  border: 1px solid #e8ebef;
+  border: 1px solid var(--border);
   border-radius: 16px;
+  background: var(--card);
   box-shadow: 0 8px 24px rgba(16, 24, 40, 0.04);
 }
 
 .training-form-card .card-body {
   padding: 1rem;
+  color: var(--text);
 }
 
 /* ========= participantes ========= */
 .attendance-list--modal {
   max-height: calc(100vh - 270px);
   overflow: auto;
-  border: 1px solid #edf0f3;
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: .5rem;
-  background: #fff;
+  background: var(--card);
 }
 
 /* ========= session strip ========= */
@@ -54,8 +66,8 @@
 }
 
 .session-summary-strip__item {
-  background: #f8fafc;
-  border: 1px solid #e7edf4;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: .75rem .9rem;
 }
@@ -63,14 +75,14 @@
 .session-summary-strip__item .label {
   display: block;
   font-size: .78rem;
-  color: #667085;
+  color: var(--text-soft);
   margin-bottom: .1rem;
 }
 
 .session-summary-strip__item .value {
   font-weight: 700;
   font-size: 1rem;
-  color: #101828;
+  color: var(--text);
 }
 
 /* ========= session items ========= */
@@ -81,18 +93,18 @@
 }
 
 .session-items-empty {
-  border: 1px dashed #cfd8e3;
+  border: 1px dashed var(--border);
   border-radius: 14px;
   padding: 1rem;
   text-align: center;
-  color: #667085;
-  background: #fbfcfe;
+  color: var(--text-soft);
+  background: var(--bg-soft);
 }
 
 .session-item-card {
-  border: 1px solid #e6ebf2;
+  border: 1px solid var(--border);
   border-radius: 16px;
-  background: #fff;
+  background: var(--card);
   padding: 1rem;
 }
 
@@ -107,8 +119,8 @@
   width: 36px;
   height: 36px;
   border-radius: 999px;
-  background: #0d6efd12;
-  color: #0d6efd;
+  background: color-mix(in srgb, var(--theme-primary) 12%, transparent);
+  color: var(--theme-primary);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -119,7 +131,7 @@
 .session-item-title {
   font-size: 1rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--text);
 }
 
 .session-item-actions {
@@ -131,7 +143,7 @@
 
 .form-label-sm {
   font-size: .78rem;
-  color: #667085;
+  color: var(--text-soft);
   margin-bottom: .25rem;
 }
 
@@ -139,17 +151,197 @@
 .training-picker-list {
   max-height: 420px;
   overflow: auto;
-  border: 1px solid #ebeff3;
+  border: 1px solid var(--border);
   border-radius: 14px;
+  background: var(--card);
 }
 
 .training-picker-list .list-group-item {
   border-left: 0;
   border-right: 0;
+  background: var(--card);
+  color: var(--text);
+  border-color: var(--border);
 }
 
 .training-picker-list .x-small {
   font-size: .76rem;
+  color: var(--text-soft);
+}
+
+/* ========= participantes embebidos ========= */
+.participants-card-mobile-first .card-body {
+  padding: 1rem;
+}
+
+.participants-collapse-toggle {
+  color: var(--theme-primary);
+  line-height: 1;
+}
+
+.participants-collapse-toggle:hover,
+.participants-collapse-toggle:focus {
+  color: var(--theme-primary-dark);
+}
+
+.participants-divider {
+  border-top: 1px solid var(--border);
+}
+
+.attendance-list--embedded {
+  max-height: 340px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: .5rem;
+  background: var(--card);
+}
+
+.participants-collapsed-hint {
+  margin-top: .75rem;
+  padding: .75rem .875rem;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: var(--bg-soft);
+  color: var(--text-soft);
+  font-size: .88rem;
+}
+
+/* ========= afinado de textos / badges / inputs dentro del modal ========= */
+.training-session-modal .text-muted,
+.training-session-modal .small,
+.training-session-modal .form-text {
+  color: var(--text-soft) !important;
+}
+
+.training-session-modal .form-control,
+.training-session-modal .form-select {
+  background: var(--card);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.training-session-modal .form-control::placeholder,
+.training-session-modal .form-select::placeholder,
+.training-session-modal textarea::placeholder,
+.training-session-modal input::placeholder {
+  color: var(--text-soft);
+  opacity: .9;
+}
+
+.training-session-modal .form-control:focus,
+.training-session-modal .form-select:focus {
+  border-color: var(--theme-primary-light);
+  box-shadow: 0 0 0 .2rem color-mix(in srgb, var(--theme-primary) 18%, transparent);
+}
+
+.training-session-modal .badge.text-bg-light {
+  background: var(--bg-soft) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border);
+}
+
+.training-session-modal .btn-outline-primary {
+  color: var(--theme-primary);
+  border-color: var(--theme-primary);
+}
+
+.training-session-modal .btn-outline-primary:hover,
+.training-session-modal .btn-outline-primary:focus,
+.training-session-modal .btn-outline-primary:active {
+  background: var(--theme-primary);
+  border-color: var(--theme-primary);
+  color: #fff;
+}
+
+.training-session-modal .btn-outline-success {
+  color: var(--theme-primary);
+  border-color: var(--theme-primary);
+}
+
+.training-session-modal .btn-outline-success:hover,
+.training-session-modal .btn-outline-success:focus,
+.training-session-modal .btn-outline-success:active {
+  background: var(--theme-primary);
+  border-color: var(--theme-primary);
+  color: #fff;
+}
+
+.training-session-modal .btn-outline-secondary {
+  color: var(--text-soft);
+  border-color: var(--border);
+}
+
+.training-session-modal .btn-outline-secondary:hover,
+.training-session-modal .btn-outline-secondary:focus,
+.training-session-modal .btn-outline-secondary:active {
+  background: var(--bg-soft);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.training-session-modal .btn-success {
+  background: var(--theme-primary);
+  border-color: var(--theme-primary);
+}
+
+.training-session-modal .btn-success:hover,
+.training-session-modal .btn-success:focus,
+.training-session-modal .btn-success:active {
+  background: var(--theme-primary-dark);
+  border-color: var(--theme-primary-dark);
+}
+
+.training-session-modal .btn-secondary {
+  background: var(--bg-soft);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.training-session-modal .btn-secondary:hover,
+.training-session-modal .btn-secondary:focus,
+.training-session-modal .btn-secondary:active {
+  background: color-mix(in srgb, var(--bg-soft) 82%, var(--border) 18%);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+/* ========= attendance items ========= */
+.attendance-item {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .7rem .75rem;
+  border-radius: 12px;
+  color: var(--text);
+}
+
+.attendance-item:hover {
+  background: var(--bg-soft);
+}
+
+.attendance-check {
+  flex: 0 0 auto;
+}
+
+.attendance-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--text);
+}
+
+.attendance-number {
+  flex: 0 0 auto;
+  color: var(--text-soft);
+  font-size: .9rem;
+}
+
+/* ========= search highlight ========= */
+.search-hit {
+  background: color-mix(in srgb, var(--theme-accent) 38%, white 62%);
+  color: inherit;
+  padding: 0 .15em;
+  border-radius: .25rem;
 }
 
 /* ========= responsive ========= */
@@ -181,38 +373,6 @@
   .training-form-card .card-body {
     padding: .9rem;
   }
-}
-
-.participants-card-mobile-first .card-body {
-  padding: 1rem;
-}
-
-.participants-collapse-toggle {
-  color: inherit;
-  line-height: 1;
-}
-
-.participants-divider {
-  border-top: 1px solid #e9edf2;
-}
-
-.attendance-list--embedded {
-  max-height: 340px;
-  overflow: auto;
-  border: 1px solid #edf0f3;
-  border-radius: 12px;
-  padding: .5rem;
-  background: #fff;
-}
-
-.participants-collapsed-hint {
-  margin-top: .75rem;
-  padding: .75rem .875rem;
-  border: 1px dashed #d6dde6;
-  border-radius: 12px;
-  background: #fafbfd;
-  color: #667085;
-  font-size: .88rem;
 }
 
 @media (min-width: 769px) {
