@@ -653,7 +653,13 @@ function renderPlaybookSelectors() {
     : pbTrainings;
 
   const dFiltered = dTerm
-    ? pbDrills.filter(x => `${norm(x.name)} ${norm(x.objective)} ${norm(x.authorName)}`.includes(dTerm))
+    ? pbDrills.filter(d => {
+        const tagLabels = Array.isArray(d.tags)
+          ? d.tags.map(t => typeof t === "string" ? t : (t?.label || "")).join(" ")
+          : "";
+
+        return `${norm(d.name)} ${norm(d.objective)} ${norm(d.authorName)} ${norm(tagLabels)}`.includes(dTerm);
+      })
     : pbDrills;
 
   $.pbTrainingsList.innerHTML = "";
@@ -680,7 +686,7 @@ function renderPlaybookSelectors() {
       </div>
     `;
 
-    item.querySelector("button").addEventListener("click", () => {
+    item.querySelector("button")?.addEventListener("click", () => {
       addPlaybookTrainingToSession(t.id);
     });
 
@@ -691,23 +697,64 @@ function renderPlaybookSelectors() {
     const item = document.createElement("div");
     item.className = "list-group-item";
 
+    const minPlayers = Number.parseInt(d.minPlayers, 10);
+    const hasMinPlayers = Number.isFinite(minPlayers) && minPlayers > 0;
+    const isHighMin = hasMinPlayers && minPlayers >= 7;
+    const minClass = isHighMin ? "fw-semibold text-danger" : "fw-semibold text-dark";
+
+    const normalizedTags = Array.isArray(d.tags) ? d.tags : [];
+
+    const tagsHtml = normalizedTags.length
+      ? `
+        <div class="d-flex flex-wrap gap-1 mt-2">
+          ${normalizedTags.map(tag => {
+            const label = typeof tag === "string" ? tag : (tag?.label || "Tag");
+            const key = typeof tag === "string" ? tag : (tag?.key || label);
+            const color = typeof tag === "string"
+              ? colorFromString(key)
+              : (tag?.color || colorFromString(key));
+
+            return `
+              <span
+                class="badge rounded-pill"
+                style="
+                  background: ${escapeHtml(color)};
+                  color: #fff;
+                  font-weight: 500;
+                "
+              >
+                ${escapeHtml(label)}
+              </span>
+            `;
+          }).join("")}
+        </div>
+      `
+      : "";
+
     item.innerHTML = `
       <div class="d-flex justify-content-between align-items-start gap-3">
-        <div class="min-w-0">
+        <div class="min-w-0 flex-grow-1">
           <div class="fw-semibold">${escapeHtml(d.name || "—")}</div>
-          <div class="text-muted small">${escapeHtml(d.objective || "Sin objetivo")}</div>
-          <div class="text-muted x-small mt-1">
-            Volumen: ${escapeHtml(d.volume || "—")} · Descanso: ${escapeHtml(d.restAfter || "—")}
+          <div class="text-muted small mt-1">${escapeHtml(d.objective || "Sin objetivo")}</div>
+
+          <div class="small text-muted mt-2">
+            Volumen: ${escapeHtml(d.volume || "—")}
+            · Descanso: ${escapeHtml(d.restAfter || "—")}
+            · <span class="${minClass}">
+                Mín: ${hasMinPlayers ? escapeHtml(String(minPlayers)) : "—"} personas
+              </span>
           </div>
+
+          ${tagsHtml}
         </div>
 
-        <button class="btn btn-outline-primary btn-sm" type="button">
+        <button class="btn btn-outline-primary btn-sm flex-shrink-0" type="button">
           <i class="bi bi-plus-lg"></i> Agregar
         </button>
       </div>
     `;
 
-    item.querySelector("button").addEventListener("click", () => {
+    item.querySelector("button")?.addEventListener("click", () => {
       addDrillToSession(d.id);
     });
 
@@ -1242,6 +1289,16 @@ function humanDaysAgo(n) {
   if (n === 1) return "hace 1 día";
   if (n < 0) return "próximo";
   return `hace ${n} días`;
+}
+
+function colorFromString(str) {
+  const s = String(str || "");
+  let hash = 0;
+  for (let i = 0; i < s.length; i++) {
+    hash = s.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue} 65% 55%)`;
 }
 
 function setupParticipantsCollapseByViewport() {
