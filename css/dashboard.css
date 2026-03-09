@@ -422,10 +422,27 @@ mark.search-hit {
 }
 
 .tournaments-toolbar{
-  display: grid;
-  grid-template-columns: minmax(260px, 340px) auto;
-  gap: 12px;
+  display: flex;
+  justify-content: flex-end;
   align-items: end;
+  gap: 12px;
+  width: fit-content;
+  margin-left: auto;
+}
+
+.tournaments-toolbar-sticky{
+  display: flex;
+  justify-content: flex-end;
+}
+
+.tournaments-toolbar-sticky .tournaments-toolbar{
+  width: auto;
+  min-width: min(100%, 560px);
+}
+
+.tournaments-search-wrap{
+  width: 360px;
+  min-width: 260px;
 }
 
 .tournaments-search-wrap{
@@ -619,12 +636,21 @@ mark.search-hit {
 @media (max-width: 768px){
   .tournaments-toolbar-sticky{
     top: 8px;
+    display: block;
   }
 
   .tournaments-toolbar{
     width: 100%;
+    min-width: 0;
+    display: grid;
     grid-template-columns: 1fr;
     gap: 12px;
+    margin-left: 0;
+  }
+
+  .tournaments-search-wrap{
+    width: 100%;
+    min-width: 0;
   }
 
   .tournaments-actions{

@@ -153,7 +153,7 @@ function renderDesktop(grouped) {
 }
 
 function renderDesktopSection({ key, title, subtitle, countClass, list }) {
-  const expanded = isSectionExpanded(key);
+  const expanded = isSectionExpanded(key, list);
 
   return `
     <section class="tournament-section">
@@ -289,7 +289,7 @@ function renderCards(grouped) {
 }
 
 function renderCardSection({ key, title, subtitle, countClass, list }) {
-  const expanded = isSectionExpanded(key);
+  const expanded = isSectionExpanded(key, list);
 
   return `
     <section class="tournament-section">
@@ -551,8 +551,15 @@ function getTodayYMD() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-function isSectionExpanded(key) {
-  if (typeof sectionState[key] === "boolean") return sectionState[key];
+function isSectionExpanded(key, list = []) {
+  // si el user cambió el estado manualmente
+  if (typeof sectionState[key] === "boolean") {
+    return sectionState[key];
+  }
+  // si está vacío -> cerrado
+  if (!list || list.length === 0) {
+    return false;
+  }
   return true;
 }
 
