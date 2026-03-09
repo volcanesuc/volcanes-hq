@@ -23,7 +23,7 @@ export const CLUB_DATA = {
     menu: [
       { id: "home", label: "Home", href: "/dashboard.html" },
       { id: "roster", label: "Roster", href: "/roster.html" },
-      { id: "trainings", label: "Entrenamientos", href: "/trainings.html" },
+      { id: "trainings", label: "Entrenamientos", href: "/trainings_history.html" },
       { id: "attendance", label: "Asistencia", href: "/attendance.html" },
       { id: "tournaments", label: "Torneos", href: "/tournaments.html" },
       { id: "playbook", label: "Playbook", href: "/playbook.html" },

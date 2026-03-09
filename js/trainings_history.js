@@ -1,4 +1,4 @@
-// /js/trainings.js
+// /js/trainings_history.js
 import {
   collection,
   getDocs,
