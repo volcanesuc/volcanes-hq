@@ -272,6 +272,9 @@ function bindEvents() {
   $.pbTrainingSearch?.addEventListener("input", renderPlaybookSelectors);
   $.pbDrillSearch?.addEventListener("input", renderPlaybookSelectors);
 
+  $.manualItemForm?.addEventListener("submit", onSubmitManualItem);
+  $.createPlaybookDrillForm?.addEventListener("submit", onSubmitCreatePlaybookDrill);
+
   $.addManualSessionItemBtn?.addEventListener("click", () => {
     if (!$.manualItemModal) {
       console.error("[trainings] manualSessionItemModal no existe en el DOM");
