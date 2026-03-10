@@ -27,6 +27,7 @@ export const CLUB_DATA = {
       { id: "attendance", label: "Asistencia", href: "/attendance.html" },
       { id: "tournaments", label: "Torneos", href: "/tournaments.html" },
       { id: "playbook", label: "Playbook", href: "/playbook.html" },
+      { id: "community", label: "Community", href: "/community.html" },
       { id: "association", label: "Asociación", href: "/association.html" }
     ],
     logout: {
