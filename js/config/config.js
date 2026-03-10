@@ -29,6 +29,8 @@ export const APP_CONFIG = {
     memberships: "memberships",
     membershipInstallments: "membership_installments",
     membershipPaymentSubmissions: "membership_payment_submissions",
+
+    communityPosts: "community_posts",
   },
   
   sport: "ultimate",
