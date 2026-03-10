@@ -28,6 +28,7 @@ en settings autorizar dominios apropiados
 - Remote Config:
 crear el header tabs config file para mostrar/ocultar los tabs en el header
 js\config\page-config.js es el otro file donde seteamos los tabs del header
+strings.js tambien lleva los tabs ahi (refactor pendiente)
 
 - Storage:
 habilitar el storage SI se usa la seccion de asociación
