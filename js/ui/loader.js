@@ -1,8 +1,13 @@
-// js/ui/loader.js
-import { showLoaderOverlay, hideLoaderOverlay, setLoaderMessage } from "./loader.component.js";
+import {
+  mountLoader,
+  showLoaderOverlay,
+  hideLoaderOverlay,
+  setLoaderMessage
+} from "./loader.component.js";
 
 export function showLoader(message = "Cargando…") {
   document.body.classList.add("loading");
+  mountLoader();
   showLoaderOverlay(message);
 }
 
@@ -13,5 +18,6 @@ export function hideLoader() {
 }
 
 export function updateLoaderMessage(message = "Cargando…") {
+  mountLoader();
   setLoaderMessage(message);
 }

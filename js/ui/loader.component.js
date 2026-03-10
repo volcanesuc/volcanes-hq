@@ -135,12 +135,40 @@ function applyThemeVars() {
   root.style.setProperty("--loader-ring", ring);
 }
 
+function overlayMarkup() {
+  return `
+    <div class="loader-card" role="status" aria-live="polite" aria-label="Cargando">
+      <div class="loader" aria-hidden="true">
+        <svg viewBox="0 0 64 64">
+          <circle cx="32" cy="32" r="28" class="disc"></circle>
+          <circle cx="32" cy="32" r="23" class="inner-ring"></circle>
+          <path class="star"
+            d="M32 18
+               L36 27
+               L46 28
+               L39 35
+               L41 45
+               L32 40
+               L23 45
+               L25 35
+               L18 28
+               L28 27 Z"></path>
+        </svg>
+      </div>
+      <div class="loader-text" id="${OVERLAY_ID}Message">Cargando…</div>
+    </div>
+  `;
+}
+
 function ensureOverlay() {
   let overlay = document.getElementById(OVERLAY_ID);
   if (!overlay) {
     overlay = document.createElement("div");
     overlay.id = OVERLAY_ID;
+    overlay.innerHTML = overlayMarkup();
     document.body.appendChild(overlay);
+  } else if (!overlay.querySelector(".loader-card")) {
+    overlay.innerHTML = overlayMarkup();
   }
   return overlay;
 }

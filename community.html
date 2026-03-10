@@ -7,11 +7,24 @@
 
   <script>document.documentElement.classList.add("preload");</script>
   <style>
-    html.preload, html.preload body { background:#0b0b0c; margin:0; }
-    html.preload body { visibility: hidden; }
-    html.preload #clubLoadingOverlay { visibility: visible; }
+    html.preload,
+    html.preload body {
+      background: #0b0b0c;
+      margin: 0;
+    }
+
+    html.preload body {
+      visibility: hidden;
+    }
+
+    html.preload #clubLoadingOverlay {
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+      display: flex !important;
+    }
   </style>
-  <script src="/js/ui/loader.preload.js?v=20260226-1"></script>
+  <script src="/js/ui/loader.preload.js?v=20260310-2"></script>
 
   <link rel="apple-touch-icon" sizes="180x180" href="/img/apple-touch-icon.png">
 
@@ -35,12 +48,6 @@
   <link rel="stylesheet" href="/css/community.css" />
 </head>
 <body class="loading">
-  <div id="clubLoadingOverlay" class="loading-overlay">
-    <div class="text-center">
-      <div class="spinner-border" role="status" aria-hidden="true"></div>
-      <div class="mt-3 text-white fw-semibold">Cargando comunidad…</div>
-    </div>
-  </div>
 
   <!-- HEADER -->
   <div id="app-header"></div>
