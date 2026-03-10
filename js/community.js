@@ -65,30 +65,46 @@ const $ = {
 };
 
 let postModal = null;
+let authBootstrapped = false;
 
 boot();
 
 async function boot() {
-  const { cfg, redirected } = await guardPage("community");
-  if (!redirected) {
-    await loadHeader("community", cfg);
-  }
+  showLoader("Cargando comunidad...");
 
-  document.getElementById("logoutBtn")?.addEventListener("click", logout);
+  try {
+    const { cfg, redirected } = await guardPage("community");
+    if (!redirected) {
+      await loadHeader("community", cfg);
+    }
 
-  const modalEl = document.getElementById("communityPostModal");
-  if (modalEl && window.bootstrap) {
-    postModal = new bootstrap.Modal(modalEl);
-  }
+    document.getElementById("logoutBtn")?.addEventListener("click", logout);
 
-  bindEvents();
+    const modalEl = document.getElementById("communityPostModal");
+    if (modalEl && window.bootstrap) {
+      postModal = new bootstrap.Modal(modalEl);
+    }
 
+    bindEvents();
+    
   watchAuth(async (user) => {
-    state.user = user || null;
-    await resolveUserRole();
-    await loadPosts();
-    releaseUI();
+    showLoader("Cargando comunidad...");
+
+    try {
+      state.user = user || null;
+      await resolveUserRole();
+      await loadPosts();
+    } catch (err) {
+      console.error("Error initializing community:", err);
+    } finally {
+      releaseUI();
+      authBootstrapped = true;
+    }
   });
+  } catch (err) {
+    console.error("Error booting community:", err);
+    releaseUI();
+  }
 }
 
 function releaseUI() {
@@ -157,8 +173,6 @@ async function resolveUserRole() {
 }
 
 async function loadPosts() {
-  showLoader("Cargando comunidad...");
-
   try {
     const q = query(
       collection(db, COMMUNITY_COL),
@@ -180,8 +194,6 @@ async function loadPosts() {
     state.posts = [];
     applyFilters();
     renderKPIs();
-  } finally {
-    hideLoader();
   }
 }
 
