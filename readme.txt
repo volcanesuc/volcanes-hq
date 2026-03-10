@@ -19,6 +19,7 @@ En Firebase:
 - Database:
 crear club_config collection con index_settings y public_registration
 crear index: trainings: {up} clubId, {down} date, {down} __name__
+crear index: community_posts: {up} clubId, {down} createdAt, {down} __name__
 
 - Authentication:
 habilitar el google sign in y el anonymous
@@ -26,6 +27,7 @@ en settings autorizar dominios apropiados
 
 - Remote Config:
 crear el header tabs config file para mostrar/ocultar los tabs en el header
+js\config\page-config.js es el otro file donde seteamos los tabs del header
 
 - Storage:
 habilitar el storage SI se usa la seccion de asociación
@@ -35,3 +37,4 @@ DNS:
 
 Google Cloud Storage:
 - agregar un auth2.0 con el url del subdominio
+
