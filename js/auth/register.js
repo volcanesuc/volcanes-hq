@@ -697,7 +697,7 @@ async function upsertAssociate({
   return { assocId, associateSnapshot };
 }
 
-async function findPlayerToLink({ uid, email, firstName, lastName, birthDate }) {
+async function findPlayerToLink({ uid, email }) {
   if (uid) {
     const q1 = query(collection(db, COL_PLAYERS), where("uid", "==", uid), limit(1));
     const s1 = await getDocs(q1);
@@ -714,31 +714,13 @@ async function findPlayerToLink({ uid, email, firstName, lastName, birthDate }) 
     if (found) return found;
   }
 
-  if (firstName && lastName && birthDate) {
-    const qb = query(collection(db, COL_PLAYERS), where("birthday", "==", birthDate), limit(25));
-    const sb = await getDocs(qb);
-
-    const fn = firstName.trim().toLowerCase();
-    const ln = lastName.trim().toLowerCase();
-
-    const matches = [];
-    sb.forEach((d) => {
-      const p = d.data() || {};
-      const pfn = (p.firstName || "").toString().trim().toLowerCase();
-      const pln = (p.lastName || "").toString().trim().toLowerCase();
-      if (pfn === fn && pln === ln) matches.push({ id: d.id, ...p });
-    });
-
-    if (matches.length === 1) return matches[0];
-  }
-
   return null;
 }
 
 async function ensureLinkedPlayer({ assocId, uid, email, firstName, lastName, birthDate }) {
-  const player = await findPlayerToLink({ uid, email, firstName, lastName, birthDate });
+  const player = await findPlayerToLink({ uid, email });
 
-  const payload = {
+  const createPayload = {
     active: true,
     firstName: firstName || null,
     lastName: lastName || null,
@@ -753,7 +735,7 @@ async function ensureLinkedPlayer({ assocId, uid, email, firstName, lastName, bi
   };
 
   if (!player) {
-    const ref = await addDoc(collection(db, COL_PLAYERS), payload);
+    const ref = await addDoc(collection(db, COL_PLAYERS), createPayload);
     return { playerId: ref.id, created: true };
   }
 
