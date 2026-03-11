@@ -1,6 +1,6 @@
 // js/auth/permissions.js
 import { auth } from "./firebase.js";
-import { getUserRole } from "./role-routing.js";
+import { getUserAccess } from "./role-routing.js";
 
 let cachedPermissions = null;
 let cachedUid = null;
@@ -16,8 +16,8 @@ export async function getCurrentPermissions(force = false) {
     return cachedPermissions;
   }
 
-  const roleInfo = await getUserRole(uid);
-  const permissions = buildPermissions(roleInfo);
+  const accessInfo = await getUserAccess(uid);
+  const permissions = buildPermissions(accessInfo);
 
   cachedUid = uid;
   cachedPermissions = permissions;
@@ -25,10 +25,10 @@ export async function getCurrentPermissions(force = false) {
   return permissions;
 }
 
-export function buildPermissions(roleInfo) {
-  const active = roleInfo?.active === true;
+export function buildPermissions(accessInfo) {
+  const active = accessInfo?.isActive === true;
   const role = active
-    ? String(roleInfo?.role || "viewer").trim().toLowerCase()
+    ? String(accessInfo?.role || "viewer").trim().toLowerCase()
     : "viewer";
 
   const isAdmin = ["admin", "owner"].includes(role);
@@ -47,7 +47,7 @@ export function buildPermissions(roleInfo) {
     isViewer,
 
     // generales
-    canView: true,
+    canView: active,
 
     // capacidades base
     canManageContent,
