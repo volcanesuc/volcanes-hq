@@ -1,7 +1,4 @@
-// js/auth.js
-import { auth } from "../auth/firebase.js";
-import { db } from "../auth/firebase.js";
-
+import { auth, db } from "../auth/firebase.js";
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -16,33 +13,61 @@ import {
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+import { APP_CONFIG } from "../config/config.js";
+
 const provider = new GoogleAuthProvider();
 const STORAGE_KEY = "google_login_paths";
 
-/* =========================================================
-   Google Login (POPUP)
-   - Si users/{uid}.onboardingComplete === true => dashboard
-   - Si no => public/register.html?google=1
-========================================================= */
+const COL = APP_CONFIG.collections;
+
+async function getUserAccessState(uid) {
+  if (!uid) {
+    return {
+      exists: false,
+      onboardingComplete: false,
+      roleActive: false,
+      role: "viewer",
+    };
+  }
+
+  const userRef = doc(db, COL.users, uid);
+  const roleRef = doc(db, COL.userRoles, uid);
+
+  const [userSnap, roleSnap] = await Promise.all([
+    getDoc(userRef).catch(() => null),
+    getDoc(roleRef).catch(() => null),
+  ]);
+
+  const userData = userSnap?.exists?.() ? userSnap.data() || {} : {};
+  const roleData = roleSnap?.exists?.() ? roleSnap.data() || {} : {};
+
+  return {
+    exists: !!userSnap?.exists?.(),
+    onboardingComplete: userData.onboardingComplete === true,
+    roleActive: roleData.active === true,
+    role: String(roleData.role || "viewer").trim().toLowerCase(),
+    userData,
+    roleData,
+  };
+}
+
 export async function loginWithGoogle(opts = {}) {
   const dashboardPath = opts.dashboardPath ?? "dashboard.html";
   const registerPath = opts.registerPath ?? "public/register.html?google=1";
+  const landingPath = opts.landingPath ?? "index.html?pending=1";
 
   try {
-    // (opcional) guardá paths por si querés usarlos igual
     sessionStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ dashboardPath, registerPath })
+      JSON.stringify({ dashboardPath, registerPath, landingPath })
     );
 
     provider.setCustomParameters({ prompt: "select_account" });
 
-    // ✅ POPUP
     const cred = await signInWithPopup(auth, provider);
     const user = cred?.user;
     if (!user) return null;
 
-    // Prefill siempre
     sessionStorage.setItem(
       "prefill_register",
       JSON.stringify({
@@ -52,21 +77,19 @@ export async function loginWithGoogle(opts = {}) {
       })
     );
 
-    // paths guardados (o defaults)
     const stored = safeJson(sessionStorage.getItem(STORAGE_KEY)) || {};
     const dash = stored.dashboardPath ?? dashboardPath;
     const reg = stored.registerPath ?? registerPath;
+    const landing = stored.landingPath ?? landingPath;
 
-    const userRef = doc(db, "users", user.uid);
+    const userRef = doc(db, COL.users, user.uid);
     const snap = await getDoc(userRef);
 
     const email = (user.email || "").toLowerCase();
 
     if (snap.exists()) {
       const data = snap.data() || {};
-      const done = data.onboardingComplete === true;
 
-      // mantener email actualizado
       if (email && data.email !== email) {
         await setDoc(
           userRef,
@@ -75,16 +98,34 @@ export async function loginWithGoogle(opts = {}) {
         );
       }
 
-      window.location.href = done ? dash : reg;
+      const access = await getUserAccessState(user.uid);
+
+      if (!access.onboardingComplete) {
+        window.location.href = reg;
+        return cred;
+      }
+
+      if (access.roleActive) {
+        window.location.href = dash;
+        return cred;
+      }
+
+      window.location.href = landing;
       return cred;
     }
 
-    // no existe => crear doc mínimo y mandar a register
     await setDoc(
       userRef,
       {
+        uid: user.uid,
         email: email || null,
+        displayName: user.displayName || null,
+        photoURL: user.photoURL || null,
         onboardingComplete: false,
+        isActive: false,
+        memberId: null,
+        associateId: null,
+        playerId: null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       },
@@ -93,54 +134,58 @@ export async function loginWithGoogle(opts = {}) {
 
     window.location.href = reg;
     return cred;
-
   } catch (err) {
     console.error("loginWithGoogle popup error:", err?.code, err?.message, err);
 
-    // popup bloqueado
-    if (err?.code === "auth/popup-blocked") {
-      // si querés, podés mostrar UI inline en vez de alert
-      // showToast("Permití popups e intentá de nuevo");
-      return null;
-    }
-
-    // request anterior cancelada (normal si spamean click)
+    if (err?.code === "auth/popup-blocked") return null;
     if (err?.code === "auth/cancelled-popup-request") return null;
+    if (err?.code === "permission-denied") return null;
 
-    // 🔥 NO alert en permission-denied (esto pasa por rules/bootstrapping)
-    if (err?.code === "permission-denied") {
-      // opcional: si querés mostrar algo NO intrusivo
-      // showToast("No tenés permisos todavía. Intentá de nuevo o contactá al admin.");
-      return null;
-    }
-
-    // en general: no alert (si querés, lo manejás con UI tipo banner)
     return null;
   }
 }
 
 function safeJson(s) {
-  try { return JSON.parse(s); } catch { return null; }
+  try {
+    return JSON.parse(s);
+  } catch {
+    return null;
+  }
 }
 
-/* =========================================================
-   Guard / watchAuth
-========================================================= */
 export function watchAuth(onLoggedIn, opts = {}) {
   const redirectTo = opts.redirectTo ?? "/index.html";
+  const registerPath = opts.registerPath ?? "/public/register.html";
+  const pendingPath = opts.pendingPath ?? "/index.html?pending=1";
+  const requireActiveRole = opts.requireActiveRole !== false;
 
-  return onAuthStateChanged(auth, (user) => {
+  return onAuthStateChanged(auth, async (user) => {
     if (!user) {
       window.location.replace(redirectTo);
       return;
     }
-    onLoggedIn?.(user);
+
+    try {
+      const access = await getUserAccessState(user.uid);
+
+      if (!access.onboardingComplete) {
+        window.location.replace(registerPath);
+        return;
+      }
+
+      if (requireActiveRole && !access.roleActive) {
+        window.location.replace(pendingPath);
+        return;
+      }
+
+      onLoggedIn?.(user, access);
+    } catch (err) {
+      console.error("watchAuth access check failed:", err);
+      window.location.replace(redirectTo);
+    }
   });
 }
 
-/* =========================================================
-   Logout
-========================================================= */
 export async function logout(opts = {}) {
   const redirectTo = opts.redirectTo ?? "index.html";
   await signOut(auth);
