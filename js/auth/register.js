@@ -623,6 +623,7 @@ $.planId?.addEventListener("change", () => {
    Identity linking
 ========================= */
 async function upsertAssociate({
+  currentAssociateId = null,
   uid,
   email,
   firstName,
@@ -635,21 +636,8 @@ async function upsertAssociate({
   consents,
 }) {
   const fullName = `${firstName} ${lastName}`.trim();
-  let assocId = null;
 
-  if (uid) {
-    const qUid = query(collection(db, COL_ASSOC), where("uid", "==", uid), limit(1));
-    const sUid = await getDocs(qUid);
-    sUid.forEach((d) => (assocId = d.id));
-  }
-
-  if (!assocId && email) {
-    const qEmail = query(collection(db, COL_ASSOC), where("email", "==", email), limit(1));
-    const sEmail = await getDocs(qEmail);
-    sEmail.forEach((d) => (assocId = d.id));
-  }
-
-  const payload = {
+  const basePayload = {
     active: true,
     email: email || null,
     fullName: fullName || null,
@@ -670,36 +658,21 @@ async function upsertAssociate({
     },
 
     consents: consents || null,
-
     updatedAt: serverTimestamp(),
-    createdAt: serverTimestamp(),
   };
 
+  let assocId = currentAssociateId || null;
+
   if (!assocId) {
-    const ref = await addDoc(collection(db, COL_ASSOC), payload);
-    assocId = ref.id;
-  } else {
-    const updatePayload = {
-      email: email || null,
-      fullName: fullName || null,
-      phone: phone || null,
-      type: idType || "other",
-      idNumber: idNumber || null,
-      uid: uid || null,
-      playerId: null,
-      profile: {
-        firstName: firstName || null,
-        lastName: lastName || null,
-        birthDate: birthDate || null,
-        idType: idType || null,
-        idNumber: idNumber || null,
-        residence: residence || null,
-      },
-      consents: consents || null,
-      updatedAt: serverTimestamp(),
+    const createPayload = {
+      ...basePayload,
+      createdAt: serverTimestamp(),
     };
 
-    await setDoc(doc(db, COL_ASSOC, assocId), updatePayload, { merge: true });
+    const ref = await addDoc(collection(db, COL_ASSOC), createPayload);
+    assocId = ref.id;
+  } else {
+    await setDoc(doc(db, COL_ASSOC, assocId), basePayload, { merge: true });
   }
 
   const associateSnapshot = {
@@ -997,9 +970,14 @@ $.form?.addEventListener("submit", async (ev) => {
     if (!uid) throw new Error("No hay uid (login incompleto).");
 
     await step("Ensure users/{uid}", () => ensureUserDoc(uid, email));
+    const userRef = doc(db, COL_USERS, uid);
+    const userSnap = await step("Reload users/{uid}", () => getDoc(userRef));
+    const userData = userSnap.exists() ? userSnap.data() || {} : {};
+    const existingAssociateId = userData.associateId || null;
 
     const { assocId, associateSnapshot } = await step("Upsert associate", () =>
       upsertAssociate({
+        currentAssociateId: existingAssociateId,
         uid,
         email,
         firstName,
