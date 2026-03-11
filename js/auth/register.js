@@ -664,7 +664,27 @@ async function upsertAssociate({
     const ref = await addDoc(collection(db, COL_ASSOC), payload);
     assocId = ref.id;
   } else {
-    await setDoc(doc(db, COL_ASSOC, assocId), payload, { merge: true });
+    const updatePayload = {
+      email: email || null,
+      fullName: fullName || null,
+      phone: phone || null,
+      type: idType || "other",
+      idNumber: idNumber || null,
+      uid: uid || null,
+      playerId: null,
+      profile: {
+        firstName: firstName || null,
+        lastName: lastName || null,
+        birthDate: birthDate || null,
+        idType: idType || null,
+        idNumber: idNumber || null,
+        residence: residence || null,
+      },
+      consents: consents || null,
+      updatedAt: serverTimestamp(),
+    };
+
+    await setDoc(doc(db, COL_ASSOC, assocId), updatePayload, { merge: true });
   }
 
   const associateSnapshot = {
@@ -737,7 +757,17 @@ async function ensureLinkedPlayer({ assocId, uid, email, firstName, lastName, bi
     return { playerId: ref.id, created: true };
   }
 
-  await setDoc(doc(db, COL_PLAYERS, player.id), payload, { merge: true });
+  const updatePayload = {
+    firstName: firstName || null,
+    lastName: lastName || null,
+    birthday: birthDate || null,
+    associateId: assocId,
+    uid: uid || null,
+    email: email || null,
+    updatedAt: serverTimestamp(),
+  };
+
+  await setDoc(doc(db, COL_PLAYERS, player.id), updatePayload, { merge: true });
   return { playerId: player.id, created: false };
 }
 
