@@ -37,10 +37,18 @@ export const APP_CONFIG = {
   
   sport: "ultimate",
 
+  userRoles: [
+    { id: "viewer", label: "Viewer" },
+    { id: "staff", label: "Staff" },
+    { id: "coach", label: "Coach" },
+    { id: "admin", label: "Admin" },
+  ],
+
   playerRoles: [
+    { id: "", label: "Sin definir" },
     { id: "handler", label: "Handler" },
-    { id: "cutter",  label: "Cutter" },
-    { id: "hybrid",  label: "Hybrid" }
+    { id: "cutter", label: "Cutter" },
+    { id: "hybrid", label: "Hybrid" }
   ],
 
   roster: {
@@ -49,6 +57,12 @@ export const APP_CONFIG = {
         { value: "F", label: "Femenino" },
         { value: "M", label: "Masculino" }
       ]
+    }
+  },
+
+  admin: {
+    pages: {
+      users: true,
     }
   },
 

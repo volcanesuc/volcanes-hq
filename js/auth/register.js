@@ -52,7 +52,6 @@ const COL = APP_CONFIG.collections;
 const COL_USERS = COL.users;
 const COL_PLANS = COL.subscriptionPlans;
 const COL_ASSOC = COL.associates;
-const COL_PLAYERS = COL.players;
 const COL_MEMBERSHIPS = COL.memberships;
 const COL_INSTALLMENTS = COL.membershipInstallments;
 const COL_SUBMISSIONS = COL.membershipPaymentSubmissions;
@@ -308,7 +307,6 @@ async function ensureUserDoc(uid, email, user = auth.currentUser) {
     updatePayload.photoURL = nextPhotoURL;
   }
 
-  // solo completar links faltantes, permitido por rules
   if (data.memberId === undefined) updatePayload.memberId = null;
   if (data.associateId === undefined) updatePayload.associateId = null;
   if (data.playerId === undefined) updatePayload.playerId = null;
@@ -714,62 +712,6 @@ async function upsertAssociate({
   return { assocId, associateSnapshot };
 }
 
-async function findPlayerToLink({ uid, email }) {
-  if (uid) {
-    const q1 = query(collection(db, COL_PLAYERS), where("uid", "==", uid), limit(1));
-    const s1 = await getDocs(q1);
-    let found = null;
-    s1.forEach((d) => (found = { id: d.id, ...d.data() }));
-    if (found) return found;
-  }
-
-  if (email) {
-    const q2 = query(collection(db, COL_PLAYERS), where("email", "==", email), limit(1));
-    const s2 = await getDocs(q2);
-    let found = null;
-    s2.forEach((d) => (found = { id: d.id, ...d.data() }));
-    if (found) return found;
-  }
-
-  return null;
-}
-
-async function ensureLinkedPlayer({ assocId, uid, email, firstName, lastName, birthDate }) {
-  const player = await findPlayerToLink({ uid, email });
-
-  const createPayload = {
-    active: true,
-    firstName: firstName || null,
-    lastName: lastName || null,
-    birthday: birthDate || null,
-
-    associateId: assocId,
-    uid: uid || null,
-    email: email || null,
-
-    updatedAt: serverTimestamp(),
-    createdAt: serverTimestamp(),
-  };
-
-  if (!player) {
-    const ref = await addDoc(collection(db, COL_PLAYERS), createPayload);
-    return { playerId: ref.id, created: true };
-  }
-
-  const updatePayload = {
-    firstName: firstName || null,
-    lastName: lastName || null,
-    birthday: birthDate || null,
-    associateId: assocId,
-    uid: uid || null,
-    email: email || null,
-    updatedAt: serverTimestamp(),
-  };
-
-  await setDoc(doc(db, COL_PLAYERS, player.id), updatePayload, { merge: true });
-  return { playerId: player.id, created: false };
-}
-
 /* =========================
    Membership builders
 ========================= */
@@ -1071,18 +1013,6 @@ $.form?.addEventListener("submit", async (ev) => {
       })
     );
 
-    const { playerId } = await step("Link/create club_player", () =>
-      ensureLinkedPlayer({ assocId, uid, email, firstName, lastName, birthDate })
-    );
-
-    await step("Update associate.playerId", () =>
-      setDoc(
-        doc(db, COL_ASSOC, assocId),
-        { playerId: playerId || null, updatedAt: serverTimestamp() },
-        { merge: true }
-      )
-    );
-
     if (paymentsEnabled) {
       const proof = await step("Upload proof (Storage)", () =>
         uploadProofFile({ uid, assocId, file })
@@ -1151,7 +1081,7 @@ $.form?.addEventListener("submit", async (ev) => {
 
         memberId: assocId || null,
         associateId: assocId || null,
-        playerId: playerId || null,
+        playerId: null,
 
         updatedAt: serverTimestamp(),
       };

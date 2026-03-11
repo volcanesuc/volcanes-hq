@@ -28,7 +28,8 @@ export const CLUB_DATA = {
       { id: "tournaments", label: "Torneos", href: "/tournaments.html" },
       { id: "playbook", label: "Playbook", href: "/playbook.html" },
       { id: "community", label: "Comunidad", href: "/community.html" },
-      { id: "association", label: "Asociación", href: "/association.html" }
+      { id: "association", label: "Asociación", href: "/association.html" },
+      { id: "admin", label: "Admin", href: "/admin.html" }
     ],
     logout: {
       label: "SALIR"

@@ -8,5 +8,6 @@ export const PAGE_CONFIG = {
   attendance: { tabId: "attendance", href: "attendance.html" },
   tournaments:{ tabId: "tournaments",href: "tournaments.html" },
   community:{ tabId: "community",href: "community.html" },
-  association:{ tabId: "association",href: "association.html" }
+  association:{ tabId: "association",href: "association.html" },
+  admin:{ tabId: "admin",href: "admin.html" }
 };

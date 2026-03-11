@@ -1,9 +1,12 @@
 import { loadHeaderTabsConfig, isTabEnabled } from "./remote-config.js";
 import { PAGE_CONFIG, HOME_HREF } from "./config/page-config.js";
+import { APP_CONFIG } from "./config/config.js";
 
 import { db } from "./auth/firebase.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const COL = APP_CONFIG.collections;
 
 function waitForAuthReady() {
   const auth = getAuth();
@@ -20,6 +23,7 @@ function waitForAuthReady() {
 
 async function loadUserRoleIntoCfg(cfg) {
   const user = getAuth().currentUser;
+
   if (!user) {
     return {
       ...cfg,
@@ -31,7 +35,8 @@ async function loadUserRoleIntoCfg(cfg) {
   }
 
   try {
-    const snap = await getDoc(doc(db, "users", user.uid));
+    const snap = await getDoc(doc(db, COL.users, user.uid));
+
     if (!snap.exists()) {
       return {
         ...cfg,
@@ -43,11 +48,11 @@ async function loadUserRoleIntoCfg(cfg) {
     }
 
     const data = snap.data() || {};
-    const role = (data.role || "viewer").toString().toLowerCase().trim();
+    const role = String(data.role || "viewer").trim().toLowerCase();
     const isActive = data.isActive === true;
     const onboardingComplete = data.onboardingComplete === true;
 
-    const finalRole = isActive && role ? role : "viewer";
+    const finalRole = isActive ? role : "viewer";
 
     return {
       ...cfg,
@@ -96,6 +101,11 @@ export async function guardPage(pageKey) {
   if (!page) return { cfg, redirected: false };
 
   if (!isTabEnabled(page.tabId, cfg)) {
+    window.location.href = HOME_HREF;
+    return { cfg, redirected: true };
+  }
+
+  if (pageKey === "admin" && !cfg.isAdmin) {
     window.location.href = HOME_HREF;
     return { cfg, redirected: true };
   }
