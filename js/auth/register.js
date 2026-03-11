@@ -267,25 +267,56 @@ async function ensureUserDoc(uid, email, user = auth.currentUser) {
   const uref = doc(db, COL_USERS, uid);
   const usnap = await getDoc(uref).catch(() => null);
 
-  const payload = {
-    uid,
-    email: email || user?.email || null,
-    displayName: user?.displayName || null,
-    photoURL: user?.photoURL || null,
-    isActive: false,
-    role: "viewer",
+  if (!usnap?.exists?.()) {
+    const createPayload = {
+      uid,
+      email: email || user?.email || null,
+      displayName: user?.displayName || null,
+      photoURL: user?.photoURL || null,
+      onboardingComplete: false,
+      isActive: false,
+      role: "viewer",
+      memberId: null,
+      associateId: null,
+      playerId: null,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+
+    await setDoc(uref, createPayload, { merge: true });
+    return;
+  }
+
+  const data = usnap.data() || {};
+  const updatePayload = {
     updatedAt: serverTimestamp(),
   };
 
-  if (!usnap?.exists?.()) {
-    payload.onboardingComplete = false;
-    payload.memberId = null;
-    payload.associateId = null;
-    payload.playerId = null;
-    payload.createdAt = serverTimestamp();
+  const nextEmail = email || user?.email || null;
+  const nextDisplayName = user?.displayName || null;
+  const nextPhotoURL = user?.photoURL || null;
+
+  if ((data.email || null) !== nextEmail) {
+    updatePayload.email = nextEmail;
   }
 
-  await setDoc(uref, payload, { merge: true });
+  if ((data.displayName || null) !== nextDisplayName) {
+    updatePayload.displayName = nextDisplayName;
+  }
+
+  if ((data.photoURL || null) !== nextPhotoURL) {
+    updatePayload.photoURL = nextPhotoURL;
+  }
+
+  // solo completar links faltantes, permitido por rules
+  if (data.memberId === undefined) updatePayload.memberId = null;
+  if (data.associateId === undefined) updatePayload.associateId = null;
+  if (data.playerId === undefined) updatePayload.playerId = null;
+  if (data.onboardingComplete === undefined) updatePayload.onboardingComplete = false;
+
+  if (Object.keys(updatePayload).length > 1) {
+    await setDoc(uref, updatePayload, { merge: true });
+  }
 }
 
 /* =========================
@@ -1117,8 +1148,6 @@ $.form?.addEventListener("submit", async (ev) => {
         photoURL: auth.currentUser?.photoURL || null,
 
         onboardingComplete: true,
-        isActive: false,
-        role: "viewer",
 
         memberId: assocId || null,
         associateId: assocId || null,
