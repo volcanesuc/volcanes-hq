@@ -8,7 +8,6 @@ import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-
 function waitForAuthReady() {
   const auth = getAuth();
 
-  // Si ya existe, no esperés
   if (auth.currentUser) return Promise.resolve(auth.currentUser);
 
   return new Promise((resolve) => {
@@ -21,35 +20,77 @@ function waitForAuthReady() {
 
 async function loadUserRoleIntoCfg(cfg) {
   const user = getAuth().currentUser;
-  if (!user) return cfg;
+  if (!user) {
+    return {
+      ...cfg,
+      role: "viewer",
+      isAdmin: false,
+      isActive: false,
+      onboardingComplete: false,
+    };
+  }
 
   try {
-    const snap = await getDoc(doc(db, "user_roles", user.uid));
-    if (!snap.exists()) return cfg;
+    const snap = await getDoc(doc(db, "users", user.uid));
+    if (!snap.exists()) {
+      return {
+        ...cfg,
+        role: "viewer",
+        isAdmin: false,
+        isActive: false,
+        onboardingComplete: false,
+      };
+    }
 
     const data = snap.data() || {};
-    const role = (data.role || "").toString().toLowerCase().trim();
-    const active = data.active !== false;
+    const role = (data.role || "viewer").toString().toLowerCase().trim();
+    const isActive = data.isActive === true;
+    const onboardingComplete = data.onboardingComplete === true;
 
-    const finalRole = active && role ? role : "viewer";
+    const finalRole = isActive && role ? role : "viewer";
 
     return {
       ...cfg,
       role: finalRole,
       isAdmin: finalRole === "admin",
+      isActive,
+      onboardingComplete,
     };
   } catch (err) {
     console.warn("No se pudo cargar rol:", err);
-    return cfg;
+    return {
+      ...cfg,
+      role: "viewer",
+      isAdmin: false,
+      isActive: false,
+      onboardingComplete: false,
+    };
   }
 }
 
 export async function guardPage(pageKey) {
   let cfg = await loadHeaderTabsConfig();
 
-  // ✅ Espera a que Auth esté listo antes de leer rol
   await waitForAuthReady();
   cfg = await loadUserRoleIntoCfg(cfg);
+
+  const auth = getAuth();
+  const user = auth.currentUser;
+
+  if (!user) {
+    window.location.href = HOME_HREF;
+    return { cfg, redirected: true };
+  }
+
+  if (cfg.onboardingComplete !== true) {
+    window.location.href = "/public/register.html";
+    return { cfg, redirected: true };
+  }
+
+  if (cfg.isActive !== true) {
+    window.location.href = "/index.html?pending=1";
+    return { cfg, redirected: true };
+  }
 
   const page = PAGE_CONFIG[pageKey];
   if (!page) return { cfg, redirected: false };

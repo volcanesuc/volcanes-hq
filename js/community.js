@@ -157,15 +157,11 @@ async function resolveUserRole() {
   if (!state.user?.uid) return;
 
   try {
-    const roleRef = doc(db, "user_roles", state.user.uid);
-    const snap = await getDoc(roleRef);
-
+    const userRef = doc(db, "users", state.user.uid);
+    const snap = await getDoc(userRef);
     if (!snap.exists()) return;
-
     const data = snap.data() || {};
-    if (data?.active === false) return;
-    if (data?.clubId && data.clubId !== APP_CONFIG.club.id) return;
-
+    if (data?.isActive !== true) return;  // si no está activo, se queda viewer
     state.role = data.role || "viewer";
   } catch (err) {
     console.error("Error resolving role:", err);

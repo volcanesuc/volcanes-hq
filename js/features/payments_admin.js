@@ -1,6 +1,7 @@
 // js/features/payments_admin.js
 // Admin tab: lista membership_payment_submissions + acciones Validar/Rechazar
 // Soporta multi-cuotas via selectedInstallmentIds
+//TODO: corregir este archivo porque quitamos user_roles
 
 import { db } from "../auth/firebase.js";
 import { watchAuth, logout } from "../auth/auth.js";

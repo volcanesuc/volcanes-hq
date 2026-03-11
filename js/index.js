@@ -59,11 +59,11 @@ async function bootPendingMode() {
         return;
       }
 
-      const roleRef = doc(db, "user_roles", user.uid);
-      const roleSnap = await getDoc(roleRef).catch(() => null);
-      const roleData = roleSnap?.exists?.() ? roleSnap.data() || {} : {};
+      const userRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userRef).catch(() => null);
+      const userData = userSnap?.exists?.() ? userSnap.data() || {} : {};
 
-      if (roleData.active === true) {
+      if (userData.isActive === true && userData.onboardingComplete === true) {
         window.location.replace("/dashboard.html");
         return;
       }
@@ -86,11 +86,11 @@ async function bootPendingMode() {
         return;
       }
 
-      const roleRef = doc(db, "user_roles", user.uid);
-      const roleSnap = await getDoc(roleRef);
-      const roleData = roleSnap.exists() ? roleSnap.data() || {} : {};
+      const userRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userRef).catch(() => null);
+      const userData = userSnap?.exists?.() ? userSnap.data() || {} : {};
 
-      if (roleData.active === true) {
+      if (userData.isActive === true && userData.onboardingComplete === true) {
         window.location.replace("/dashboard.html");
         return;
       }

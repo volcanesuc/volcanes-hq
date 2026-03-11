@@ -11,7 +11,6 @@ import {
 
 const COL = APP_CONFIG.collections;
 const USERS_COL = COL.users;
-const USER_ROLES_COL = COL.userRoles;
 
 async function ensureUserDoc(firebaseUser) {
   const uid = firebaseUser?.uid;
@@ -27,11 +26,17 @@ async function ensureUserDoc(firebaseUser) {
     if (data.uid !== uid) patch.uid = uid;
     if (data.email !== (firebaseUser.email || null)) patch.email = firebaseUser.email || null;
 
-    if (data.displayName === undefined) patch.displayName = firebaseUser.displayName || null;
-    if (data.photoURL === undefined) patch.photoURL = firebaseUser.photoURL || null;
+    if ((data.displayName || null) !== (firebaseUser.displayName || null)) {
+      patch.displayName = firebaseUser.displayName || null;
+    }
+
+    if ((data.photoURL || null) !== (firebaseUser.photoURL || null)) {
+      patch.photoURL = firebaseUser.photoURL || null;
+    }
 
     if (data.onboardingComplete === undefined) patch.onboardingComplete = false;
     if (data.isActive === undefined) patch.isActive = false;
+    if (data.role === undefined) patch.role = "viewer";
 
     if (data.memberId === undefined) patch.memberId = null;
     if (data.associateId === undefined) patch.associateId = null;
@@ -53,6 +58,7 @@ async function ensureUserDoc(firebaseUser) {
     photoURL: firebaseUser.photoURL || null,
     onboardingComplete: false,
     isActive: false,
+    role: "viewer",
     memberId: null,
     associateId: null,
     playerId: null,
@@ -64,10 +70,10 @@ async function ensureUserDoc(firebaseUser) {
   return { created: true, data: payload };
 }
 
-export async function getUserRole(uid) {
+export async function getUserAccess(uid) {
   if (!uid) return null;
 
-  const ref = doc(db, USER_ROLES_COL, uid);
+  const ref = doc(db, USERS_COL, uid);
   const snap = await getDoc(ref);
 
   if (!snap.exists()) return null;
@@ -75,7 +81,8 @@ export async function getUserRole(uid) {
   const data = snap.data() || {};
 
   return {
-    active: data.active === true,
+    isActive: data.isActive === true,
+    onboardingComplete: data.onboardingComplete === true,
     role: String(data.role || "viewer").trim().toLowerCase(),
     raw: data
   };
@@ -92,15 +99,14 @@ export async function routeAfterGoogleLogin(firebaseUser) {
 
   const data = ensured.data || {};
   const onboardingDone = data.onboardingComplete === true;
+  const isActive = data.isActive === true;
 
   if (!onboardingDone) {
     window.location.href = `/public/register.html?created=${createdFlag}`;
     return;
   }
 
-  const roleInfo = await getUserRole(firebaseUser.uid);
-
-  if (roleInfo?.active === true) {
+  if (onboardingDone && isActive) {
     window.location.href = "/dashboard.html";
     return;
   }
