@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin – Volcanes Ultimate</title>
+  <title>Administración – Volcanes Ultimate</title>
 
   <script>document.documentElement.classList.add("preload");</script>
   <script src="/js/ui/loader.preload.js"></script>
@@ -28,11 +28,9 @@
   <div id="app-header"></div>
 
   <main class="container py-4 admin-page">
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
-      <div>
-        <h1 class="h3 mb-1">Administración</h1>
-        <p class="text-muted mb-0">Aprobación de usuarios y vínculo con jugadores.</p>
-      </div>
+    <div class="mb-4">
+      <h1 class="h3 mb-1">Administración</h1>
+      <p class="text-muted mb-0">Aprobación de usuarios y vínculo con jugadores.</p>
     </div>
 
     <div id="alertBox" class="alert d-none" role="alert"></div>
@@ -44,13 +42,13 @@
             <h2 class="h5 mb-1">Cuentas pendientes</h2>
             <p class="text-muted mb-0">Usuarios con onboarding completo pero aún sin activar.</p>
           </div>
-          <button id="refreshPendingBtn" class="btn btn-outline-primary btn-sm" type="button">
+          <button id="refreshPendingBtn" class="btn btn-outline-secondary btn-sm" type="button">
             <i class="bi bi-arrow-clockwise me-1"></i>Actualizar
           </button>
         </div>
 
         <div class="table-responsive">
-          <table class="table align-middle" id="pendingUsersTable">
+          <table class="table align-middle mb-0" id="pendingUsersTable">
             <thead>
               <tr>
                 <th>Email</th>
@@ -73,16 +71,24 @@
     <section class="card shadow-sm">
       <div class="card-body">
         <h2 class="h5 mb-3">Jugadores existentes</h2>
+
         <div class="row g-2 mb-3">
-          <div class="col-md-6">
-            <input id="playerSearchInput" class="form-control" type="search" placeholder="Buscar jugador por nombre o email">
+          <div class="col-md-5">
+            <input
+              id="playerSearchInput"
+              class="form-control"
+              type="search"
+              placeholder="Buscar jugador por nombre o email"
+            />
           </div>
+
           <div class="col-md-3">
             <select id="playerRoleFilter" class="form-select">
               <option value="">Todos los perfiles</option>
             </select>
           </div>
-          <div class="col-md-3">
+
+          <div class="col-md-4">
             <button id="refreshPlayersBtn" class="btn btn-outline-secondary w-100" type="button">
               <i class="bi bi-arrow-clockwise me-1"></i>Actualizar lista
             </button>
@@ -90,7 +96,7 @@
         </div>
 
         <div class="table-responsive">
-          <table class="table align-middle" id="playersTable">
+          <table class="table align-middle mb-0" id="playersTable">
             <thead>
               <tr>
                 <th>Nombre</th>
@@ -121,18 +127,22 @@
           </div>
 
           <div class="modal-body">
-            <input type="hidden" id="approveUid">
-            <input type="hidden" id="approveAssociateId">
+            <input type="hidden" id="approveUid" />
+            <input type="hidden" id="approveAssociateId" />
 
-            <div class="mb-3">
-              <label class="form-label">Email</label>
-              <input id="approveEmail" class="form-control" type="text" readonly>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Email</label>
+                <input id="approveEmail" class="form-control" type="text" readonly />
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Rol del sistema</label>
+                <select id="approveSystemRole" class="form-select"></select>
+              </div>
             </div>
 
-            <div class="mb-3">
-              <label class="form-label">Rol del sistema</label>
-              <select id="approveSystemRole" class="form-select"></select>
-            </div>
+            <hr />
 
             <div class="mb-3">
               <label class="form-label">Modo de vínculo</label>
@@ -148,22 +158,28 @@
               <select id="approveExistingPlayerId" class="form-select">
                 <option value="">Seleccionar…</option>
               </select>
+              <div class="form-text">
+                Solo se muestran jugadores sin usuario ligado, o ligados a este mismo usuario.
+              </div>
             </div>
 
             <div id="newPlayerWrap" class="border rounded p-3 d-none">
               <div class="row g-3">
                 <div class="col-md-6">
                   <label class="form-label">Nombre</label>
-                  <input id="newPlayerFirstName" class="form-control" type="text">
+                  <input id="newPlayerFirstName" class="form-control" type="text" />
                 </div>
+
                 <div class="col-md-6">
                   <label class="form-label">Apellido</label>
-                  <input id="newPlayerLastName" class="form-control" type="text">
+                  <input id="newPlayerLastName" class="form-control" type="text" />
                 </div>
+
                 <div class="col-md-6">
                   <label class="form-label">Fecha de nacimiento</label>
-                  <input id="newPlayerBirthday" class="form-control" type="date">
+                  <input id="newPlayerBirthday" class="form-control" type="date" />
                 </div>
+
                 <div class="col-md-6">
                   <label class="form-label">Perfil en cancha</label>
                   <select id="newPlayerFieldRole" class="form-select"></select>
@@ -173,8 +189,12 @@
           </div>
 
           <div class="modal-footer">
-            <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancelar</button>
-            <button id="approveSubmitBtn" class="btn btn-primary" type="submit">Aprobar cuenta</button>
+            <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">
+              Cancelar
+            </button>
+            <button id="approveSubmitBtn" class="btn btn-primary" type="submit">
+              Aprobar cuenta
+            </button>
           </div>
         </form>
       </div>

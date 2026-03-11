@@ -83,20 +83,33 @@ function fillStaticOptions() {
     .map((r) => `<option value="${esc(r.id)}">${esc(r.label)}</option>`)
     .join("");
 
-  $.playerRoleFilter.innerHTML = APP_CONFIG.playerRoles
-    .map((r, i) => {
-      if (i === 0) return `<option value="">Todos los perfiles</option>`;
-      return `<option value="${esc(r.id)}">${esc(r.label)}</option>`;
-    })
-    .join("");
+  $.playerRoleFilter.innerHTML =
+    `<option value="">Todos los perfiles</option>` +
+    APP_CONFIG.playerRoles
+      .filter((r) => r.id)
+      .map((r) => `<option value="${esc(r.id)}">${esc(r.label)}</option>`)
+      .join("");
+}
+
+async function getAssociateData(associateId) {
+  if (!associateId) return null;
+
+  const snap = await getDoc(doc(db, COL_ASSOC, associateId)).catch(() => null);
+  if (!snap?.exists?.()) return null;
+
+  return snap.data() || null;
 }
 
 async function loadPendingUsers() {
   $.pendingUsersTable.innerHTML = `<tr><td colspan="5" class="text-muted">Cargando…</td></tr>`;
 
-  const qy = query(collection(db, COL_USERS), where("onboardingComplete", "==", true), where("isActive", "==", false));
-  const snap = await getDocs(qy);
+  const qy = query(
+    collection(db, COL_USERS),
+    where("onboardingComplete", "==", true),
+    where("isActive", "==", false)
+  );
 
+  const snap = await getDocs(qy);
   pendingUsers = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
   if (!pendingUsers.length) {
@@ -104,19 +117,21 @@ async function loadPendingUsers() {
     return;
   }
 
-  $.pendingUsersTable.innerHTML = pendingUsers.map((u) => `
-    <tr>
-      <td>${esc(u.email || "—")}</td>
-      <td>${esc(u.displayName || "—")}</td>
-      <td>${esc(u.associateId || "—")}</td>
-      <td>${esc(u.playerId || "—")}</td>
-      <td>
-        <button class="btn btn-sm btn-primary" type="button" data-approve-user="${esc(u.id)}">
-          Aprobar
-        </button>
-      </td>
-    </tr>
-  `).join("");
+  $.pendingUsersTable.innerHTML = pendingUsers
+    .map((u) => `
+      <tr>
+        <td>${esc(u.email || "—")}</td>
+        <td>${esc(u.displayName || "—")}</td>
+        <td>${esc(u.associateId || "—")}</td>
+        <td>${esc(u.playerId || "—")}</td>
+        <td>
+          <button class="btn btn-sm btn-primary" type="button" data-approve-user="${esc(u.id)}">
+            Aprobar
+          </button>
+        </td>
+      </tr>
+    `)
+    .join("");
 }
 
 async function loadPlayers() {
@@ -126,7 +141,6 @@ async function loadPlayers() {
   allPlayers = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
   renderPlayersTable();
-  fillExistingPlayersSelect();
 }
 
 function renderPlayersTable() {
@@ -147,15 +161,17 @@ function renderPlayersTable() {
     return;
   }
 
-  $.playersTable.innerHTML = filtered.map((p) => `
-    <tr>
-      <td>${esc(`${p.firstName || ""} ${p.lastName || ""}`.trim() || "—")}</td>
-      <td>${esc(p.email || "—")}</td>
-      <td>${esc(p.fieldRole || "—")}</td>
-      <td>${esc(p.associateId || "—")}</td>
-      <td>${esc(p.uid || "—")}</td>
-    </tr>
-  `).join("");
+  $.playersTable.innerHTML = filtered
+    .map((p) => `
+      <tr>
+        <td>${esc(`${p.firstName || ""} ${p.lastName || ""}`.trim() || "—")}</td>
+        <td>${esc(p.email || "—")}</td>
+        <td>${esc(p.fieldRole || "—")}</td>
+        <td>${esc(p.associateId || "—")}</td>
+        <td>${esc(p.uid || "—")}</td>
+      </tr>
+    `)
+    .join("");
 }
 
 function fillExistingPlayersSelect(currentUid = null) {
@@ -166,10 +182,16 @@ function fillExistingPlayersSelect(currentUid = null) {
 
   $.approveExistingPlayerId.innerHTML =
     `<option value="">Seleccionar…</option>` +
-    availablePlayers.map((p) => {
-      const name = `${p.firstName || ""} ${p.lastName || ""}`.trim() || p.email || p.id;
-      return `<option value="${esc(p.id)}">${esc(name)}</option>`;
-    }).join("");
+    availablePlayers
+      .map((p) => {
+        const name =
+          `${p.firstName || ""} ${p.lastName || ""}`.trim() ||
+          p.email ||
+          p.id;
+
+        return `<option value="${esc(p.id)}">${esc(name)}</option>`;
+      })
+      .join("");
 }
 
 function syncApproveModeUI() {
@@ -187,15 +209,14 @@ async function openApproveModal(uid) {
   $.approveEmail.value = user.email || "";
   $.approveSystemRole.value = user.role || "viewer";
   $.approveLinkMode.value = user.playerId ? "existing" : "none";
+
+  fillExistingPlayersSelect(uid);
   $.approveExistingPlayerId.value = user.playerId || "";
 
   $.newPlayerFirstName.value = "";
   $.newPlayerLastName.value = "";
   $.newPlayerBirthday.value = "";
   $.newPlayerFieldRole.value = "";
-
-  //filtrar los players disponibles
-  fillExistingPlayersSelect(uid);
 
   const assoc = await getAssociateData(user.associateId);
   if (assoc?.profile) {
@@ -208,7 +229,35 @@ async function openApproveModal(uid) {
   approveModal.show();
 }
 
-async function createPlayerForUser({ uid, email, associateId, firstName, lastName, birthday, fieldRole }) {
+async function assertPlayerCanBeLinked(playerId, uid) {
+  if (!playerId) {
+    throw new Error("Selecciona un jugador válido.");
+  }
+
+  const snap = await getDoc(doc(db, COL_PLAYERS, playerId));
+  if (!snap.exists()) {
+    throw new Error("El jugador seleccionado no existe.");
+  }
+
+  const data = snap.data() || {};
+  const currentUid = data.uid || null;
+
+  if (currentUid && currentUid !== uid) {
+    throw new Error("Ese jugador ya está ligado a otro usuario.");
+  }
+
+  return data;
+}
+
+async function createPlayerForUser({
+  uid,
+  email,
+  associateId,
+  firstName,
+  lastName,
+  birthday,
+  fieldRole,
+}) {
   const ref = await addDoc(collection(db, COL_PLAYERS), {
     active: true,
     firstName: firstName || null,
@@ -253,22 +302,19 @@ async function approveUserFlow(ev) {
 
   try {
     let playerId = null;
-    // existing -> link
-    // new -> create
-    // none -> se queda null
 
     if (mode === "existing") {
-        playerId = $.approveExistingPlayerId.value || null;
-        if (!playerId) throw new Error("Selecciona un jugador existente.");
+      playerId = $.approveExistingPlayerId.value || null;
+      if (!playerId) throw new Error("Selecciona un jugador existente.");
 
-        await assertPlayerCanBeLinked(playerId, uid);
+      await assertPlayerCanBeLinked(playerId, uid);
 
-        await linkExistingPlayer({
-            playerId,
-            uid,
-            email,
-            associateId,
-        });
+      await linkExistingPlayer({
+        playerId,
+        uid,
+        email,
+        associateId,
+      });
     }
 
     if (mode === "new") {
@@ -348,9 +394,9 @@ async function boot() {
     $.approveUserForm?.addEventListener("submit", approveUserFlow);
 
     document.addEventListener("click", async (ev) => {
-        const btn = ev.target.closest("[data-approve-user]");
-        if (!btn) return;
-        await openApproveModal(btn.getAttribute("data-approve-user"));
+      const btn = ev.target.closest("[data-approve-user]");
+      if (!btn) return;
+      await openApproveModal(btn.getAttribute("data-approve-user"));
     });
   } catch (err) {
     console.error(err);
@@ -360,34 +406,6 @@ async function boot() {
     document.body.classList.remove("loading");
     document.documentElement.classList.remove("preload");
   }
-}
-
-//HELPERS
-async function getAssociateData(associateId) {
-  if (!associateId) return null;
-  const snap = await getDoc(doc(db, COL_ASSOC, associateId)).catch(() => null);
-  if (!snap?.exists?.()) return null;
-  return snap.data() || null;
-}
-
-async function assertPlayerCanBeLinked(playerId, uid) {
-  if (!playerId) {
-    throw new Error("Selecciona un jugador válido.");
-  }
-
-  const snap = await getDoc(doc(db, COL_PLAYERS, playerId));
-  if (!snap.exists()) {
-    throw new Error("El jugador seleccionado no existe.");
-  }
-
-  const data = snap.data() || {};
-  const currentUid = data.uid || null;
-
-  if (currentUid && currentUid !== uid) {
-    throw new Error("Ese jugador ya está ligado a otro usuario.");
-  }
-
-  return data;
 }
 
 boot();
