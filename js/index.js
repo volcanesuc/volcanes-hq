@@ -1,30 +1,135 @@
-// js/index.js
 import "./config/config.js";
 import { CLUB_DATA } from "./strings.js";
 import { loadHeader } from "./components/header.js";
 import { showLoader, hideLoader, updateLoaderMessage } from "./ui/loader.js";
-import { db } from "/js/auth/firebase.js";
+import { db, auth } from "/js/auth/firebase.js";
+import { logout } from "/js/auth/auth.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+const url = new URL(window.location.href);
+const isPendingView = url.searchParams.get("pending") === "1";
+
+const pendingSection = document.getElementById("pendingApprovalSection");
+const pendingRetryBtn = document.getElementById("pendingRetryBtn");
+const pendingLogoutBtn = document.getElementById("pendingLogoutBtn");
+
 /* =========================================================
-   HEADER
+   PENDING MODE
+========================================================= */
+
+function showPendingState() {
+  pendingSection?.classList.remove("d-none");
+
+  const sectionsToHide = [
+    "eventsSection",
+    "entrenamientos",
+    "honorsSection",
+    "uniformsSection",
+  ];
+
+  sectionsToHide.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = "none";
+  });
+
+  const hero = document.querySelector(".hero");
+  if (hero) hero.style.display = "none";
+
+  const footer = document.querySelector(".landing-footer");
+  if (footer) {
+    footer.innerHTML = `
+      <p>${CLUB_DATA.footer.copyright}</p>
+      <p>Fundados en el ${CLUB_DATA.club.foundedYear}</p>
+    `;
+  }
+
+  document.documentElement.classList.remove("preload");
+  document.body.classList.remove("loading");
+  hideLoader();
+}
+
+async function bootPendingMode() {
+  showLoader("Validando estado…");
+
+  onAuthStateChanged(auth, async (user) => {
+    try {
+      if (!user) {
+        window.location.replace("/index.html");
+        return;
+      }
+
+      const roleRef = doc(db, "user_roles", user.uid);
+      const roleSnap = await getDoc(roleRef).catch(() => null);
+      const roleData = roleSnap?.exists?.() ? roleSnap.data() || {} : {};
+
+      if (roleData.active === true) {
+        window.location.replace("/dashboard.html");
+        return;
+      }
+
+      showPendingState();
+    } catch (err) {
+      console.error("Error validando pending state:", err);
+      showPendingState();
+    } finally {
+      hideLoader();
+    }
+  });
+
+  pendingRetryBtn?.addEventListener("click", async () => {
+    showLoader("Revisando estado…");
+    try {
+      const user = auth.currentUser;
+      if (!user?.uid) {
+        window.location.replace("/index.html");
+        return;
+      }
+
+      const roleRef = doc(db, "user_roles", user.uid);
+      const roleSnap = await getDoc(roleRef);
+      const roleData = roleSnap.exists() ? roleSnap.data() || {} : {};
+
+      if (roleData.active === true) {
+        window.location.replace("/dashboard.html");
+        return;
+      }
+
+      showPendingState();
+    } catch (err) {
+      console.error("Error reintentando validación:", err);
+      showPendingState();
+    } finally {
+      hideLoader();
+    }
+  });
+
+  pendingLogoutBtn?.addEventListener("click", async () => {
+    try {
+      showLoader("Cerrando sesión…");
+      await logout({ redirectTo: "/index.html" });
+    } finally {
+      hideLoader();
+    }
+  });
+}
+
+/* =========================================================
+   NORMAL INIT
 ========================================================= */
 
 async function init() {
   try {
     showLoader("Validando sesión…");
     const { ready } = await loadHeader("home", { enabledTabs: {} });
-    await ready; // espera a que Firebase resuelva auth
+    await ready;
     updateLoaderMessage("Armando dashboard…");
     hideLoader();
   } catch (err) {
     console.error("Error inicializando index:", err);
-    hideLoader(); // fallback de seguridad
+    hideLoader();
   }
 }
-
-init();
-
 
 /* =========================================================
    MANAGE SECTIONS TO BE SHOWN OR HIDDEN
@@ -70,71 +175,67 @@ async function loadIndexSettings() {
   }
 }
 
-loadIndexSettings();
-
 /* =========================================================
    HERO
 ========================================================= */
 
-const heroTitle = document.querySelector(".hero h2");
-const heroText = document.querySelector(".hero p");
-const heroImg = document.querySelector(".hero-img");
+function renderHero() {
+  const heroTitle = document.querySelector(".hero h2");
+  const heroText = document.querySelector(".hero p");
+  const heroImg = document.querySelector(".hero-img");
 
-const heroPrimaryCta = document.getElementById("heroPrimaryCta");
-const heroWhatsappCta = document.getElementById("heroWhatsappCta");
+  const heroPrimaryCta = document.getElementById("heroPrimaryCta");
+  const heroWhatsappCta = document.getElementById("heroWhatsappCta");
 
-if (heroTitle) {
-  heroTitle.innerHTML =
-    CLUB_DATA.landing.hero.title.replace(",", ",<br>");
-}
+  if (heroTitle) {
+    heroTitle.innerHTML = CLUB_DATA.landing.hero.title.replace(",", ",<br>");
+  }
 
-if (heroText) {
-  heroText.textContent = CLUB_DATA.landing.hero.description;
-}
+  if (heroText) {
+    heroText.textContent = CLUB_DATA.landing.hero.description;
+  }
 
-if (heroImg) {
-  heroImg.src = CLUB_DATA.landing.hero.image;
-  heroImg.alt = CLUB_DATA.club.name;
-}
+  if (heroImg) {
+    heroImg.src = CLUB_DATA.landing.hero.image;
+    heroImg.alt = CLUB_DATA.club.name;
+  }
 
-/* CTA principal */
-if (heroPrimaryCta) {
-  heroPrimaryCta.textContent =
-    CLUB_DATA.landing.hero.cta.primary.label;
-  heroPrimaryCta.href =
-    CLUB_DATA.landing.hero.cta.primary.href;
-}
+  if (heroPrimaryCta) {
+    heroPrimaryCta.textContent = CLUB_DATA.landing.hero.cta.primary.label;
+    heroPrimaryCta.href = CLUB_DATA.landing.hero.cta.primary.href;
+  }
 
-/* CTA WhatsApp */
-if (heroWhatsappCta) {
-  const wa = CLUB_DATA.landing.contacts.whatsapp;
-
-  heroWhatsappCta.textContent = "WhatsApp";
-  heroWhatsappCta.href =
-    `https://wa.me/${wa.phone.replace("+", "")}?text=${encodeURIComponent(
-      wa.message
-    )}`;
+  if (heroWhatsappCta) {
+    const wa = CLUB_DATA.landing.contacts.whatsapp;
+    heroWhatsappCta.textContent = "WhatsApp";
+    heroWhatsappCta.href =
+      `https://wa.me/${wa.phone.replace("+", "")}?text=${encodeURIComponent(wa.message)}`;
+  }
 }
 
 /* =========================================================
-   EVENTS (Cartaglow y futuros)
+   EVENTS
 ========================================================= */
 
-const eventsSection = document.getElementById("eventsSection");
+function renderEvents() {
+  const eventsSection = document.getElementById("eventsSection");
+  if (!eventsSection || !CLUB_DATA.landing.events?.length) return;
 
-if (eventsSection && CLUB_DATA.landing.events?.length) {
   const event = CLUB_DATA.landing.events[0];
 
   const titleEl = eventsSection.querySelector("h2");
   const descEl = eventsSection.querySelector("p");
-  // Botón registro Cartaglow 2026 (deshabilitado)
-  const registerBtn = document.createElement("button");
-  registerBtn.className = "landing-btn landing-btn-disabled";
-  registerBtn.textContent = "Registro Cartaglow 2026 (Próximamente)";
-  registerBtn.disabled = true;
-  registerBtn.title = "El registro para Cartaglow 2026 abrirá próximamente";
-  eventsSection.appendChild(registerBtn);
   const eventsContainer = eventsSection.querySelector(".events");
+
+  const existingBtn = eventsSection.querySelector(".landing-btn-disabled");
+  if (!existingBtn) {
+    const registerBtn = document.createElement("button");
+    registerBtn.className = "landing-btn landing-btn-disabled";
+    registerBtn.textContent = "Registro Cartaglow 2026 (Próximamente)";
+    registerBtn.disabled = true;
+    registerBtn.title = "El registro para Cartaglow 2026 abrirá próximamente";
+    eventsSection.appendChild(registerBtn);
+  }
 
   if (titleEl) {
     titleEl.textContent = `${event.name} ${event.edition}`;
@@ -148,29 +249,29 @@ if (eventsSection && CLUB_DATA.landing.events?.length) {
   if (eventsContainer) {
     eventsContainer.innerHTML = "";
 
-    event.images.forEach(src => {
-    const link = document.createElement("a");
-    link.href = "pages/public/tournament_info.html";
-    link.className = "event-link";
+    event.images.forEach((src) => {
+      const link = document.createElement("a");
+      link.href = "pages/public/tournament_info.html";
+      link.className = "event-link";
 
-    const img = document.createElement("img");
-    img.src = src;
-    img.alt = event.name;
+      const img = document.createElement("img");
+      img.src = src;
+      img.alt = event.name;
 
-    link.appendChild(img);
-    eventsContainer.appendChild(link);
-  });
+      link.appendChild(img);
+      eventsContainer.appendChild(link);
+    });
   }
 }
-
 
 /* =========================================================
    TRAININGS & GAMES
 ========================================================= */
 
-const trainingsSection = document.getElementById("entrenamientos");
+function renderTrainings() {
+  const trainingsSection = document.getElementById("entrenamientos");
+  if (!trainingsSection) return;
 
-if (trainingsSection) {
   trainingsSection.querySelector("h2").textContent =
     CLUB_DATA.landing.trainings.title;
 
@@ -183,46 +284,42 @@ if (trainingsSection) {
     card.querySelector("h3").textContent = block.name;
 
     const content = block.schedule
-      .map(s => `${s.day}: ${s.time}`)
+      .map((s) => `${s.day}: ${s.time}`)
       .join("\n");
 
-    card.querySelectorAll("p").forEach(p => p.remove());
+    card.querySelectorAll("p").forEach((p) => p.remove());
 
-    content.split("\n").forEach(line => {
+    content.split("\n").forEach((line) => {
       const p = document.createElement("p");
       p.textContent = line;
       card.appendChild(p);
     });
   });
-}
 
-const trainingsWhatsappCta =
-  document.getElementById("trainingsWhatsappCta");
-
-if (trainingsWhatsappCta) {
-  const wa = CLUB_DATA.landing.contacts.whatsapp;
-
-  trainingsWhatsappCta.textContent = wa.label;
-  trainingsWhatsappCta.href =
-    `https://wa.me/${wa.phone.replace("+", "")}?text=${encodeURIComponent(
-      wa.message
-    )}`;
+  const trainingsWhatsappCta = document.getElementById("trainingsWhatsappCta");
+  if (trainingsWhatsappCta) {
+    const wa = CLUB_DATA.landing.contacts.whatsapp;
+    trainingsWhatsappCta.textContent = wa.label;
+    trainingsWhatsappCta.href =
+      `https://wa.me/${wa.phone.replace("+", "")}?text=${encodeURIComponent(wa.message)}`;
+  }
 }
 
 /* =========================================================
-   HONORS / PALMARÉS
+   HONORS
 ========================================================= */
 
-const honorsSection = document.getElementById("honorsSection");
+function renderHonors() {
+  const honorsSection = document.getElementById("honorsSection");
+  if (!honorsSection) return;
 
-if (honorsSection) {
   honorsSection.querySelector("h2").textContent =
     CLUB_DATA.landing.honors.title;
 
   const container = honorsSection.querySelector(".landing-cards");
   container.innerHTML = "";
 
-  CLUB_DATA.landing.honors.items.forEach(item => {
+  CLUB_DATA.landing.honors.items.forEach((item) => {
     let badge = "🏅";
     let className = "honor-card";
 
@@ -254,31 +351,29 @@ if (honorsSection) {
   });
 }
 
-
 /* =========================================================
-   UNIFORMS (CAROUSEL)
+   UNIFORMS
 ========================================================= */
 
-const uniformsSection = document.getElementById("uniformsSection");
+function renderUniforms() {
+  const uniformsSection = document.getElementById("uniformsSection");
+  if (!uniformsSection) return;
 
-if (uniformsSection) {
   uniformsSection.querySelector("h2").textContent =
     CLUB_DATA.landing.uniforms.title;
 
   uniformsSection.querySelector("p").textContent =
     CLUB_DATA.landing.uniforms.subtitle;
 
-  const carouselInner = document.querySelector(
-    "#uniformsCarousel .carousel-inner"
-  );
+  const carouselInner = document.querySelector("#uniformsCarousel .carousel-inner");
+  if (!carouselInner) return;
 
   carouselInner.innerHTML = "";
 
   const itemsPerSlide = window.innerWidth < 768 ? 1 : 3;
 
   for (let i = 0; i < CLUB_DATA.landing.uniforms.items.length; i += itemsPerSlide) {
-    const slideItems =
-      CLUB_DATA.landing.uniforms.items.slice(i, i + itemsPerSlide);
+    const slideItems = CLUB_DATA.landing.uniforms.items.slice(i, i + itemsPerSlide);
 
     const slide = document.createElement("div");
     slide.className = `carousel-item ${i === 0 ? "active" : ""}`;
@@ -286,7 +381,7 @@ if (uniformsSection) {
     const row = document.createElement("div");
     row.className = "uniform-row";
 
-    slideItems.forEach(item => {
+    slideItems.forEach((item) => {
       const card = document.createElement("div");
       card.className = "uniform-card";
 
@@ -312,23 +407,44 @@ if (uniformsSection) {
     slide.appendChild(row);
     carouselInner.appendChild(slide);
   }
-}
 
-const carouselEl = document.getElementById("uniformsCarousel");
-if (carouselEl) {
-  new bootstrap.Carousel(carouselEl);
+  const carouselEl = document.getElementById("uniformsCarousel");
+  if (carouselEl && window.bootstrap?.Carousel) {
+    new bootstrap.Carousel(carouselEl);
+  }
 }
-
 
 /* =========================================================
    FOOTER
 ========================================================= */
 
-const footer = document.querySelector(".landing-footer");
+function renderFooter() {
+  const footer = document.querySelector(".landing-footer");
+  if (!footer) return;
 
-if (footer) {
   footer.innerHTML = `
     <p>${CLUB_DATA.footer.copyright}</p>
     <p>Fundados en el ${CLUB_DATA.club.foundedYear}</p>
   `;
+}
+
+/* =========================================================
+   BOOT
+========================================================= */
+
+async function bootNormalLanding() {
+  await init();
+  await loadIndexSettings();
+  renderHero();
+  renderEvents();
+  renderTrainings();
+  renderHonors();
+  renderUniforms();
+  renderFooter();
+}
+
+if (isPendingView) {
+  bootPendingMode();
+} else {
+  bootNormalLanding();
 }

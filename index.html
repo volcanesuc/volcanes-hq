@@ -25,6 +25,32 @@
   ======================================================= -->
   <div id="app-header"></div>
 
+   <!-- ======================================================
+       INACTIVE USER MSG
+  ======================================================= -->
+  <section id="pendingApprovalSection" class="landing-section d-none">
+  <div class="landing-card pending-approval-card">
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <i class="bi bi-hourglass-split fs-4"></i>
+      <h2 class="mb-0">Cuenta en validación</h2>
+    </div>
+
+    <p class="mb-3">
+      Ya completaste tu registro, pero un administrador todavía debe activar tu cuenta
+      antes de darte acceso al dashboard.
+    </p>
+
+    <div class="d-flex gap-2 flex-wrap">
+      <button id="pendingRetryBtn" class="landing-btn" type="button">
+        Reintentar
+      </button>
+      <button id="pendingLogoutBtn" class="landing-btn landing-btn-whatsapp" type="button">
+        Cerrar sesión
+      </button>
+    </div>
+  </div>
+</section>
+
   <!-- ======================================================
        HERO
   ======================================================= -->
