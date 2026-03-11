@@ -58,12 +58,6 @@ const COL_MEMBERSHIPS = COL.memberships;
 const COL_INSTALLMENTS = COL.membershipInstallments;
 const COL_SUBMISSIONS = COL.membershipPaymentSubmissions;
 
-const CLUB_ID =
-  APP_CONFIG.clubId ||
-  APP_CONFIG.id ||
-  APP_CONFIG.slug ||
-  "volcanes";
-
 // Config doc
 const CFG_DOC = doc(db, "club_config", "public_registration");
 
@@ -261,7 +255,6 @@ export async function ensureRole(uid) {
   if (snap.exists()) return snap.data();
 
   const payload = {
-    clubId: CLUB_ID,
     role: "viewer",
     active: false,
     createdAt: serverTimestamp(),
