@@ -25,29 +25,22 @@ async function getUserAccessState(uid) {
     return {
       exists: false,
       onboardingComplete: false,
-      roleActive: false,
+      isActive: false,
       role: "viewer",
+      userData: {},
     };
   }
 
   const userRef = doc(db, COL.users, uid);
-  const roleRef = doc(db, COL.userRoles, uid);
-
-  const [userSnap, roleSnap] = await Promise.all([
-    getDoc(userRef).catch(() => null),
-    getDoc(roleRef).catch(() => null),
-  ]);
-
+  const userSnap = await getDoc(userRef).catch(() => null);
   const userData = userSnap?.exists?.() ? userSnap.data() || {} : {};
-  const roleData = roleSnap?.exists?.() ? roleSnap.data() || {} : {};
 
   return {
     exists: !!userSnap?.exists?.(),
     onboardingComplete: userData.onboardingComplete === true,
-    roleActive: roleData.active === true,
-    role: String(roleData.role || "viewer").trim().toLowerCase(),
+    isActive: userData.isActive === true,
+    role: String(userData.role || "viewer").trim().toLowerCase(),
     userData,
-    roleData,
   };
 }
 
@@ -90,12 +83,18 @@ export async function loginWithGoogle(opts = {}) {
     if (snap.exists()) {
       const data = snap.data() || {};
 
-      if (email && data.email !== email) {
-        await setDoc(
-          userRef,
-          { email, updatedAt: serverTimestamp() },
-          { merge: true }
-        );
+      const patch = {};
+      if (email && data.email !== email) patch.email = email;
+      if ((data.displayName || null) !== (user.displayName || null)) {
+        patch.displayName = user.displayName || null;
+      }
+      if ((data.photoURL || null) !== (user.photoURL || null)) {
+        patch.photoURL = user.photoURL || null;
+      }
+
+      if (Object.keys(patch).length) {
+        patch.updatedAt = serverTimestamp();
+        await setDoc(userRef, patch, { merge: true });
       }
 
       const access = await getUserAccessState(user.uid);
@@ -105,7 +104,7 @@ export async function loginWithGoogle(opts = {}) {
         return cred;
       }
 
-      if (access.roleActive) {
+      if (access.onboardingComplete && access.isActive) {
         window.location.href = dash;
         return cred;
       }
@@ -123,6 +122,7 @@ export async function loginWithGoogle(opts = {}) {
         photoURL: user.photoURL || null,
         onboardingComplete: false,
         isActive: false,
+        role: "viewer",
         memberId: null,
         associateId: null,
         playerId: null,
@@ -157,7 +157,7 @@ export function watchAuth(onLoggedIn, opts = {}) {
   const redirectTo = opts.redirectTo ?? "/index.html";
   const registerPath = opts.registerPath ?? "/public/register.html";
   const pendingPath = opts.pendingPath ?? "/index.html?pending=1";
-  const requireActiveRole = opts.requireActiveRole !== false;
+  const requireActiveUser = opts.requireActiveUser !== false;
 
   return onAuthStateChanged(auth, async (user) => {
     if (!user) {
@@ -173,7 +173,7 @@ export function watchAuth(onLoggedIn, opts = {}) {
         return;
       }
 
-      if (requireActiveRole && !access.roleActive) {
+      if (requireActiveUser && !access.isActive) {
         window.location.replace(pendingPath);
         return;
       }
@@ -190,4 +190,9 @@ export async function logout(opts = {}) {
   const redirectTo = opts.redirectTo ?? "index.html";
   await signOut(auth);
   window.location.href = redirectTo;
+}
+
+export async function getCurrentUserAccess() {
+  const uid = auth.currentUser?.uid;
+  return getUserAccessState(uid);
 }

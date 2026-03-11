@@ -1,6 +1,6 @@
 // //js\auth\register.js
 import { db, auth, storage } from "./firebase.js";
-import { loginWithGoogle, logout } from "./auth.js";
+import { logout } from "./auth.js";
 import { loadHeader } from "../components/header.js";
 import { APP_CONFIG } from "../config/config.js";
 import { showLoader, hideLoader } from "/js/ui/loader.js";
@@ -50,7 +50,6 @@ window.addEventListener("unhandledrejection", releaseUI);
 ========================= */
 const COL = APP_CONFIG.collections;
 const COL_USERS = COL.users;
-const COL_USER_ROLES = COL.userRoles;
 const COL_PLANS = COL.subscriptionPlans;
 const COL_ASSOC = COL.associates;
 const COL_PLAYERS = COL.players;
@@ -232,42 +231,38 @@ async function step(name, fn) {
 }
 
 /* =========================
-   Role / Access helpers
+   User / Access helpers
 ========================= */
-async function hasActiveRole(uid) {
+async function getUserAccessState(uid) {
   try {
-    const roleRef = doc(db, COL_USER_ROLES, uid);
-    const snap = await getDoc(roleRef);
-    if (!snap.exists()) return false;
-    const r = snap.data();
-    return r?.active === true;
+    const userRef = doc(db, COL_USERS, uid);
+    const snap = await getDoc(userRef);
+    if (!snap.exists()) {
+      return {
+        onboardingComplete: false,
+        isActive: false,
+        role: "viewer",
+        raw: null,
+      };
+    }
+    const data = snap.data() || {};
+    return {
+      onboardingComplete: data.onboardingComplete === true,
+      isActive: data.isActive === true,
+      role: String(data.role || "viewer").trim().toLowerCase(),
+      raw: data,
+    };
   } catch (e) {
-    console.warn("hasActiveRole failed:", e);
-    return false;
+    console.warn("getUserAccessState failed:", e);
+    return {
+      onboardingComplete: false,
+      isActive: false,
+      role: "viewer",
+      raw: null,
+    };
   }
 }
 
-// crea user_roles/{uid} SOLO si no existe
-export async function ensureRole(uid) {
-  const ref = doc(db, COL_USER_ROLES, uid);
-  const snap = await getDoc(ref);
-
-  if (snap.exists()) return snap.data();
-
-  const payload = {
-    role: "viewer",
-    active: false,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  };
-
-  await setDoc(ref, payload);
-  return payload;
-}
-
-/* =========================
-   Ensure users/{uid} exists
-========================= */
 async function ensureUserDoc(uid, email, user = auth.currentUser) {
   const uref = doc(db, COL_USERS, uid);
   const usnap = await getDoc(uref).catch(() => null);
@@ -278,6 +273,7 @@ async function ensureUserDoc(uid, email, user = auth.currentUser) {
     displayName: user?.displayName || null,
     photoURL: user?.photoURL || null,
     isActive: false,
+    role: "viewer",
     updatedAt: serverTimestamp(),
   };
 
@@ -442,35 +438,27 @@ onAuthStateChanged(auth, async (user) => {
       return;
     }
 
-    const userRef = doc(db, COL_USERS, user.uid);
-    const userSnap = await getDoc(userRef).catch(() => null);
-    const userData = userSnap?.exists?.() ? userSnap.data() || {} : {};
+    const access = await getUserAccessState(user.uid);
 
-    const roleRef = doc(db, COL_USER_ROLES, user.uid);
-    const roleSnap = await getDoc(roleRef).catch(() => null);
-    const roleData = roleSnap?.exists?.() ? roleSnap.data() || {} : {};
+    if (!access.onboardingComplete) {
+      if (user.email && $.email) {
+        $.email.value = user.email;
+        $.email.readOnly = true;
+        $.logoutBtn?.classList.remove("d-none");
+      } else {
+        if ($.email) $.email.readOnly = false;
+        $.logoutBtn?.classList.add("d-none");
+      }
+      return;
+    }
 
-    const onboardingComplete = userData.onboardingComplete === true;
-    const roleActive = roleData.active === true;
-
-    if (roleActive) {
+    if (access.isActive) {
       window.location.replace("../dashboard.html");
       return;
     }
 
-    if (onboardingComplete && !roleActive) {
-      window.location.replace("../index.html?pending=1");
-      return;
-    }
-
-    if (user.email && $.email) {
-      $.email.value = user.email;
-      $.email.readOnly = true;
-      $.logoutBtn?.classList.remove("d-none");
-    } else {
-      if ($.email) $.email.readOnly = false;
-      $.logoutBtn?.classList.add("d-none");
-    }
+    window.location.replace("../index.html?pending=1");
+    return;
   } catch (e) {
     console.warn("onAuthStateChanged handler failed:", e);
   } finally {
@@ -488,9 +476,7 @@ async function loadPublicRegConfig() {
 
   const requireInfoDeclaration = cfg.requireInfoDeclaration === true;
   const infoDeclarationText = cfg.infoDeclarationText || null;
-
   const enableMembershipPayment = cfg.enableMembershipPayment !== false;
-
   const requireTerms = cfg.requireTerms === true;
   const termsUrl = cfg.termsUrl || null;
 
@@ -1037,7 +1023,6 @@ $.form?.addEventListener("submit", async (ev) => {
   try {
     if (!uid) throw new Error("No hay uid (login incompleto).");
 
-    await step("Ensure access role (user_roles/{uid})", () => ensureRole(uid));
     await step("Ensure users/{uid}", () => ensureUserDoc(uid, email));
 
     const { assocId, associateSnapshot } = await step("Upsert associate", () =>
@@ -1133,6 +1118,7 @@ $.form?.addEventListener("submit", async (ev) => {
 
         onboardingComplete: true,
         isActive: false,
+        role: "viewer",
 
         memberId: assocId || null,
         associateId: assocId || null,
