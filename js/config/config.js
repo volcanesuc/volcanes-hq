@@ -13,6 +13,9 @@ export const APP_CONFIG = {
     players: "club_players",
     guests: "guest_players",
 
+    users: "users",
+    userRoles: "user_roles",
+
     attendance: "club_attendance",
 
     tournaments: "tournaments",

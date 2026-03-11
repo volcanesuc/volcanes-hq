@@ -3,7 +3,7 @@ import { db, auth, storage } from "./firebase.js";
 import { loginWithGoogle, logout } from "./auth.js";
 import { loadHeader } from "../components/header.js";
 import { APP_CONFIG } from "../config/config.js";
-import { showLoader, hideLoader, updateLoaderMessage } from "/js/ui/loader.js";
+import { showLoader, hideLoader } from "/js/ui/loader.js";
 
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
@@ -32,25 +32,16 @@ function releaseUI() {
   document.body.classList.remove("loading");
 }
 
-releaseUI(); // ✅ apenas carga el módulo, mostramos la página
+releaseUI();
 
 const url = new URL(location.href);
-const created = url.searchParams.get("created"); // "0" o "1" o null
+const created = url.searchParams.get("created");
 
-if (created === "0") {
-  // No hagás nada especial, pero asegurá UI visible.
+if (created === "0" || created === "1") {
   releaseUI();
 }
 
-if (created === "1") {
-  // si querés: showAlert("Cuenta creada. Completá el formulario para terminar.", "success");
-  releaseUI();
-}
-
-// ✅ si algo se queda colgado o tarda, igual mostramos la UI
 setTimeout(releaseUI, 2000);
-
-// ✅ si pasa algo raro en runtime, no quedamos pegados
 window.addEventListener("error", releaseUI);
 window.addEventListener("unhandledrejection", releaseUI);
 
@@ -58,13 +49,20 @@ window.addEventListener("unhandledrejection", releaseUI);
    Config / Collections
 ========================= */
 const COL = APP_CONFIG.collections;
-
+const COL_USERS = COL.users;
+const COL_USER_ROLES = COL.userRoles;
 const COL_PLANS = COL.subscriptionPlans;
 const COL_ASSOC = COL.associates;
 const COL_PLAYERS = COL.players;
 const COL_MEMBERSHIPS = COL.memberships;
 const COL_INSTALLMENTS = COL.membershipInstallments;
 const COL_SUBMISSIONS = COL.membershipPaymentSubmissions;
+
+const CLUB_ID =
+  APP_CONFIG.clubId ||
+  APP_CONFIG.id ||
+  APP_CONFIG.slug ||
+  "volcanes";
 
 // Config doc
 const CFG_DOC = doc(db, "club_config", "public_registration");
@@ -105,11 +103,14 @@ const $ = {
   termsLink: document.getElementById("termsLink"),
 };
 
-let PUBLIC_CFG = { enableMembershipPayment: true, requireTerms: false, requireInfoDeclaration: false };
+let PUBLIC_CFG = {
+  enableMembershipPayment: true,
+  requireTerms: false,
+  requireInfoDeclaration: false,
+};
 
 function isVisible(el) {
   if (!el) return false;
-  // visible en DOM + no oculto por d-none + no hidden + no display none
   if (el.classList?.contains("d-none")) return false;
   if (el.hidden) return false;
   return !!(el.offsetParent || el.getClientRects().length);
@@ -125,11 +126,10 @@ function hasValue(el) {
 function setSubmitEnabled(enabled) {
   if (!$.submitBtn) return;
   $.submitBtn.disabled = !enabled;
-  $.submitBtn.classList.toggle("disabled", !enabled); // opcional (Bootstrap style)
+  $.submitBtn.classList.toggle("disabled", !enabled);
 }
 
 function computeFormComplete() {
-  // básicos siempre
   const requiredEls = [
     $.firstName,
     $.lastName,
@@ -141,16 +141,13 @@ function computeFormComplete() {
     $.canton,
   ];
 
-  // por config: consentimientos
   if (PUBLIC_CFG.requireInfoDeclaration) requiredEls.push($.infoDeclaration);
   if (PUBLIC_CFG.requireTerms) requiredEls.push($.termsAccepted);
 
-  // por config: pago
   if (PUBLIC_CFG.enableMembershipPayment) {
     requiredEls.push($.planId, $.proofFile);
   }
 
-  // Solo consideramos los elementos visibles
   return requiredEls
     .filter((el) => isVisible(el))
     .every((el) => hasValue(el));
@@ -175,12 +172,6 @@ function hideAlert() {
   $.alertBox?.classList.add("d-none");
 }
 
-function setLoading(isLoading) {
-  document.body.classList.toggle("loading", isLoading);
-  if ($.submitBtn) $.submitBtn.disabled = isLoading;
-  if ($.logoutBtn) $.logoutBtn.disabled = isLoading;
-}
-
 function norm(s) {
   return (s || "").toString().trim();
 }
@@ -196,7 +187,10 @@ function normLower(s) {
 function fmtMoney(n, cur = "CRC") {
   const v = Number(n);
   if (Number.isNaN(v)) return "—";
-  return new Intl.NumberFormat("es-CR", { style: "currency", currency: cur }).format(v);
+  return new Intl.NumberFormat("es-CR", {
+    style: "currency",
+    currency: cur,
+  }).format(v);
 }
 
 function makePayCode(len = 6) {
@@ -244,33 +238,32 @@ async function step(name, fn) {
 }
 
 /* =========================
-   Role / Access helpers (safe)
+   Role / Access helpers
 ========================= */
 async function hasActiveRole(uid) {
   try {
-    const roleRef = doc(db, "user_roles", uid);
+    const roleRef = doc(db, COL_USER_ROLES, uid);
     const snap = await getDoc(roleRef);
     if (!snap.exists()) return false;
     const r = snap.data();
     return r?.active === true;
   } catch (e) {
-    // si rules bloquean, NO dejamos negro; solo asumimos "no tiene rol"
     console.warn("hasActiveRole failed:", e);
     return false;
   }
 }
 
-// crea user_roles/{uid} SOLO si no existe (viewer por defecto)
+// crea user_roles/{uid} SOLO si no existe
 export async function ensureRole(uid) {
-  const ref = doc(db, "user_roles", uid);
+  const ref = doc(db, COL_USER_ROLES, uid);
   const snap = await getDoc(ref);
 
-  // si ya existe, no tocarlo (puede ser admin)
   if (snap.exists()) return snap.data();
 
   const payload = {
+    clubId: CLUB_ID,
     role: "viewer",
-    active: true,
+    active: false,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
@@ -280,19 +273,29 @@ export async function ensureRole(uid) {
 }
 
 /* =========================
-   Ensure users/{uid} exists (new Google users)
+   Ensure users/{uid} exists
 ========================= */
-async function ensureUserDoc(uid, email) {
-  const uref = doc(db, "users", uid);
+async function ensureUserDoc(uid, email, user = auth.currentUser) {
+  const uref = doc(db, COL_USERS, uid);
   const usnap = await getDoc(uref).catch(() => null);
 
   const payload = {
-    email: email || null,
+    uid,
+    email: email || user?.email || null,
+    displayName: user?.displayName || null,
+    photoURL: user?.photoURL || null,
+    isActive: false,
     updatedAt: serverTimestamp(),
   };
-  if (!usnap?.exists?.()) payload.createdAt = serverTimestamp();
 
-  // merge para no pisar cosas
+  if (!usnap?.exists?.()) {
+    payload.onboardingComplete = false;
+    payload.memberId = null;
+    payload.associateId = null;
+    payload.playerId = null;
+    payload.createdAt = serverTimestamp();
+  }
+
   await setDoc(uref, payload, { merge: true });
 }
 
@@ -320,9 +323,8 @@ const CR = {
     "Dota",
     "Curridabat",
     "Pérez Zeledón",
-    "León Cortés Castro"
+    "León Cortés Castro",
   ],
-
   "Alajuela": [
     "Alajuela",
     "San Ramón",
@@ -339,9 +341,8 @@ const CR = {
     "Upala",
     "Los Chiles",
     "Guatuso",
-    "Río Cuarto"
+    "Río Cuarto",
   ],
-
   "Cartago": [
     "Cartago",
     "Paraíso",
@@ -350,9 +351,8 @@ const CR = {
     "Turrialba",
     "Alvarado",
     "Oreamuno",
-    "El Guarco"
+    "El Guarco",
   ],
-
   "Heredia": [
     "Heredia",
     "Barva",
@@ -363,9 +363,8 @@ const CR = {
     "Belén",
     "Flores",
     "San Pablo",
-    "Sarapiquí"
+    "Sarapiquí",
   ],
-
   "Guanacaste": [
     "Liberia",
     "Nicoya",
@@ -377,9 +376,8 @@ const CR = {
     "Tilarán",
     "Nandayure",
     "La Cruz",
-    "Hojancha"
+    "Hojancha",
   ],
-
   "Puntarenas": [
     "Puntarenas",
     "Esparza",
@@ -391,17 +389,16 @@ const CR = {
     "Coto Brus",
     "Parrita",
     "Corredores",
-    "Garabito"
+    "Garabito",
   ],
-
   "Limón": [
     "Limón",
     "Pococí",
     "Siquirres",
     "Talamanca",
     "Matina",
-    "Guácimo"
-  ]
+    "Guácimo",
+  ],
 };
 
 function fillProvinceCanton() {
@@ -427,14 +424,13 @@ function fillProvinceCanton() {
 }
 
 /* =========================
-   Header: sin tabs aquí (evita flash)
+   Header
 ========================= */
 loadHeader("home", { enabledTabs: {} });
 
 /* =========================
    Auth UI
 ========================= */
-
 $.logoutBtn?.addEventListener("click", async () => {
   try {
     showLoader("Cargando…");
@@ -444,18 +440,37 @@ $.logoutBtn?.addEventListener("click", async () => {
   }
 });
 
-// IMPORTANT: no más “pantalla negra” por errores aquí
 onAuthStateChanged(auth, async (user) => {
   showLoader("Cargando…");
   try {
-    // si ya tiene rol activo -> dashboard
-    if (user?.uid && (await hasActiveRole(user.uid))) {
+    if (!user) {
+      $.logoutBtn?.classList.add("d-none");
+      if ($.email) $.email.readOnly = false;
+      return;
+    }
+
+    const userRef = doc(db, COL_USERS, user.uid);
+    const userSnap = await getDoc(userRef).catch(() => null);
+    const userData = userSnap?.exists?.() ? userSnap.data() || {} : {};
+
+    const roleRef = doc(db, COL_USER_ROLES, user.uid);
+    const roleSnap = await getDoc(roleRef).catch(() => null);
+    const roleData = roleSnap?.exists?.() ? roleSnap.data() || {} : {};
+
+    const onboardingComplete = userData.onboardingComplete === true;
+    const roleActive = roleData.active === true;
+
+    if (roleActive) {
       window.location.replace("../dashboard.html");
       return;
     }
 
-    // prefill email
-    if (user?.email && $.email) {
+    if (onboardingComplete && !roleActive) {
+      window.location.replace("../index.html?pending=1");
+      return;
+    }
+
+    if (user.email && $.email) {
       $.email.value = user.email;
       $.email.readOnly = true;
       $.logoutBtn?.classList.remove("d-none");
@@ -465,15 +480,14 @@ onAuthStateChanged(auth, async (user) => {
     }
   } catch (e) {
     console.warn("onAuthStateChanged handler failed:", e);
-    // seguimos igual, solo evitamos crash
   } finally {
     hideLoader();
-    releaseUI(); 
+    releaseUI();
   }
 });
 
 /* =========================
-   Config (booleans + textos)
+   Config
 ========================= */
 async function loadPublicRegConfig() {
   const snap = await getDoc(CFG_DOC);
@@ -487,20 +501,14 @@ async function loadPublicRegConfig() {
   const requireTerms = cfg.requireTerms === true;
   const termsUrl = cfg.termsUrl || null;
 
-  //Pago: si está deshabilitado, ocultar + desactivar + quitar required
   const paymentSection = document.getElementById("paymentSection");
   if (!enableMembershipPayment) {
     paymentSection?.classList.add("d-none");
-
-    // deshabilitar inputs para que HTML validation no moleste
     setEnabled($.planId, false);
     setEnabled($.proofFile, false);
-
-    // quitar required por si lo tienen en el HTML
     setRequired($.planId, false);
     setRequired($.proofFile, false);
 
-    // opcional: limpiar valores
     if ($.planId) $.planId.value = "";
     if ($.proofFile) $.proofFile.value = "";
     if ($.planMeta) $.planMeta.textContent = "";
@@ -508,12 +516,10 @@ async function loadPublicRegConfig() {
     paymentSection?.classList.remove("d-none");
     setEnabled($.planId, true);
     setEnabled($.proofFile, true);
-    // si querés, volverlos required:
     setRequired($.planId, true);
     setRequired($.proofFile, true);
   }
 
-  //Declaración: si no aplica, deshabilitar + quitar required
   if (!requireInfoDeclaration) {
     setEnabled($.infoDeclaration, false);
     setRequired($.infoDeclaration, false);
@@ -522,7 +528,6 @@ async function loadPublicRegConfig() {
     setRequired($.infoDeclaration, true);
   }
 
-  //Términos: si no aplica, deshabilitar + quitar required
   if (!requireTerms) {
     setEnabled($.termsAccepted, false);
     setRequired($.termsAccepted, false);
@@ -553,9 +558,9 @@ async function loadPublicRegConfig() {
   }
 
   PUBLIC_CFG = { enableMembershipPayment, requireTerms, requireInfoDeclaration };
+  updateSubmitState();
 
-   updateSubmitState();
-  return { requireInfoDeclaration, requireTerms, termsUrl, enableMembershipPayment};
+  return { requireInfoDeclaration, requireTerms, termsUrl, enableMembershipPayment };
 }
 
 /* =========================
@@ -576,7 +581,6 @@ async function loadPlans() {
   snap.forEach((d) => plans.push({ id: d.id, ...d.data() }));
 
   const activePlans = plans.filter((p) => p.isActive !== false);
-
   plansById = new Map(activePlans.map((p) => [p.id, p]));
 
   if ($.planId) {
@@ -608,7 +612,7 @@ $.planId?.addEventListener("change", () => {
 });
 
 /* =========================
-   Identity linking (Associate <-> Player)
+   Identity linking
 ========================= */
 async function upsertAssociate({
   uid,
@@ -623,7 +627,6 @@ async function upsertAssociate({
   consents,
 }) {
   const fullName = `${firstName} ${lastName}`.trim();
-
   let assocId = null;
 
   if (uid) {
@@ -720,7 +723,7 @@ async function findPlayerToLink({ uid, email, firstName, lastName, birthDate }) 
 }
 
 async function ensureLinkedPlayer({ assocId, uid, email, firstName, lastName, birthDate }) {
-  let player = await findPlayerToLink({ uid, email, firstName, lastName, birthDate });
+  const player = await findPlayerToLink({ uid, email, firstName, lastName, birthDate });
 
   const payload = {
     active: true,
@@ -777,7 +780,7 @@ async function createMembership({ assocId, associateSnapshot, plan, season, cons
 
     currency: planSnap.currency,
     totalAmount: planSnap.totalAmount,
-    season: season,
+    season,
 
     status: "pending",
 
@@ -912,14 +915,13 @@ async function init() {
     fillProvinceCanton();
     await loadPlans();
 
-    const cfg = await loadPublicRegConfig(); // 👈 AQUÍ
+    const cfg = await loadPublicRegConfig();
 
     if (!cfg.enableMembershipPayment) {
       const sec = document.getElementById("paymentSection");
       if (sec) sec.classList.add("d-none");
       updateSubmitState();
     }
-
   } catch (e) {
     console.warn(e);
     showAlert("No se pudo cargar la configuración. Refresca la página.");
@@ -949,7 +951,6 @@ $.form?.addEventListener("submit", async (ev) => {
 
   const uid = user.uid;
 
-  // Data
   const firstName = norm($.firstName?.value);
   const lastName = norm($.lastName?.value);
   const birthDate = norm($.birthDate?.value);
@@ -976,7 +977,6 @@ $.form?.addEventListener("submit", async (ev) => {
   const payerName = norm($.payerName?.value) || `${firstName} ${lastName}`.trim();
   const method = normLower($.payMethod?.value) || "sinpe";
 
-  // enforce config
   let cfg;
   try {
     cfg = await loadPublicRegConfig();
@@ -986,17 +986,16 @@ $.form?.addEventListener("submit", async (ev) => {
     return;
   }
 
-  // Validate basics
   if (!firstName || !lastName || !birthDate || !idType || !idNumber || !email) {
     showAlert("Completa todos los campos obligatorios.");
     return;
   }
+
   if (!residence.province || !residence.canton) {
     showAlert("Selecciona provincia y cantón.");
     return;
   }
 
-  //Validate if payments is enabled or not
   const paymentsEnabled = !!cfg.enableMembershipPayment;
   if (paymentsEnabled) {
     if (!planId || !plan) {
@@ -1013,6 +1012,7 @@ $.form?.addEventListener("submit", async (ev) => {
     showAlert("Debes aceptar la declaración de veracidad/uso de información.");
     return;
   }
+
   if (cfg.requireTerms && !$.termsAccepted?.checked) {
     showAlert("Debes aceptar los términos y condiciones.");
     return;
@@ -1028,11 +1028,11 @@ $.form?.addEventListener("submit", async (ev) => {
   };
 
   showLoader("Cargando…");
-  await step("Ensure access role (user_roles/{uid})", () => ensureRole(uid));
+
   try {
     if (!uid) throw new Error("No hay uid (login incompleto).");
 
-    // usuarios nuevos: garantizamos users/{uid} para que nada reviente después
+    await step("Ensure access role (user_roles/{uid})", () => ensureRole(uid));
     await step("Ensure users/{uid}", () => ensureUserDoc(uid, email));
 
     const { assocId, associateSnapshot } = await step("Upsert associate", () =>
@@ -1062,86 +1062,85 @@ $.form?.addEventListener("submit", async (ev) => {
       )
     );
 
-    const paymentsEnabled = !!cfg.enableMembershipPayment;
     if (paymentsEnabled) {
+      const proof = await step("Upload proof (Storage)", () =>
+        uploadProofFile({ uid, assocId, file })
+      );
 
-        const proof = await step("Upload proof (Storage)", () =>
-          uploadProofFile({ uid, assocId, file })
-        );
+      const season = plan.season || safeSeasonFromToday();
 
-        const season = plan.season || safeSeasonFromToday();
+      const { membershipId } = await step("Create membership", () =>
+        createMembership({
+          assocId,
+          associateSnapshot,
+          plan: { id: planId, ...plan },
+          season,
+          consents,
+        })
+      );
 
-        const { membershipId } = await step("Create membership", () =>
-          createMembership({
-            assocId,
-            associateSnapshot,
-            plan: { id: planId, ...plan },
-            season,
-            consents,
-          })
-        );
+      await step("Maybe create installments", () =>
+        maybeCreateInstallments({ membershipId, plan: { id: planId, ...plan }, season })
+      );
 
-        await step("Maybe create installments", () =>
-          maybeCreateInstallments({ membershipId, plan: { id: planId, ...plan }, season })
-        );
+      await step("Create payment submission", () =>
+        addDoc(collection(db, COL_SUBMISSIONS), {
+          adminNote: null,
+          note: null,
 
-        await step("Create payment submission", () =>
-          addDoc(collection(db, COL_SUBMISSIONS), {
-            adminNote: null,
-            note: null,
+          amountReported: planAmount(plan),
+          currency: plan.currency || "CRC",
 
-            amountReported: planAmount(plan),
-            currency: plan.currency || "CRC",
+          email,
+          payerName: payerName || null,
+          phone: phone || null,
+          method: method || "sinpe",
 
-            email,
-            payerName: payerName || null,
-            phone: phone || null,
-            method: method || "sinpe",
+          filePath: proof.filePath,
+          fileType: proof.fileType,
+          fileUrl: proof.fileUrl,
 
-            filePath: proof.filePath,
-            fileType: proof.fileType,
-            fileUrl: proof.fileUrl,
+          installmentId: null,
+          selectedInstallmentIds: [],
 
-            installmentId: null,
-            selectedInstallmentIds: [],
+          membershipId,
+          planId,
+          season,
 
-            membershipId,
-            planId,
-            season,
+          status: "pending",
+          userId: uid,
 
-            status: "pending",
-            userId: uid,
-
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          })
-        );
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        })
+      );
     }
 
     await step("Mark onboarding complete (users/{uid})", async () => {
-      const uref = doc(db, "users", uid);
+      const uref = doc(db, COL_USERS, uid);
+
       const payload = {
+        uid,
         email: email || auth.currentUser?.email || null,
+        displayName:
+          auth.currentUser?.displayName || `${firstName} ${lastName}`.trim() || null,
+        photoURL: auth.currentUser?.photoURL || null,
 
         onboardingComplete: true,
+        isActive: false,
 
-        associateId: assocId,
+        memberId: assocId || null,
+        associateId: assocId || null,
         playerId: playerId || null,
-
-        firstName: firstName || null,
-        lastName: lastName || null,
-        birthDate: birthDate || null,
-        phone: phone || null,
 
         updatedAt: serverTimestamp(),
       };
+
       return setDoc(uref, payload, { merge: true });
     });
 
     sessionStorage.removeItem("prefill_register");
-
-    // desde /public/
-    window.location.replace("../dashboard.html");
+    window.location.replace("../index.html?pending=1");
     return;
   } catch (e) {
     console.warn(e);
@@ -1153,21 +1152,26 @@ $.form?.addEventListener("submit", async (ev) => {
 
 function wireUpFormCompleteness() {
   const els = [
-    $.firstName, $.lastName, $.birthDate, $.idType, $.idNumber, $.email,
-    $.province, $.canton, $.planId, $.proofFile,
-    $.infoDeclaration, $.termsAccepted,
+    $.firstName,
+    $.lastName,
+    $.birthDate,
+    $.idType,
+    $.idNumber,
+    $.email,
+    $.province,
+    $.canton,
+    $.planId,
+    $.proofFile,
+    $.infoDeclaration,
+    $.termsAccepted,
   ].filter(Boolean);
 
-  // input para texto, change para selects/checkbox/file
   els.forEach((el) => {
     el.addEventListener("input", updateSubmitState);
     el.addEventListener("change", updateSubmitState);
   });
 
-  // cuando cambia provincia, se repuebla cantón → recalculamos
   $.province?.addEventListener("change", () => setTimeout(updateSubmitState, 0));
-
-  // estado inicial
   updateSubmitState();
 }
 
