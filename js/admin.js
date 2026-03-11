@@ -194,6 +194,9 @@ async function openApproveModal(uid) {
   $.newPlayerBirthday.value = "";
   $.newPlayerFieldRole.value = "";
 
+  //filtrar los players disponibles
+  fillExistingPlayersSelect(uid);
+
   const assoc = await getAssociateData(user.associateId);
   if (assoc?.profile) {
     $.newPlayerFirstName.value = assoc.profile.firstName || "";
@@ -360,18 +363,6 @@ async function boot() {
 }
 
 //HELPERS
-async function assertPlayerCanBeLinked(playerId, uid) {
-  const snap = await getDoc(doc(db, COL_PLAYERS, playerId));
-  if (!snap.exists()) throw new Error("El jugador seleccionado no existe.");
-
-  const data = snap.data() || {};
-  const currentUid = data.uid || null;
-
-  if (currentUid && currentUid !== uid) {
-    throw new Error("Ese jugador ya está ligado a otro usuario.");
-  }
-}
-
 async function getAssociateData(associateId) {
   if (!associateId) return null;
   const snap = await getDoc(doc(db, COL_ASSOC, associateId)).catch(() => null);
