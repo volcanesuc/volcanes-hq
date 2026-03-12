@@ -15,6 +15,8 @@ import { createTrainingEditor } from "./training_editor.js";
 import { initGymTab } from "./gym/gym.js";
 import { initGymEditors } from "./gym/gym_editors.js";
 
+import { openMediaViewerModal } from "../../ui/media_viewer_modal.js";
+
 import {
   collection,
   getDocs,
@@ -348,7 +350,6 @@ function renderDrills() {
     const video = safeUrl(d.teamVideoUrl);
     const active = d.isActive !== false;
 
-    //para editar (solo admin)
     const clickable = canEdit
       ? `data-edit-drill="${escapeHtml(d.id)}" style="cursor:pointer"`
       : "";
@@ -363,15 +364,37 @@ function renderDrills() {
           <div class="d-flex justify-content-between gap-2">
             <div>
               <div class="fw-semibold">${escapeHtml(d.name || "—")}</div>
-              <div class="text-muted small">
-                ${tactical
-                  ? `<a href="${escapeHtml(tactical)}" target="_blank" rel="noopener">Tactical</a>`
-                  : `<span class="text-muted">Sin Tactical</span>`}
-                <span class="mx-2">•</span>
-                ${video
-                  ? `<a href="${escapeHtml(video)}" target="_blank" rel="noopener">Video</a>`
-                  : `<span class="text-muted">Sin video</span>`}
+
+              <div class="text-muted small d-flex flex-wrap align-items-center gap-2">
+                ${
+                  tactical
+                    ? `<button
+                          type="button"
+                          class="btn btn-link btn-sm p-0 text-decoration-none"
+                          data-open-external="${escapeHtml(tactical)}"
+                          data-open-title="${escapeHtml(d.name || "Tactical Board")}"
+                       >
+                          Ver
+                       </button>`
+                    : `<span class="text-muted">Sin Tactical</span>`
+                }
+
+                <span>•</span>
+
+                ${
+                  video
+                    ? `<button
+                          type="button"
+                          class="btn btn-link btn-sm p-0 text-decoration-none"
+                          data-open-external="${escapeHtml(video)}"
+                          data-open-title="${escapeHtml(d.name || "Video")}"
+                       >
+                          Video
+                       </button>`
+                    : `<span class="text-muted">Sin video</span>`
+                }
               </div>
+
               ${tagsHtml}
             </div>
 
@@ -425,11 +448,23 @@ function renderDrills() {
     $.drillsList?.appendChild(card);
   }
 
-  // ✅ toggle archive/reactivate
+
+  $.drillsList?.querySelectorAll("[data-open-external]").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+
+      const url = btn.getAttribute("data-open-external");
+      const title = btn.getAttribute("data-open-title") || "Vista previa";
+      if (!url) return;
+
+      openMediaViewerModal(url, { title });
+    });
+  });
+
   if (canEdit) {
     $.drillsList?.querySelectorAll("button[data-action='toggle']").forEach(btn => {
       btn.addEventListener("click", async (e) => {
-        e.stopPropagation(); // ✅ no abrir editor si se clickea el botón
+        e.stopPropagation();
         const id = btn.getAttribute("data-id");
         if (!id) return;
         showLoader();
@@ -441,7 +476,6 @@ function renderDrills() {
       });
     });
 
-    // ✅ click card => editar (ignorando clicks en links/botones)
     $.drillsList?.querySelectorAll("[data-edit-drill]").forEach(el => {
       el.addEventListener("click", async (e) => {
         const target = e.target;
@@ -450,7 +484,6 @@ function renderDrills() {
         const id = el.getAttribute("data-edit-drill");
         if (!id) return;
 
-        // esta función la agregaste aparte (abre modal + carga datos)
         await openDrillEditor(id);
       });
     });

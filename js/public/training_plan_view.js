@@ -7,6 +7,7 @@ import {
   doc,
   getDoc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { openMediaViewerModal } from "../ui/media_viewer_modal.js";
 
 const TRAININGS_COL = "playbook_trainings";
 const DRILLS_COL = "drills";
@@ -121,13 +122,16 @@ function drillCard(d) {
 
           <div class="d-flex justify-content-between align-items-start gap-2">
             <div class="fw-semibold">${escapeHtml(name)}</div>
-
             ${
               tactical
-                ? `<a class="btn btn-sm btn-outline-primary"
-                      target="_blank"
-                      rel="noopener"
-                      href="${escapeHtml(tactical)}">Ver</a>`
+                ? `<button
+                      type="button"
+                      class="btn btn-sm btn-outline-primary"
+                      data-open-external="${escapeHtml(tactical)}"
+                      data-open-title="${escapeHtml(name)}"
+                  >
+                      Ver
+                  </button>`
                 : ``
             }
           </div>
@@ -249,6 +253,16 @@ async function initHeader() {
     tvDrills.innerHTML = drills.length
       ? drills.map(drillCard).join("")
       : "";
+    
+    tvDrills?.querySelectorAll("[data-open-external]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const url = btn.getAttribute("data-open-external");
+        const title = btn.getAttribute("data-open-title") || "Vista previa";
+        if (!url) return;
+
+        openMediaViewerModal(url, { title });
+      });
+    });
 
     tvEmpty?.classList.toggle("d-none", drills.length > 0);
   } catch (e) {
