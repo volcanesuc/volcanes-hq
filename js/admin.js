@@ -86,6 +86,7 @@ function fillStaticOptions() {
 
   $.playerRoleFilter.innerHTML =
     `<option value="">Todos los roles</option>` +
+    `<option value="__unassigned__">Sin asignar</option>` +
     APP_CONFIG.userRoles
       .filter((r) => r.id)
       .map((r) => `<option value="${esc(r.id)}">${esc(r.label)}</option>`)
@@ -151,17 +152,21 @@ async function loadPlayers() {
     .map((d) => {
       const data = d.data() || {};
       const user = data.uid ? usersById.get(data.uid) : null;
+      const hasUserAssigned = Boolean(data.uid && user);
 
       return {
         id: d.id,
         ...data,
-        systemRole: user?.role || "—",
+        hasUserAssigned,
+        systemRole: user?.role || "",
       };
     })
     .sort((a, b) => {
-      const nameA = `${a.firstName || ""} ${a.lastName || ""}`.trim().toLowerCase();
-      const nameB = `${b.firstName || ""} ${b.lastName || ""}`.trim().toLowerCase();
-      return nameA.localeCompare(nameB, "es", { sensitivity: "base" });
+      if (a.hasUserAssigned !== b.hasUserAssigned) {
+        return a.hasUserAssigned ? -1 : 1;
+      }
+
+      return comparePlayersByName(a, b);
     });
 
   renderPlayersTable();
@@ -172,11 +177,19 @@ function renderPlayersTable() {
   const roleFilter = $.playerRoleFilter.value || "";
 
   const filtered = allPlayers.filter((p) => {
-    const fullName = `${p.firstName || ""} ${p.lastName || ""}`.trim().toLowerCase();
+    const fullName = getPlayerFullName(p).toLowerCase();
     const email = String(p.email || "").toLowerCase();
-    const systemRole = String(p.systemRole || "");
+    const systemRole = String(p.systemRole || "").toLowerCase();
+
     const textOk = !term || fullName.includes(term) || email.includes(term);
-    const roleOk = !roleFilter || systemRole === roleFilter;
+
+    let roleOk = true;
+    if (roleFilter === "__unassigned__") {
+      roleOk = !p.systemRole;
+    } else if (roleFilter) {
+      roleOk = p.systemRole === roleFilter;
+    }
+
     return textOk && roleOk;
   });
 
@@ -188,9 +201,9 @@ function renderPlayersTable() {
   $.playersTable.innerHTML = filtered
     .map((p) => `
       <tr>
-        <td>${esc(`${p.firstName || ""} ${p.lastName || ""}`.trim() || "—")}</td>
+        <td>${esc(getPlayerFullName(p) || "—")}</td>
         <td>${esc(p.email || "—")}</td>
-        <td>${esc(p.systemRole || "—")}</td>
+        <td>${esc(p.systemRole || "Sin asignar")}</td>
         <td>${esc(p.associateId || "—")}</td>
         <td>${esc(p.uid || "—")}</td>
       </tr>
@@ -386,6 +399,18 @@ async function approveUserFlow(ev) {
   } finally {
     hideLoader();
   }
+}
+
+function getPlayerFullName(player) {
+  return `${player.firstName || ""} ${player.lastName || ""}`.trim();
+}
+
+function comparePlayersByName(a, b) {
+  return getPlayerFullName(a).localeCompare(
+    getPlayerFullName(b),
+    "es",
+    { sensitivity: "base" }
+  );
 }
 
 async function boot() {
