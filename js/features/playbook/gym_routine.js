@@ -18,7 +18,7 @@
 
 import { db } from "/js/auth/firebase.js";
 import { showLoader, hideLoader } from "/js/ui/loader.js";
-import { loadHeader } from "/js/components/header.js";
+import { initPublicMinimalHeader } from "/js/components/public-minimal-header.js";
 
 import {
   doc,
@@ -51,40 +51,6 @@ if (!routineId) {
 /* =========================
    Init
 ========================= */
-async function initHeader() {
-  try {
-    await loadHeader("home", {
-      enabledTabs: {}
-    });
-
-    const brand = document.querySelector("#app-header .logo-link");
-    if (brand) {
-      brand.style.cursor = "pointer";
-      brand.addEventListener("click", () => {
-        window.location.href = "/dashboard.html";
-      });
-    }
-
-    const selectorsToHide = [
-      "#app-header .top-tabs",
-      "#app-header .mobile-links",
-      "#app-header hr"
-    ];
-
-    selectorsToHide.forEach((sel) => {
-      document.querySelectorAll(sel).forEach((el) => {
-        el.style.display = "none";
-      });
-    });
-
-    document.querySelectorAll("#app-header .hamburger").forEach((el) => {
-      el.style.display = "none";
-    });
-  } catch (err) {
-    console.warn("No se pudo cargar el header:", err);
-  }
-}
-
 await boot();
 
 /* =========================
@@ -93,7 +59,10 @@ await boot();
 async function boot() {
   showLoaderSafe();
   try {
-    await initHeader();
+    await initPublicMinimalHeader({
+      activeTab: "home",
+      brandHref: "/index.html",
+    });
 
     const { routine, items } = await loadRoutineResolved({ routineId });
 
