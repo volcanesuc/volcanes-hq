@@ -398,10 +398,34 @@ function calculateAlerts({ players, trainings }) {
   // helpers
   const toDate = (v) => {
     if (!v) return null;
-    if (typeof v === "object" && typeof v.toDate === "function") return v.toDate();
-    if (v instanceof Date) return v;
-    const d = new Date(v);
-    return isNaN(d) ? null : d;
+
+    // Firestore Timestamp
+    if (typeof v === "object" && typeof v.toDate === "function") {
+      const d = v.toDate();
+      return isNaN(d) ? null : d;
+    }
+
+    // JS Date
+    if (v instanceof Date) {
+      return isNaN(v) ? null : v;
+    }
+
+    // String YYYY-MM-DD => parse local
+    if (typeof v === "string") {
+      const s = v.trim().replaceAll("/", "-");
+      const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (m) {
+        const y = Number(m[1]);
+        const mo = Number(m[2]) - 1;
+        const da = Number(m[3]);
+        return new Date(y, mo, da);
+      }
+
+      const d = new Date(s);
+      return isNaN(d) ? null : d;
+    }
+
+    return null;
   };
 
   const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -414,10 +438,17 @@ function calculateAlerts({ players, trainings }) {
   const activePlayers = players.filter(p => p.active);
 
   // only trainings in last 30 days (and active)
+  const today = startOfDay(now);
+  const sinceDay = startOfDay(since);
+
   const recentTrainings = (trainings || [])
     .map(t => ({ ...t, _d: toDate(t.date) }))
-    .filter(t => t.active && t._d && startOfDay(t._d) >= startOfDay(since) && startOfDay(t._d) <= startOfDay(now))
-    .sort((a, b) => a._d - b._d); // oldest -> newest
+    .filter(t => {
+      if (!t.active || !t._d) return false;
+      const td = startOfDay(t._d);
+      return td >= sinceDay && td <= today;
+    })
+    .sort((a, b) => a._d - b._d);
 
   // If no trainings in last 30 days, that's the only alert that makes sense (and it respects scope)
   if (!recentTrainings.length) {
