@@ -116,6 +116,8 @@ function drillCard(d) {
   const volume = (d?.volume || "—").toString().trim();
   const rest = (d?.restAfter || "—").toString().trim();
 
+  const tags = Array.isArray(d?.tags) ? d.tags : [];
+
   return `
     <div class="col-12 col-lg-6">
       <div class="card h-100 shadow-sm">
@@ -152,6 +154,16 @@ function drillCard(d) {
               }
             </div>
           </div>
+
+          ${
+            tags.length
+              ? `<div class="mt-2 d-flex flex-wrap gap-1">
+                   ${tags
+                     .map(tag => `<span class="badge text-bg-light border">${escapeHtml(tag)}</span>`)
+                     .join("")}
+                 </div>`
+              : ``
+          }
 
           <div class="row mt-3 g-2">
             <div class="col-6">
