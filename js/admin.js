@@ -1223,13 +1223,8 @@ function setupPlayersCollapseByViewport() {
     toggle: false,
   });
 
-  if (window.innerWidth <= 768) {
-    collapse.hide();
-    $.playersCollapseToggle?.setAttribute("aria-expanded", "false");
-  } else {
-    collapse.show();
-    $.playersCollapseToggle?.setAttribute("aria-expanded", "true");
-  }
+  collapse.hide();
+  $.playersCollapseToggle?.setAttribute("aria-expanded", "false");
 }
 
 let adminResizeTimer = null;
