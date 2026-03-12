@@ -9,6 +9,11 @@ import {
   doc,
   getDoc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { APP_CONFIG } from "./config/config.js";
+
+const COL = APP_CONFIG.collections;
+const COL_CLUB_CONFIG = COL.club_config;
+const COL_USERS = COL.users;
 
 const url = new URL(window.location.href);
 const isPendingView = url.searchParams.get("pending") === "1";

@@ -554,25 +554,28 @@ async function addHonor(ev) {
     return;
   }
 
-  honorsItems.push({ position, tournament, year });
-  honorsItems.sort((a, b) => Number(b.year || 0) - Number(a.year || 0));
+  const nextItems = [
+    ...honorsItems,
+    { position, tournament, year }
+  ].sort((a, b) => Number(b.year || 0) - Number(a.year || 0));
 
   try {
     await setDoc(
       doc(db, COL_CLUB_CONFIG, "honors"),
       {
         title: ($.honorsTitle.value || "").trim() || "Palmarés",
-        items: honorsItems,
+        items: nextItems,
         updatedAt: serverTimestamp(),
       },
       { merge: true }
     );
 
-    $.honorForm.reset();
+    honorsItems = nextItems;
+    $.honorForm?.reset();
     await loadHonorsAdmin();
     showAlert("Logro agregado.", "success");
   } catch (err) {
-    console.error(err);
+    console.error("addHonor error:", err);
     showAlert("No se pudo agregar el logro.");
   }
 }
@@ -581,23 +584,24 @@ async function deleteHonor(index) {
   const idx = Number(index);
   if (!Number.isInteger(idx) || idx < 0 || idx >= honorsItems.length) return;
 
-  honorsItems.splice(idx, 1);
+  const nextItems = honorsItems.filter((_, i) => i !== idx);
 
   try {
     await setDoc(
       doc(db, COL_CLUB_CONFIG, "honors"),
       {
         title: ($.honorsTitle.value || "").trim() || "Palmarés",
-        items: honorsItems,
+        items: nextItems,
         updatedAt: serverTimestamp(),
       },
       { merge: true }
     );
 
+    honorsItems = nextItems;
     await loadHonorsAdmin();
     showAlert("Logro eliminado.", "success");
   } catch (err) {
-    console.error(err);
+    console.error("deleteHonor error:", err);
     showAlert("No se pudo eliminar el logro.");
   }
 }
@@ -678,14 +682,15 @@ async function addUniform(ev) {
     return;
   }
 
-  uniformsItems.push({
-    id: `uniform_${Date.now()}`,
-    name,
-    category,
-    image,
-  });
-
-  uniformsItems.sort((a, b) =>
+  const nextItems = [
+    ...uniformsItems,
+    {
+      id: `uniform_${Date.now()}`,
+      name,
+      category,
+      image,
+    }
+  ].sort((a, b) =>
     String(a.name || "").localeCompare(String(b.name || ""), "es", { sensitivity: "base" })
   );
 
@@ -697,17 +702,18 @@ async function addUniform(ev) {
         subtitle: ($.uniformsSubtitle.value || "").trim() || "",
         ctaLabel: ($.uniformsCtaLabel.value || "").trim() || "Comprar",
         orderUrl: safeUrl($.uniformsOrderUrl.value),
-        items: uniformsItems,
+        items: nextItems,
         updatedAt: serverTimestamp(),
       },
       { merge: true }
     );
 
-    $.uniformForm.reset();
+    uniformsItems = nextItems;
+    $.uniformForm?.reset();
     await loadUniformsAdmin();
     showAlert("Uniforme agregado.", "success");
   } catch (err) {
-    console.error(err);
+    console.error("addUniform error:", err);
     showAlert("No se pudo agregar el uniforme.");
   }
 }
@@ -716,7 +722,7 @@ async function deleteUniform(index) {
   const idx = Number(index);
   if (!Number.isInteger(idx) || idx < 0 || idx >= uniformsItems.length) return;
 
-  uniformsItems.splice(idx, 1);
+  const nextItems = uniformsItems.filter((_, i) => i !== idx);
 
   try {
     await setDoc(
@@ -726,16 +732,17 @@ async function deleteUniform(index) {
         subtitle: ($.uniformsSubtitle.value || "").trim() || "",
         ctaLabel: ($.uniformsCtaLabel.value || "").trim() || "Comprar",
         orderUrl: safeUrl($.uniformsOrderUrl.value),
-        items: uniformsItems,
+        items: nextItems,
         updatedAt: serverTimestamp(),
       },
       { merge: true }
     );
 
+    uniformsItems = nextItems;
     await loadUniformsAdmin();
     showAlert("Uniforme eliminado.", "success");
   } catch (err) {
-    console.error(err);
+    console.error("deleteUniform error:", err);
     showAlert("No se pudo eliminar el uniforme.");
   }
 }
@@ -786,7 +793,7 @@ async function boot() {
     $.honorsSettingsForm?.addEventListener("submit", saveHonorSettings);
     $.honorForm?.addEventListener("submit", addHonor);
     $.uniformSettingsForm?.addEventListener("submit", saveUniformSettings);
-    $.uniformForm?.addEventListener("submit", addUniform)
+    $.uniformForm?.addEventListener("submit", addUniform);
 
     document.addEventListener("click", async (ev) => {
       const approveBtn = ev.target.closest("[data-approve-user]");
@@ -809,7 +816,7 @@ async function boot() {
     });
   } catch (err) {
     console.error(err);
-    showAlert("No se pudo cargar la pantalla de administración.");
+    showAlert(err?.message || "No se pudo cargar la pantalla de administración.");
   } finally {
     hideLoader();
     document.body.classList.remove("loading");
