@@ -355,6 +355,19 @@ function syncApproveModeUI() {
   $.newPlayerWrap.classList.toggle("d-none", mode !== "new");
 }
 
+async function getAssociateData(associateId) {
+  if (!associateId) return null;
+
+  try {
+    const snap = await getDoc(doc(db, COL_ASSOC, associateId));
+    if (!snap.exists()) return null;
+    return snap.data() || null;
+  } catch (err) {
+    console.error("getAssociateData error:", err);
+    return null;
+  }
+}
+
 async function openApproveModal(uid) {
   const user = pendingUsers.find((u) => u.id === uid);
   if (!user) return;
