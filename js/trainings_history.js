@@ -488,7 +488,23 @@ function renderSessionItems() {
 
           <div class="flex-grow-1">
             <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-              <div class="session-item-title">${escapeHtml(item.name || "Actividad")}</div>
+              ${
+                item.source === "manual"
+                  ? `
+                    <div class="flex-grow-1" style="min-width: 220px;">
+                      <label class="form-label form-label-sm mb-1">Nombre</label>
+                      <input
+                        class="form-control form-control-sm session-item-input"
+                        data-field="name"
+                        value="${escapeHtml(item.name || "")}"
+                        placeholder="Nombre de la actividad"
+                      />
+                    </div>
+                  `
+                  : `
+                    <div class="session-item-title">${escapeHtml(item.name || "Actividad")}</div>
+                  `
+              }
               ${sourceBadge}
             </div>
 
