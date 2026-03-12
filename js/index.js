@@ -237,7 +237,7 @@ function renderSocials(socials = {}) {
     { key: "youtube", label: "YouTube", icon: "bi-youtube" },
     { key: "x", label: "X", icon: "bi-twitter-x" },
     { key: "whatsapp", label: "WhatsApp", icon: "bi-whatsapp" },
-  ].filter(item => safeUrl(socials[item.key]));
+  ].filter((item) => safeUrl(socials[item.key]));
 
   if (!items.length) {
     section.style.display = "none";
@@ -245,18 +245,18 @@ function renderSocials(socials = {}) {
   }
 
   section.style.display = "";
-  cards.innerHTML = items.map(item => `
+  cards.className = "social-links-grid";
+
+  cards.innerHTML = items.map((item) => `
     <a
-      class="landing-card text-decoration-none"
+      class="social-link-item"
       href="${safeUrl(socials[item.key])}"
       target="_blank"
       rel="noopener noreferrer"
+      aria-label="${item.label}"
     >
-      <div class="d-flex align-items-center gap-2 mb-2">
-        <i class="bi ${item.icon} fs-4"></i>
-        <h3 class="mb-0">${item.label}</h3>
-      </div>
-      <p class="mb-0">Ir a ${item.label}</p>
+      <i class="bi ${item.icon} social-link-item__icon"></i>
+      <span class="social-link-item__label">${item.label}</span>
     </a>
   `).join("");
 }

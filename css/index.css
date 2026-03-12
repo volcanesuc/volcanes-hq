@@ -458,3 +458,42 @@ body {
   margin: 0 auto;
   text-align: left;
 }
+
+.social-links-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem 1.25rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.social-link-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: #111 !important;
+  font-weight: 600;
+  font-size: 1rem;
+  padding: 0.35rem 0;
+  border: 0;
+  background: transparent;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.social-link-item:hover {
+  opacity: 0.72;
+  transform: translateY(-1px);
+  color: #111 !important;
+}
+
+.social-link-item__icon {
+  font-size: 1.05rem;
+  color: #111;
+  line-height: 1;
+}
+
+.social-link-item__label {
+  color: #111;
+  line-height: 1.2;
+}

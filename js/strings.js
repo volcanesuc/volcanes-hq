@@ -103,32 +103,6 @@ export const CLUB_DATA = {
       ]
     },
 
-    honors: {
-      title: "Palmarés",
-      items: [
-        {
-          position: "Primer Lugar",
-          tournament: "Copa Invierno",
-          year: 2025
-        },
-        {
-          position: "Tercer Lugar",
-          tournament: "Copa Verano",
-          year: 2025
-        },
-        {
-          position: "Primer Lugar",
-          tournament: "Espíritu Chorotega Primera Edición",
-          year: 2025
-        },
-        {
-          position: "Espíritu de Juego",
-          tournament: "Copa Invierno",
-          year: 2024
-        }
-      ]
-    },
-
     uniforms: {
       title: "Uniformes del Equipo",
       subtitle: "Compra tu indumentaria oficial del club",
