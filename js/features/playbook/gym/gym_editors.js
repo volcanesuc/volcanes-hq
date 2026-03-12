@@ -1,6 +1,6 @@
 /* =========================================================
    /js/features/playbook/gym/gym_editors.js
-   ✅ Crea/edita: Ejercicios, Rutinas, Plan mensual (colección gym_weeks)
+   ✅ Crea/edita: Ejercicios, Rutinas, Plan mensual (colección gym_programs)
    ✅ Escucha eventos emitidos por gym.js:
       - gymUI:exercise:new / gymUI:exercise:edit {id}
       - gymUI:routine:new  / gymUI:routine:edit  {id}
@@ -39,15 +39,16 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
 import { loadPartialOnce } from "/js/ui/loadPartial.js";
+import { APP_CONFIG } from "/js/config/config.js";
 
 /* =========================
    Collections
 ========================= */
-const COL_EXERCISES = "gym_exercises";
-const COL_ROUTINES  = "gym_routines";
-const COL_WEEKS     = "gym_weeks"; // (UI: Plan mensual)
+const COL = APP_CONFIG.collections;
+const COL_EXERCISES = COL.gymExercises || "gym_exercises";
+const COL_ROUTINES = COL.gymRoutines || "gym_routines";
+const COL_PLANS = COL.gymPlans || "gym_programs";
 
 /* =========================
    Partials
@@ -826,7 +827,7 @@ function fillPlanRoutineSelect() {
 }
 
 async function loadPlanToForm(id) {
-  const snap = await getDoc(doc(_ctx.db, COL_WEEKS, id));
+  const snap = await getDoc(doc(_ctx.db, COL_PLANS, id));
   if (!snap.exists()) throw new Error("Plan no existe");
   const p = snap.data() || {};
 
@@ -984,9 +985,9 @@ async function onSaveWeekPlan() {
     };
 
     if (mode === "edit" && editId) {
-      await updateDoc(doc(_ctx.db, COL_WEEKS, editId), payload);
+      await updateDoc(doc(_ctx.db, COL_PLANS, editId), payload);
     } else {
-      await addDoc(collection(_ctx.db, COL_WEEKS), {
+      await addDoc(collection(_ctx.db, COL_PLANS), {
         ...payload,
         createdAt: serverTimestamp(),
         createdBy: uid,

@@ -24,7 +24,7 @@ export const APP_CONFIG = {
     playbookTrainings: "playbook_trainings",
 
     gymRoutines: "gym_routines",
-    gymPlans: "gym_weeks",
+    gymPlans: "gym_programs",
     gymExercises: "gym_exercises",
 
     subscriptionPlans: "subscription_plans",
