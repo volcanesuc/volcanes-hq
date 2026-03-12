@@ -37,6 +37,7 @@ strings.js tambien lleva los tabs ahi (refactor pendiente)
 
 - Storage:
 habilitar el storage SI se usa la seccion de asociación
+agregar reglas para poder subir hero image
 
 DNS:
 - agregar CNAMEs para www.subdomain y subdomain

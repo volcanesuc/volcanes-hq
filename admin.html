@@ -46,14 +46,6 @@
         </div>
 
         <form id="indexSettingsForm" class="row g-3">
-          <div class="col-md-6">
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" id="idxShowEvents" />
-              <label class="form-check-label" for="idxShowEvents">
-                Mostrar torneos / eventos
-              </label>
-            </div>
-          </div>
 
           <div class="col-md-6">
             <div class="form-check form-switch">
@@ -61,8 +53,20 @@
               <label class="form-check-label" for="idxShowTrainings">
                 Mostrar entrenamientos y juegos
               </label>
+              <span id="idxShowTrainingsState" class="ms-2 small text-muted"></span>
             </div>
           </div>
+
+          <div class="col-md-6">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="idxShowEvents" />
+              <label class="form-check-label" for="idxShowEvents">
+                Mostrar torneos / eventos
+              </label>
+              <span id="idxShowEventsState" class="ms-2 small text-muted"></span>
+            </div>
+          </div>
+          
 
           <div class="col-md-6">
             <div class="form-check form-switch">
@@ -70,6 +74,7 @@
               <label class="form-check-label" for="idxShowHonors">
                 Mostrar palmarés
               </label>
+              <span id="idxShowHonorsState" class="ms-2 small text-muted"></span>
             </div>
           </div>
 
@@ -79,6 +84,7 @@
               <label class="form-check-label" for="idxShowUniforms">
                 Mostrar uniformes
               </label>
+              <span id="idxShowUniformsState" class="ms-2 small text-muted"></span>
             </div>
           </div>
 

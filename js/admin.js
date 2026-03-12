@@ -39,6 +39,11 @@ const $ = {
   idxShowHonors: document.getElementById("idxShowHonors"),
   idxShowUniforms: document.getElementById("idxShowUniforms"),
 
+  idxShowEventsState: document.getElementById("idxShowEventsState"),
+  idxShowTrainingsState: document.getElementById("idxShowTrainingsState"),
+  idxShowHonorsState: document.getElementById("idxShowHonorsState"),
+  idxShowUniformsState: document.getElementById("idxShowUniformsState"),
+
   pendingUsersTable: document.querySelector("#pendingUsersTable tbody"),
   refreshPendingBtn: document.getElementById("refreshPendingBtn"),
 
@@ -191,33 +196,28 @@ async function saveIndexSettings(ev) {
   hideAlert();
 
   try {
+    const availability = await getLandingSectionAvailability();
+
+    const payload = {
+      show_events: availability.events.ok ? !!$.idxShowEvents?.checked : false,
+      show_trainings: availability.trainings.ok ? !!$.idxShowTrainings?.checked : false,
+      show_honors: availability.honors.ok ? !!$.idxShowHonors?.checked : false,
+      show_uniforms: availability.uniforms.ok ? !!$.idxShowUniforms?.checked : false,
+      updatedAt: serverTimestamp(),
+    };
+
     await setDoc(
       doc(db, COL_CLUB_CONFIG, "index_settings"),
-      {
-        show_events: !!$.idxShowEvents?.checked,
-        show_trainings: !!$.idxShowTrainings?.checked,
-        show_honors: !!$.idxShowHonors?.checked,
-        show_uniforms: !!$.idxShowUniforms?.checked,
-        updatedAt: serverTimestamp(),
-      },
+      payload,
       { merge: true }
     );
 
+    await refreshIndexToggleAvailability(false);
     showAlert("Visibilidad del landing guardada.", "success");
   } catch (err) {
     console.error("saveIndexSettings error:", err);
     showAlert("No se pudo guardar la visibilidad del landing.");
   }
-}
-
-//USERS DATA
-async function getAssociateData(associateId) {
-  if (!associateId) return null;
-
-  const snap = await getDoc(doc(db, COL_ASSOC, associateId)).catch(() => null);
-  if (!snap?.exists?.()) return null;
-
-  return snap.data() || null;
 }
 
 async function loadPendingUsers() {
@@ -686,7 +686,7 @@ async function saveTrainingsTitle(ev) {
       },
       { merge: true }
     );
-
+    await refreshIndexToggleAvailability(true);
     showAlert("Título de entrenamientos guardado.", "success");
     await loadTrainingsAdmin();
   } catch (err) {
@@ -750,6 +750,7 @@ async function addTrainingRow(ev) {
     $.trainingBlockForm?.reset();
     $.trainingBlockId.value = "trainings";
     await loadTrainingsAdmin();
+    await refreshIndexToggleAvailability(true);
     showAlert("Horario agregado.", "success");
   } catch (err) {
     console.error("addTrainingRow error:", err);
@@ -802,6 +803,7 @@ async function deleteTrainingRow(pointer) {
 
     trainingsBlocks = currentBlocks;
     await loadTrainingsAdmin();
+    await refreshIndexToggleAvailability(true);
     showAlert("Horario eliminado.", "success");
   } catch (err) {
     console.error("deleteTrainingRow error:", err);
@@ -849,7 +851,7 @@ async function saveEventsSettings(ev) {
       },
       { merge: true }
     );
-
+    await refreshIndexToggleAvailability(true);
     showAlert("Torneo guardado.", "success");
     await loadEventsAdmin();
   } catch (err) {
@@ -952,6 +954,7 @@ async function saveHonorSettings(ev) {
       { merge: true }
     );
 
+    await refreshIndexToggleAvailability(true);
     showAlert("Título de palmarés guardado.", "success");
     await loadHonorsAdmin();
   } catch (err) {
@@ -997,6 +1000,7 @@ async function addHonor(ev) {
     honorsItems = nextItems;
     $.honorForm?.reset();
     await loadHonorsAdmin();
+    await refreshIndexToggleAvailability(true);
     showAlert("Logro agregado.", "success");
   } catch (err) {
     console.error("addHonor error:", err);
@@ -1030,6 +1034,7 @@ async function deleteHonor(index) {
 
     honorsItems = nextItems;
     await loadHonorsAdmin();
+    await refreshIndexToggleAvailability(true);
     showAlert("Logro eliminado.", "success");
   } catch (err) {
     console.error("deleteHonor error:", err);
@@ -1094,6 +1099,7 @@ async function saveUniformSettings(ev) {
       { merge: true }
     );
 
+    await refreshIndexToggleAvailability(true);
     showAlert("Configuración de uniformes guardada.", "success");
   } catch (err) {
     console.error(err);
@@ -1142,6 +1148,7 @@ async function addUniform(ev) {
     uniformsItems = nextItems;
     $.uniformForm?.reset();
     await loadUniformsAdmin();
+    await refreshIndexToggleAvailability(true);
     showAlert("Uniforme agregado.", "success");
   } catch (err) {
     console.error("addUniform error:", err);
@@ -1171,6 +1178,7 @@ async function deleteUniform(index) {
 
     uniformsItems = nextItems;
     await loadUniformsAdmin();
+    await refreshIndexToggleAvailability(true);
     showAlert("Uniforme eliminado.", "success");
   } catch (err) {
     console.error("deleteUniform error:", err);
@@ -1237,6 +1245,158 @@ function bindResponsiveUI() {
   });
 }
 
+//MANAGE SWITCHES
+function setToggleAvailability(inputEl, stateEl, ok, checked, message) {
+  if (!inputEl) return;
+
+  inputEl.disabled = !ok;
+  inputEl.checked = ok ? !!checked : false;
+  inputEl.title = ok ? "" : message;
+
+  if (stateEl) {
+    stateEl.textContent = ok ? "Listo" : message;
+    stateEl.className = ok ? "ms-2 small text-success" : "ms-2 small text-danger";
+  }
+}
+
+async function getLandingSectionAvailability() {
+  const [
+    eventsSnap,
+    trainingsSnap,
+    honorsSnap,
+    uniformsSnap,
+  ] = await Promise.all([
+    getDoc(doc(db, COL_CLUB_CONFIG, "events")).catch(() => null),
+    getDoc(doc(db, COL_CLUB_CONFIG, "trainings")).catch(() => null),
+    getDoc(doc(db, COL_CLUB_CONFIG, "honors")).catch(() => null),
+    getDoc(doc(db, COL_CLUB_CONFIG, "uniforms")).catch(() => null),
+  ]);
+
+  const eventsData = eventsSnap?.exists?.() ? (eventsSnap.data() || {}) : {};
+  const trainingsData = trainingsSnap?.exists?.() ? (trainingsSnap.data() || {}) : {};
+  const honorsData = honorsSnap?.exists?.() ? (honorsSnap.data() || {}) : {};
+  const uniformsData = uniformsSnap?.exists?.() ? (uniformsSnap.data() || {}) : {};
+
+  const eventImages = Array.isArray(eventsData.images) ? eventsData.images.filter(Boolean) : [];
+  const eventsMissing = [];
+  if (!(eventsData.title || "").trim()) eventsMissing.push("falta título");
+  if (!(eventsData.subtitle || "").trim()) eventsMissing.push("falta subtítulo");
+  if (eventImages.length < 3) eventsMissing.push("faltan 3 imágenes");
+
+  const trainingBlocks = Array.isArray(trainingsData.blocks) ? trainingsData.blocks : [];
+  const hasTrainingRows = trainingBlocks.some(
+    (b) => Array.isArray(b.schedule) && b.schedule.some((row) => (row?.day || "").trim() && (row?.time || "").trim())
+  );
+  const trainingsMissing = [];
+  if (!(trainingsData.title || "").trim()) trainingsMissing.push("falta título");
+  if (!hasTrainingRows) trainingsMissing.push("faltan horarios");
+
+  const honorItems = Array.isArray(honorsData.items) ? honorsData.items : [];
+  const honorsMissing = [];
+  if (!(honorsData.title || "").trim()) honorsMissing.push("falta título");
+  if (!honorItems.length) honorsMissing.push("faltan logros");
+
+  const uniformItems = Array.isArray(uniformsData.items) ? uniformsData.items : [];
+  const validUniforms = uniformItems.filter((x) => (x?.name || "").trim() && (x?.image || "").trim());
+  const uniformsMissing = [];
+  if (!(uniformsData.title || "").trim()) uniformsMissing.push("falta título");
+  if (!(uniformsData.subtitle || "").trim()) uniformsMissing.push("falta subtítulo");
+  if (!(uniformsData.ctaLabel || "").trim()) uniformsMissing.push("falta texto CTA");
+  if (!safeUrl(uniformsData.orderUrl || "")) uniformsMissing.push("falta order URL");
+  if (!validUniforms.length) uniformsMissing.push("faltan uniformes");
+
+  return {
+    events: {
+      ok: eventsMissing.length === 0,
+      message: eventsMissing.length ? eventsMissing.join(" · ") : "Listo",
+    },
+    trainings: {
+      ok: trainingsMissing.length === 0,
+      message: trainingsMissing.length ? trainingsMissing.join(" · ") : "Listo",
+    },
+    honors: {
+      ok: honorsMissing.length === 0,
+      message: honorsMissing.length ? honorsMissing.join(" · ") : "Listo",
+    },
+    uniforms: {
+      ok: uniformsMissing.length === 0,
+      message: uniformsMissing.length ? uniformsMissing.join(" · ") : "Listo",
+    },
+  };
+}
+
+async function refreshIndexToggleAvailability(syncToFirestore = true) {
+  try {
+    const [availability, settingsSnap] = await Promise.all([
+      getLandingSectionAvailability(),
+      getDoc(doc(db, COL_CLUB_CONFIG, "index_settings")).catch(() => null),
+    ]);
+
+    const settings = settingsSnap?.exists?.() ? (settingsSnap.data() || {}) : {};
+    const patch = {};
+
+    const eventsChecked = settings.show_events !== false;
+    const trainingsChecked = settings.show_trainings !== false;
+    const honorsChecked = settings.show_honors !== false;
+    const uniformsChecked = settings.show_uniforms !== false;
+
+    setToggleAvailability(
+      $.idxShowEvents,
+      $.idxShowEventsState,
+      availability.events.ok,
+      eventsChecked,
+      availability.events.message
+    );
+    setToggleAvailability(
+      $.idxShowTrainings,
+      $.idxShowTrainingsState,
+      availability.trainings.ok,
+      trainingsChecked,
+      availability.trainings.message
+    );
+    setToggleAvailability(
+      $.idxShowHonors,
+      $.idxShowHonorsState,
+      availability.honors.ok,
+      honorsChecked,
+      availability.honors.message
+    );
+    setToggleAvailability(
+      $.idxShowUniforms,
+      $.idxShowUniformsState,
+      availability.uniforms.ok,
+      uniformsChecked,
+      availability.uniforms.message
+    );
+
+    if (!availability.events.ok && settings.show_events !== false) {
+      patch.show_events = false;
+    }
+    if (!availability.trainings.ok && settings.show_trainings !== false) {
+      patch.show_trainings = false;
+    }
+    if (!availability.honors.ok && settings.show_honors !== false) {
+      patch.show_honors = false;
+    }
+    if (!availability.uniforms.ok && settings.show_uniforms !== false) {
+      patch.show_uniforms = false;
+    }
+
+    if (syncToFirestore && Object.keys(patch).length) {
+      await setDoc(
+        doc(db, COL_CLUB_CONFIG, "index_settings"),
+        {
+          ...patch,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+    }
+  } catch (err) {
+    console.error("refreshIndexToggleAvailability error:", err);
+  }
+}
+
 //BOOT
 async function boot() {
   showLoader("Cargando administración…");
@@ -1268,6 +1428,7 @@ async function boot() {
     try { await loadTrainingsAdmin(); } catch (e) { console.error("loadTrainingsAdmin", e); }
     try { await loadHeroAdmin(); } catch (e) { console.error("loadHeroAdmin", e); }
     try { await loadEventsAdmin(); } catch (e) { console.error("loadEventsAdmin", e); }
+    try { await refreshIndexToggleAvailability(true); } catch (e) { console.error("refreshIndexToggleAvailability", e); }
 
 
     $.indexSettingsForm?.addEventListener("submit", saveIndexSettings);
