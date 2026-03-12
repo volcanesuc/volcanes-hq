@@ -13,8 +13,13 @@ tournaments.html - list of tournaments team is going to - includes track of paym
 playbook.html - list of drills and training plans to be done on training day
 public/tournament_info.html - landing goes here if tournament info button is clicked, shows info about this tournament hosted by team
 
+Tasks en Codigo:
 
-En Firebase:
+- Actualizar el CNAME file, favicon.ico
+- Look and feel para el archivo de strings.js y config.js
+
+
+Tasks en Firebase:
 
 - Database:
 crear club_config collection con index_settings y public_registration

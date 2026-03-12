@@ -502,7 +502,7 @@ function renderTrainings() {
     const item = document.createElement("div");
     item.className = "list-group-item";
 
-    const sharePath = `/training.html?id=${encodeURIComponent(t.id)}`;
+    const sharePath = `/training_plan.html?id=${encodeURIComponent(t.id)}`;
 
     item.innerHTML = `
       <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
@@ -548,15 +548,13 @@ function renderTrainings() {
     });
   });
 
-  // ver privado (logueados) -> abre igual training.html, pero ahí va a bloquear si isPublic=false
-  // Si querés permitir privado en training.html para signedIn, lo hacemos luego (con auth opcional).
   $.trainingsList.querySelectorAll("[data-view-private]").forEach(btn => {
     btn.addEventListener("click", () => {
       const id = btn.getAttribute("data-view-private");
       if (!id) return;
       // por ahora lo llevamos a una vista interna (simple): abre modal de edición en read-only no lo hicimos.
       // entonces abrimos la misma vista pública, que mostrará "privado" (por diseño).
-      window.open(`/training.html?id=${encodeURIComponent(id)}`, "_blank");
+      window.open(`/training_plan.html?id=${encodeURIComponent(id)}`, "_blank");
     });
   });
 

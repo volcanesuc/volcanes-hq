@@ -1,4 +1,4 @@
-// /js/public/training_view.js
+// /js/public/training_plan_view.js
 import { db } from "../auth/firebase.js";
 import { showLoader, hideLoader } from "../ui/loader.js";
 import { loadHeader } from "../components/header.js";
@@ -200,7 +200,7 @@ async function initHeader() {
   const id = (params.get("id") || "").trim();
 
   if (!id) {
-    showError("Falta el parámetro id. Ej: training.html?id=XXXX");
+    showError("Falta el parámetro id. Ej: training_plan.html?id=XXXX");
     return;
   }
 
