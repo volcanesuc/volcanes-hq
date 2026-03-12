@@ -29,8 +29,7 @@ const pendingLogoutBtn = document.getElementById("pendingLogoutBtn");
 function showPendingState() {
   pendingSection?.classList.remove("d-none");
 
-   const sectionsToHide = [
-    "socialsSection",
+  const sectionsToHide = [
     "eventsSection",
     "entrenamientos",
     "honorsSection",
@@ -44,6 +43,9 @@ function showPendingState() {
 
   const hero = document.querySelector(".hero");
   if (hero) hero.style.display = "none";
+
+  const heroSocialsWrap = document.getElementById("heroSocialsWrap");
+  if (heroSocialsWrap) heroSocialsWrap.style.display = "none";
 
   const footer = document.querySelector(".landing-footer");
   if (footer) {
@@ -188,13 +190,10 @@ async function loadIndexSettings() {
    HERO
 ========================================================= */
 
-function renderHero(socials = {}) {
+function renderHero() {
   const heroTitle = document.querySelector(".hero h2");
   const heroText = document.querySelector(".hero p");
   const heroImg = document.querySelector(".hero-img");
-
-  const heroPrimaryCta = document.getElementById("heroPrimaryCta");
-  const heroWhatsappCta = document.getElementById("heroWhatsappCta");
 
   if (heroTitle) {
     heroTitle.innerHTML = CLUB_DATA.landing.hero.title.replace(",", ",<br>");
@@ -208,33 +207,15 @@ function renderHero(socials = {}) {
     heroImg.src = CLUB_DATA.landing.hero.image;
     heroImg.alt = CLUB_DATA.club.name;
   }
-
-  if (heroPrimaryCta) {
-    heroPrimaryCta.textContent = CLUB_DATA.landing.hero.cta.primary.label;
-    heroPrimaryCta.href = CLUB_DATA.landing.hero.cta.primary.href;
-  }
-
-  if (heroWhatsappCta) {
-    const waUrl = safeUrl(socials.whatsappUrl || socials.whatsapp || "");
-    if (waUrl) {
-      heroWhatsappCta.style.display = "";
-      heroWhatsappCta.textContent = socials.whatsappLabel || "WhatsApp";
-      heroWhatsappCta.href = waUrl;
-      heroWhatsappCta.target = "_blank";
-      heroWhatsappCta.rel = "noopener noreferrer";
-    } else {
-      heroWhatsappCta.style.display = "none";
-    }
-  }
 }
 /* =========================================================
    SOCIALS
 ========================================================= */
 
 function renderSocials(socials = {}) {
-  const section = document.getElementById("socialsSection");
-  const cards = document.getElementById("socialsCards");
-  if (!section || !cards) return;
+  const wrap = document.getElementById("heroSocialsWrap");
+  const container = document.getElementById("heroSocials");
+  if (!wrap || !container) return;
 
   const items = [
     { key: "instagram", label: "Instagram", icon: "bi-instagram" },
@@ -242,29 +223,33 @@ function renderSocials(socials = {}) {
     { key: "tiktok", label: "TikTok", icon: "bi-tiktok" },
     { key: "youtube", label: "YouTube", icon: "bi-youtube" },
     { key: "x", label: "X", icon: "bi-twitter-x" },
-    { key: "whatsapp", label: "WhatsApp", icon: "bi-whatsapp" },
-  ].filter((item) => safeUrl(socials[item.key]));
+    { key: "whatsappUrl", label: "WhatsApp", icon: "bi-whatsapp" },
+  ].filter((item) => safeUrl(socials[item.key] || (item.key === "whatsappUrl" ? socials.whatsapp : "")));
 
   if (!items.length) {
-    section.style.display = "none";
+    wrap.style.display = "none";
     return;
   }
 
-  section.style.display = "";
-  cards.className = "social-links-grid";
+  wrap.style.display = "";
+  container.innerHTML = items.map((item) => {
+    const href = item.key === "whatsappUrl"
+      ? safeUrl(socials.whatsappUrl || socials.whatsapp || "")
+      : safeUrl(socials[item.key]);
 
-  cards.innerHTML = items.map((item) => `
-    <a
-      class="social-link-item"
-      href="${safeUrl(socials[item.key])}"
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label="${item.label}"
-    >
-      <i class="bi ${item.icon} social-link-item__icon"></i>
-      <span class="social-link-item__label">${item.label}</span>
-    </a>
-  `).join("");
+    return `
+      <a
+        class="hero-social-link"
+        href="${href}"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="${item.label}"
+      >
+        <i class="bi ${item.icon} hero-social-link__icon"></i>
+        <span>${item.label}</span>
+      </a>
+    `;
+  }).join("");
 }
 
 /* =========================================================
@@ -574,13 +559,14 @@ async function bootNormalLanding() {
     loadTrainingsData(),
   ]);
 
-  renderHero(socials);
-  renderEvents();
-  renderTrainings(trainingsData, socials);
+  renderHero();
   renderSocials(socials);
+  renderTrainings(trainingsData, socials);
+  renderEvents();
   renderHonors(honorsData);
   renderUniforms(uniformsData);
   renderFooter();
+}
 
 //start screen
 if (isPendingView) {
