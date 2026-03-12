@@ -112,6 +112,7 @@ async function fetchDrillsByIds(ids) {
 function drillCard(d) {
   const name = d?.name || "—";
   const tactical = safeUrl(d?.tacticalBoardUrl || "");
+  const video = safeUrl(d?.teamVideoUrl || d?.videoUrl || "");
   const volume = (d?.volume || "—").toString().trim();
   const rest = (d?.restAfter || "—").toString().trim();
 
@@ -122,18 +123,34 @@ function drillCard(d) {
 
           <div class="d-flex justify-content-between align-items-start gap-2">
             <div class="fw-semibold">${escapeHtml(name)}</div>
-            ${
-              tactical
-                ? `<button
+
+            <div class="d-flex gap-2 flex-wrap">
+              ${
+                tactical
+                  ? `<button
                       type="button"
                       class="btn btn-sm btn-outline-primary"
-                      data-open-external="${escapeHtml(tactical)}"
+                      data-open-media="${escapeHtml(tactical)}"
                       data-open-title="${escapeHtml(name)}"
-                  >
+                    >
                       Ver
-                  </button>`
-                : ``
-            }
+                    </button>`
+                  : ``
+              }
+
+              ${
+                video
+                  ? `<button
+                      type="button"
+                      class="btn btn-sm btn-outline-secondary"
+                      data-open-media="${escapeHtml(video)}"
+                      data-open-title="${escapeHtml(name)}"
+                    >
+                      Video
+                    </button>`
+                  : ``
+              }
+            </div>
           </div>
 
           <div class="row mt-3 g-2">
@@ -160,6 +177,26 @@ function drillCard(d) {
       </div>
     </div>
   `;
+}
+
+function bindDrillMediaEvents() {
+  if (!tvDrills || tvDrills.dataset.mediaBound === "1") return;
+
+  tvDrills.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-open-media]");
+    if (!btn) return;
+
+    e.preventDefault();
+
+    const url = btn.getAttribute("data-open-media");
+    const title = btn.getAttribute("data-open-title") || "Vista previa";
+
+    if (!url) return;
+
+    openMediaViewerModal(url, { title });
+  });
+
+  tvDrills.dataset.mediaBound = "1";
 }
 
 async function initHeader() {
@@ -212,6 +249,7 @@ async function initHeader() {
 
   try {
     await initHeader();
+    bindDrillMediaEvents();
 
     const snap = await getDoc(doc(db, TRAININGS_COL, id));
     if (!snap.exists()) {
@@ -253,16 +291,6 @@ async function initHeader() {
     tvDrills.innerHTML = drills.length
       ? drills.map(drillCard).join("")
       : "";
-    
-    tvDrills?.querySelectorAll("[data-open-external]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const url = btn.getAttribute("data-open-external");
-        const title = btn.getAttribute("data-open-title") || "Vista previa";
-        if (!url) return;
-
-        openMediaViewerModal(url, { title });
-      });
-    });
 
     tvEmpty?.classList.toggle("d-none", drills.length > 0);
   } catch (e) {
