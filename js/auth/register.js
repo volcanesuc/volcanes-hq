@@ -117,8 +117,17 @@ function hasValue(el) {
 
 function setSubmitEnabled(enabled) {
   if (!$.submitBtn) return;
+
   $.submitBtn.disabled = !enabled;
   $.submitBtn.classList.toggle("disabled", !enabled);
+
+  $.submitBtn.classList.remove("btn-primary", "btn-success", "btn-secondary");
+
+  if (enabled) {
+    $.submitBtn.classList.add("btn-success");
+  } else {
+    $.submitBtn.classList.add("btn-secondary");
+  }
 }
 
 function computeFormComplete() {
