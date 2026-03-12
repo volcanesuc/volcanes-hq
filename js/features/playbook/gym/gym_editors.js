@@ -8,7 +8,7 @@
 
    ✅ Modales:
       - Exercise + Routine: inyecta si no existen
-      - Plan (week): carga partial /partials/gym_week_editor.html si no existe en DOM
+      - Plan (week): carga partial /partials/gym_program_editor.html si no existe en DOM
 
    ✅ Guarda en Firestore:
       - gym_exercises
@@ -52,7 +52,7 @@ const COL_WEEKS     = "gym_weeks"; // (UI: Plan mensual)
 /* =========================
    Partials
 ========================= */
-const PARTIAL_WEEK_EDITOR = "/partials/gym_week_editor.html";
+const PARTIAL_WEEK_EDITOR = "/partials/gym_program_editor.html";
 
 /* =========================
    State

@@ -1,78 +1,93 @@
 <!-- /partials/drill_create_modal.html -->
 <div class="modal fade" id="createDrillModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
-    <div class="modal-content">
+  <div class="modal-dialog modal-fullscreen">
+    <div class="modal-content app-modal">
 
-      <div class="modal-header">
-        <h5 class="modal-title">Crear drill</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-      </div>
-
-      <div class="modal-body">
-        <form id="drillForm" class="row g-3">
-          <div class="col-12 col-lg-6">
-            <label class="form-label" for="drillName">Nombre *</label>
-            <input class="form-control" id="drillName" required maxlength="120" />
+      <form id="drillForm" class="h-100 d-flex flex-column">
+        <div class="modal-header app-modal__header">
+          <div>
+            <h5 class="modal-title mb-0">Crear drill</h5>
+            <div class="small app-modal__subtitle">Completá la información del drill.</div>
           </div>
+          <button
+            type="button"
+            class="btn-close btn-close-white"
+            data-bs-dismiss="modal"
+            aria-label="Cerrar"
+          ></button>
+        </div>
 
-          <div class="col-12 col-lg-6">
-            <label class="form-label" for="drillAuthor">Autor *</label>
-            <input class="form-control" id="drillAuthor" required maxlength="80" />
+        <div class="modal-body app-modal__body">
+          <div class="card app-form-card">
+            <div class="card-body">
+              <div class="row g-3">
+
+                <div class="col-12 col-lg-6">
+                  <label class="form-label" for="drillName">Nombre *</label>
+                  <input class="form-control" id="drillName" required maxlength="120" />
+                </div>
+
+                <div class="col-12 col-lg-6">
+                  <label class="form-label" for="drillAuthor">Autor *</label>
+                  <input class="form-control" id="drillAuthor" required maxlength="80" />
+                </div>
+
+                <div class="col-12 col-lg-6">
+                  <label class="form-label" for="drillTacticalUrl">Link Tactical Board</label>
+                  <input class="form-control" id="drillTacticalUrl" type="url" placeholder="https://..." />
+                </div>
+
+                <div class="col-12 col-lg-6">
+                  <label class="form-label" for="drillVideoUrl">Link video del equipo (opcional)</label>
+                  <input class="form-control" id="drillVideoUrl" type="url" placeholder="https://..." />
+                </div>
+
+                <div class="col-12">
+                  <label class="form-label" for="drillObjective">Objetivo</label>
+                  <textarea class="form-control" id="drillObjective" rows="2"></textarea>
+                </div>
+
+                <div class="col-12 col-md-4">
+                  <label class="form-label" for="drillVolume">Volumen</label>
+                  <input class="form-control" id="drillVolume" maxlength="60" placeholder="Ej: 6 reps / 10 min" />
+                </div>
+
+                <div class="col-12 col-md-4">
+                  <label class="form-label" for="drillRest">Descanso post-drill</label>
+                  <input class="form-control" id="drillRest" maxlength="60" placeholder="Ej: 90s" />
+                </div>
+
+                <div class="col-12 col-md-4">
+                  <label class="form-label" for="drillMinPlayers">Cantidad mínima de personas</label>
+                  <input class="form-control" id="drillMinPlayers" type="number" min="1" step="1" placeholder="Ej: 6" />
+                </div>
+
+                <div class="col-12">
+                  <label class="form-label" for="drillRecs">Recomendaciones</label>
+                  <textarea class="form-control" id="drillRecs" rows="3"></textarea>
+                </div>
+
+                <div class="col-12">
+                  <label class="form-label" for="drillTags">Tags</label>
+                  <input
+                    class="form-control"
+                    id="drillTags"
+                    maxlength="240"
+                    placeholder="Ej: Finalización, Transición ofensiva, 1v1"
+                  />
+                  <div class="form-text">Separalos por coma.</div>
+                </div>
+
+              </div>
+            </div>
           </div>
+        </div>
 
-          <div class="col-12 col-lg-6">
-            <label class="form-label" for="drillTacticalUrl">Link Tactical Board</label>
-            <input class="form-control" id="drillTacticalUrl" type="url" placeholder="https://..." />
-          </div>
-
-          <div class="col-12 col-lg-6">
-            <label class="form-label" for="drillVideoUrl">Link video del equipo (opcional)</label>
-            <input class="form-control" id="drillVideoUrl" type="url" placeholder="https://..." />
-          </div>
-
-          <div class="col-12">
-            <label class="form-label" for="drillObjective">Objetivo</label>
-            <textarea class="form-control" id="drillObjective" rows="2"></textarea>
-          </div>
-
-          <div class="col-12 col-md-4">
-            <label class="form-label" for="drillVolume">Volumen</label>
-            <input class="form-control" id="drillVolume" maxlength="60" placeholder="Ej: 6 reps / 10 min" />
-          </div>
-
-          <div class="col-12 col-md-4">
-            <label class="form-label" for="drillRest">Descanso post-drill</label>
-            <input class="form-control" id="drillRest" maxlength="60" placeholder="Ej: 90s" />
-          </div>
-
-          <div class="col-12 col-md-4">
-            <label class="form-label" for="drillMinPlayers">Cantidad mínima de personas</label>
-            <input class="form-control" id="drillMinPlayers" type="number" min="1" step="1" placeholder="Ej: 6" />
-          </div>
-
-          <div class="col-12">
-            <label class="form-label" for="drillRecs">Recomendaciones</label>
-            <textarea class="form-control" id="drillRecs" rows="3"></textarea>
-          </div>
-
-          <div class="col-12">
-            <label class="form-label" for="drillTags">Tags</label>
-            <input
-              class="form-control"
-              id="drillTags"
-              maxlength="240"
-              placeholder="Ej: Finalización, Transición ofensiva, 1v1"
-            />
-            <div class="form-text">Separalos por coma.</div>
-          </div>
-
-        </form>
-      </div>
-
-      <div class="modal-footer">
-        <button class="btn btn-outline-secondary" data-bs-dismiss="modal" type="button">Cancelar</button>
-        <button class="btn btn-primary" id="saveCreateDrillBtn" type="button">Guardar drill</button>
-      </div>
+        <div class="modal-footer app-modal__footer">
+          <button class="btn btn-outline-secondary" data-bs-dismiss="modal" type="button">Cancelar</button>
+          <button class="btn btn-primary" id="saveCreateDrillBtn" type="button">Guardar drill</button>
+        </div>
+      </form>
 
     </div>
   </div>
