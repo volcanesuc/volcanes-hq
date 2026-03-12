@@ -1,4 +1,4 @@
-//js\roster.js
+// /js/roster.js
 /*************************************************
  * IMPORTS
  *************************************************/
@@ -15,6 +15,7 @@ import {
 
 import { APP_CONFIG } from "./config/config.js";
 
+import { loadPartialOnce } from "./ui/loadPartial.js";
 import { guardPage } from "./page-guard.js";
 import { loadHeader } from "./components/header.js";
 
@@ -33,32 +34,27 @@ if (!redirected) {
   await loadHeader("roster", cfg);
 }
 
-
 // Logout
 document.getElementById("logoutBtn")?.addEventListener("click", logout);
 
 // DOM
 const table = document.getElementById("playersTable");
-const modal = new bootstrap.Modal("#playerModal");
-const form = document.getElementById("playerForm");
+const playersCards = document.getElementById("playersCards");
 const addPlayerBtn = document.getElementById("addPlayerBtn");
+
+let modalEl = null;
+let modal = null;
+let form = null;
+
+let modalTitle = null;
+let modalSubtitle = null;
+let modalSaveBtn = null;
 
 let permissions = null;
 
-// Campos del formulario
-const fields = {
-  id: document.getElementById("playerId"),
-  firstName: document.getElementById("firstName"),
-  lastName: document.getElementById("lastName"),
-  idNumber: document.getElementById("idNumber"),
-  number: document.getElementById("number"),
-  gender: document.getElementById("gender"),
-  birthday: document.getElementById("birthday"),
-  role: document.getElementById("role"),
-  active: document.getElementById("active")
-};
+let fields = {};
 
-// Array plano de jugadores (clave para sorting)
+// Array plano de jugadores
 let players = [];
 
 // Filtros
@@ -71,78 +67,71 @@ const filters = {
 
 let rosterFilterEventsBound = false;
 
-function getGenderLabel(gender) {
-  const cfg = getRosterFilterConfig();
-  const found = cfg.genders.find(g => g.value === gender);
-  return found?.label || "—";
-}
-
 /*************************************************
- * SORT STATE
+ * HELPERS UI MODAL
  *************************************************/
 
-let currentSort = {
-  key: "name",
-  direction: "asc"
-};
-
-/*************************************************
- * LOAD DATA
- *************************************************/
-
-async function loadPlayers() {
-  const snap = await getDocs(collection(db, PLAYERS_COL));
-
-  players = snap.docs.map(d =>
-    Player.fromFirestore(d)
-  );
-
-  applySort();
-  render();
-  updateSortIndicators();
-}
-
-/*************************************************
- * HELPERS
- *************************************************/
-
-function formatBirthdayMonthDay(value) {
-  if (!value) return "—";
-
-  const s = String(value).trim();
-  if (!s) return "—";
-
-  // Caso YYYY-MM-DD
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-    const [, mm, dd] = s.split("-");
-    const months = [
-      "Ene", "Feb", "Mar", "Abr", "May", "Jun",
-      "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"
-    ];
-    const monthIdx = Number(mm) - 1;
-    const day = Number(dd);
-    return monthIdx >= 0 && monthIdx < 12 ? `${months[monthIdx]} ${day}` : s;
+function setModalCopy(isEdit = false, player = null) {
+  if (modalTitle) {
+    modalTitle.textContent = isEdit ? "Editar jugador" : "Nuevo jugador";
   }
 
-  // fallback por si viniera otro formato parseable
-  const d = new Date(s);
-  if (!Number.isNaN(d.getTime())) {
-    return d.toLocaleDateString("es-CR", {
-      month: "short",
-      day: "numeric"
-    });
+  if (modalSubtitle) {
+    if (isEdit && player) {
+      modalSubtitle.textContent = player.fullName || "Actualizar información del jugador";
+    } else {
+      modalSubtitle.textContent = "Registrar jugador en el roster";
+    }
   }
 
-  return s;
+  if (modalSaveBtn) {
+    modalSaveBtn.textContent = isEdit ? "Guardar cambios" : "Crear jugador";
+  }
 }
 
-function normalizeText(value) {
-  return String(value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
+function resetFormForCreate() {
+  form?.reset();
+
+  fields.id.value = "";
+  fields.idNumber.value = "";
+  fields.number.value = "";
+  fields.gender.value = "";
+  fields.birthday.value = "";
+  fields.role.value = APP_CONFIG?.playerRoles?.[0]?.id || "cutter";
+  fields.active.checked = true;
+
+  setModalCopy(false, null);
 }
+
+function fillFormForEdit(player) {
+  fields.id.value = player.id || "";
+  fields.firstName.value = player.firstName || "";
+  fields.lastName.value = player.lastName || "";
+  fields.idNumber.value = player.idNumber ?? "";
+  fields.number.value = player.number ?? "";
+  fields.gender.value = player.gender ?? "";
+  fields.birthday.value = player.birthday ?? "";
+  fields.role.value = player.role ?? (APP_CONFIG?.playerRoles?.[0]?.id || "cutter");
+  fields.active.checked = !!player.active;
+
+  setModalCopy(true, player);
+}
+
+function openCreateModal() {
+  if (!permissions?.canEditPlayers || !modal) return;
+  resetFormForCreate();
+  modal.show();
+}
+
+function openEditModal(player) {
+  if (!permissions?.canEditPlayers || !modal || !player) return;
+  fillFormForEdit(player);
+  modal.show();
+}
+
+/*************************************************
+ * LABELS / CONFIG
+ *************************************************/
 
 function getRosterFilterConfig() {
   const rosterCfg = APP_CONFIG?.roster || {};
@@ -170,6 +159,96 @@ function getRosterFilterConfig() {
     roles: rolesFromConfig
   };
 }
+
+function getGenderLabel(gender) {
+  const cfg = getRosterFilterConfig();
+  const found = cfg.genders.find(g => g.value === gender);
+  return found?.label || "—";
+}
+
+function normalizeText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function getPlayerInitials(player) {
+  const first = String(player?.firstName || "").trim();
+  const last = String(player?.lastName || "").trim();
+
+  const firstInitial = first ? first.charAt(0).toUpperCase() : "";
+  const lastInitial = last ? last.charAt(0).toUpperCase() : "";
+
+  const initials = `${firstInitial}${lastInitial}`.trim();
+  return initials || "—";
+}
+
+function formatBirthdayMonthDay(value) {
+  if (!value) return "—";
+
+  const s = String(value).trim();
+  if (!s) return "—";
+
+  // YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const [, mm, dd] = s.split("-");
+    const months = [
+      "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+      "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"
+    ];
+    const monthIdx = Number(mm) - 1;
+    const day = Number(dd);
+    return monthIdx >= 0 && monthIdx < 12 ? `${months[monthIdx]} ${day}` : s;
+  }
+
+  const d = new Date(s);
+  if (!Number.isNaN(d.getTime())) {
+    return d.toLocaleDateString("es-CR", {
+      month: "short",
+      day: "numeric"
+    });
+  }
+
+  return s;
+}
+
+/*************************************************
+ * SORT STATE
+ *************************************************/
+
+let currentSort = {
+  key: "name",
+  direction: "asc"
+};
+
+/*************************************************
+ * LOAD DATA
+ *************************************************/
+
+async function loadPlayers() {
+  const snap = await getDocs(collection(db, PLAYERS_COL));
+
+  players = snap.docs.map(d => Player.fromFirestore(d));
+
+  applySort();
+  render();
+  updateSortIndicators();
+}
+
+/*************************************************
+ * FILTERS
+ *************************************************/
 
 function populateRosterFilters() {
   const cfg = getRosterFilterConfig();
@@ -224,26 +303,6 @@ function getFilteredPlayers() {
   });
 }
 
-function getPlayerInitials(player) {
-  const first = String(player?.firstName || "").trim();
-  const last = String(player?.lastName || "").trim();
-
-  const firstInitial = first ? first.charAt(0).toUpperCase() : "";
-  const lastInitial = last ? last.charAt(0).toUpperCase() : "";
-
-  const initials = `${firstInitial}${lastInitial}`.trim();
-  return initials || "—";
-}
-
-function escapeHtml(value) {
-  return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
 /*************************************************
  * SORTING
  *************************************************/
@@ -252,18 +311,18 @@ function applySort() {
   const dir = currentSort.direction === "asc" ? 1 : -1;
 
   players.sort((a, b) => {
-    // 1️⃣ PRIORIDAD ABSOLUTA: activos primero
+    // activos primero
     if (a.active !== b.active) {
       return a.active ? -1 : 1;
     }
 
-    // 2️⃣ Si ambos son activos o ambos inactivos → aplicar sort normal
-    let valA, valB;
+    let valA;
+    let valB;
 
     switch (currentSort.key) {
       case "name":
-        valA = `${a.firstName} ${a.lastName}`.toLowerCase();
-        valB = `${b.firstName} ${b.lastName}`.toLowerCase();
+        valA = `${a.firstName || ""} ${a.lastName || ""}`.toLowerCase();
+        valB = `${b.firstName || ""} ${b.lastName || ""}`.toLowerCase();
         break;
 
       case "number":
@@ -287,7 +346,6 @@ function applySort() {
         break;
 
       case "active":
-        // si clickean "Estado", igual se mantiene la regla
         valA = a.active ? 1 : 0;
         valB = b.active ? 1 : 0;
         break;
@@ -300,7 +358,6 @@ function applySort() {
   });
 }
 
-
 /*************************************************
  * RENDER
  *************************************************/
@@ -308,48 +365,57 @@ function applySort() {
 function render() {
   const filteredPlayers = getFilteredPlayers();
 
-  table.innerHTML = filteredPlayers
-    .map(
-      p => `
-      <tr data-id="${p.id}" class="player-row" style="cursor:${permissions?.canEditPlayers ? "pointer" : "default"}">
-        <td>
-          <div class="player-cell">
-            <div class="player-avatar" aria-hidden="true">
-              ${escapeHtml(getPlayerInitials(p))}
-            </div>
-            <div class="player-cell-text">
-              <div class="player-cell-name fw-semibold">${escapeHtml(p.fullName)}</div>
-            </div>
-          </div>
-        </td>
-        <td>
-          <span class="badge role-badge">
-            ${escapeHtml(p.roleLabel)}
-          </span>
-        </td>
-        <td>${escapeHtml(p.number ?? "—")}</td>
-        <td>${escapeHtml(getGenderLabel(p.gender))}</td>
-        <td>${escapeHtml(formatBirthdayMonthDay(p.birthday))}</td>
-        <td>
-          <span class="badge ${p.active ? "bg-success" : "bg-secondary"}">
-            ${p.active ? "Activo" : "Inactivo"}
-          </span>
-        </td>
-      </tr>
-    `
-    )
-    .join("");
+  if (table) {
+    table.innerHTML = filteredPlayers
+      .map(
+        p => `
+          <tr
+            data-id="${p.id}"
+            class="player-row"
+            style="cursor:${permissions?.canEditPlayers ? "pointer" : "default"}"
+          >
+            <td>
+              <div class="player-cell">
+                <div class="player-avatar" aria-hidden="true">
+                  ${escapeHtml(getPlayerInitials(p))}
+                </div>
+                <div class="player-cell-text">
+                  <div class="player-cell-name fw-semibold">${escapeHtml(p.fullName)}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="badge role-badge">
+                ${escapeHtml(p.roleLabel)}
+              </span>
+            </td>
+            <td>${escapeHtml(p.number ?? "—")}</td>
+            <td>${escapeHtml(getGenderLabel(p.gender))}</td>
+            <td>${escapeHtml(formatBirthdayMonthDay(p.birthday))}</td>
+            <td>
+              <span class="badge ${p.active ? "bg-success" : "bg-secondary"}">
+                ${p.active ? "Activo" : "Inactivo"}
+              </span>
+            </td>
+          </tr>
+        `
+      )
+      .join("");
+  }
 
   updateRosterStats(filteredPlayers);
   renderMobileCards(filteredPlayers);
 }
 
 function renderMobileCards(list = players) {
-  const container = document.getElementById("playersCards");
-  if (!container) return;
+  if (!playersCards) return;
 
-  container.innerHTML = list.map(p => `
-    <div class="card mb-2 player-card" data-id="${p.id}" style="cursor:${permissions?.canEditPlayers ? "pointer" : "default"}">
+  playersCards.innerHTML = list.map(p => `
+    <div
+      class="card mb-2 player-card"
+      data-id="${p.id}"
+      style="cursor:${permissions?.canEditPlayers ? "pointer" : "default"}"
+    >
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-start gap-3">
           <div class="d-flex align-items-start gap-3 flex-grow-1 min-w-0">
@@ -379,17 +445,30 @@ function renderMobileCards(list = players) {
   `).join("");
 }
 
-//Contadores
+/*************************************************
+ * CONTADORES
+ *************************************************/
+
 function calculateAge(birthday) {
   if (!birthday) return null;
 
-  const birth = new Date(birthday);
+  let birth = null;
+
+  if (typeof birthday === "string" && /^\d{4}-\d{2}-\d{2}$/.test(birthday)) {
+    const [y, m, d] = birthday.split("-").map(Number);
+    birth = new Date(y, m - 1, d);
+  } else {
+    birth = new Date(birthday);
+  }
+
+  if (Number.isNaN(birth.getTime())) return null;
+
   const today = new Date();
 
   let age = today.getFullYear() - birth.getFullYear();
-  const m = today.getMonth() - birth.getMonth();
+  const monthDiff = today.getMonth() - birth.getMonth();
 
-  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
     age--;
   }
 
@@ -435,58 +514,34 @@ function updateRosterStats(source = players) {
   document.getElementById("statU24M").textContent = u24M;
 }
 
-
 /*************************************************
- * CLICK EN FILA (EDITAR)
+ * CLICK EN FILA / CARD
  *************************************************/
 
-table.onclick = e => {
+table?.addEventListener("click", e => {
   if (!permissions?.canEditPlayers) return;
 
   const row = e.target.closest(".player-row");
   if (!row) return;
 
   const id = row.dataset.id;
-  const p = players.find(pl => pl.id === id);
-  if (!p) return;
+  const player = players.find(pl => pl.id === id);
+  if (!player) return;
 
-  fields.id.value = p.id;
-  fields.firstName.value = p.firstName;
-  fields.lastName.value = p.lastName;
-  fields.idNumber.value = p.idNumber ?? "";
-  fields.number.value = p.number ?? "";
-  fields.gender.value = p.gender ?? "";
-  fields.birthday.value = p.birthday ?? "";
-  fields.role.value = p.role ?? "cutter";
-  fields.active.checked = p.active;
+  openEditModal(player);
+});
 
-  modal.show();
-};
-
-/*************************************************
- * CLICK EN CARD (MOBILE)
- *************************************************/
-
-document.getElementById("playersCards").onclick = e => {
+playersCards?.addEventListener("click", e => {
   if (!permissions?.canEditPlayers) return;
-  
+
   const card = e.target.closest(".player-card");
   if (!card) return;
 
-  const p = players.find(pl => pl.id === card.dataset.id);
-  if (!p) return;
+  const player = players.find(pl => pl.id === card.dataset.id);
+  if (!player) return;
 
-  fields.id.value = p.id;
-  fields.firstName.value = p.firstName;
-  fields.lastName.value = p.lastName;
-  fields.number.value = p.number ?? "";
-  fields.gender.value = p.gender ?? "";
-  fields.birthday.value = p.birthday ?? "";
-  fields.role.value = p.role ?? "cutter";
-  fields.active.checked = p.active;
-
-  modal.show();
-};
+  openEditModal(player);
+});
 
 /*************************************************
  * CLICK EN HEADERS (SORT)
@@ -497,8 +552,7 @@ document.querySelectorAll("th.sortable").forEach(th => {
     const key = th.dataset.sort;
 
     if (currentSort.key === key) {
-      currentSort.direction =
-        currentSort.direction === "asc" ? "desc" : "asc";
+      currentSort.direction = currentSort.direction === "asc" ? "desc" : "asc";
     } else {
       currentSort.key = key;
       currentSort.direction = "asc";
@@ -516,33 +570,94 @@ function updateSortIndicators() {
 
     if (th.dataset.sort === currentSort.key) {
       th.classList.add(
-        currentSort.direction === "asc"
-          ? "sorted-asc"
-          : "sorted-desc"
+        currentSort.direction === "asc" ? "sorted-asc" : "sorted-desc"
       );
     }
   });
+}
+
+async function initPlayerModal() {
+  const mount = document.getElementById("playerModalMount");
+  if (!mount) return;
+
+  await loadPartialOnce("/partials/player_modal.html", "#playerModalMount");
+
+  modalEl = document.getElementById("playerModal");
+  form = document.getElementById("playerForm");
+
+  modalTitle = document.getElementById("playerModalTitle");
+  modalSubtitle = document.getElementById("playerModalSubtitle");
+  modalSaveBtn = document.getElementById("playerSaveBtn");
+
+  fields = {
+    id: document.getElementById("playerId"),
+    firstName: document.getElementById("firstName"),
+    lastName: document.getElementById("lastName"),
+    idNumber: document.getElementById("idNumber"),
+    number: document.getElementById("number"),
+    gender: document.getElementById("gender"),
+    birthday: document.getElementById("birthday"),
+    role: document.getElementById("role"),
+    active: document.getElementById("active")
+  };
+
+  if (modalEl) {
+    modal = new bootstrap.Modal(modalEl);
+  }
+
+  if (form) {
+    form.addEventListener("submit", async e => {
+      e.preventDefault();
+      if (!permissions?.canEditPlayers) return;
+
+      const data = {
+        firstName: fields.firstName.value.trim(),
+        lastName: fields.lastName.value.trim(),
+        idNumber: (fields.idNumber.value || "").trim() || null,
+        number: fields.number.value === "" ? null : Number(fields.number.value),
+        gender: fields.gender.value || null,
+        birthday: fields.birthday.value || null,
+        role: fields.role.value || null,
+        active: fields.active.checked
+      };
+
+      showLoader();
+
+      try {
+        if (fields.id.value) {
+          await updateDoc(
+            doc(db, PLAYERS_COL, fields.id.value),
+            new Player(null, data).toFirestore()
+          );
+        } else {
+          await setDoc(
+            doc(collection(db, PLAYERS_COL)),
+            new Player(null, data).toFirestore()
+          );
+        }
+
+        modal?.hide();
+        await loadPlayers();
+      } finally {
+        hideLoader();
+      }
+    });
+  }
 }
 
 /*************************************************
  * NUEVO JUGADOR
  *************************************************/
 
-addPlayerBtn.onclick = () => {
-  if (!permissions?.canEditPlayers) return;
-
-  form.reset();
-  fields.id.value = "";
-  fields.idNumber.value = "";
-  fields.active.checked = true;
-  modal.show();
-};
+addPlayerBtn?.addEventListener("click", () => {
+  openCreateModal();
+});
 
 /*************************************************
  * SAVE FORM
  *************************************************/
 
-form.onsubmit = async e => {
+form?.addEventListener("submit", async e => {
   e.preventDefault();
   if (!permissions?.canEditPlayers) return;
 
@@ -550,28 +665,34 @@ form.onsubmit = async e => {
     firstName: fields.firstName.value.trim(),
     lastName: fields.lastName.value.trim(),
     idNumber: (fields.idNumber.value || "").trim() || null,
-    number: Number(fields.number.value) || null,
+    number: fields.number.value === "" ? null : Number(fields.number.value),
     gender: fields.gender.value || null,
     birthday: fields.birthday.value || null,
-    role: fields.role.value,
+    role: fields.role.value || null,
     active: fields.active.checked
   };
 
-  if (fields.id.value) {
-    await updateDoc(
-      doc(db, PLAYERS_COL, fields.id.value),
-      new Player(null, data).toFirestore()
-    );
-  } else {
-    await setDoc(
-      doc(collection(db, PLAYERS_COL)),
-      new Player(null, data).toFirestore()
-    );
-  }
+  showLoader();
 
-  modal.hide();
-  loadPlayers();
-};
+  try {
+    if (fields.id.value) {
+      await updateDoc(
+        doc(db, PLAYERS_COL, fields.id.value),
+        new Player(null, data).toFirestore()
+      );
+    } else {
+      await setDoc(
+        doc(collection(db, PLAYERS_COL)),
+        new Player(null, data).toFirestore()
+      );
+    }
+
+    modal?.hide();
+    await loadPlayers();
+  } finally {
+    hideLoader();
+  }
+});
 
 /*************************************************
  * AUTH FLOW
@@ -586,6 +707,9 @@ watchAuth(async () => {
 
     populateRosterFilters();
     bindRosterFilterEvents();
+
+    await initPlayerModal();
+    setModalCopy(false, null);
 
     await loadPlayers();
   } finally {
