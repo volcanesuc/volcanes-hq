@@ -18,7 +18,6 @@
 
 import { db } from "/js/auth/firebase.js";
 import { showLoader, hideLoader } from "/js/ui/loader.js";
-import { guardPage } from "/js/page-guard.js";
 import { loadHeader } from "/js/components/header.js";
 
 import {
@@ -52,10 +51,41 @@ if (!routineId) {
 /* =========================
    Init
 ========================= */
-const { redirected } = await guardPage("gym_routine");
-if (!redirected) {
-  await boot();
+async function initHeader() {
+  try {
+    await loadHeader("home", {
+      enabledTabs: {}
+    });
+
+    const brand = document.querySelector("#app-header .logo-link");
+    if (brand) {
+      brand.style.cursor = "pointer";
+      brand.addEventListener("click", () => {
+        window.location.href = "/dashboard.html";
+      });
+    }
+
+    const selectorsToHide = [
+      "#app-header .top-tabs",
+      "#app-header .mobile-links",
+      "#app-header hr"
+    ];
+
+    selectorsToHide.forEach((sel) => {
+      document.querySelectorAll(sel).forEach((el) => {
+        el.style.display = "none";
+      });
+    });
+
+    document.querySelectorAll("#app-header .hamburger").forEach((el) => {
+      el.style.display = "none";
+    });
+  } catch (err) {
+    console.warn("No se pudo cargar el header:", err);
+  }
 }
+
+await boot();
 
 /* =========================
    Boot
@@ -63,9 +93,10 @@ if (!redirected) {
 async function boot() {
   showLoaderSafe();
   try {
+    await initHeader();
+
     const { routine, items } = await loadRoutineResolved({ routineId });
 
-    await loadHeader("playbook", { enabledTabs: {} });
     setPublicHeaderMode(routine.isPublic === true);
 
     $.title.textContent = routine.name || "Rutina de gimnasio";
