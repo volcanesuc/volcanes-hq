@@ -116,7 +116,34 @@ function drillCard(d) {
   const volume = (d?.volume || "—").toString().trim();
   const rest = (d?.restAfter || "—").toString().trim();
 
-  const tags = Array.isArray(d?.tags) ? d.tags : [];
+  const normalizedTags = Array.isArray(d?.tags) ? d.tags : [];
+
+  const tagsHtml = normalizedTags.length
+    ? `
+      <div class="mt-2 d-flex flex-wrap gap-1">
+        ${normalizedTags.map(tag => {
+          const label = typeof tag === "string" ? tag : (tag?.label || "Tag");
+          const key = typeof tag === "string" ? tag : (tag?.key || label);
+          const color = typeof tag === "string"
+            ? colorFromString(key)
+            : (tag?.color || colorFromString(key));
+
+          return `
+            <span
+              class="badge rounded-pill"
+              style="
+                background: ${escapeHtml(color)};
+                color: #fff;
+                font-weight: 500;
+              "
+            >
+              ${escapeHtml(label)}
+            </span>
+          `;
+        }).join("")}
+      </div>
+    `
+    : "";
 
   return `
     <div class="col-12 col-lg-6">
@@ -155,15 +182,7 @@ function drillCard(d) {
             </div>
           </div>
 
-          ${
-            tags.length
-              ? `<div class="mt-2 d-flex flex-wrap gap-1">
-                   ${tags
-                     .map(tag => `<span class="badge text-bg-light border">${escapeHtml(tag)}</span>`)
-                     .join("")}
-                 </div>`
-              : ``
-          }
+          ${tagsHtml}
 
           <div class="row mt-3 g-2">
             <div class="col-6">
@@ -189,6 +208,16 @@ function drillCard(d) {
       </div>
     </div>
   `;
+}
+
+function colorFromString(str) {
+  const s = String(str || "");
+  let hash = 0;
+  for (let i = 0; i < s.length; i++) {
+    hash = s.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue} 65% 55%)`;
 }
 
 function bindDrillMediaEvents() {
