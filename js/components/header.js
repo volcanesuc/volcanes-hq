@@ -36,10 +36,15 @@ export async function loadHeader(activeTab, cfgOverride) {
     }
   }
 
-  const isOverride = !!cfgOverride;
-  const VISIBLE_MENU = isOverride
+ const isOverride = !!cfgOverride;
+
+  let visibleMenu = isOverride
     ? filterMenuStrict(MENU, cfg)
     : filterMenuByConfig(MENU, cfg);
+
+  visibleMenu = filterMenuByRole(visibleMenu, cfgOverride || cfg);
+
+  const VISIBLE_MENU = visibleMenu;
 
   function filterMenuStrict(menu, cfg) {
     const enabled = cfg?.enabledTabs || {};
@@ -234,4 +239,13 @@ function toAbsHref(href) {
 
   const u = new URL(href, base);
   return u.pathname + u.search + u.hash;
+}
+
+function filterMenuByRole(menu, cfg) {
+  if (!cfg) return menu || [];
+
+  // Solo admins ven el tab Admin
+  if (cfg.isAdmin === true) return menu || [];
+
+  return (menu || []).filter((item) => item.id !== "admin");
 }
