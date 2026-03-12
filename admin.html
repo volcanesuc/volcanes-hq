@@ -35,6 +35,7 @@
 
     <div id="alertBox" class="alert d-none" role="alert"></div>
 
+    <!-- CUENTAS -->
     <section class="card shadow-sm mb-4">
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
@@ -68,6 +69,7 @@
       </div>
     </section>
 
+    <!-- JUGADORES EXISTENTES -->
     <section class="card shadow-sm">
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
@@ -135,7 +137,82 @@
         </div>
       </div>
     </section>
-    
+
+    <!-- ENTRENAMIENTOS -->
+    <section class="card shadow-sm mt-4">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+          <div>
+            <h2 class="h5 mb-1">Entrenamientos y Juegos</h2>
+            <p class="text-muted mb-0">Contenido editable de la sección del landing.</p>
+          </div>
+        </div>
+
+        <form id="trainingsSettingsForm" class="row g-3 mb-4">
+          <div class="col-md-8">
+            <label class="form-label">Título de la sección</label>
+            <input id="trainingsTitle" class="form-control" type="text" placeholder="Entrenamientos y Juegos" />
+          </div>
+          <div class="col-md-4 d-flex align-items-end">
+            <button class="btn btn-outline-primary w-100" type="submit">
+              Guardar título
+            </button>
+          </div>
+        </form>
+
+        <form id="trainingBlockForm" class="row g-3 mb-3">
+          <div class="col-md-3">
+            <label class="form-label">Bloque</label>
+            <select id="trainingBlockId" class="form-select">
+              <option value="trainings">Entrenamientos</option>
+              <option value="games">Juegos y Torneos</option>
+            </select>
+          </div>
+
+          <div class="col-md-3">
+            <label class="form-label">Nombre visible</label>
+            <input id="trainingBlockName" class="form-control" type="text" placeholder="Entrenamientos" />
+          </div>
+
+          <div class="col-md-3">
+            <label class="form-label">Día</label>
+            <input id="trainingDay" class="form-control" type="text" placeholder="Domingos" />
+          </div>
+
+          <div class="col-md-2">
+            <label class="form-label">Hora</label>
+            <input id="trainingTime" class="form-control" type="text" placeholder="8:00 am – 10:30 am" />
+          </div>
+
+          <div class="col-md-1 d-flex align-items-end">
+            <button class="btn btn-primary w-100" type="submit">
+              <i class="bi bi-plus-lg"></i>
+            </button>
+          </div>
+        </form>
+
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Bloque</th>
+                <th>Nombre</th>
+                <th>Día</th>
+                <th>Hora</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="trainingsTableBody">
+              <tr>
+                <td colspan="5" class="text-muted">Cargando…</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- REDES SOCIALES -->
     <section class="card shadow-sm mt-4">
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
@@ -176,6 +253,11 @@
             <input id="socialWhatsapp" class="form-control" type="url" placeholder="https://wa.me/... o link del canal" />
           </div>
 
+          <div class="col-md-6">
+            <label class="form-label">Texto del botón WhatsApp</label>
+            <input id="socialWhatsappLabel" class="form-control" type="text" placeholder="WhatsApp" />
+          </div>
+
           <div class="col-12">
             <button class="btn btn-primary" type="submit">
               <i class="bi bi-save me-1"></i>Guardar redes
@@ -185,6 +267,7 @@
       </div>
     </section>
 
+    <!-- HONORS / LOGROS -->
     <section class="card shadow-sm mt-4">
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
@@ -249,6 +332,7 @@
       </div>
     </section>
 
+    <!-- UNIFORMES -->
     <section class="card shadow-sm mt-4">
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">

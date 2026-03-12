@@ -56,6 +56,15 @@ const $ = {
 
   approveSubmitBtn: document.getElementById("approveSubmitBtn"),
 
+  trainingsSettingsForm: document.getElementById("trainingsSettingsForm"),
+  trainingsTitle: document.getElementById("trainingsTitle"),
+  trainingBlockForm: document.getElementById("trainingBlockForm"),
+  trainingBlockId: document.getElementById("trainingBlockId"),
+  trainingBlockName: document.getElementById("trainingBlockName"),
+  trainingDay: document.getElementById("trainingDay"),
+  trainingTime: document.getElementById("trainingTime"),
+  trainingsTableBody: document.getElementById("trainingsTableBody"),
+
   socialLinksForm: document.getElementById("socialLinksForm"),
   socialInstagram: document.getElementById("socialInstagram"),
   socialFacebook: document.getElementById("socialFacebook"),
@@ -63,6 +72,7 @@ const $ = {
   socialYoutube: document.getElementById("socialYoutube"),
   socialX: document.getElementById("socialX"),
   socialWhatsapp: document.getElementById("socialWhatsapp"),
+  socialWhatsappLabel: document.getElementById("socialWhatsappLabel"),
 
   honorsSettingsForm: document.getElementById("honorsSettingsForm"),
   honorsTitle: document.getElementById("honorsTitle"),
@@ -90,6 +100,7 @@ let allPlayers = [];
 let pendingUsers = [];
 let usersById = new Map();
 
+let trainingsBlocks = [];
 let honorsItems = [];
 let uniformsItems = [];
 
@@ -450,6 +461,199 @@ function comparePlayersByName(a, b) {
   );
 }
 
+//TRAININGS INFO
+async function loadTrainingsAdmin() {
+  if ($.trainingsTableBody) {
+    $.trainingsTableBody.innerHTML = `<tr><td colspan="5" class="text-muted">Cargando…</td></tr>`;
+  }
+
+  try {
+    const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "trainings"));
+    const data = snap.exists() ? (snap.data() || {}) : {};
+
+    $.trainingsTitle.value = data.title || "Entrenamientos y Juegos";
+    trainingsBlocks = Array.isArray(data.blocks) ? [...data.blocks] : [];
+
+    const rows = trainingsBlocks.flatMap((block, blockIndex) => {
+      const schedule = Array.isArray(block.schedule) ? block.schedule : [];
+
+      if (!schedule.length) {
+        return [`
+          <tr>
+            <td>${esc(block.id || "—")}</td>
+            <td>${esc(block.name || "—")}</td>
+            <td>—</td>
+            <td>—</td>
+            <td>
+              <button class="btn btn-outline-danger btn-sm" type="button"
+                data-delete-training-row="${blockIndex}:empty">
+                Eliminar bloque vacío
+              </button>
+            </td>
+          </tr>
+        `];
+      }
+
+      return schedule.map((item, scheduleIndex) => `
+        <tr>
+          <td>${esc(block.id || "—")}</td>
+          <td>${esc(block.name || "—")}</td>
+          <td>${esc(item.day || "—")}</td>
+          <td>${esc(item.time || "—")}</td>
+          <td>
+            <button class="btn btn-outline-danger btn-sm" type="button"
+              data-delete-training-row="${blockIndex}:${scheduleIndex}">
+              Eliminar
+            </button>
+          </td>
+        </tr>
+      `);
+    });
+
+    $.trainingsTableBody.innerHTML = rows.length
+      ? rows.join("")
+      : `<tr><td colspan="5" class="text-muted">No hay horarios registrados.</td></tr>`;
+  } catch (err) {
+    console.error("loadTrainingsAdmin error:", err);
+    $.trainingsTableBody.innerHTML = `<tr><td colspan="5" class="text-danger">No se pudo cargar la sección.</td></tr>`;
+  }
+}
+
+async function saveTrainingsTitle(ev) {
+  ev.preventDefault();
+
+  try {
+    await setDoc(
+      doc(db, COL_CLUB_CONFIG, "trainings"),
+      {
+        title: ($.trainingsTitle.value || "").trim() || "Entrenamientos y Juegos",
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    showAlert("Título de entrenamientos guardado.", "success");
+    await loadTrainingsAdmin();
+  } catch (err) {
+    console.error("saveTrainingsTitle error:", err);
+    showAlert("No se pudo guardar el título.");
+  }
+}
+
+async function addTrainingRow(ev) {
+  ev.preventDefault();
+
+  const blockId = ($.trainingBlockId.value || "").trim();
+  const blockName = ($.trainingBlockName.value || "").trim();
+  const day = ($.trainingDay.value || "").trim();
+  const time = ($.trainingTime.value || "").trim();
+
+  if (!blockId || !blockName || !day || !time) {
+    showAlert("Completa bloque, nombre, día y hora.");
+    return;
+  }
+
+  try {
+    const ref = doc(db, COL_CLUB_CONFIG, "trainings");
+    const snap = await getDoc(ref);
+    const data = snap.exists() ? (snap.data() || {}) : {};
+
+    const currentBlocks = Array.isArray(data.blocks) ? [...data.blocks] : [];
+    const title = ($.trainingsTitle.value || "").trim() || data.title || "Entrenamientos y Juegos";
+
+    const idx = currentBlocks.findIndex((b) => b.id === blockId);
+
+    if (idx >= 0) {
+      const currentSchedule = Array.isArray(currentBlocks[idx].schedule)
+        ? [...currentBlocks[idx].schedule]
+        : [];
+
+      currentBlocks[idx] = {
+        ...currentBlocks[idx],
+        name: blockName,
+        schedule: [...currentSchedule, { day, time }],
+      };
+    } else {
+      currentBlocks.push({
+        id: blockId,
+        name: blockName,
+        schedule: [{ day, time }],
+      });
+    }
+
+    await setDoc(
+      ref,
+      {
+        title,
+        blocks: currentBlocks,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    trainingsBlocks = currentBlocks;
+    $.trainingBlockForm?.reset();
+    $.trainingBlockId.value = "trainings";
+    await loadTrainingsAdmin();
+    showAlert("Horario agregado.", "success");
+  } catch (err) {
+    console.error("addTrainingRow error:", err);
+    showAlert("No se pudo agregar el horario.");
+  }
+}
+
+async function deleteTrainingRow(pointer) {
+  const [blockIndexRaw, scheduleIndexRaw] = String(pointer || "").split(":");
+  const blockIndex = Number(blockIndexRaw);
+
+  if (!Number.isInteger(blockIndex) || blockIndex < 0) return;
+
+  try {
+    const ref = doc(db, COL_CLUB_CONFIG, "trainings");
+    const snap = await getDoc(ref);
+    const data = snap.exists() ? (snap.data() || {}) : {};
+
+    const currentBlocks = Array.isArray(data.blocks) ? [...data.blocks] : [];
+    if (blockIndex >= currentBlocks.length) return;
+
+    if (scheduleIndexRaw === "empty") {
+      currentBlocks.splice(blockIndex, 1);
+    } else {
+      const scheduleIndex = Number(scheduleIndexRaw);
+      const block = { ...currentBlocks[blockIndex] };
+      const schedule = Array.isArray(block.schedule) ? [...block.schedule] : [];
+
+      if (!Number.isInteger(scheduleIndex) || scheduleIndex < 0 || scheduleIndex >= schedule.length) return;
+
+      schedule.splice(scheduleIndex, 1);
+
+      if (!schedule.length) {
+        currentBlocks.splice(blockIndex, 1);
+      } else {
+        block.schedule = schedule;
+        currentBlocks[blockIndex] = block;
+      }
+    }
+
+    await setDoc(
+      ref,
+      {
+        title: ($.trainingsTitle.value || "").trim() || data.title || "Entrenamientos y Juegos",
+        blocks: currentBlocks,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    trainingsBlocks = currentBlocks;
+    await loadTrainingsAdmin();
+    showAlert("Horario eliminado.", "success");
+  } catch (err) {
+    console.error("deleteTrainingRow error:", err);
+    showAlert("No se pudo eliminar el horario.");
+  }
+}
+
 //REDES SOCIALES
 async function loadSocialLinks() {
   const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "social_links")).catch(() => null);
@@ -460,7 +664,8 @@ async function loadSocialLinks() {
   $.socialTiktok.value = data.tiktok || "";
   $.socialYoutube.value = data.youtube || "";
   $.socialX.value = data.x || "";
-  $.socialWhatsapp.value = data.whatsapp || "";
+  $.socialWhatsapp.value = data.whatsappUrl || data.whatsapp || "";
+  $.socialWhatsappLabel.value = data.whatsappLabel || "WhatsApp";
 }
 
 async function saveSocialLinks(ev) {
@@ -476,7 +681,8 @@ async function saveSocialLinks(ev) {
         tiktok: safeUrl($.socialTiktok.value),
         youtube: safeUrl($.socialYoutube.value),
         x: safeUrl($.socialX.value),
-        whatsapp: safeUrl($.socialWhatsapp.value),
+        whatsappUrl: safeUrl($.socialWhatsapp.value),
+        whatsappLabel: ($.socialWhatsappLabel.value || "").trim() || "WhatsApp",
         updatedAt: serverTimestamp(),
       },
       { merge: true }
@@ -854,6 +1060,7 @@ async function boot() {
     try { await loadSocialLinks(); } catch (e) { console.error("loadSocialLinks", e); }
     try { await loadHonorsAdmin(); } catch (e) { console.error("loadHonorsAdmin", e); }
     try { await loadUniformsAdmin(); } catch (e) { console.error("loadUniformsAdmin", e); }
+    try { await loadTrainingsAdmin(); } catch (e) { console.error("loadTrainingsAdmin", e); }
 
 
     $.refreshPendingBtn?.addEventListener("click", loadPendingUsers);
@@ -867,6 +1074,8 @@ async function boot() {
     $.honorForm?.addEventListener("submit", addHonor);
     $.uniformSettingsForm?.addEventListener("submit", saveUniformSettings);
     $.uniformForm?.addEventListener("submit", addUniform);
+    $.trainingsSettingsForm?.addEventListener("submit", saveTrainingsTitle);
+    $.trainingBlockForm?.addEventListener("submit", addTrainingRow);
 
     document.addEventListener("click", async (ev) => {
       const approveBtn = ev.target.closest("[data-approve-user]");
@@ -878,6 +1087,12 @@ async function boot() {
       const deleteHonorBtn = ev.target.closest("[data-delete-honor]");
       if (deleteHonorBtn) {
         await deleteHonor(deleteHonorBtn.getAttribute("data-delete-honor"));
+        return;
+      }
+
+      const deleteTrainingBtn = ev.target.closest("[data-delete-training-row]");
+      if (deleteTrainingBtn) {
+        await deleteTrainingRow(deleteTrainingBtn.getAttribute("data-delete-training-row"));
         return;
       }
 

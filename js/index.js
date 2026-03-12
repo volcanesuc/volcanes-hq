@@ -188,7 +188,7 @@ async function loadIndexSettings() {
    HERO
 ========================================================= */
 
-function renderHero() {
+function renderHero(socials = {}) {
   const heroTitle = document.querySelector(".hero h2");
   const heroText = document.querySelector(".hero p");
   const heroImg = document.querySelector(".hero-img");
@@ -215,10 +215,16 @@ function renderHero() {
   }
 
   if (heroWhatsappCta) {
-    const wa = CLUB_DATA.landing.contacts.whatsapp;
-    heroWhatsappCta.textContent = "WhatsApp";
-    heroWhatsappCta.href =
-      `https://wa.me/${wa.phone.replace("+", "")}?text=${encodeURIComponent(wa.message)}`;
+    const waUrl = safeUrl(socials.whatsappUrl || socials.whatsapp || "");
+    if (waUrl) {
+      heroWhatsappCta.style.display = "";
+      heroWhatsappCta.textContent = socials.whatsappLabel || "WhatsApp";
+      heroWhatsappCta.href = waUrl;
+      heroWhatsappCta.target = "_blank";
+      heroWhatsappCta.rel = "noopener noreferrer";
+    } else {
+      heroWhatsappCta.style.display = "none";
+    }
   }
 }
 /* =========================================================
@@ -316,40 +322,51 @@ function renderEvents() {
    TRAININGS & GAMES
 ========================================================= */
 
-function renderTrainings() {
+function renderTrainings(trainingsData = {}, socials = {}) {
   const trainingsSection = document.getElementById("entrenamientos");
   if (!trainingsSection) return;
 
+  const blocks = Array.isArray(trainingsData.blocks) ? trainingsData.blocks : [];
+  if (!blocks.length) {
+    trainingsSection.style.display = "none";
+    return;
+  }
+
+  trainingsSection.style.display = "";
   trainingsSection.querySelector("h2").textContent =
-    CLUB_DATA.landing.trainings.title;
+    trainingsData.title || "Entrenamientos y Juegos";
 
-  const cards = trainingsSection.querySelectorAll(".landing-card");
+  const container = trainingsSection.querySelector(".landing-cards");
+  container.innerHTML = "";
 
-  CLUB_DATA.landing.trainings.blocks.forEach((block, index) => {
-    const card = cards[index];
-    if (!card) return;
+  blocks.forEach((block) => {
+    const card = document.createElement("div");
+    card.className = "landing-card";
 
-    card.querySelector("h3").textContent = block.name;
+    card.innerHTML = `<h3>${block.name || "—"}</h3>`;
 
-    const content = block.schedule
-      .map((s) => `${s.day}: ${s.time}`)
-      .join("\n");
-
-    card.querySelectorAll("p").forEach((p) => p.remove());
-
-    content.split("\n").forEach((line) => {
+    const schedule = Array.isArray(block.schedule) ? block.schedule : [];
+    schedule.forEach((item) => {
       const p = document.createElement("p");
-      p.textContent = line;
+      p.textContent = `${item.day || "—"}: ${item.time || "—"}`;
       card.appendChild(p);
     });
+
+    container.appendChild(card);
   });
 
   const trainingsWhatsappCta = document.getElementById("trainingsWhatsappCta");
   if (trainingsWhatsappCta) {
-    const wa = CLUB_DATA.landing.contacts.whatsapp;
-    trainingsWhatsappCta.textContent = wa.label;
-    trainingsWhatsappCta.href =
-      `https://wa.me/${wa.phone.replace("+", "")}?text=${encodeURIComponent(wa.message)}`;
+    const waUrl = safeUrl(socials.whatsappUrl || socials.whatsapp || "");
+    if (waUrl) {
+      trainingsWhatsappCta.style.display = "";
+      trainingsWhatsappCta.textContent = socials.whatsappLabel || "WhatsApp";
+      trainingsWhatsappCta.href = waUrl;
+      trainingsWhatsappCta.target = "_blank";
+      trainingsWhatsappCta.rel = "noopener noreferrer";
+    } else {
+      trainingsWhatsappCta.style.display = "none";
+    }
   }
 }
 
@@ -491,7 +508,7 @@ function safeUrl(url) {
 }
 
 async function loadSocialLinks() {
-  const snap = await getDoc(doc(db, "club_config", "social_links")).catch(() => null);
+  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "social_links")).catch(() => null);
   return snap?.exists?.() ? (snap.data() || {}) : {};
 }
 
@@ -518,6 +535,16 @@ async function loadUniformsData() {
   };
 }
 
+async function loadTrainingsData() {
+  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "trainings")).catch(() => null);
+  const data = snap?.exists?.() ? (snap.data() || {}) : {};
+
+  return {
+    title: data.title || "Entrenamientos y Juegos",
+    blocks: Array.isArray(data.blocks) ? data.blocks : [],
+  };
+}
+
 /* =========================================================
    FOOTER
 ========================================================= */
@@ -540,21 +567,20 @@ async function bootNormalLanding() {
   await init();
   await loadIndexSettings();
 
-  renderHero();
-  renderEvents();
-  renderTrainings();
-
-  const [socials, honorsData, uniformsData] = await Promise.all([
+  const [socials, honorsData, uniformsData, trainingsData] = await Promise.all([
     loadSocialLinks(),
     loadHonorsData(),
     loadUniformsData(),
+    loadTrainingsData(),
   ]);
 
+  renderHero(socials);
+  renderEvents();
+  renderTrainings(trainingsData, socials);
   renderSocials(socials);
   renderHonors(honorsData);
   renderUniforms(uniformsData);
   renderFooter();
-}
 
 //start screen
 if (isPendingView) {
