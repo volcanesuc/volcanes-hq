@@ -36,7 +36,7 @@ async function boot() {
     await initPublicMinimalHeader({
       activeTab: "home",
       brandHref: "/index.html",
-    });a
+    });
 
     const params = new URLSearchParams(window.location.search);
     const id = params.get("id");
