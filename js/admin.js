@@ -43,6 +43,9 @@ const $ = {
   approveLinkMode: document.getElementById("approveLinkMode"),
   approveExistingPlayerId: document.getElementById("approveExistingPlayerId"),
 
+  playersSectionCollapse: document.getElementById("playersSectionCollapse"),
+  playersCollapseToggle: document.getElementById("playersCollapseToggle"),
+
   existingPlayerWrap: document.getElementById("existingPlayerWrap"),
   newPlayerWrap: document.getElementById("newPlayerWrap"),
 
@@ -492,33 +495,38 @@ async function loadHonorsAdmin() {
     $.honorsTableBody.innerHTML = `<tr><td colspan="4" class="text-muted">Cargando…</td></tr>`;
   }
 
-  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "honors")).catch(() => null);
-  const data = snap?.exists?.() ? (snap.data() || {}) : {};
+  try {
+    const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "honors"));
+    const data = snap.exists() ? (snap.data() || {}) : {};
 
-  $.honorsTitle.value = data.title || "Palmarés";
+    $.honorsTitle.value = data.title || "Palmarés";
 
-  honorsItems = Array.isArray(data.items) ? [...data.items] : [];
-  honorsItems.sort((a, b) => Number(b.year || 0) - Number(a.year || 0));
+    honorsItems = Array.isArray(data.items) ? [...data.items] : [];
+    honorsItems.sort((a, b) => Number(b.year || 0) - Number(a.year || 0));
 
-  if (!honorsItems.length) {
-    $.honorsTableBody.innerHTML = `<tr><td colspan="4" class="text-muted">No hay logros registrados.</td></tr>`;
-    return;
+    if (!honorsItems.length) {
+      $.honorsTableBody.innerHTML = `<tr><td colspan="4" class="text-muted">No hay logros registrados.</td></tr>`;
+      return;
+    }
+
+    $.honorsTableBody.innerHTML = honorsItems
+      .map((item, index) => `
+        <tr>
+          <td>${esc(item.position || "—")}</td>
+          <td>${esc(item.tournament || "—")}</td>
+          <td>${esc(item.year || "—")}</td>
+          <td>
+            <button class="btn btn-outline-danger btn-sm" type="button" data-delete-honor="${index}">
+              Eliminar
+            </button>
+          </td>
+        </tr>
+      `)
+      .join("");
+  } catch (err) {
+    console.error("loadHonorsAdmin error:", err);
+    $.honorsTableBody.innerHTML = `<tr><td colspan="4" class="text-danger">No se pudo cargar el palmarés.</td></tr>`;
   }
-
-  $.honorsTableBody.innerHTML = honorsItems
-    .map((item, index) => `
-      <tr>
-        <td>${esc(item.position || "—")}</td>
-        <td>${esc(item.tournament || "—")}</td>
-        <td>${esc(item.year || "—")}</td>
-        <td>
-          <button class="btn btn-outline-danger btn-sm" type="button" data-delete-honor="${index}">
-            Eliminar
-          </button>
-        </td>
-      </tr>
-    `)
-    .join("");
 }
 
 async function saveHonorSettings(ev) {
@@ -529,16 +537,16 @@ async function saveHonorSettings(ev) {
       doc(db, COL_CLUB_CONFIG, "honors"),
       {
         title: ($.honorsTitle.value || "").trim() || "Palmarés",
-        items: honorsItems,
         updatedAt: serverTimestamp(),
       },
       { merge: true }
     );
 
-    showAlert("Palmarés guardado.", "success");
+    showAlert("Título de palmarés guardado.", "success");
+    await loadHonorsAdmin();
   } catch (err) {
-    console.error(err);
-    showAlert("No se pudo guardar el palmarés.");
+    console.error("saveHonorSettings error:", err);
+    showAlert("No se pudo guardar el título del palmarés.");
   }
 }
 
@@ -554,16 +562,22 @@ async function addHonor(ev) {
     return;
   }
 
-  const nextItems = [
-    ...honorsItems,
-    { position, tournament, year }
-  ].sort((a, b) => Number(b.year || 0) - Number(a.year || 0));
-
   try {
+    const ref = doc(db, COL_CLUB_CONFIG, "honors");
+    const snap = await getDoc(ref);
+    const data = snap.exists() ? (snap.data() || {}) : {};
+
+    const currentItems = Array.isArray(data.items) ? [...data.items] : [];
+
+    const nextItems = [
+      ...currentItems,
+      { position, tournament, year }
+    ].sort((a, b) => Number(b.year || 0) - Number(a.year || 0));
+
     await setDoc(
-      doc(db, COL_CLUB_CONFIG, "honors"),
+      ref,
       {
-        title: ($.honorsTitle.value || "").trim() || "Palmarés",
+        title: ($.honorsTitle.value || "").trim() || data.title || "Palmarés",
         items: nextItems,
         updatedAt: serverTimestamp(),
       },
@@ -576,21 +590,28 @@ async function addHonor(ev) {
     showAlert("Logro agregado.", "success");
   } catch (err) {
     console.error("addHonor error:", err);
-    showAlert("No se pudo agregar el logro.");
+    showAlert(err?.message || "No se pudo agregar el logro.");
   }
 }
 
 async function deleteHonor(index) {
   const idx = Number(index);
-  if (!Number.isInteger(idx) || idx < 0 || idx >= honorsItems.length) return;
-
-  const nextItems = honorsItems.filter((_, i) => i !== idx);
+  if (!Number.isInteger(idx) || idx < 0) return;
 
   try {
+    const ref = doc(db, COL_CLUB_CONFIG, "honors");
+    const snap = await getDoc(ref);
+    const data = snap.exists() ? (snap.data() || {}) : {};
+
+    const currentItems = Array.isArray(data.items) ? [...data.items] : [];
+    if (idx >= currentItems.length) return;
+
+    const nextItems = currentItems.filter((_, i) => i !== idx);
+
     await setDoc(
-      doc(db, COL_CLUB_CONFIG, "honors"),
+      ref,
       {
-        title: ($.honorsTitle.value || "").trim() || "Palmarés",
+        title: ($.honorsTitle.value || "").trim() || data.title || "Palmarés",
         items: nextItems,
         updatedAt: serverTimestamp(),
       },
@@ -602,7 +623,7 @@ async function deleteHonor(index) {
     showAlert("Logro eliminado.", "success");
   } catch (err) {
     console.error("deleteHonor error:", err);
-    showAlert("No se pudo eliminar el logro.");
+    showAlert(err?.message || "No se pudo eliminar el logro.");
   }
 }
 
@@ -756,6 +777,56 @@ function safeUrl(url) {
   return `https://${s}`;
 }
 
+function bindCollapseCarets() {
+  if (bindCollapseCarets._bound) return;
+  bindCollapseCarets._bound = true;
+
+  document.addEventListener("shown.bs.collapse", (e) => {
+    const id = e.target?.id;
+    if (!id) return;
+    document.querySelectorAll(`[data-caret-for="${id}"]`).forEach((el) => {
+      el.textContent = "▾";
+    });
+  });
+
+  document.addEventListener("hidden.bs.collapse", (e) => {
+    const id = e.target?.id;
+    if (!id) return;
+    document.querySelectorAll(`[data-caret-for="${id}"]`).forEach((el) => {
+      el.textContent = "▸";
+    });
+  });
+}
+
+function setupPlayersCollapseByViewport() {
+  if (!$.playersSectionCollapse) return;
+
+  const collapse = bootstrap.Collapse.getOrCreateInstance($.playersSectionCollapse, {
+    toggle: false,
+  });
+
+  if (window.innerWidth <= 768) {
+    collapse.hide();
+    $.playersCollapseToggle?.setAttribute("aria-expanded", "false");
+  } else {
+    collapse.show();
+    $.playersCollapseToggle?.setAttribute("aria-expanded", "true");
+  }
+}
+
+let adminResizeTimer = null;
+
+function bindResponsiveUI() {
+  setupPlayersCollapseByViewport();
+
+  window.addEventListener("resize", () => {
+    clearTimeout(adminResizeTimer);
+    adminResizeTimer = setTimeout(() => {
+      setupPlayersCollapseByViewport();
+    }, 120);
+  });
+}
+
 //BOOT
 async function boot() {
   showLoader("Cargando administración…");
@@ -775,6 +846,8 @@ async function boot() {
 
     fillStaticOptions();
     syncApproveModeUI();
+    bindCollapseCarets();
+    bindResponsiveUI();
 
     await loadPendingUsers();
     await loadPlayers();
