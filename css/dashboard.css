@@ -841,6 +841,12 @@ mark.search-hit {
   transform: rotate(180deg);
 }
 
+#tvNotes {
+  white-space: pre-line;
+  line-height: 1.6;
+  font-family: system-ui, sans-serif;
+}
+
 .clear-mobile {
   display: none;
 }

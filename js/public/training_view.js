@@ -1,15 +1,11 @@
 // /js/public/training_view.js
 import { db } from "../auth/firebase.js";
 import { showLoader, hideLoader } from "../ui/loader.js";
+import { loadHeader } from "../components/header.js";
 
 import {
   doc,
-  getDoc,
-  collection,
-  getDocs,
-  query,
-  where,
-  documentId
+  getDoc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const TRAININGS_COL = "playbook_trainings";
@@ -33,6 +29,14 @@ function showError(msg) {
   tvError.classList.remove("d-none");
 }
 
+function formatNotes(text) {
+  if (!text) return "—";
+
+  return escapeHtml(text)
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") // **negrita**
+    .replace(/\n/g, "<br>"); // saltos de linea
+}
+
 function escapeHtml(str) {
   return String(str ?? "")
     .replaceAll("&", "&amp;")
@@ -53,17 +57,14 @@ function fmtDate(value) {
   if (!value) return "—";
   const d = value?.toDate?.() ?? new Date(value);
   if (isNaN(d)) return "—";
-  return d.toLocaleDateString("es-CR", { year: "numeric", month: "short", day: "2-digit" });
-}
-
-function chunk(arr, size) {
-  const out = [];
-  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
-  return out;
+  return d.toLocaleDateString("es-CR", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit"
+  });
 }
 
 function extractOrderedIds(training) {
-  // Nuevo formato: drillRefs: [{drillId, order}]
   if (Array.isArray(training?.drillRefs) && training.drillRefs.length) {
     return training.drillRefs
       .map((r, idx) => ({
@@ -75,12 +76,10 @@ function extractOrderedIds(training) {
       .map(x => x.id);
   }
 
-  // Viejo: drillIds: ["id1","id2"]
   if (Array.isArray(training?.drillIds) && training.drillIds.length) {
     return training.drillIds.map(x => String(x || "").trim()).filter(Boolean);
   }
 
-  // Otros posibles nombres viejos
   if (Array.isArray(training?.drills) && training.drills.length) {
     return training.drills.map(x => String(x || "").trim()).filter(Boolean);
   }
@@ -89,23 +88,28 @@ function extractOrderedIds(training) {
 }
 
 async function fetchDrillsByIds(ids) {
-  const chunks = chunk(ids, 10);
-  const results = new Map();
+  const results = await Promise.all(
+    ids.map(async (id) => {
+      try {
+        const snap = await getDoc(doc(db, DRILLS_COL, id));
+        if (!snap.exists()) return null;
 
-  for (const c of chunks) {
-    const qy = query(collection(db, DRILLS_COL), where(documentId(), "in", c));
-    const snap = await getDocs(qy);
-    snap.forEach(d => results.set(d.id, { id: d.id, ...d.data() }));
-  }
+        const data = { id: snap.id, ...snap.data() };
+        if (data.isPublic !== true) return null;
 
-  // mantener el orden
-  return ids.map(id => results.get(id)).filter(Boolean);
+        return data;
+      } catch (err) {
+        console.warn("No se pudo leer drill:", id, err);
+        return null;
+      }
+    })
+  );
+
+  return results.filter(Boolean);
 }
 
 function drillCard(d) {
   const name = d?.name || "—";
-
-  // ✅ campos reales
   const tactical = safeUrl(d?.tacticalBoardUrl || "");
   const volume = (d?.volume || "—").toString().trim();
   const rest = (d?.restAfter || "—").toString().trim();
@@ -123,7 +127,7 @@ function drillCard(d) {
                 ? `<a class="btn btn-sm btn-outline-primary"
                       target="_blank"
                       rel="noopener"
-                      href="${escapeHtml(tactical)}">Tactical</a>`
+                      href="${escapeHtml(tactical)}">Ver</a>`
                 : ``
             }
           </div>
@@ -154,6 +158,43 @@ function drillCard(d) {
   `;
 }
 
+async function initHeader() {
+  try {
+    await loadHeader("home", {
+      enabledTabs: {}
+    });
+
+    const brand = document.querySelector("#app-header .navbar-brand, #app-header .brand-text, #app-header .header-brand");
+    if (brand) {
+      brand.style.cursor = "pointer";
+      brand.addEventListener("click", () => {
+        window.location.href = "/pages/admin/dashboard.html";
+      });
+    }
+
+    // Ocultar cualquier nav / botones extra y dejar solo la marca
+    const selectorsToHide = [
+      "#app-header .navbar-nav",
+      "#app-header .nav",
+      "#app-header .header-tabs",
+      "#app-header .header-actions",
+      "#app-header .logout-btn",
+      "#app-header #logoutBtn",
+      "#app-header .btn",
+      "#app-header .dropdown",
+      "#app-header .user-menu"
+    ];
+
+    selectorsToHide.forEach((sel) => {
+      document.querySelectorAll(sel).forEach((el) => {
+        el.style.display = "none";
+      });
+    });
+  } catch (err) {
+    console.warn("No se pudo cargar el header:", err);
+  }
+}
+
 (async function init() {
   const params = new URLSearchParams(window.location.search);
   const id = (params.get("id") || "").trim();
@@ -163,36 +204,38 @@ function drillCard(d) {
     return;
   }
 
-  tvShareBtn?.addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      tvShareBtn.textContent = "Link copiado ✅";
-      setTimeout(() => (tvShareBtn.textContent = "Compartir"), 1200);
-    } catch {
-      alert("No pude copiar el link. Copialo manualmente de la barra.");
-    }
-  });
-
   showLoader();
+
   try {
+    await initHeader();
+
     const snap = await getDoc(doc(db, TRAININGS_COL, id));
     if (!snap.exists()) {
-      showError("No se encontró este entrenamiento.");
+      showError("No se encontró este Plan de Entrenamiento.");
       return;
     }
 
     const t = { id: snap.id, ...snap.data() };
 
-    // Opción A: privado => requiere login (reglas), pero acá igual bloqueamos si no es público
     if (t.isPublic !== true) {
-      showError("Este entrenamiento es privado.");
+      showError("Este Plan de Entrenamiento es privado.");
       return;
     }
 
-    if (tvTitle) tvTitle.textContent = t.name || "Entrenamiento";
-    if (tvSubtitle) tvSubtitle.textContent = "Pujaguas Ultimate";
+    tvShareBtn?.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        tvShareBtn.textContent = "Link copiado ✅";
+        setTimeout(() => (tvShareBtn.textContent = "Compartir"), 1200);
+      } catch {
+        alert("No pude copiar el link. Copialo manualmente de la barra.");
+      }
+    });
+
+    if (tvTitle) tvTitle.textContent = t.name || "Plan de Entrenamiento";
+    if (tvSubtitle) tvSubtitle.textContent = "Plan de Entrenamiento";
     if (tvDate) tvDate.textContent = fmtDate(t.date);
-    if (tvNotes) tvNotes.textContent = t.notes || "—";
+    if (tvNotes) tvNotes.innerHTML = formatNotes(t.notes);
     if (tvPublicState) tvPublicState.textContent = "Público";
 
     const ids = extractOrderedIds(t);
@@ -203,7 +246,6 @@ function drillCard(d) {
 
     const drills = await fetchDrillsByIds(ids);
 
-    // Render
     tvDrills.innerHTML = drills.length
       ? drills.map(drillCard).join("")
       : "";
@@ -211,7 +253,7 @@ function drillCard(d) {
     tvEmpty?.classList.toggle("d-none", drills.length > 0);
   } catch (e) {
     console.error(e);
-    showError("Error cargando el entrenamiento.");
+    showError("Error cargando el Plan de Entrenamiento.");
   } finally {
     hideLoader();
   }

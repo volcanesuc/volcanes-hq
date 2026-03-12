@@ -161,7 +161,7 @@ async function resolveUserRole() {
     const snap = await getDoc(userRef);
     if (!snap.exists()) return;
     const data = snap.data() || {};
-    if (data?.isActive !== true) return;  // si no está activo, se queda viewer
+    if (data?.active === false) return;
     state.role = data.role || "viewer";
   } catch (err) {
     console.error("Error resolving role:", err);
@@ -172,7 +172,6 @@ async function loadPosts() {
   try {
     const q = query(
       collection(db, COMMUNITY_COL),
-      where("clubId", "==", APP_CONFIG.club.id),
       orderBy("createdAt", "desc")
     );
 
@@ -195,7 +194,6 @@ async function loadPosts() {
 
 function normalizePost(post) {
   return {
-    clubId: post.clubId || APP_CONFIG.club.id,
     title: post.title || "Sin título",
     summary: post.summary || "",
     body: post.body || "",
@@ -484,7 +482,6 @@ async function onSubmitForm(e) {
     } else {
       await addDoc(collection(db, COMMUNITY_COL), {
         ...payload,
-        clubId: APP_CONFIG.club.id,
         authorId: state.user.uid,
         authorName: resolveAuthorName(),
         createdAt: serverTimestamp(),
