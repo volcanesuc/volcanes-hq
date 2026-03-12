@@ -30,10 +30,66 @@
   <main class="container py-4 admin-page">
     <div class="mb-4">
       <h1 class="h3 mb-1">Administración</h1>
-      <p class="text-muted mb-0">Aprobación de usuarios y vínculo con jugadores.</p>
+      <p class="text-muted mb-0">Configuración general de la plataforma y aprobación de usuarios (vínculo con jugadores).</p>
     </div>
 
     <div id="alertBox" class="alert d-none" role="alert"></div>
+
+    <!-- TOGGLES PARA SECCIONES DEL INDEX -->
+    <section class="card shadow-sm mt-4">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+          <div>
+            <h2 class="h5 mb-1">Visibilidad del landing</h2>
+            <p class="text-muted mb-0">Mostrá u ocultá secciones públicas del index.</p>
+          </div>
+        </div>
+
+        <form id="indexSettingsForm" class="row g-3">
+          <div class="col-md-6">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="idxShowEvents" />
+              <label class="form-check-label" for="idxShowEvents">
+                Mostrar torneos / eventos
+              </label>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="idxShowTrainings" />
+              <label class="form-check-label" for="idxShowTrainings">
+                Mostrar entrenamientos y juegos
+              </label>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="idxShowHonors" />
+              <label class="form-check-label" for="idxShowHonors">
+                Mostrar palmarés
+              </label>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="idxShowUniforms" />
+              <label class="form-check-label" for="idxShowUniforms">
+                Mostrar uniformes
+              </label>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <button class="btn btn-primary" type="submit">
+              <i class="bi bi-save me-1"></i>Guardar visibilidad
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
 
     <!-- CUENTAS -->
     <section class="card shadow-sm mb-4">

@@ -27,6 +27,12 @@ const COL_CLUB_CONFIG = COL.club_config;
 const $ = {
   alertBox: document.getElementById("alertBox"),
 
+  indexSettingsForm: document.getElementById("indexSettingsForm"),
+  idxShowEvents: document.getElementById("idxShowEvents"),
+  idxShowTrainings: document.getElementById("idxShowTrainings"),
+  idxShowHonors: document.getElementById("idxShowHonors"),
+  idxShowUniforms: document.getElementById("idxShowUniforms"),
+
   pendingUsersTable: document.querySelector("#pendingUsersTable tbody"),
   refreshPendingBtn: document.getElementById("refreshPendingBtn"),
 
@@ -141,6 +147,47 @@ function fillStaticOptions() {
       .join("");
 }
 
+// INDEX SETTINGS
+async function loadIndexSettingsAdmin() {
+  try {
+    const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "index_settings"));
+    const data = snap.exists() ? (snap.data() || {}) : {};
+
+    if ($.idxShowEvents) $.idxShowEvents.checked = data.show_events !== false;
+    if ($.idxShowTrainings) $.idxShowTrainings.checked = data.show_trainings !== false;
+    if ($.idxShowHonors) $.idxShowHonors.checked = data.show_honors !== false;
+    if ($.idxShowUniforms) $.idxShowUniforms.checked = data.show_uniforms !== false;
+  } catch (err) {
+    console.error("loadIndexSettingsAdmin error:", err);
+    showAlert("No se pudo cargar la visibilidad del landing.");
+  }
+}
+
+async function saveIndexSettings(ev) {
+  ev.preventDefault();
+  hideAlert();
+
+  try {
+    await setDoc(
+      doc(db, COL_CLUB_CONFIG, "index_settings"),
+      {
+        show_events: !!$.idxShowEvents?.checked,
+        show_trainings: !!$.idxShowTrainings?.checked,
+        show_honors: !!$.idxShowHonors?.checked,
+        show_uniforms: !!$.idxShowUniforms?.checked,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    showAlert("Visibilidad del landing guardada.", "success");
+  } catch (err) {
+    console.error("saveIndexSettings error:", err);
+    showAlert("No se pudo guardar la visibilidad del landing.");
+  }
+}
+
+//USERS DATA
 async function getAssociateData(associateId) {
   if (!associateId) return null;
 
@@ -1057,12 +1104,14 @@ async function boot() {
 
     await loadPendingUsers();
     await loadPlayers();
+    try { await loadIndexSettingsAdmin(); } catch (e) { console.error("loadIndexSettingsAdmin", e); }
     try { await loadSocialLinks(); } catch (e) { console.error("loadSocialLinks", e); }
     try { await loadHonorsAdmin(); } catch (e) { console.error("loadHonorsAdmin", e); }
     try { await loadUniformsAdmin(); } catch (e) { console.error("loadUniformsAdmin", e); }
     try { await loadTrainingsAdmin(); } catch (e) { console.error("loadTrainingsAdmin", e); }
 
 
+    $.indexSettingsForm?.addEventListener("submit", saveIndexSettings);
     $.refreshPendingBtn?.addEventListener("click", loadPendingUsers);
     $.refreshPlayersBtn?.addEventListener("click", loadPlayers);
     $.playerSearchInput?.addEventListener("input", renderPlayersTable);
