@@ -5,7 +5,12 @@ import { showLoader, hideLoader, updateLoaderMessage } from "./ui/loader.js";
 import { db, auth } from "/js/auth/firebase.js";
 import { logout } from "/js/auth/auth.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import {
+  doc,
+  getDoc,
+  collection,
+  getDocs
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const url = new URL(window.location.href);
 const isPendingView = url.searchParams.get("pending") === "1";
@@ -21,7 +26,8 @@ const pendingLogoutBtn = document.getElementById("pendingLogoutBtn");
 function showPendingState() {
   pendingSection?.classList.remove("d-none");
 
-  const sectionsToHide = [
+   const sectionsToHide = [
+    "socialsSection",
     "eventsSection",
     "entrenamientos",
     "honorsSection",
@@ -212,6 +218,45 @@ function renderHero() {
       `https://wa.me/${wa.phone.replace("+", "")}?text=${encodeURIComponent(wa.message)}`;
   }
 }
+/* =========================================================
+   SOCIALS
+========================================================= */
+
+function renderSocials(socials = {}) {
+  const section = document.getElementById("socialsSection");
+  const cards = document.getElementById("socialsCards");
+  if (!section || !cards) return;
+
+  const items = [
+    { key: "instagram", label: "Instagram", icon: "bi-instagram" },
+    { key: "facebook", label: "Facebook", icon: "bi-facebook" },
+    { key: "tiktok", label: "TikTok", icon: "bi-tiktok" },
+    { key: "youtube", label: "YouTube", icon: "bi-youtube" },
+    { key: "x", label: "X", icon: "bi-twitter-x" },
+    { key: "whatsapp", label: "WhatsApp", icon: "bi-whatsapp" },
+  ].filter(item => safeUrl(socials[item.key]));
+
+  if (!items.length) {
+    section.style.display = "none";
+    return;
+  }
+
+  section.style.display = "";
+  cards.innerHTML = items.map(item => `
+    <a
+      class="landing-card text-decoration-none"
+      href="${safeUrl(socials[item.key])}"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <i class="bi ${item.icon} fs-4"></i>
+        <h3 class="mb-0">${item.label}</h3>
+      </div>
+      <p class="mb-0">Ir a ${item.label}</p>
+    </a>
+  `).join("");
+}
 
 /* =========================================================
    EVENTS
@@ -309,30 +354,38 @@ function renderTrainings() {
    HONORS
 ========================================================= */
 
-function renderHonors() {
+function renderHonors(honorsData = {}) {
   const honorsSection = document.getElementById("honorsSection");
   if (!honorsSection) return;
 
-  honorsSection.querySelector("h2").textContent =
-    CLUB_DATA.landing.honors.title;
+  const items = Array.isArray(honorsData.items) ? honorsData.items : [];
+  if (!items.length) {
+    honorsSection.style.display = "none";
+    return;
+  }
+
+  honorsSection.style.display = "";
+  honorsSection.querySelector("h2").textContent = honorsData.title || "Palmarés";
 
   const container = honorsSection.querySelector(".landing-cards");
   container.innerHTML = "";
 
-  CLUB_DATA.landing.honors.items.forEach((item) => {
+  items.forEach((item) => {
     let badge = "🏅";
     let className = "honor-card";
 
-    if (item.position.toLowerCase().includes("primer")) {
+    const position = String(item.position || "").toLowerCase();
+
+    if (position.includes("primer")) {
       badge = "🥇";
       className += " honor-gold";
-    } else if (item.position.toLowerCase().includes("segundo")) {
+    } else if (position.includes("segundo")) {
       badge = "🥈";
       className += " honor-silver";
-    } else if (item.position.toLowerCase().includes("tercer")) {
+    } else if (position.includes("tercer")) {
       badge = "🥉";
       className += " honor-bronze";
-    } else if (item.position.toLowerCase().includes("espíritu")) {
+    } else if (position.includes("espíritu")) {
       badge = "🤝";
       className += " honor-spirit";
     }
@@ -342,9 +395,9 @@ function renderHonors() {
 
     card.innerHTML = `
       <div class="honor-badge">${badge}</div>
-      <div class="honor-position">${item.position}</div>
-      <div class="honor-tournament">${item.tournament}</div>
-      <div class="honor-year">${item.year}</div>
+      <div class="honor-position">${item.position || "—"}</div>
+      <div class="honor-tournament">${item.tournament || "—"}</div>
+      <div class="honor-year">${item.year || "—"}</div>
     `;
 
     container.appendChild(card);
@@ -355,15 +408,25 @@ function renderHonors() {
    UNIFORMS
 ========================================================= */
 
-function renderUniforms() {
+function renderUniforms(uniformData = {}) {
   const uniformsSection = document.getElementById("uniformsSection");
   if (!uniformsSection) return;
 
+  const settings = uniformData.settings || {};
+  const items = Array.isArray(uniformData.items) ? uniformData.items : [];
+
+  if (!items.length) {
+    uniformsSection.style.display = "none";
+    return;
+  }
+
+  uniformsSection.style.display = "";
+
   uniformsSection.querySelector("h2").textContent =
-    CLUB_DATA.landing.uniforms.title;
+    settings.title || "Uniformes del Equipo";
 
   uniformsSection.querySelector("p").textContent =
-    CLUB_DATA.landing.uniforms.subtitle;
+    settings.subtitle || "Compra tu indumentaria oficial del club";
 
   const carouselInner = document.querySelector("#uniformsCarousel .carousel-inner");
   if (!carouselInner) return;
@@ -372,8 +435,8 @@ function renderUniforms() {
 
   const itemsPerSlide = window.innerWidth < 768 ? 1 : 3;
 
-  for (let i = 0; i < CLUB_DATA.landing.uniforms.items.length; i += itemsPerSlide) {
-    const slideItems = CLUB_DATA.landing.uniforms.items.slice(i, i + itemsPerSlide);
+  for (let i = 0; i < items.length; i += itemsPerSlide) {
+    const slideItems = items.slice(i, i + itemsPerSlide);
 
     const slide = document.createElement("div");
     slide.className = `carousel-item ${i === 0 ? "active" : ""}`;
@@ -387,16 +450,16 @@ function renderUniforms() {
 
       card.innerHTML = `
         <div class="uniform-img-wrapper">
-          <img src="${item.image}" alt="${item.name}" />
+          <img src="${item.image}" alt="${item.name || "Uniforme"}" />
         </div>
         <div class="uniform-info">
-          <h3>${item.name}</h3>
+          <h3>${item.name || "—"}</h3>
           <a
             class="landing-btn"
-            href="${CLUB_DATA.landing.uniforms.orderUrl}"
+            href="${safeUrl(settings.orderUrl)}"
             target="_blank"
           >
-            ${CLUB_DATA.landing.uniforms.CTA}
+            ${settings.ctaLabel || "Comprar"}
           </a>
         </div>
       `;
@@ -412,6 +475,61 @@ function renderUniforms() {
   if (carouselEl && window.bootstrap?.Carousel) {
     new bootstrap.Carousel(carouselEl);
   }
+}
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function safeUrl(url) {
+  const s = String(url || "").trim();
+  if (!s) return "";
+  if (/^https?:\/\//i.test(s)) return s;
+  return `https://${s}`;
+}
+
+async function loadSocialLinks() {
+  const snap = await getDoc(doc(db, "club_config", "social_links")).catch(() => null);
+  return snap?.exists?.() ? (snap.data() || {}) : {};
+}
+
+async function loadHonorsData() {
+  const [settingsSnap, honorsSnap] = await Promise.all([
+    getDoc(doc(db, "club_config", "honors_settings")).catch(() => null),
+    getDocs(collection(db, "honors")).catch(() => null),
+  ]);
+
+  const settings = settingsSnap?.exists?.() ? (settingsSnap.data() || {}) : {};
+  const items = honorsSnap?.docs
+    ? honorsSnap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(x => x.active !== false)
+        .sort((a, b) => Number(b.year || 0) - Number(a.year || 0))
+    : [];
+
+  return {
+    title: settings.title || "Palmarés",
+    items,
+  };
+}
+
+async function loadUniformsData() {
+  const [settingsSnap, uniformsSnap] = await Promise.all([
+    getDoc(doc(db, "club_config", "uniforms_settings")).catch(() => null),
+    getDocs(collection(db, "uniforms")).catch(() => null),
+  ]);
+
+  const settings = settingsSnap?.exists?.() ? (settingsSnap.data() || {}) : {};
+  const items = uniformsSnap?.docs
+    ? uniformsSnap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(x => x.active !== false)
+    : [];
+
+  return {
+    settings,
+    items,
+  };
 }
 
 /* =========================================================
@@ -435,16 +553,19 @@ function renderFooter() {
 async function bootNormalLanding() {
   await init();
   await loadIndexSettings();
+
   renderHero();
   renderEvents();
   renderTrainings();
-  renderHonors();
-  renderUniforms();
-  renderFooter();
-}
 
-if (isPendingView) {
-  bootPendingMode();
-} else {
-  bootNormalLanding();
+  const [socials, honorsData, uniformsData] = await Promise.all([
+    loadSocialLinks(),
+    loadHonorsData(),
+    loadUniformsData(),
+  ]);
+
+  renderSocials(socials);
+  renderHonors(honorsData);
+  renderUniforms(uniformsData);
+  renderFooter();
 }

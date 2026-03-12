@@ -13,6 +13,8 @@ import {
   where,
   addDoc,
   updateDoc,
+  setDoc,
+  deleteDoc,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
@@ -20,6 +22,10 @@ const COL = APP_CONFIG.collections;
 const COL_USERS = COL.users;
 const COL_ASSOC = COL.associates;
 const COL_PLAYERS = COL.players;
+
+const COL_CLUB_CONFIG = COL.club_config;
+const COL_HONORS = COL.club_honors;
+const COL_UNIFORMS = COL.club_uniforms;
 
 const $ = {
   alertBox: document.getElementById("alertBox"),
@@ -49,6 +55,34 @@ const $ = {
   newPlayerFieldRole: document.getElementById("newPlayerFieldRole"),
 
   approveSubmitBtn: document.getElementById("approveSubmitBtn"),
+
+  socialLinksForm: document.getElementById("socialLinksForm"),
+  socialInstagram: document.getElementById("socialInstagram"),
+  socialFacebook: document.getElementById("socialFacebook"),
+  socialTiktok: document.getElementById("socialTiktok"),
+  socialYoutube: document.getElementById("socialYoutube"),
+  socialX: document.getElementById("socialX"),
+  socialWhatsapp: document.getElementById("socialWhatsapp"),
+
+  honorsSettingsForm: document.getElementById("honorsSettingsForm"),
+  honorsTitle: document.getElementById("honorsTitle"),
+  honorForm: document.getElementById("honorForm"),
+  honorPosition: document.getElementById("honorPosition"),
+  honorTournament: document.getElementById("honorTournament"),
+  honorYear: document.getElementById("honorYear"),
+  honorsTableBody: document.getElementById("honorsTableBody"),
+
+  uniformSettingsForm: document.getElementById("uniformSettingsForm"),
+  uniformsTitle: document.getElementById("uniformsTitle"),
+  uniformsSubtitle: document.getElementById("uniformsSubtitle"),
+  uniformsCtaLabel: document.getElementById("uniformsCtaLabel"),
+  uniformsOrderUrl: document.getElementById("uniformsOrderUrl"),
+
+  uniformForm: document.getElementById("uniformForm"),
+  uniformName: document.getElementById("uniformName"),
+  uniformCategory: document.getElementById("uniformCategory"),
+  uniformImage: document.getElementById("uniformImage"),
+  uniformsTableBody: document.getElementById("uniformsTableBody"),
 };
 
 let approveModal = null;
@@ -413,6 +447,251 @@ function comparePlayersByName(a, b) {
   );
 }
 
+//REDES SOCIALES
+async function loadSocialLinks() {
+  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "social_links")).catch(() => null);
+  const data = snap?.exists?.() ? (snap.data() || {}) : {};
+
+  $.socialInstagram.value = data.instagram || "";
+  $.socialFacebook.value = data.facebook || "";
+  $.socialTiktok.value = data.tiktok || "";
+  $.socialYoutube.value = data.youtube || "";
+  $.socialX.value = data.x || "";
+  $.socialWhatsapp.value = data.whatsapp || "";
+}
+
+async function saveSocialLinks(ev) {
+  ev.preventDefault();
+  hideAlert();
+
+  try {
+    await setDoc(doc(db, COL_CLUB_CONFIG, "social_links"), {
+      instagram: safeUrl($.socialInstagram.value),
+      facebook: safeUrl($.socialFacebook.value),
+      tiktok: safeUrl($.socialTiktok.value),
+      youtube: safeUrl($.socialYoutube.value),
+      x: safeUrl($.socialX.value),
+      whatsapp: safeUrl($.socialWhatsapp.value),
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+
+    showAlert("Redes sociales guardadas.", "success");
+  } catch (err) {
+    console.error(err);
+    showAlert("No se pudieron guardar las redes sociales.");
+  }
+}
+
+//HONORS / PALMARES
+
+async function loadHonorSettings() {
+  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "honors_settings")).catch(() => null);
+  const data = snap?.exists?.() ? (snap.data() || {}) : {};
+  $.honorsTitle.value = data.title || "Palmarés";
+}
+
+async function saveHonorSettings(ev) {
+  ev.preventDefault();
+
+  try {
+    await setDoc(doc(db, COL_CLUB_CONFIG, "honors_settings"), {
+      title: ($.honorsTitle.value || "").trim() || "Palmarés",
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+
+    showAlert("Título de palmarés guardado.", "success");
+  } catch (err) {
+    console.error(err);
+    showAlert("No se pudo guardar el título de palmarés.");
+  }
+}
+
+async function loadHonorsAdmin() {
+  $.honorsTableBody.innerHTML = `<tr><td colspan="4" class="text-muted">Cargando…</td></tr>`;
+
+  const snap = await getDocs(collection(db, COL_HONORS));
+  const items = snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(x => x.active !== false)
+    .sort((a, b) => {
+      const y = Number(b.year || 0) - Number(a.year || 0);
+      if (y !== 0) return y;
+      return String(a.tournament || "").localeCompare(String(b.tournament || ""), "es", { sensitivity: "base" });
+    });
+
+  if (!items.length) {
+    $.honorsTableBody.innerHTML = `<tr><td colspan="4" class="text-muted">No hay logros registrados.</td></tr>`;
+    return;
+  }
+
+  $.honorsTableBody.innerHTML = items.map(item => `
+    <tr>
+      <td>${esc(item.position || "—")}</td>
+      <td>${esc(item.tournament || "—")}</td>
+      <td>${esc(item.year || "—")}</td>
+      <td>
+        <button class="btn btn-outline-danger btn-sm" type="button" data-delete-honor="${esc(item.id)}">
+          Eliminar
+        </button>
+      </td>
+    </tr>
+  `).join("");
+}
+
+async function addHonor(ev) {
+  ev.preventDefault();
+
+  const position = ($.honorPosition.value || "").trim();
+  const tournament = ($.honorTournament.value || "").trim();
+  const year = Number($.honorYear.value || 0);
+
+  if (!position || !tournament || !year) {
+    showAlert("Completa posición, torneo y año.");
+    return;
+  }
+
+  try {
+    await addDoc(collection(db, COL_HONORS), {
+      position,
+      tournament,
+      year,
+      active: true,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    $.honorForm.reset();
+    await loadHonorsAdmin();
+    showAlert("Logro agregado.", "success");
+  } catch (err) {
+    console.error(err);
+    showAlert("No se pudo agregar el logro.");
+  }
+}
+
+async function deleteHonor(id) {
+  if (!id) return;
+  try {
+    await deleteDoc(doc(db, COL_HONORS, id));
+    await loadHonorsAdmin();
+    showAlert("Logro eliminado.", "success");
+  } catch (err) {
+    console.error(err);
+    showAlert("No se pudo eliminar el logro.");
+  }
+}
+
+//UNIFORMS
+async function loadUniformSettings() {
+  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "uniforms_settings")).catch(() => null);
+  const data = snap?.exists?.() ? (snap.data() || {}) : {};
+
+  $.uniformsTitle.value = data.title || "Uniformes del Equipo";
+  $.uniformsSubtitle.value = data.subtitle || "Compra tu indumentaria oficial del club";
+  $.uniformsCtaLabel.value = data.ctaLabel || "Comprar";
+  $.uniformsOrderUrl.value = data.orderUrl || "";
+}
+
+async function saveUniformSettings(ev) {
+  ev.preventDefault();
+
+  try {
+    await setDoc(doc(db, COL_CLUB_CONFIG, "uniforms_settings"), {
+      title: ($.uniformsTitle.value || "").trim() || "Uniformes del Equipo",
+      subtitle: ($.uniformsSubtitle.value || "").trim() || "",
+      ctaLabel: ($.uniformsCtaLabel.value || "").trim() || "Comprar",
+      orderUrl: safeUrl($.uniformsOrderUrl.value),
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+
+    showAlert("Configuración de uniformes guardada.", "success");
+  } catch (err) {
+    console.error(err);
+    showAlert("No se pudo guardar la configuración de uniformes.");
+  }
+}
+
+async function loadUniformsAdmin() {
+  $.uniformsTableBody.innerHTML = `<tr><td colspan="4" class="text-muted">Cargando…</td></tr>`;
+
+  const snap = await getDocs(collection(db, COL_UNIFORMS));
+  const items = snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(x => x.active !== false)
+    .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "es", { sensitivity: "base" }));
+
+  if (!items.length) {
+    $.uniformsTableBody.innerHTML = `<tr><td colspan="4" class="text-muted">No hay uniformes registrados.</td></tr>`;
+    return;
+  }
+
+  $.uniformsTableBody.innerHTML = items.map(item => `
+    <tr>
+      <td>${esc(item.name || "—")}</td>
+      <td>${esc(item.category || "—")}</td>
+      <td class="text-truncate" style="max-width:240px">${esc(item.image || "—")}</td>
+      <td>
+        <button class="btn btn-outline-danger btn-sm" type="button" data-delete-uniform="${esc(item.id)}">
+          Eliminar
+        </button>
+      </td>
+    </tr>
+  `).join("");
+}
+
+async function addUniform(ev) {
+  ev.preventDefault();
+
+  const name = ($.uniformName.value || "").trim();
+  const category = ($.uniformCategory.value || "").trim();
+  const image = ($.uniformImage.value || "").trim();
+
+  if (!name || !image) {
+    showAlert("Completa al menos nombre e imagen.");
+    return;
+  }
+
+  try {
+    await addDoc(collection(db, COL_UNIFORMS), {
+      name,
+      category,
+      image,
+      active: true,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    $.uniformForm.reset();
+    await loadUniformsAdmin();
+    showAlert("Uniforme agregado.", "success");
+  } catch (err) {
+    console.error(err);
+    showAlert("No se pudo agregar el uniforme.");
+  }
+}
+
+async function deleteUniform(id) {
+  if (!id) return;
+  try {
+    await deleteDoc(doc(db, COL_UNIFORMS, id));
+    await loadUniformsAdmin();
+    showAlert("Uniforme eliminado.", "success");
+  } catch (err) {
+    console.error(err);
+    showAlert("No se pudo eliminar el uniforme.");
+  }
+}
+
+
+//HELPERS
+function safeUrl(url) {
+  const s = String(url || "").trim();
+  if (!s) return "";
+  if (/^https?:\/\//i.test(s)) return s;
+  return `https://${s}`;
+}
+
+//BOOT
 async function boot() {
   showLoader("Cargando administración…");
 
@@ -434,6 +713,11 @@ async function boot() {
 
     await loadPendingUsers();
     await loadPlayers();
+    await loadSocialLinks();
+    await loadHonorSettings();
+    await loadHonorsAdmin();
+    await loadUniformSettings();
+    await loadUniformsAdmin();
 
     $.refreshPendingBtn?.addEventListener("click", loadPendingUsers);
     $.refreshPlayersBtn?.addEventListener("click", loadPlayers);
@@ -441,11 +725,30 @@ async function boot() {
     $.playerRoleFilter?.addEventListener("change", renderPlayersTable);
     $.approveLinkMode?.addEventListener("change", syncApproveModeUI);
     $.approveUserForm?.addEventListener("submit", approveUserFlow);
+    $.socialLinksForm?.addEventListener("submit", saveSocialLinks);
+    $.honorsSettingsForm?.addEventListener("submit", saveHonorSettings);
+    $.honorForm?.addEventListener("submit", addHonor);
+    $.uniformSettingsForm?.addEventListener("submit", saveUniformSettings);
+    $.uniformForm?.addEventListener("submit", addUniform)
 
     document.addEventListener("click", async (ev) => {
-      const btn = ev.target.closest("[data-approve-user]");
-      if (!btn) return;
-      await openApproveModal(btn.getAttribute("data-approve-user"));
+      const approveBtn = ev.target.closest("[data-approve-user]");
+      if (approveBtn) {
+        await openApproveModal(approveBtn.getAttribute("data-approve-user"));
+        return;
+      }
+
+      const deleteHonorBtn = ev.target.closest("[data-delete-honor]");
+      if (deleteHonorBtn) {
+        await deleteHonor(deleteHonorBtn.getAttribute("data-delete-honor"));
+        return;
+      }
+
+      const deleteUniformBtn = ev.target.closest("[data-delete-uniform]");
+      if (deleteUniformBtn) {
+        await deleteUniform(deleteUniformBtn.getAttribute("data-delete-uniform"));
+        return;
+      }
     });
   } catch (err) {
     console.error(err);

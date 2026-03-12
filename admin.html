@@ -115,6 +115,200 @@
         </div>
       </div>
     </section>
+    
+    <section class="card shadow-sm mt-4">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+          <div>
+            <h2 class="h5 mb-1">Redes sociales</h2>
+            <p class="text-muted mb-0">Links que se mostrarán en el landing si tienen valor.</p>
+          </div>
+        </div>
+
+        <form id="socialLinksForm" class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Instagram</label>
+            <input id="socialInstagram" class="form-control" type="url" placeholder="https://instagram.com/..." />
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Facebook</label>
+            <input id="socialFacebook" class="form-control" type="url" placeholder="https://facebook.com/..." />
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">TikTok</label>
+            <input id="socialTiktok" class="form-control" type="url" placeholder="https://tiktok.com/@..." />
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">YouTube</label>
+            <input id="socialYoutube" class="form-control" type="url" placeholder="https://youtube.com/..." />
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">X / Twitter</label>
+            <input id="socialX" class="form-control" type="url" placeholder="https://x.com/..." />
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">WhatsApp / Canal</label>
+            <input id="socialWhatsapp" class="form-control" type="url" placeholder="https://wa.me/... o link del canal" />
+          </div>
+
+          <div class="col-12">
+            <button class="btn btn-primary" type="submit">
+              <i class="bi bi-save me-1"></i>Guardar redes
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section class="card shadow-sm mt-4">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+          <div>
+            <h2 class="h5 mb-1">Palmarés</h2>
+            <p class="text-muted mb-0">Estos logros se cargarán desde Firebase en el index.</p>
+          </div>
+        </div>
+
+        <form id="honorsSettingsForm" class="row g-3 mb-4">
+          <div class="col-md-8">
+            <label class="form-label">Título de la sección</label>
+            <input id="honorsTitle" class="form-control" type="text" placeholder="Palmarés" />
+          </div>
+          <div class="col-md-4 d-flex align-items-end">
+            <button class="btn btn-outline-primary w-100" type="submit">
+              Guardar título
+            </button>
+          </div>
+        </form>
+
+        <form id="honorForm" class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label class="form-label">Posición</label>
+            <input id="honorPosition" class="form-control" type="text" placeholder="Primer Lugar" />
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Torneo</label>
+            <input id="honorTournament" class="form-control" type="text" placeholder="Copa Invierno" />
+          </div>
+
+          <div class="col-md-2">
+            <label class="form-label">Año</label>
+            <input id="honorYear" class="form-control" type="number" min="1900" max="2100" placeholder="2025" />
+          </div>
+
+          <div class="col-md-2 d-flex align-items-end">
+            <button class="btn btn-primary w-100" type="submit">
+              <i class="bi bi-plus-lg me-1"></i>Agregar
+            </button>
+          </div>
+        </form>
+
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Posición</th>
+                <th>Torneo</th>
+                <th>Año</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="honorsTableBody">
+              <tr>
+                <td colspan="4" class="text-muted">Cargando…</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="card shadow-sm mt-4">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+          <div>
+            <h2 class="h5 mb-1">Uniformes</h2>
+            <p class="text-muted mb-0">Sección y productos del landing cargados desde Firebase.</p>
+          </div>
+        </div>
+
+        <form id="uniformSettingsForm" class="row g-3 mb-4">
+          <div class="col-md-4">
+            <label class="form-label">Título</label>
+            <input id="uniformsTitle" class="form-control" type="text" placeholder="Uniformes del Equipo" />
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Subtítulo</label>
+            <input id="uniformsSubtitle" class="form-control" type="text" placeholder="Compra tu indumentaria oficial del club" />
+          </div>
+
+          <div class="col-md-2">
+            <label class="form-label">Texto botón</label>
+            <input id="uniformsCtaLabel" class="form-control" type="text" placeholder="Comprar" />
+          </div>
+
+          <div class="col-md-2">
+            <label class="form-label">Order URL</label>
+            <input id="uniformsOrderUrl" class="form-control" type="url" placeholder="https://..." />
+          </div>
+
+          <div class="col-12">
+            <button class="btn btn-outline-primary" type="submit">
+              Guardar configuración
+            </button>
+          </div>
+        </form>
+
+        <form id="uniformForm" class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label class="form-label">Nombre</label>
+            <input id="uniformName" class="form-control" type="text" placeholder="Camisa Oficial" />
+          </div>
+
+          <div class="col-md-3">
+            <label class="form-label">Categoría</label>
+            <input id="uniformCategory" class="form-control" type="text" placeholder="camisa" />
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Imagen URL</label>
+            <input id="uniformImage" class="form-control" type="url" placeholder="/img/camisas/classic.PNG o https://..." />
+          </div>
+
+          <div class="col-md-1 d-flex align-items-end">
+            <button class="btn btn-primary w-100" type="submit">
+              <i class="bi bi-plus-lg"></i>
+            </button>
+          </div>
+        </form>
+
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Categoría</th>
+                <th>Imagen</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="uniformsTableBody">
+              <tr>
+                <td colspan="4" class="text-muted">Cargando…</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <div class="modal fade" id="approveUserModal" tabindex="-1" aria-hidden="true">

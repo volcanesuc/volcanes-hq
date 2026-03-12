@@ -33,6 +33,11 @@ export const APP_CONFIG = {
     membershipPaymentSubmissions: "membership_payment_submissions",
 
     communityPosts: "community_posts",
+
+    club_config: "club_config",
+    club_honors: "honors",
+    club_uniforms: "uniforms",
+
   },
   
   sport: "ultimate",
