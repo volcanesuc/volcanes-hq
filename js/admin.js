@@ -14,7 +14,6 @@ import {
   addDoc,
   updateDoc,
   setDoc,
-  deleteDoc,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
@@ -87,6 +86,9 @@ let approveModal = null;
 let allPlayers = [];
 let pendingUsers = [];
 let usersById = new Map();
+
+let honorsItems = [];
+let uniformsItems = [];
 
 function showAlert(msg, type = "danger") {
   if (!$.alertBox) return;
@@ -485,29 +487,6 @@ async function saveSocialLinks(ev) {
 }
 
 //HONORS / PALMARES
-
-async function loadHonorSettings() {
-  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "honors_settings")).catch(() => null);
-  const data = snap?.exists?.() ? (snap.data() || {}) : {};
-  $.honorsTitle.value = data.title || "Palmarés";
-}
-
-async function saveHonorSettings(ev) {
-  ev.preventDefault();
-
-  try {
-    await setDoc(doc(db, COL_CLUB_CONFIG, "honors_settings"), {
-      title: ($.honorsTitle.value || "").trim() || "Palmarés",
-      updatedAt: serverTimestamp(),
-    }, { merge: true });
-
-    showAlert("Título de palmarés guardado.", "success");
-  } catch (err) {
-    console.error(err);
-    showAlert("No se pudo guardar el título de palmarés.");
-  }
-}
-
 async function loadHonorsAdmin() {
   if ($.honorsTableBody) {
     $.honorsTableBody.innerHTML = `<tr><td colspan="4" class="text-muted">Cargando…</td></tr>`;
@@ -793,9 +772,7 @@ async function boot() {
     await loadPendingUsers();
     await loadPlayers();
     try { await loadSocialLinks(); } catch (e) { console.error("loadSocialLinks", e); }
-    try { await loadHonorSettings(); } catch (e) { console.error("loadHonorSettings", e); }
     try { await loadHonorsAdmin(); } catch (e) { console.error("loadHonorsAdmin", e); }
-    try { await loadUniformSettings(); } catch (e) { console.error("loadUniformSettings", e); }
     try { await loadUniformsAdmin(); } catch (e) { console.error("loadUniformsAdmin", e); }
 
 
