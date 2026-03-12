@@ -126,7 +126,6 @@ function renderHeader(plan) {
 
   const meta = [];
   if (plan.monthKey) meta.push(`Mes: ${plan.monthKey}`);
-  if (plan.clubId) meta.push(`Club: ${plan.clubId}`);
   if (plan.isPublic === true) meta.push("🌐 Público");
   if ($.planMeta) $.planMeta.textContent = meta.join(" · ");
 
