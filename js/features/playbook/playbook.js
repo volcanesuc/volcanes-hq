@@ -10,7 +10,7 @@ import { CLUB_DATA } from "../../strings.js";
 import { PLAYBOOK_STRINGS as S } from "../../strings/playbook_strings.js";
 
 import { loadPartialOnce } from "/js/ui/loadPartial.js";
-import { createTrainingEditor } from "./training_editor.js";
+import { createTrainingEditor } from "./training_plan_editor.js";
 
 import { initGymTab } from "./gym/gym.js";
 import { initGymEditors } from "./gym/gym_editors.js";
@@ -607,7 +607,7 @@ function renderTrainings() {
 ========================= */
 async function ensureTrainingEditor() {
   // asegurate de tener <div id="modalMount"></div> en el HTML
-  await loadPartialOnce("/partials/training_editor.html", "modalMount");
+  await loadPartialOnce("/partials/training_plan_editor.html", "modalMount");
   if (!trainingEditor) trainingEditor = createTrainingEditor();
   return trainingEditor;
 }

@@ -1,4 +1,4 @@
-// /js/features/playbook/training_editor.js
+// /js/features/playbook/training_plan_editor.js
 import { db } from "../../auth/firebase.js";
 import { showLoader, hideLoader } from "../../ui/loader.js";
 
@@ -33,7 +33,6 @@ export function createTrainingEditor() {
   const modalEl = $("trainingEditorModal");
   if (!modalEl) throw new Error("Falta #trainingEditorModal (partial no montado)");
 
-// bootstrap modal
   const modal = new bootstrap.Modal(modalEl);
 
   const titleEl = $("trainingEditorTitle");
@@ -44,7 +43,6 @@ export function createTrainingEditor() {
   const saveBtn = $("teSaveBtn");
 
   const teName = $("teName");
-  const teDate = $("teDate");
   const teNotes = $("teNotes");
   const teIsPublic = $("teIsPublic");
 
@@ -59,8 +57,8 @@ export function createTrainingEditor() {
   let _mode = "new"; // new | edit
   let _id = null;
 
-  let allDrills = [];           // {id, name, author, isPublic}
-  let selectedIds = [];         // ordered
+  let allDrills = [];
+  let selectedIds = [];
 
   function setError(msg) {
     if (!errEl) return;
@@ -75,16 +73,19 @@ export function createTrainingEditor() {
 
   async function loadAllDrills() {
     const snap = await getDocs(collection(db, DRILLS_COL));
+
     allDrills = snap.docs
       .map(d => ({ id: d.id, ...d.data() }))
       .map(d => ({
         id: d.id,
         name: (d.name || "").trim(),
-        author: (d.author || "").trim(),
+        author: (d.authorName || d.author || "").trim(),
+        objective: (d.objective || "").trim(),
         isPublic: d.isPublic === true,
+        isActive: d.isActive !== false,
         archived: d.archived === true
       }))
-      .filter(d => !d.archived && d.name)
+      .filter(d => !d.archived && d.isActive && d.name)
       .sort((a, b) => (a.name || "").localeCompare(b.name || "", "es"));
   }
 
@@ -94,24 +95,31 @@ export function createTrainingEditor() {
 
     if (q) {
       list = list.filter(d =>
-        `${d.name} ${d.author}`.toLowerCase().includes(q)
+        `${d.name} ${d.author} ${d.objective}`.toLowerCase().includes(q)
       );
     }
 
-    // no mostrar los ya seleccionados
     const selectedSet = new Set(selectedIds);
     list = list.filter(d => !selectedSet.has(d.id));
 
     if (teDrillResults) {
       teDrillResults.innerHTML = list.length
         ? list.map(d => `
-            <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-                    data-add-drill="${escapeHtml(d.id)}">
-              <div>
+            <button
+              type="button"
+              class="list-group-item list-group-item-action d-flex justify-content-between align-items-start gap-3"
+              data-add-drill="${escapeHtml(d.id)}"
+            >
+              <div class="text-start">
                 <div class="fw-semibold">${escapeHtml(d.name)}</div>
-                <div class="text-muted small">${escapeHtml(d.author || "—")}${d.isPublic ? " · Público" : ""}</div>
+                <div class="text-muted small">
+                  ${escapeHtml(d.objective || "Sin descripción")}
+                </div>
+                <div class="text-muted small">
+                  ${escapeHtml(d.author || "—")}${d.isPublic ? " · Público" : ""}
+                </div>
               </div>
-              <span class="btn btn-sm btn-outline-primary">Agregar</span>
+              <span class="btn btn-sm btn-outline-primary flex-shrink-0">Agregar</span>
             </button>
           `).join("")
         : "";
@@ -142,13 +150,39 @@ export function createTrainingEditor() {
           <div class="list-group-item d-flex justify-content-between align-items-center gap-2">
             <div class="flex-grow-1">
               <div class="fw-semibold">${escapeHtml(d.name)}</div>
+              <div class="text-muted small">${escapeHtml(d.objective || "Sin descripción")}</div>
               <div class="text-muted small">${escapeHtml(d.author || "—")}${d.isPublic ? " · Público" : ""}</div>
             </div>
 
-            <div class="d-flex gap-1">
-              <button type="button" class="btn btn-sm btn-outline-secondary" title="Subir" data-up="${escapeHtml(d.id)}" ${idx === 0 ? "disabled" : ""}>↑</button>
-              <button type="button" class="btn btn-sm btn-outline-secondary" title="Bajar" data-down="${escapeHtml(d.id)}" ${idx === list.length - 1 ? "disabled" : ""}>↓</button>
-              <button type="button" class="btn btn-sm btn-outline-danger" title="Quitar" data-remove="${escapeHtml(d.id)}">✕</button>
+            <div class="d-flex gap-1 flex-shrink-0">
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary"
+                title="Subir"
+                data-up="${escapeHtml(d.id)}"
+                ${idx === 0 ? "disabled" : ""}
+              >
+                ↑
+              </button>
+
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary"
+                title="Bajar"
+                data-down="${escapeHtml(d.id)}"
+                ${idx === list.length - 1 ? "disabled" : ""}
+              >
+                ↓
+              </button>
+
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-danger"
+                title="Quitar"
+                data-remove="${escapeHtml(d.id)}"
+              >
+                ✕
+              </button>
             </div>
           </div>
         `).join("")
@@ -194,13 +228,13 @@ export function createTrainingEditor() {
     _id = null;
     setError("");
 
-    if (titleEl) titleEl.textContent = "Crear entrenamiento";
-    if (hintEl) hintEl.textContent = "Elegí los drills y guardá.";
+    if (titleEl) titleEl.textContent = "Crear template de entrenamiento";
+    if (hintEl) hintEl.textContent = "Elegí los drills y guardá el template.";
 
     formEl?.reset?.();
 
     selectedIds = [];
-    teIsPublic && (teIsPublic.checked = true);
+    if (teIsPublic) teIsPublic.checked = true;
 
     showLoader();
     try {
@@ -218,8 +252,8 @@ export function createTrainingEditor() {
     _id = id;
     setError("");
 
-    if (titleEl) titleEl.textContent = "Editar entrenamiento";
-    if (hintEl) hintEl.textContent = `ID: ${id}`;
+    if (titleEl) titleEl.textContent = "Editar template de entrenamiento";
+    if (hintEl) hintEl.textContent = "Modificá nombre, visibilidad y drills.";
 
     showLoader();
     try {
@@ -229,12 +263,23 @@ export function createTrainingEditor() {
       if (!snap.exists()) throw new Error("No se encontró el entrenamiento.");
 
       const t = snap.data() || {};
-      teName.value = t.name || "";
-      teDate.value = t.date || "";
-      teNotes.value = t.notes || "";
+
+      if (teName) teName.value = t.name || "";
+      if (teNotes) teNotes.value = t.notes || "";
       if (teIsPublic) teIsPublic.checked = t.isPublic === true;
 
-      selectedIds = Array.isArray(t.drillIds) ? [...t.drillIds] : [];
+      if (Array.isArray(t.drillRefs) && t.drillRefs.length) {
+        selectedIds = t.drillRefs
+          .slice()
+          .sort((a, b) => Number(a?.order ?? 0) - Number(b?.order ?? 0))
+          .map(x => String(x?.drillId || "").trim())
+          .filter(Boolean);
+      } else if (Array.isArray(t.drillIds)) {
+        selectedIds = [...t.drillIds];
+      } else {
+        selectedIds = [];
+      }
+
       renderSelected();
       renderResults();
 
@@ -251,19 +296,22 @@ export function createTrainingEditor() {
     setError("");
 
     const name = (teName?.value || "").trim();
-    const date = (teDate?.value || "").trim();
     const notes = (teNotes?.value || "").trim();
     const isPublic = teIsPublic?.checked === true;
 
     if (!name) return setError("Nombre requerido.");
-    if (!date) return setError("Fecha requerida.");
+
+    const drillRefs = selectedIds.map((drillId, idx) => ({
+      drillId,
+      order: idx + 1
+    }));
 
     const payload = {
       name,
-      date,
       notes: notes || "",
       isPublic,
-      drillIds: selectedIds,
+      drillIds: [...selectedIds],
+      drillRefs,
       updatedAt: serverTimestamp()
     };
 
@@ -278,7 +326,6 @@ export function createTrainingEditor() {
 
       await setDoc(doc(db, TRAININGS_COL, id), payload, { merge: true });
 
-      // evento para que playbook recargue lista
       window.dispatchEvent(new CustomEvent("playbookTraining:changed", {
         detail: { id }
       }));

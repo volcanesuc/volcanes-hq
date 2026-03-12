@@ -399,6 +399,38 @@ mark.search-hit {
   border-radius: .25rem;
 }
 
+/* =========================================
+   TRAINING / SESSION FULLSCREEN MODALS
+========================================= */
+
+.training-session-modal {
+  border: 0;
+  border-radius: 0;
+}
+
+.training-session-modal__header {
+  background: linear-gradient(90deg, #0d4b41 0%, #0b3d36 100%);
+  color: #fff;
+  border-bottom: 0;
+  padding: 1rem 1.25rem;
+}
+
+.training-session-modal__body {
+  background: #f7f8fa;
+  padding: 1.25rem;
+  overflow-y: auto;
+}
+
+.training-session-modal__footer {
+  border-top: 1px solid #e8ebef;
+  background: #fff;
+}
+
+.training-form-card {
+  border: 1px solid #e8ebef;
+  border-radius: 16px;
+}
+
 /* ======================================================
    TOURNAMENTS PAGE
 ====================================================== */

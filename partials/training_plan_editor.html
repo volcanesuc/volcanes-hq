@@ -1,0 +1,129 @@
+<!-- /partials/training_plan_editor.html -->
+<div class="modal fade" id="trainingEditorModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-fullscreen">
+    <div class="modal-content training-session-modal">
+
+      <form id="trainingEditorForm" class="h-100 d-flex flex-column">
+        <div class="modal-header training-session-modal__header">
+          <div>
+            <h5 class="modal-title mb-0" id="trainingEditorTitle">Template de entrenamiento</h5>
+            <div class="small text-white-50" id="trainingEditorHint">—</div>
+          </div>
+          <button
+            type="button"
+            class="btn-close btn-close-white"
+            data-bs-dismiss="modal"
+            aria-label="Cerrar"
+          ></button>
+        </div>
+
+        <div class="modal-body training-session-modal__body">
+          <div class="alert alert-danger d-none" id="trainingEditorError"></div>
+
+          <div class="row g-3">
+
+            <!-- Columna izquierda -->
+            <div class="col-12 col-xl-4">
+              <div class="card training-form-card h-100">
+                <div class="card-body">
+                  <div class="mb-3">
+                    <label class="form-label" for="teName">Nombre *</label>
+                    <input
+                      class="form-control"
+                      id="teName"
+                      required
+                      maxlength="120"
+                      placeholder="Ej. Ofensiva de zona / Reset handler / Warmup rápido"
+                    />
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label" for="teNotes">Notas</label>
+                    <textarea
+                      class="form-control"
+                      id="teNotes"
+                      rows="5"
+                      placeholder="Notas generales del template"
+                    ></textarea>
+                  </div>
+
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" role="switch" id="teIsPublic">
+                    <label class="form-check-label" for="teIsPublic">
+                      Público (link compartible)
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Columna derecha -->
+            <div class="col-12 col-xl-8">
+
+              <div class="card training-form-card mb-3">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="fw-semibold">Drills del entrenamiento</div>
+                    <div class="text-muted small">
+                      <span id="teSelectedCount">0</span> seleccionado(s)
+                    </div>
+                  </div>
+
+                  <div
+                    class="list-group"
+                    id="teSelectedDrills"
+                    style="max-height: 38vh; overflow:auto;"
+                  ></div>
+
+                  <div class="text-muted small mt-2 d-none" id="teSelectedEmpty">
+                    Aún no agregaste drills.
+                  </div>
+
+                  <div class="small text-muted mt-2">
+                    Tip: usá ↑/↓ para ordenar. El orden se respeta al compartir el link.
+                  </div>
+                </div>
+              </div>
+
+              <div class="card training-form-card">
+                <div class="card-body">
+                  <div class="fw-semibold mb-2">Agregar drills</div>
+
+                  <div class="input-group mb-2">
+                    <span class="input-group-text">🔎</span>
+                    <input
+                      class="form-control"
+                      id="teDrillSearch"
+                      placeholder="Buscar drills por nombre, descripción o autor…"
+                    />
+                  </div>
+
+                  <div
+                    class="list-group"
+                    id="teDrillResults"
+                    style="max-height: 36vh; overflow:auto;"
+                  ></div>
+
+                  <div class="text-muted small mt-2 d-none" id="teDrillResultsEmpty">
+                    No hay resultados.
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer training-session-modal__footer">
+          <button class="btn btn-outline-secondary" data-bs-dismiss="modal" type="button">
+            Cancelar
+          </button>
+          <button class="btn btn-primary" id="teSaveBtn" type="button">
+            Guardar
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
