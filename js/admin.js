@@ -54,6 +54,7 @@ const $ = {
 let approveModal = null;
 let allPlayers = [];
 let pendingUsers = [];
+let usersById = new Map();
 
 function showAlert(msg, type = "danger") {
   if (!$.alertBox) return;
@@ -84,8 +85,8 @@ function fillStaticOptions() {
     .join("");
 
   $.playerRoleFilter.innerHTML =
-    `<option value="">Todos los perfiles</option>` +
-    APP_CONFIG.playerRoles
+    `<option value="">Todos los roles</option>` +
+    APP_CONFIG.userRoles
       .filter((r) => r.id)
       .map((r) => `<option value="${esc(r.id)}">${esc(r.label)}</option>`)
       .join("");
@@ -137,8 +138,31 @@ async function loadPendingUsers() {
 async function loadPlayers() {
   $.playersTable.innerHTML = `<tr><td colspan="5" class="text-muted">Cargando…</td></tr>`;
 
-  const snap = await getDocs(collection(db, COL_PLAYERS));
-  allPlayers = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const [playersSnap, usersSnap] = await Promise.all([
+    getDocs(collection(db, COL_PLAYERS)),
+    getDocs(collection(db, COL_USERS)),
+  ]);
+
+  usersById = new Map(
+    usersSnap.docs.map((d) => [d.id, d.data() || {}])
+  );
+
+  allPlayers = playersSnap.docs
+    .map((d) => {
+      const data = d.data() || {};
+      const user = data.uid ? usersById.get(data.uid) : null;
+
+      return {
+        id: d.id,
+        ...data,
+        systemRole: user?.role || "—",
+      };
+    })
+    .sort((a, b) => {
+      const nameA = `${a.firstName || ""} ${a.lastName || ""}`.trim().toLowerCase();
+      const nameB = `${b.firstName || ""} ${b.lastName || ""}`.trim().toLowerCase();
+      return nameA.localeCompare(nameB, "es", { sensitivity: "base" });
+    });
 
   renderPlayersTable();
 }
@@ -150,9 +174,9 @@ function renderPlayersTable() {
   const filtered = allPlayers.filter((p) => {
     const fullName = `${p.firstName || ""} ${p.lastName || ""}`.trim().toLowerCase();
     const email = String(p.email || "").toLowerCase();
-    const fieldRole = String(p.fieldRole || "");
+    const systemRole = String(p.systemRole || "");
     const textOk = !term || fullName.includes(term) || email.includes(term);
-    const roleOk = !roleFilter || fieldRole === roleFilter;
+    const roleOk = !roleFilter || systemRole === roleFilter;
     return textOk && roleOk;
   });
 
@@ -166,7 +190,7 @@ function renderPlayersTable() {
       <tr>
         <td>${esc(`${p.firstName || ""} ${p.lastName || ""}`.trim() || "—")}</td>
         <td>${esc(p.email || "—")}</td>
-        <td>${esc(p.fieldRole || "—")}</td>
+        <td>${esc(p.systemRole || "—")}</td>
         <td>${esc(p.associateId || "—")}</td>
         <td>${esc(p.uid || "—")}</td>
       </tr>
