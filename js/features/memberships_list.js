@@ -1,4 +1,4 @@
-// js/features/memberships_list.js
+// /js/features/memberships_list.js
 import { db } from "../auth/firebase.js";
 import { watchAuth, logout } from "../auth/auth.js";
 import { showLoader, hideLoader } from "../ui/loader.js";
@@ -18,7 +18,7 @@ const COL_PLANS = "subscription_plans";
 ========================= */
 let allMemberships = [];
 let allPlans = [];
-let viewMemberships = []; // 👈 lo que renderizamos (dedup)
+let viewMemberships = [];
 
 let $ = {};
 let _msgListenerBound = false;
@@ -63,16 +63,17 @@ function statusBadgeHtml(st) {
   if (s === "validated") return badge(STR.status.validated, "green");
   if (s === "paid") return badge(STR.status.paid, "yellow");
   if (s === "partial") return badge(STR.status.partial, "yellow");
+  if (s === "submitted") return badge("En revisión", "yellow");
   if (s === "rejected") return badge(STR.status.rejected, "red");
   return badge(STR.status.pending, "gray");
 }
 
 function statusRank(st) {
-  // más alto = mejor
   const s = (st || "pending").toLowerCase();
-  if (s === "validated") return 5;
-  if (s === "paid") return 4;
-  if (s === "partial") return 3;
+  if (s === "validated") return 6;
+  if (s === "paid") return 5;
+  if (s === "partial") return 4;
+  if (s === "submitted") return 3;
   if (s === "pending") return 2;
   if (s === "rejected") return 1;
   return 0;
@@ -92,32 +93,50 @@ async function copyToClipboard(text) {
   }
 }
 
+function getOwnerSnapshot(m) {
+  return m.userSnapshot || m.associateSnapshot || {};
+}
+
+function getOwnerId(m) {
+  return m.userId || m.associateId || null;
+}
+
+function getOwnerName(m) {
+  const a = getOwnerSnapshot(m);
+  return a.fullName || a.displayName || STR.common.dash;
+}
+
+function getOwnerEmail(m) {
+  const a = getOwnerSnapshot(m);
+  return a.email || null;
+}
+
+function getOwnerPhone(m) {
+  const a = getOwnerSnapshot(m);
+  return a.phone || null;
+}
+
 /**
  * Clave de deduplicación:
- * - preferimos associateId (si existe en el doc membership)
- * - si no, fallback a email / phone del associateSnapshot
+ * - preferimos userId
+ * - fallback a associateId legacy
+ * - si no, email / phone del snapshot
  */
 function membershipKey(m) {
   const season = String(m.season || "—");
-  const aid = m.associateId || null;
-  if (aid) return `aid:${aid}::season:${season}`;
+  const ownerId = getOwnerId(m);
+  if (ownerId) return `owner:${ownerId}::season:${season}`;
 
-  const a = m.associateSnapshot || {};
+  const a = getOwnerSnapshot(m);
   const email = norm(a.email);
   const phone = digitsOnly(a.phone);
 
   if (email) return `email:${email}::season:${season}`;
   if (phone) return `phone:${phone}::season:${season}`;
 
-  // peor caso: cae a id (no dedup)
   return `mid:${m.id}::season:${season}`;
 }
 
-/**
- * Escoger la mejor membership de un grupo:
- * 1) statusRank mayor
- * 2) updatedAt/createdAt más reciente
- */
 function pickBestMembership(group) {
   const sorted = [...group].sort((a, b) => {
     const ra = statusRank(a.status);
@@ -131,9 +150,6 @@ function pickBestMembership(group) {
   return sorted[0] || null;
 }
 
-/**
- * Construye viewMemberships (dedup) y deja metadata de duplicados
- */
 function buildViewMemberships() {
   const map = new Map();
 
@@ -157,7 +173,6 @@ function buildViewMemberships() {
     });
   }
 
-  // orden general: más reciente primero (por createdAt/updatedAt)
   out.sort((a, b) => {
     const ta = Math.max(tsMillis(a.updatedAt), tsMillis(a.createdAt));
     const tb = Math.max(tsMillis(b.updatedAt), tsMillis(b.createdAt));
@@ -207,7 +222,7 @@ function cacheDom(container) {
 }
 
 /* =========================
-   Shell (igual que el tuyo)
+   Shell
 ========================= */
 function renderShell(container) {
   container.innerHTML = `
@@ -245,6 +260,7 @@ function renderShell(container) {
           <select id="statusFilter" class="form-select">
             <option value="all">${STR.filters.allStatus}</option>
             <option value="pending">${STR.status.pending}</option>
+            <option value="submitted">En revisión</option>
             <option value="partial">${STR.status.partial}</option>
             <option value="paid">${STR.status.paid}</option>
             <option value="validated">${STR.status.validated}</option>
@@ -313,7 +329,6 @@ function renderShell(container) {
 }
 
 function renderShellWithoutHeader(container) {
-  // igual que tu versión (la dejo igual)
   container.innerHTML = `
     <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-2">
       <div id="countLabel" class="text-muted small">${STR.count(0)}</div>
@@ -345,6 +360,7 @@ function renderShellWithoutHeader(container) {
         <select id="statusFilter" class="form-select">
           <option value="all">${STR.filters.allStatus}</option>
           <option value="pending">${STR.status.pending}</option>
+          <option value="submitted">En revisión</option>
           <option value="partial">${STR.status.partial}</option>
           <option value="paid">${STR.status.paid}</option>
           <option value="validated">${STR.status.validated}</option>
@@ -449,10 +465,12 @@ export async function mount(container, cfg) {
       window.open(`pages/admin/membership_detail.html?mid=${encodeURIComponent(mid)}`, "_blank", "noopener");
       return;
     }
+
     if (action === "copyPayLink") {
       await copyToClipboard(payUrl(mid, code));
       return;
     }
+
     if (action === "openPayLink") {
       window.open(payUrl(mid, code), "_blank", "noopener,noreferrer");
     }
@@ -471,17 +489,16 @@ async function refreshAll() {
   showLoader?.(STR.loader.loadingMemberships);
   try {
     await Promise.all([loadPlans(), loadMemberships()]);
-
-    // 👇 clave del fix visual
     buildViewMemberships();
-
     fillSeasonFilter();
     fillPlanFilter();
     renderKpis();
     render();
   } catch (e) {
     console.error(e);
-    if ($.tbody) $.tbody.innerHTML = `<tr><td colspan="6" class="text-danger">${STR.errors.loadData}</td></tr>`;
+    if ($.tbody) {
+      $.tbody.innerHTML = `<tr><td colspan="6" class="text-danger">${STR.errors.loadData}</td></tr>`;
+    }
   } finally {
     hideLoader?.();
   }
@@ -502,8 +519,8 @@ async function loadMemberships() {
 
 function fillPlanFilter() {
   if (!$.planFilter) return;
-  const curr = $.planFilter.value || "all";
 
+  const curr = $.planFilter.value || "all";
   const opts = [`<option value="all">${STR.filters.allPlans}</option>`].concat(
     allPlans.map((p) => `<option value="${p.id}">${p.name || STR.common.dash}</option>`)
   );
@@ -517,9 +534,9 @@ function fillSeasonFilter() {
   if (!$.seasonFilter) return;
 
   const curr = $.seasonFilter.value || "all";
-  const seasons = Array.from(new Set(viewMemberships.map((m) => m.season).filter(Boolean))).sort((a, b) =>
-    String(b).localeCompare(String(a), "es")
-  );
+  const seasons = Array.from(
+    new Set(viewMemberships.map((m) => m.season).filter(Boolean))
+  ).sort((a, b) => String(b).localeCompare(String(a), "es"));
 
   const opts = [`<option value="all">${STR.filters.allSeasons}</option>`].concat(
     seasons.map((s) => `<option value="${s}">${s}</option>`)
@@ -544,14 +561,22 @@ function render() {
 
   let list = [...viewMemberships];
 
-  if (seasonVal !== "all") list = list.filter((m) => (m.season || "all") === seasonVal);
-  if (planVal !== "all") list = list.filter((m) => (m.planId || m.planSnapshot?.id) === planVal);
-  if (statusVal !== "all") list = list.filter((m) => (m.status || "pending").toLowerCase() === statusVal);
+  if (seasonVal !== "all") {
+    list = list.filter((m) => (m.season || "all") === seasonVal);
+  }
+
+  if (planVal !== "all") {
+    list = list.filter((m) => (m.planId || m.planSnapshot?.id) === planVal);
+  }
+
+  if (statusVal !== "all") {
+    list = list.filter((m) => (m.status || "pending").toLowerCase() === statusVal);
+  }
 
   if (actionVal === "needs_action") {
     list = list.filter((m) => {
       const st = (m.status || "pending").toLowerCase();
-      return st === "pending" || st === "partial";
+      return st === "pending" || st === "submitted" || st === "partial";
     });
   } else if (actionVal === "ok") {
     list = list.filter((m) => {
@@ -562,9 +587,19 @@ function render() {
 
   if (qText) {
     list = list.filter((m) => {
-      const a = m.associateSnapshot || {};
+      const owner = getOwnerSnapshot(m);
       const p = m.planSnapshot || {};
-      const blob = [m.id, m.season, a.fullName, a.email, a.phone, p.name].map(norm).join(" ");
+      const blob = [
+        m.id,
+        m.season,
+        owner.fullName,
+        owner.email,
+        owner.phone,
+        p.name,
+        m.userId,
+        m.associateId,
+      ].map(norm).join(" ");
+
       return blob.includes(qText);
     });
   }
@@ -576,60 +611,61 @@ function render() {
     return;
   }
 
-  $.tbody.innerHTML = list
-    .map((m) => {
-      const a = m.associateSnapshot || {};
-      const p = m.planSnapshot || {};
-      const cur = m.currency || p.currency || "CRC";
+  $.tbody.innerHTML = list.map((m) => {
+    const owner = getOwnerSnapshot(m);
+    const p = m.planSnapshot || {};
+    const cur = m.currency || p.currency || "CRC";
 
-      const dupBadge = m._hasDup ? badge(`Duplicado x${m._dupCount}`, "orange") : "";
+    const dupBadge = m._hasDup ? badge(`Duplicado x${m._dupCount}`, "orange") : "";
 
-      const associateCell = `
-        <div class="fw-bold tight">${a.fullName || STR.common.dash}</div>
-        <div class="small text-muted tight">
-          ${[a.email || null, a.phone || null].filter(Boolean).join(" • ") || STR.common.dash}
-        </div>
-        <div class="small text-muted mono tight">${STR.table.idPrefix} ${m.id}</div>
-        ${dupBadge ? `<div class="mt-1">${dupBadge}</div>` : ""}
-      `;
+    const associateCell = `
+      <div class="fw-bold tight">${getOwnerName(m)}</div>
+      <div class="small text-muted tight">
+        ${[getOwnerEmail(m), getOwnerPhone(m)].filter(Boolean).join(" • ") || STR.common.dash}
+      </div>
+      <div class="small text-muted mono tight">${STR.table.idPrefix} ${m.id}</div>
+      ${m.userId ? `<div class="small text-muted mono tight">UID: ${m.userId}</div>` : ""}
+      ${dupBadge ? `<div class="mt-1">${dupBadge}</div>` : ""}
+    `;
 
-      const planCell = `
-        <div class="fw-bold tight">${p.name || STR.common.dash}</div>
-        <div class="small text-muted tight">
-          ${(p.allowPartial ? STR.plan.installments : STR.plan.singlePay)} • ${
-            p.requiresValidation ? STR.plan.validation : STR.plan.noValidation
-          }
-        </div>
-      `;
+    const planCell = `
+      <div class="fw-bold tight">${p.name || STR.common.dash}</div>
+      <div class="small text-muted tight">
+        ${(p.allowPartial ? STR.plan.installments : STR.plan.singlePay)} • ${
+          p.requiresValidation ? STR.plan.validation : STR.plan.noValidation
+        }
+      </div>
+    `;
 
-      const amountTxt = p.allowCustomAmount ? STR.amount.editable : fmtMoney(m.totalAmount ?? p.totalAmount, cur);
+    const amountTxt = p.allowCustomAmount
+      ? STR.amount.editable
+      : fmtMoney(m.totalAmount ?? p.totalAmount, cur);
 
-      const actions = `
-        <div class="btn-group btn-group-sm" role="group">
-          <button class="btn btn-outline-primary" data-action="detail" data-mid="${m.id}">
-            <i class="bi bi-eye me-1"></i> ${STR.actions.detail}
-          </button>
-          <button class="btn btn-outline-dark" data-action="copyPayLink" data-mid="${m.id}" data-code="${m.payCode || ""}">
-            <i class="bi bi-clipboard me-1"></i> ${STR.actions.link}
-          </button>
-          <button class="btn btn-outline-secondary" data-action="openPayLink" data-mid="${m.id}" data-code="${m.payCode || ""}">
-            <i class="bi bi-box-arrow-up-right"></i>
-          </button>
-        </div>
-      `;
+    const actions = `
+      <div class="btn-group btn-group-sm" role="group">
+        <button class="btn btn-outline-primary" data-action="detail" data-mid="${m.id}">
+          <i class="bi bi-eye me-1"></i> ${STR.actions.detail}
+        </button>
+        <button class="btn btn-outline-dark" data-action="copyPayLink" data-mid="${m.id}" data-code="${m.payCode || ""}">
+          <i class="bi bi-clipboard me-1"></i> ${STR.actions.link}
+        </button>
+        <button class="btn btn-outline-secondary" data-action="openPayLink" data-mid="${m.id}" data-code="${m.payCode || ""}">
+          <i class="bi bi-box-arrow-up-right"></i>
+        </button>
+      </div>
+    `;
 
-      return `
-        <tr>
-          <td>${associateCell}</td>
-          <td>${planCell}</td>
-          <td><span class="mono">${m.season || STR.common.dash}</span></td>
-          <td style="white-space:nowrap;">${amountTxt}</td>
-          <td>${statusBadgeHtml(m.status)}</td>
-          <td class="text-end">${actions}</td>
-        </tr>
-      `;
-    })
-    .join("");
+    return `
+      <tr>
+        <td>${associateCell}</td>
+        <td>${planCell}</td>
+        <td><span class="mono">${m.season || STR.common.dash}</span></td>
+        <td style="white-space:nowrap;">${amountTxt}</td>
+        <td>${statusBadgeHtml(m.status)}</td>
+        <td class="text-end">${actions}</td>
+      </tr>
+    `;
+  }).join("");
 }
 
 /* =========================

@@ -5,7 +5,7 @@ import { initModalHost } from "./ui/modal_host.js";
 import { showLoader, hideLoader } from "./ui/loader.js";
 
 
-const TABS = ["associates", "memberships", "payments", "plans"];
+const TABS = ["associates", "memberships", "payments", "plans", "fiscalizacion"];
 
 function getTabFromUrl() {
   const params = new URLSearchParams(window.location.search);
@@ -75,6 +75,12 @@ async function mountTab(tab, cfg) {
         await mod.mount(mount, cfg);
         return;
     }
+    if (tab === "fiscalizacion") {
+        const mod = await import("./features/fiscalizacion.js?v=1");
+        if (!mod.mount) throw new Error("fiscalizacion.js no exporta mount()");
+        await mod.mount(mount, cfg);
+        return;
+      }
   } catch (err) {
     console.error(err);
     mount.innerHTML = `

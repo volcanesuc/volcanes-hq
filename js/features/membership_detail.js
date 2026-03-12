@@ -1,4 +1,4 @@
-// js/features/membership_detail.js
+// /js/features/membership_detail.js
 import { db } from "../auth/firebase.js";
 import { watchAuth, logout } from "../auth/auth.js";
 import { loadHeader } from "../components/header.js";
@@ -22,6 +22,7 @@ document.getElementById("logoutBtn")?.addEventListener("click", logout);
 /* =========================
    Collections
 ========================= */
+const COL_USERS = "users";
 const COL_MEMBERSHIPS = "memberships";
 const COL_INSTALLMENTS = "membership_installments";
 const COL_SUBMISSIONS = "membership_payment_submissions";
@@ -82,6 +83,7 @@ function showAlert(msg, type = "warning") {
   alertBox.textContent = msg;
   alertBox.classList.remove("d-none");
 }
+
 function hideAlert() {
   alertBox?.classList.add("d-none");
 }
@@ -147,11 +149,38 @@ function isSettledInstallmentStatus(st) {
   return s === "validated" || s === "paid";
 }
 
+function getMemberSnapshot(m) {
+  return m?.userSnapshot || {};
+}
+
+function getMemberUid(m) {
+  return m?.userId || m?.userSnapshot?.uid || null;
+}
+
+async function syncUserMembershipStatus() {
+  const uid = getMemberUid(membership);
+  if (!uid) return;
+
+  try {
+    await updateDoc(doc(db, COL_USERS, uid), {
+      currentMembership: {
+        membershipId: membership.id,
+        season: membership.season || null,
+        planId: membership.planId || membership.planSnapshot?.id || null,
+        label: `${membership.planSnapshot?.name || "Membresía"} ${membership.season || ""}`.trim(),
+        status: membership.status || "pending",
+      },
+      updatedAt: serverTimestamp(),
+    });
+  } catch (e) {
+    console.warn("No se pudo sincronizar currentMembership en users", e?.code || e);
+  }
+}
+
 /**
  * IDs de cuotas desde submission:
- * - prioridad: selectedInstallmentIds (multi)
- * - fallback: installmentId (single legacy)
- * Devuelve ids únicos.
+ * prioridad: selectedInstallmentIds
+ * fallback: installmentId por si aún quedó algún doc viejo
  */
 function getSubmissionInstallmentIds(sub) {
   const out = [];
@@ -160,31 +189,24 @@ function getSubmissionInstallmentIds(sub) {
   if (Array.isArray(arr)) {
     for (const x of arr) if (x) out.push(String(x));
   }
+
   if (sub?.installmentId) out.push(String(sub.installmentId));
 
   return [...new Set(out.filter(Boolean))];
 }
 
-/**
- * ✅ Si hay cuotas y queda al menos 1 cuota pendiente => habilitar link
- * Si no hay cuotas => normalmente pago único => false
- */
 function shouldEnablePayLinkAfterDecision() {
   if (!installments.length) return false;
   return installments.some((it) => !isSettledInstallmentStatus(it.status));
 }
 
 /* =========================
-   Status reconcile (IMPORTANT)
-   - Si HAY cuotas: status se decide por cuotas (no por submissions)
-   - submitted: si hay al menos 1 submission pending => submitted
-   - partial: si hay algo pagado/validado pero no todo settle/validado
+   Status reconcile
 ========================= */
 function computeMembershipStatus() {
   const p = membership?.planSnapshot || {};
   const requiresValidation = !!p.requiresValidation;
 
-  // si hay algún submission pendiente, lo marcamos como "submitted"
   const hasPendingSubmission = submissions.some((s) => norm(s.status || "pending") === "pending");
 
   if (installments.length) {
@@ -195,20 +217,16 @@ function computeMembershipStatus() {
     const allSettled = sts.every((s) => s === "paid" || s === "validated");
 
     if (!anySettled) {
-      // si todavía no hay ninguna cuota settled, pero hay submission pendiente => "submitted"
       return hasPendingSubmission ? "submitted" : "pending";
     }
 
     if (requiresValidation) {
-      // con validación: solo "validated" si TODAS las cuotas están validated
       return allValidated ? "validated" : (hasPendingSubmission ? "submitted" : "partial");
     }
 
-    // sin validación: "paid" si TODAS están paid/validated
     return allSettled ? "paid" : (hasPendingSubmission ? "submitted" : "partial");
   }
 
-  // sin cuotas: por submissions
   const subStatuses = submissions.map((s) => norm(s.status || "pending"));
   if (!subStatuses.length) return "pending";
   if (hasPendingSubmission) return "submitted";
@@ -226,7 +244,9 @@ async function reconcileMembershipStatus() {
     status: next,
     updatedAt: serverTimestamp()
   });
+
   membership.status = next;
+  await syncUserMembershipStatus();
 }
 
 /* =========================
@@ -264,7 +284,7 @@ async function loadSubmissions() {
 function render() {
   if (!membership) return;
 
-  const a = membership.associateSnapshot || {};
+  const a = getMemberSnapshot(membership);
   const p = membership.planSnapshot || {};
   const cur = getCurrency();
 
@@ -272,6 +292,7 @@ function render() {
   assocContact.textContent = [a.email || null, a.phone || null].filter(Boolean).join(" • ") || "—";
 
   planName.textContent = p.name || "—";
+
   const totalTxt = p.allowCustomAmount
     ? "Monto editable"
     : fmtMoney(membership.totalAmount ?? p.totalAmount, cur);
@@ -282,7 +303,6 @@ function render() {
   seasonText.textContent = membership.season || "—";
   statusBadge.innerHTML = statusBadgeHtml(membership.status);
 
-  // Pay link UI
   const url = payUrl(mid, membership.payCode || "");
   btnOpenPayLink.href = url;
 
@@ -296,8 +316,8 @@ function render() {
   };
 
   const enabled = membership.payLinkEnabled !== false;
-  btnDisablePayLink && (btnDisablePayLink.style.display = enabled ? "inline-block" : "none");
-  btnEnablePayLink && (btnEnablePayLink.style.display = enabled ? "none" : "inline-block");
+  if (btnDisablePayLink) btnDisablePayLink.style.display = enabled ? "inline-block" : "none";
+  if (btnEnablePayLink) btnEnablePayLink.style.display = enabled ? "none" : "inline-block";
 
   renderInstallments();
   renderSubmissions();
@@ -342,6 +362,7 @@ function renderSubmissions() {
 
     const ids = getSubmissionInstallmentIds(s);
     let itLabel = "General";
+
     if (ids.length === 1) {
       const it = getInstallmentById(ids[0]);
       itLabel = it ? `Cuota #${it.n}` : "Cuota (1)";
@@ -436,7 +457,7 @@ btnConfirmReject?.addEventListener("click", async () => {
 });
 
 /* =========================
-   Set submission status (single o multi)
+   Set submission status
 ========================= */
 async function setSubmissionStatus(sub, newStatus, adminNote = null) {
   const label =
@@ -447,7 +468,6 @@ async function setSubmissionStatus(sub, newStatus, adminNote = null) {
   showLoader?.(label);
 
   try {
-    // 1) Update submission
     await updateDoc(doc(db, COL_SUBMISSIONS, sub.id), {
       status: newStatus,
       adminNote: adminNote ?? null,
@@ -455,7 +475,6 @@ async function setSubmissionStatus(sub, newStatus, adminNote = null) {
       updatedAt: serverTimestamp()
     });
 
-    // 2) Update installments (single o multi)
     const ids = getSubmissionInstallmentIds(sub);
 
     if (ids.length) {
@@ -476,24 +495,13 @@ async function setSubmissionStatus(sub, newStatus, adminNote = null) {
       }
     }
 
-    // 3) Reload (para decidir si quedan cuotas)
     await loadInstallments();
     await loadSubmissions();
-    console.log("MID", mid);
-    console.table(installments.map(i => ({
-      id: i.id,
-      n: i.n,
-      dueDate: i.dueDate,
-      membershipId: i.membershipId,
-      status: i.status
-    })));
-    await recomputeMembershipRollup(mid);
-    await loadMembership(); // refrescar membership con los rollups guardados
 
-    // ✅ status consistente con cuotas
+    await recomputeMembershipRollup(mid);
+    await loadMembership();
     await reconcileMembershipStatus();
 
-    // 4) Membership metadata + pay link rules
     if (newStatus === "validated" || newStatus === "paid") {
       const enableAgain = shouldEnablePayLinkAfterDecision();
       const reason = enableAgain
@@ -504,30 +512,28 @@ async function setSubmissionStatus(sub, newStatus, adminNote = null) {
         lastPaymentSubmissionId: sub.id,
         lastPaymentAt: serverTimestamp(),
         ...(newStatus === "validated" ? { validatedAt: serverTimestamp() } : {}),
-
         payLinkEnabled: enableAgain,
         payLinkDisabledReason: reason,
-
         updatedAt: serverTimestamp()
       });
 
       membership.payLinkEnabled = enableAgain;
       membership.payLinkDisabledReason = reason;
-
     } else if (newStatus === "rejected") {
       await updateDoc(doc(db, COL_MEMBERSHIPS, mid), {
         payLinkEnabled: true,
         payLinkDisabledReason: null,
         updatedAt: serverTimestamp()
       });
+
       membership.payLinkEnabled = true;
       membership.payLinkDisabledReason = null;
     }
 
     await loadMembership();
+    await syncUserMembershipStatus();
     render();
     alert("✅ Actualizado");
-
   } catch (e) {
     console.error(e);
     alert("❌ Error actualizando: " + (e?.message || e));
@@ -609,7 +615,7 @@ async function refreshAll() {
     await loadSubmissions();
 
     await recomputeMembershipRollup(mid);
-    await loadMembership(); // trae installmentsTotal/nextUnpaidDueDate ya guardados
+    await loadMembership();
     await reconcileMembershipStatus();
 
     render();
@@ -621,4 +627,3 @@ async function refreshAll() {
     hideLoader?.();
   }
 }
-

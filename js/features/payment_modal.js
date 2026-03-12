@@ -1,4 +1,4 @@
-// js/features/payment_modal.js
+// /js/features/payment_modal.js
 import { db } from "../auth/firebase.js";
 import {
   doc,
@@ -9,11 +9,29 @@ import {
 
 import { showLoader, hideLoader } from "../ui/loader.js";
 
+function clean(v) {
+  return (v || "").toString().trim();
+}
+
+function todayISO() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function safeMethod(v) {
+  const value = clean(v).toLowerCase();
+  return value || "sinpe";
+}
+
 export function createPaymentModal() {
   const modalEl = document.getElementById("paymentModal");
   const modal = modalEl ? new bootstrap.Modal(modalEl) : null;
 
   const form = document.getElementById("paymentForm");
+
   const el = {
     payPath: document.getElementById("payPath"),
     payDocId: document.getElementById("payDocId"),
@@ -26,13 +44,17 @@ export function createPaymentModal() {
   };
 
   let _onSaved = null;
+  let _extraPaymentData = {};
 
-  function todayISO() {
-    const d = new Date();
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
+  function resetForm() {
+    if (el.payPath) el.payPath.value = "";
+    if (el.payDocId) el.payDocId.value = "";
+    if (el.amount) el.amount.value = "";
+    if (el.date) el.date.value = todayISO();
+    if (el.method) el.method.value = "sinpe";
+    if (el.note) el.note.value = "";
+    _onSaved = null;
+    _extraPaymentData = {};
   }
 
   /**
@@ -43,6 +65,7 @@ export function createPaymentModal() {
    * @param {string} opts.title
    * @param {string} opts.subtitle
    * @param {number|string} opts.suggestedAmount
+   * @param {Object} opts.extraPaymentData - campos extra a mergear en payment
    * @param {(ctx)=>void} opts.onSaved
    */
   function open(opts = {}) {
@@ -52,43 +75,59 @@ export function createPaymentModal() {
       title,
       subtitle,
       suggestedAmount,
+      extraPaymentData,
       onSaved
     } = opts;
 
-    el.payPath.value = collectionPath || "";
-    el.payDocId.value = docId || "";
+    if (!modal) {
+      console.warn("[payment_modal] paymentModal no existe en el DOM");
+      return;
+    }
+
+    if (el.payPath) el.payPath.value = collectionPath || "";
+    if (el.payDocId) el.payDocId.value = docId || "";
 
     if (el.title) el.title.textContent = title || "Agregar pago";
     if (el.subtitle) el.subtitle.textContent = subtitle || "—";
 
-    el.amount.value = suggestedAmount != null ? String(suggestedAmount) : "";
-    el.date.value = todayISO();
-    el.method.value = "sinpe";
-    el.note.value = "";
+    if (el.amount) {
+      el.amount.value =
+        suggestedAmount !== null && suggestedAmount !== undefined
+          ? String(suggestedAmount)
+          : "";
+    }
+
+    if (el.date) el.date.value = todayISO();
+    if (el.method) el.method.value = "sinpe";
+    if (el.note) el.note.value = "";
+
+    _extraPaymentData = extraPaymentData && typeof extraPaymentData === "object"
+      ? { ...extraPaymentData }
+      : {};
 
     _onSaved = typeof onSaved === "function" ? onSaved : null;
 
-    modal?.show();
+    modal.show();
   }
 
   form?.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const collectionPath = (el.payPath.value || "").trim();
-    const docId = (el.payDocId.value || "").trim();
+    const collectionPath = clean(el.payPath?.value);
+    const docId = clean(el.payDocId?.value);
 
     if (!collectionPath || !docId) {
       alert("Falta el destino del pago.");
       return;
     }
 
-    const amount = Number(el.amount.value);
+    const amount = Number(el.amount?.value);
     if (!Number.isFinite(amount) || amount <= 0) {
       alert("Monto inválido.");
       return;
     }
 
-    const date = (el.date.value || "").trim();
+    const date = clean(el.date?.value);
     if (!date) {
       alert("Fecha requerida.");
       return;
@@ -97,13 +136,14 @@ export function createPaymentModal() {
     const payment = {
       amount,
       date,
-      method: el.method.value || "sinpe",
-      note: (el.note.value || "").trim()
+      method: safeMethod(el.method?.value),
+      note: clean(el.note?.value) || null,
+      createdAt: new Date().toISOString(),
+      ..._extraPaymentData
     };
 
-    showLoader();
+    showLoader("Guardando pago…");
     try {
-      // collectionPath ejemplo: "tournaments/<id>/roster"
       const parts = collectionPath.split("/").filter(Boolean);
       const ref = doc(db, ...parts, docId);
 
@@ -114,12 +154,17 @@ export function createPaymentModal() {
 
       modal?.hide();
       _onSaved?.({ collectionPath, docId, payment });
+      resetForm();
     } catch (err) {
       console.error(err);
       alert("Error guardando pago.");
     } finally {
       hideLoader();
     }
+  });
+
+  modalEl?.addEventListener("hidden.bs.modal", () => {
+    resetForm();
   });
 
   return { open };

@@ -1,4 +1,4 @@
-// //js\auth\register.js
+// /js/auth/register.js
 import { db, auth, storage } from "./firebase.js";
 import { logout } from "./auth.js";
 import { loadHeader } from "../components/header.js";
@@ -12,13 +12,11 @@ import {
   doc,
   getDoc,
   getDocs,
-  query,
-  where,
-  limit,
   addDoc,
   setDoc,
   updateDoc,
   serverTimestamp,
+  arrayUnion,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 import {
@@ -51,7 +49,6 @@ window.addEventListener("unhandledrejection", releaseUI);
 const COL = APP_CONFIG.collections;
 const COL_USERS = COL.users;
 const COL_PLANS = COL.subscriptionPlans;
-const COL_ASSOC = COL.associates;
 const COL_MEMBERSHIPS = COL.memberships;
 const COL_INSTALLMENTS = COL.membershipInstallments;
 const COL_SUBMISSIONS = COL.membershipPaymentSubmissions;
@@ -120,14 +117,8 @@ function setSubmitEnabled(enabled) {
 
   $.submitBtn.disabled = !enabled;
   $.submitBtn.classList.toggle("disabled", !enabled);
-
   $.submitBtn.classList.remove("btn-primary", "btn-success", "btn-secondary");
-
-  if (enabled) {
-    $.submitBtn.classList.add("btn-success");
-  } else {
-    $.submitBtn.classList.add("btn-secondary");
-  }
+  $.submitBtn.classList.add(enabled ? "btn-success" : "btn-secondary");
 }
 
 function computeFormComplete() {
@@ -155,8 +146,7 @@ function computeFormComplete() {
 }
 
 function updateSubmitState() {
-  const ok = computeFormComplete();
-  setSubmitEnabled(ok);
+  setSubmitEnabled(computeFormComplete());
 }
 
 /* =========================
@@ -194,7 +184,7 @@ function fmtMoney(n, cur = "CRC") {
   }).format(v);
 }
 
-function makePayCode(len = 6) {
+function makePayCode(len = 7) {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let out = "";
   for (let i = 0; i < len; i++) out += chars[Math.floor(Math.random() * chars.length)];
@@ -214,6 +204,18 @@ function setRequired(el, required) {
 function setEnabled(el, enabled) {
   if (!el) return;
   el.disabled = !enabled;
+}
+
+function toYmd(tsLike) {
+  try {
+    if (!tsLike) return null;
+    if (typeof tsLike === "string" && /^\d{4}-\d{2}-\d{2}$/.test(tsLike)) return tsLike;
+    const d = typeof tsLike?.toDate === "function" ? tsLike.toDate() : new Date(tsLike);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toISOString().slice(0, 10);
+  } catch {
+    return null;
+  }
 }
 
 /* =========================
@@ -245,6 +247,7 @@ async function getUserAccessState(uid) {
   try {
     const userRef = doc(db, COL_USERS, uid);
     const snap = await getDoc(userRef);
+
     if (!snap.exists()) {
       return {
         onboardingComplete: false,
@@ -253,6 +256,7 @@ async function getUserAccessState(uid) {
         raw: null,
       };
     }
+
     const data = snap.data() || {};
     return {
       onboardingComplete: data.onboardingComplete === true,
@@ -281,12 +285,21 @@ async function ensureUserDoc(uid, email, user = auth.currentUser) {
       email: email || user?.email || null,
       displayName: user?.displayName || null,
       photoURL: user?.photoURL || null,
+
       onboardingComplete: false,
       isActive: false,
       role: "viewer",
+
       memberId: null,
       associateId: null,
       playerId: null,
+
+      profile: null,
+      consents: null,
+
+      membershipIds: [],
+      currentMembership: null,
+
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
@@ -304,26 +317,98 @@ async function ensureUserDoc(uid, email, user = auth.currentUser) {
   const nextDisplayName = user?.displayName || null;
   const nextPhotoURL = user?.photoURL || null;
 
-  if ((data.email || null) !== nextEmail) {
-    updatePayload.email = nextEmail;
-  }
-
-  if ((data.displayName || null) !== nextDisplayName) {
-    updatePayload.displayName = nextDisplayName;
-  }
-
-  if ((data.photoURL || null) !== nextPhotoURL) {
-    updatePayload.photoURL = nextPhotoURL;
-  }
+  if ((data.email || null) !== nextEmail) updatePayload.email = nextEmail;
+  if ((data.displayName || null) !== nextDisplayName) updatePayload.displayName = nextDisplayName;
+  if ((data.photoURL || null) !== nextPhotoURL) updatePayload.photoURL = nextPhotoURL;
 
   if (data.memberId === undefined) updatePayload.memberId = null;
   if (data.associateId === undefined) updatePayload.associateId = null;
   if (data.playerId === undefined) updatePayload.playerId = null;
   if (data.onboardingComplete === undefined) updatePayload.onboardingComplete = false;
+  if (data.profile === undefined) updatePayload.profile = null;
+  if (data.consents === undefined) updatePayload.consents = null;
+  if (!Array.isArray(data.membershipIds)) updatePayload.membershipIds = [];
+  if (data.currentMembership === undefined) updatePayload.currentMembership = null;
 
   if (Object.keys(updatePayload).length > 1) {
     await setDoc(uref, updatePayload, { merge: true });
   }
+}
+
+function buildUserProfile({
+  firstName,
+  lastName,
+  birthDate,
+  idType,
+  idNumber,
+  phone,
+  residence,
+}) {
+  const fullName = `${firstName} ${lastName}`.trim();
+
+  return {
+    firstName: firstName || null,
+    lastName: lastName || null,
+    fullName: fullName || null,
+    birthDate: birthDate || null,
+    idType: idType || null,
+    idNumber: idNumber || null,
+    phone: phone || null,
+    residence: residence || null,
+  };
+}
+
+async function saveUserProfileAndConsents({
+  uid,
+  email,
+  firstName,
+  lastName,
+  birthDate,
+  idType,
+  idNumber,
+  phone,
+  residence,
+  consents,
+}) {
+  const user = auth.currentUser;
+  const fullName = `${firstName} ${lastName}`.trim();
+
+  const payload = {
+    uid,
+    email: email || user?.email || null,
+    displayName: user?.displayName || fullName || null,
+    photoURL: user?.photoURL || null,
+
+    profile: buildUserProfile({
+      firstName,
+      lastName,
+      birthDate,
+      idType,
+      idNumber,
+      phone,
+      residence,
+    }),
+
+    consents: {
+      requireInfoDeclaration: !!consents.requireInfoDeclaration,
+      infoDeclarationAccepted: consents.infoDeclarationAccepted === true,
+      requireTerms: !!consents.requireTerms,
+      termsAccepted: consents.termsAccepted === true,
+      termsUrl: consents.termsUrl || null,
+      acceptedAt: serverTimestamp(),
+    },
+
+    updatedAt: serverTimestamp(),
+  };
+
+  await setDoc(doc(db, COL_USERS, uid), payload, { merge: true });
+
+  return {
+    uid,
+    fullName,
+    email,
+    phone: phone || null,
+  };
 }
 
 /* =========================
@@ -442,6 +527,7 @@ function fillProvinceCanton() {
   $.province?.addEventListener("change", () => {
     const p = $.province.value;
     const cantons = CR[p] || [];
+
     if ($.canton) {
       $.canton.innerHTML =
         `<option value="">Seleccionar…</option>` +
@@ -477,6 +563,7 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     const access = await getUserAccessState(user.uid);
+    const data = access.raw || {};
 
     if (!access.onboardingComplete) {
       if (user.email && $.email) {
@@ -487,6 +574,30 @@ onAuthStateChanged(auth, async (user) => {
         if ($.email) $.email.readOnly = false;
         $.logoutBtn?.classList.add("d-none");
       }
+
+      const profile = data.profile || {};
+      const residence = profile.residence || {};
+
+      if ($.firstName && !$.firstName.value && profile.firstName) $.firstName.value = profile.firstName;
+      if ($.lastName && !$.lastName.value && profile.lastName) $.lastName.value = profile.lastName;
+      if ($.birthDate && !$.birthDate.value && profile.birthDate) $.birthDate.value = toYmd(profile.birthDate) || "";
+      if ($.idType && !$.idType.value && profile.idType) $.idType.value = profile.idType;
+      if ($.idNumber && !$.idNumber.value && profile.idNumber) $.idNumber.value = profile.idNumber;
+      if ($.phone && !$.phone.value && profile.phone) $.phone.value = profile.phone;
+
+      if ($.province && !$.province.value && residence.province) {
+        $.province.value = residence.province;
+        $.province.dispatchEvent(new Event("change"));
+      }
+      if ($.canton && !$.canton.value && residence.canton) {
+        if (!$.province.value && residence.province) {
+          $.province.value = residence.province;
+          $.province.dispatchEvent(new Event("change"));
+        }
+        $.canton.value = residence.canton;
+      }
+
+      updateSubmitState();
       return;
     }
 
@@ -496,7 +607,6 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     window.location.replace("../index.html?pending=1");
-    return;
   } catch (e) {
     console.warn("onAuthStateChanged handler failed:", e);
   } finally {
@@ -519,6 +629,7 @@ async function loadPublicRegConfig() {
   const termsUrl = cfg.termsUrl || null;
 
   const paymentSection = document.getElementById("paymentSection");
+
   if (!enableMembershipPayment) {
     paymentSection?.classList.add("d-none");
     setEnabled($.planId, false);
@@ -591,11 +702,8 @@ function planAmount(plan) {
 }
 
 async function loadPlans() {
-  const qy = query(collection(db, COL_PLANS));
-  const snap = await getDocs(qy);
-
-  const plans = [];
-  snap.forEach((d) => plans.push({ id: d.id, ...d.data() }));
+  const snap = await getDocs(collection(db, COL_PLANS));
+  const plans = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
   const activePlans = plans.filter((p) => p.isActive !== false);
   plansById = new Map(activePlans.map((p) => [p.id, p]));
@@ -619,80 +727,19 @@ $.planId?.addEventListener("change", () => {
   const p = plansById.get($.planId.value);
   if (!p) {
     if ($.planMeta) $.planMeta.textContent = "";
+    updateSubmitState();
     return;
   }
+
   const parts = [];
   if (p.description) parts.push(p.description);
+
   const amt = planAmount(p);
   if (amt != null) parts.push(`Monto: ${fmtMoney(amt, p.currency || "CRC")}`);
+
   if ($.planMeta) $.planMeta.textContent = parts.join(" • ");
+  updateSubmitState();
 });
-
-/* =========================
-   Identity linking
-========================= */
-async function upsertAssociate({
-  currentAssociateId = null,
-  uid,
-  email,
-  firstName,
-  lastName,
-  birthDate,
-  idType,
-  idNumber,
-  phone,
-  residence,
-  consents,
-}) {
-  const fullName = `${firstName} ${lastName}`.trim();
-
-  const basePayload = {
-    active: true,
-    email: email || null,
-    fullName: fullName || null,
-    phone: phone || null,
-    type: idType || "other",
-    idNumber: idNumber || null,
-
-    uid: uid || null,
-    playerId: null,
-
-    profile: {
-      firstName: firstName || null,
-      lastName: lastName || null,
-      birthDate: birthDate || null,
-      idType: idType || null,
-      idNumber: idNumber || null,
-      residence: residence || null,
-    },
-
-    consents: consents || null,
-    updatedAt: serverTimestamp(),
-  };
-
-  let assocId = currentAssociateId || null;
-
-  if (!assocId) {
-    const createPayload = {
-      ...basePayload,
-      createdAt: serverTimestamp(),
-    };
-
-    const ref = await addDoc(collection(db, COL_ASSOC), createPayload);
-    assocId = ref.id;
-  } else {
-    await setDoc(doc(db, COL_ASSOC, assocId), basePayload, { merge: true });
-  }
-
-  const associateSnapshot = {
-    id: assocId,
-    fullName,
-    email,
-    phone: phone || null,
-  };
-
-  return { assocId, associateSnapshot };
-}
 
 /* =========================
    Membership builders
@@ -713,13 +760,17 @@ function buildPlanSnapshot(plan) {
   };
 }
 
-async function createMembership({ assocId, associateSnapshot, plan, season, consents }) {
+async function createMembership({ uid, userSnapshot, plan, season, consents }) {
   const payCode = makePayCode(7);
   const planSnap = buildPlanSnapshot(plan);
 
   const payload = {
-    associateId: assocId,
-    associateSnapshot,
+    userId: uid,
+    userSnapshot,
+
+    // compat legacy temporal
+    associateId: null,
+    associateSnapshot: null,
 
     planId: plan.id,
     planSnapshot: planSnap,
@@ -801,13 +852,34 @@ async function maybeCreateInstallments({ membershipId, plan, season }) {
   return { installmentIds: ids };
 }
 
+async function syncUserMembershipSummary({
+  uid,
+  membershipId,
+  plan,
+  season,
+}) {
+  const label = `${plan?.name || "Membresía"} ${season || ""}`.trim();
+
+  await updateDoc(doc(db, COL_USERS, uid), {
+    membershipIds: arrayUnion(membershipId),
+    currentMembership: {
+      membershipId,
+      season: season || null,
+      planId: plan?.id || null,
+      label,
+      status: "pending",
+    },
+    updatedAt: serverTimestamp(),
+  });
+}
+
 /* =========================
    Upload proof
 ========================= */
-async function uploadProofFile({ uid, assocId, file }) {
+async function uploadProofFile({ uid, file }) {
   const ext = (file.name.split(".").pop() || "").toLowerCase();
   const safeExt = ext ? `.${ext}` : "";
-  const path = `membership_submissions/${assocId || uid || "anonymous"}/${Date.now()}_proof${safeExt}`;
+  const path = `membership_submissions/${uid || "anonymous"}/${Date.now()}_proof${safeExt}`;
 
   const r = sRef(storage, path);
   const task = uploadBytesResumable(r, file, {
@@ -818,8 +890,12 @@ async function uploadProofFile({ uid, assocId, file }) {
     task.on("state_changed", null, reject, resolve);
   });
 
-  const url = await getDownloadURL(task.snapshot.ref);
-  return { filePath: path, fileUrl: url, fileType: file.type || null };
+  const fileUrl = await getDownloadURL(task.snapshot.ref);
+  return {
+    filePath: path,
+    fileUrl,
+    fileType: file.type || null,
+  };
 }
 
 /* =========================
@@ -829,6 +905,7 @@ function applyPrefillFromSession() {
   try {
     const raw = sessionStorage.getItem("prefill_register");
     if (!raw) return;
+
     const p = JSON.parse(raw);
 
     if ($.email && p.email) {
@@ -889,7 +966,6 @@ $.form?.addEventListener("submit", async (ev) => {
   hideAlert();
 
   const user = auth.currentUser;
-
   if (!user?.uid) {
     showAlert("Primero ingresa con Google para completar el registro.");
     return;
@@ -976,17 +1052,10 @@ $.form?.addEventListener("submit", async (ev) => {
   showLoader("Cargando…");
 
   try {
-    if (!uid) throw new Error("No hay uid (login incompleto).");
-
     await step("Ensure users/{uid}", () => ensureUserDoc(uid, email));
-    const userRef = doc(db, COL_USERS, uid);
-    const userSnap = await step("Reload users/{uid}", () => getDoc(userRef));
-    const userData = userSnap.exists() ? userSnap.data() || {} : {};
-    const existingAssociateId = userData.associateId || null;
 
-    const { assocId, associateSnapshot } = await step("Upsert associate", () =>
-      upsertAssociate({
-        currentAssociateId: existingAssociateId,
+    const userSnapshot = await step("Save user profile + consents", () =>
+      saveUserProfileAndConsents({
         uid,
         email,
         firstName,
@@ -1002,15 +1071,15 @@ $.form?.addEventListener("submit", async (ev) => {
 
     if (paymentsEnabled) {
       const proof = await step("Upload proof (Storage)", () =>
-        uploadProofFile({ uid, assocId, file })
+        uploadProofFile({ uid, file })
       );
 
       const season = plan.season || safeSeasonFromToday();
 
       const { membershipId } = await step("Create membership", () =>
         createMembership({
-          assocId,
-          associateSnapshot,
+          uid,
+          userSnapshot,
           plan: { id: planId, ...plan },
           season,
           consents,
@@ -1018,7 +1087,11 @@ $.form?.addEventListener("submit", async (ev) => {
       );
 
       await step("Maybe create installments", () =>
-        maybeCreateInstallments({ membershipId, plan: { id: planId, ...plan }, season })
+        maybeCreateInstallments({
+          membershipId,
+          plan: { id: planId, ...plan },
+          season,
+        })
       );
 
       await step("Create payment submission", () =>
@@ -1045,11 +1118,21 @@ $.form?.addEventListener("submit", async (ev) => {
           planId,
           season,
 
-          status: "pending",
           userId: uid,
+          associateId: null, // compat temporal
 
+          status: "pending",
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
+        })
+      );
+
+      await step("Sync user membership summary", () =>
+        syncUserMembershipSummary({
+          uid,
+          membershipId,
+          plan: { id: planId, ...plan },
+          season,
         })
       );
     }
@@ -1066,8 +1149,8 @@ $.form?.addEventListener("submit", async (ev) => {
 
         onboardingComplete: true,
 
-        memberId: assocId || null,
-        associateId: assocId || null,
+        memberId: null,
+        associateId: null,
         playerId: null,
 
         updatedAt: serverTimestamp(),
@@ -1078,7 +1161,6 @@ $.form?.addEventListener("submit", async (ev) => {
 
     sessionStorage.removeItem("prefill_register");
     window.location.replace("../index.html?pending=1");
-    return;
   } catch (e) {
     console.warn(e);
     showAlert(String(e.message || e), "danger");
