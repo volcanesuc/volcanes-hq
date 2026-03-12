@@ -8,16 +8,17 @@
 
    ✅ Modales:
       - Exercise + Routine: inyecta si no existen
-      - Plan (week): carga partial /partials/gym_program_editor.html si no existe en DOM
+      - Plan: carga partial /partials/gym_program_editor.html si no existe en DOM
 
    ✅ Guarda en Firestore:
       - gym_exercises
       - gym_routines
-      - gym_weeks  (plan mensual con slots)
+      - gym_programs  (plan mensual con slots)
 
    ✅ Emite refresh:
       - gym:exercisesChanged
       - gym:routinesChanged
+      - gym:plansChanged
       - gym:weeksChanged
 
    Requisitos:
@@ -33,8 +34,6 @@ import {
   getDoc,
   getDocs,
   doc,
-  query,
-  where,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
@@ -46,9 +45,9 @@ import { APP_CONFIG } from "/js/config/config.js";
    Collections
 ========================= */
 const COL = APP_CONFIG.collections;
-const COL_EXERCISES = COL.gymExercises || "gym_exercises";
-const COL_ROUTINES = COL.gymRoutines || "gym_routines";
-const COL_PLANS = COL.gymPlans || "gym_programs";
+const COL_EXERCISES = COL.gymExercises;
+const COL_ROUTINES = COL.gymRoutines;
+const COL_PLANS = COL.gymPlans;
 
 /* =========================
    Partials
@@ -60,7 +59,6 @@ const PARTIAL_WEEK_EDITOR = "/partials/gym_program_editor.html";
 ========================= */
 let _ctx = {
   db: null,
-  clubId: "pujaguas",
   canEdit: false,
   modalMountId: "modalMount",
 };
@@ -75,8 +73,8 @@ let _planSlots = []; // [{order,label,routineId}]
 /* =========================
    Public API
 ========================= */
-export async function initGymEditors({ db, clubId, canEdit, modalMountId }) {
-  _ctx = { db, clubId, canEdit, modalMountId: modalMountId || "modalMount" };
+export async function initGymEditors({ db, canEdit, modalMountId }) {
+  _ctx = { db, canEdit, modalMountId: modalMountId || "modalMount" };
 
   ensureModalMount();
   await ensureAllModals();     // <- week se carga por partial si hace falta
@@ -491,7 +489,6 @@ function readExercisePayload() {
   const isActive = !!$?.geIsActive?.checked;
 
   return {
-    clubId: _ctx.clubId,
     name,
     bodyParts,
     seriesType,
@@ -750,7 +747,7 @@ function readRoutinePayload() {
 
   const exerciseItems = readRoutineItemsFromUI();
 
-  return { clubId: _ctx.clubId, name, description, isPublic, isActive, exerciseItems };
+  return { name, description, isPublic, isActive, exerciseItems };
 }
 
 function readRoutineItemsFromUI() {
@@ -962,7 +959,6 @@ async function onSaveWeekPlan() {
     const routineIds = Array.from(new Set(_planSlots.map(s => s.routineId).filter(Boolean)));
 
     const payload = {
-      clubId: _ctx.clubId,
       monthKey,
       title,
       name: title, // compat
@@ -1018,8 +1014,7 @@ function autoPlanTitle(monthKey) {
 ========================= */
 async function refreshExercisesCache() {
   if (!_ctx.db) return;
-  const qy = query(collection(_ctx.db, COL_EXERCISES), where("clubId", "==", _ctx.clubId));
-  const snap = await getDocs(qy);
+  const snap = await getDocs(collection(_ctx.db, COL_EXERCISES));
   _exercisesCache = snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
     .filter(x => x.isActive !== false);
@@ -1028,8 +1023,7 @@ async function refreshExercisesCache() {
 
 async function refreshRoutinesCache() {
   if (!_ctx.db) return;
-  const qy = query(collection(_ctx.db, COL_ROUTINES), where("clubId", "==", _ctx.clubId));
-  const snap = await getDocs(qy);
+  const snap = await getDocs(collection(_ctx.db, COL_ROUTINES));
   _routinesCache = snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
     .filter(x => x.isActive !== false);

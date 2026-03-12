@@ -6,7 +6,6 @@ import { showLoader, hideLoader } from "../../ui/loader.js";
 import { guardPage } from "../../page-guard.js";
 import { loadHeader } from "../../components/header.js";
 
-import { CLUB_DATA } from "../../strings.js";
 import { PLAYBOOK_STRINGS as S } from "../../strings/playbook_strings.js";
 
 import { loadPartialOnce } from "/js/ui/loadPartial.js";
@@ -39,7 +38,6 @@ const COL_PLAYBOOK_TRAININGS = "playbook_trainings";
    State
 ========================= */
 let $ = {};
-let clubId = CLUB_DATA?.club?.id || "club";
 
 let canEdit = false;
 let drills = [];
@@ -76,8 +74,8 @@ watchAuth(async () => {
     await loadDrills();
     await loadTrainings();
     try {
-      await initGymTab({ db, clubId, canEdit, modalMountId: "modalMount" });
-      await initGymEditors({ db, clubId, canEdit, modalMountId: "modalMount" });
+      await initGymTab({ db, canEdit });
+      await initGymEditors({ db, canEdit, modalMountId: "modalMount" });
     } catch (e) {
       console.error("[playbook] Gym init error:", e);
       showAlert("La pestaña Gimnasio falló al cargar. Ver consola.", "warning");
@@ -187,10 +185,13 @@ function clearAlert() {
 async function loadDrills() {
   const showArchived = !!$.showArchivedSwitch?.checked;
 
-  const filters = [where("clubId", "==", clubId)];
+  const filters = [];
   if (!showArchived) filters.push(where("isActive", "==", true));
 
-  const qy = query(collection(db, COL_DRILLS), ...filters);
+  let qy = collection(db, COL_DRILLS);
+  if (!showArchived) {
+    qy = query(qy, where("isActive", "==", true));
+  }
   const snap = await getDocs(qy);
 
   drills = snap.docs.map(d => {
@@ -279,22 +280,9 @@ async function loadTrainings() {
       return;
     }
 
-    // Query principal (nuevo modelo)
-    const q1 = query(
-      collection(db, COL_PLAYBOOK_TRAININGS),
-      where("clubId", "==", clubId)
-    );
-
+    const q1 = collection(db, COL_PLAYBOOK_TRAININGS);
     const snap1 = await getDocs(q1);
     let rows = snap1.docs.map(d => ({ id: d.id, ...d.data() }));
-
-    // ✅ Fallback migración:
-    // si no hay nada y sospechamos docs viejos sin clubId, traemos todo (solo para admins)
-    if (!rows.length && canEdit) {
-      console.warn("[playbook] 0 trainings con clubId. Intentando fallback sin filtro (migración).");
-      const snapAll = await getDocs(collection(db, COL_PLAYBOOK_TRAININGS));
-      rows = snapAll.docs.map(d => ({ id: d.id, ...d.data() }));
-    }
 
     trainings = rows;
 
@@ -669,7 +657,6 @@ async function createDrillFromForm() {
   }
 
   await addDoc(collection(db, COL_DRILLS), {
-    clubId,
     name,
     authorName,
     tacticalBoardUrl: safeUrl($.drillTacticalUrl?.value) || "",
@@ -793,7 +780,6 @@ async function saveDrillEdits(ui) {
   }
 
   await setDoc(doc(db, COL_DRILLS, id), {
-    clubId,
     name,
     authorName,
     tacticalBoardUrl: safeUrl(ui.tactical.value) || "",

@@ -1,24 +1,23 @@
 // /js/features/playbook/gym/gym.js
-// Gym tab (Playbook): lista ejercicios / rutinas / planes (antes "weeks")
-// Emite eventos gymUI:* para que gym_editors.js abra y guarde en modales.
+import { APP_CONFIG } from "/js/config/config.js";
 
 import {
   collection,
   getDocs,
   getDoc,
   doc,
-  query,
-  where,
   updateDoc,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+
 /* =========================
    Collections
 ========================= */
-const COL_EXERCISES = "gym_exercises";
-const COL_ROUTINES  = "gym_routines";
-const COL_PLANS     = "gym_weeks";
+const COL = APP_CONFIG.collections;
+const COL_EXERCISES = COL.gymExercises;
+const COL_ROUTINES = COL.gymRoutines;
+const COL_PLANS = COL.gymPlans;
 
 /* =========================
    State
@@ -26,7 +25,6 @@ const COL_PLANS     = "gym_weeks";
 let $ = {};
 let _ctx = {
   db: null,
-  clubId: "club",
   canEdit: false,
 };
 
@@ -37,8 +35,8 @@ let plans     = [];
 /* =========================
    Public API
 ========================= */
-export async function initGymTab({ db, clubId, canEdit }) {
-  _ctx = { db, clubId, canEdit };
+export async function initGymTab({ db, canEdit }) {
+  _ctx = { db, canEdit };
 
   cacheDom();
   bindEvents();
@@ -233,27 +231,31 @@ async function refreshAll() {
 
 async function loadExercises() {
   if (!_ctx.db) return;
-  const qy = query(collection(_ctx.db, COL_EXERCISES), where("clubId", "==", _ctx.clubId));
-  const snap = await getDocs(qy);
-  exercises = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((x) => x.isActive !== false);
+  const snap = await getDocs(collection(_ctx.db, COL_EXERCISES));
+  exercises = snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((x) => x.isActive !== false);
+
   exercises.sort((a, b) => norm(a.name).localeCompare(norm(b.name)));
 }
 
 async function loadRoutines() {
   if (!_ctx.db) return;
-  const qy = query(collection(_ctx.db, COL_ROUTINES), where("clubId", "==", _ctx.clubId));
-  const snap = await getDocs(qy);
-  routines = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((x) => x.isActive !== false);
+  const snap = await getDocs(collection(_ctx.db, COL_ROUTINES));
+  routines = snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((x) => x.isActive !== false);
+
   routines.sort((a, b) => toDateSafe(b.updatedAt) - toDateSafe(a.updatedAt));
 }
 
 async function loadPlans() {
   if (!_ctx.db) return;
-  const qy = query(collection(_ctx.db, COL_PLANS), where("clubId", "==", _ctx.clubId));
-  const snap = await getDocs(qy);
-  plans = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((x) => x.isActive !== false);
+  const snap = await getDocs(collection(_ctx.db, COL_PLANS));
+  plans = snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((x) => x.isActive !== false);
 
-  // Orden: más reciente primero (por monthKey si existe, si no updatedAt)
   plans.sort((a, b) => {
     const ak = String(a.monthKey || "");
     const bk = String(b.monthKey || "");
