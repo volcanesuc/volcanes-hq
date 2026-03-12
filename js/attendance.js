@@ -550,6 +550,7 @@ closeChartBtn?.addEventListener("click", hideChartPanel);
 
 /* ==========================
    VERSION
-========================== */
+
 const v = document.getElementById("appVersion");
 if (v) v.textContent = `v${APP_CONFIG.version}`;
+========================== */
