@@ -7,9 +7,7 @@ import { logout } from "/js/auth/auth.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import {
   doc,
-  getDoc,
-  collection,
-  getDocs
+  getDoc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const url = new URL(window.location.href);
@@ -412,7 +410,6 @@ function renderUniforms(uniformData = {}) {
   const uniformsSection = document.getElementById("uniformsSection");
   if (!uniformsSection) return;
 
-  const settings = uniformData.settings || {};
   const items = Array.isArray(uniformData.items) ? uniformData.items : [];
 
   if (!items.length) {
@@ -423,10 +420,10 @@ function renderUniforms(uniformData = {}) {
   uniformsSection.style.display = "";
 
   uniformsSection.querySelector("h2").textContent =
-    settings.title || "Uniformes del Equipo";
+    uniformData.title || "Uniformes del Equipo";
 
   uniformsSection.querySelector("p").textContent =
-    settings.subtitle || "Compra tu indumentaria oficial del club";
+    uniformData.subtitle || "Compra tu indumentaria oficial del club";
 
   const carouselInner = document.querySelector("#uniformsCarousel .carousel-inner");
   if (!carouselInner) return;
@@ -456,10 +453,10 @@ function renderUniforms(uniformData = {}) {
           <h3>${item.name || "—"}</h3>
           <a
             class="landing-btn"
-            href="${safeUrl(settings.orderUrl)}"
+            href="${safeUrl(uniformData.orderUrl)}"
             target="_blank"
           >
-            ${settings.ctaLabel || "Comprar"}
+            ${uniformData.ctaLabel || "Comprar"}
           </a>
         </div>
       `;
@@ -494,41 +491,25 @@ async function loadSocialLinks() {
 }
 
 async function loadHonorsData() {
-  const [settingsSnap, honorsSnap] = await Promise.all([
-    getDoc(doc(db, "club_config", "honors_settings")).catch(() => null),
-    getDocs(collection(db, "honors")).catch(() => null),
-  ]);
-
-  const settings = settingsSnap?.exists?.() ? (settingsSnap.data() || {}) : {};
-  const items = honorsSnap?.docs
-    ? honorsSnap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .filter(x => x.active !== false)
-        .sort((a, b) => Number(b.year || 0) - Number(a.year || 0))
-    : [];
+  const snap = await getDoc(doc(db, "club_config", "honors")).catch(() => null);
+  const data = snap?.exists?.() ? (snap.data() || {}) : {};
 
   return {
-    title: settings.title || "Palmarés",
-    items,
+    title: data.title || "Palmarés",
+    items: Array.isArray(data.items) ? data.items : [],
   };
 }
 
 async function loadUniformsData() {
-  const [settingsSnap, uniformsSnap] = await Promise.all([
-    getDoc(doc(db, "club_config", "uniforms_settings")).catch(() => null),
-    getDocs(collection(db, "uniforms")).catch(() => null),
-  ]);
-
-  const settings = settingsSnap?.exists?.() ? (settingsSnap.data() || {}) : {};
-  const items = uniformsSnap?.docs
-    ? uniformsSnap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .filter(x => x.active !== false)
-    : [];
+  const snap = await getDoc(doc(db, "club_config", "uniforms")).catch(() => null);
+  const data = snap?.exists?.() ? (snap.data() || {}) : {};
 
   return {
-    settings,
-    items,
+    title: data.title || "Uniformes del Equipo",
+    subtitle: data.subtitle || "Compra tu indumentaria oficial del club",
+    ctaLabel: data.ctaLabel || "Comprar",
+    orderUrl: data.orderUrl || "",
+    items: Array.isArray(data.items) ? data.items : [],
   };
 }
 
@@ -568,4 +549,11 @@ async function bootNormalLanding() {
   renderHonors(honorsData);
   renderUniforms(uniformsData);
   renderFooter();
+}
+
+//start screen
+if (isPendingView) {
+  bootPendingMode();
+} else {
+  bootNormalLanding();
 }

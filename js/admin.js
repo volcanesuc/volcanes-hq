@@ -24,8 +24,6 @@ const COL_ASSOC = COL.associates;
 const COL_PLAYERS = COL.players;
 
 const COL_CLUB_CONFIG = COL.club_config;
-const COL_HONORS = COL.club_honors;
-const COL_UNIFORMS = COL.club_uniforms;
 
 const $ = {
   alertBox: document.getElementById("alertBox"),
@@ -465,15 +463,19 @@ async function saveSocialLinks(ev) {
   hideAlert();
 
   try {
-    await setDoc(doc(db, COL_CLUB_CONFIG, "social_links"), {
-      instagram: safeUrl($.socialInstagram.value),
-      facebook: safeUrl($.socialFacebook.value),
-      tiktok: safeUrl($.socialTiktok.value),
-      youtube: safeUrl($.socialYoutube.value),
-      x: safeUrl($.socialX.value),
-      whatsapp: safeUrl($.socialWhatsapp.value),
-      updatedAt: serverTimestamp(),
-    }, { merge: true });
+    await setDoc(
+      doc(db, COL_CLUB_CONFIG, "social_links"),
+      {
+        instagram: safeUrl($.socialInstagram.value),
+        facebook: safeUrl($.socialFacebook.value),
+        tiktok: safeUrl($.socialTiktok.value),
+        youtube: safeUrl($.socialYoutube.value),
+        x: safeUrl($.socialX.value),
+        whatsapp: safeUrl($.socialWhatsapp.value),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
 
     showAlert("Redes sociales guardadas.", "success");
   } catch (err) {
@@ -507,35 +509,58 @@ async function saveHonorSettings(ev) {
 }
 
 async function loadHonorsAdmin() {
-  $.honorsTableBody.innerHTML = `<tr><td colspan="4" class="text-muted">Cargando…</td></tr>`;
+  if ($.honorsTableBody) {
+    $.honorsTableBody.innerHTML = `<tr><td colspan="4" class="text-muted">Cargando…</td></tr>`;
+  }
 
-  const snap = await getDocs(collection(db, COL_HONORS));
-  const items = snap.docs
-    .map(d => ({ id: d.id, ...d.data() }))
-    .filter(x => x.active !== false)
-    .sort((a, b) => {
-      const y = Number(b.year || 0) - Number(a.year || 0);
-      if (y !== 0) return y;
-      return String(a.tournament || "").localeCompare(String(b.tournament || ""), "es", { sensitivity: "base" });
-    });
+  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "honors")).catch(() => null);
+  const data = snap?.exists?.() ? (snap.data() || {}) : {};
 
-  if (!items.length) {
+  $.honorsTitle.value = data.title || "Palmarés";
+
+  honorsItems = Array.isArray(data.items) ? [...data.items] : [];
+  honorsItems.sort((a, b) => Number(b.year || 0) - Number(a.year || 0));
+
+  if (!honorsItems.length) {
     $.honorsTableBody.innerHTML = `<tr><td colspan="4" class="text-muted">No hay logros registrados.</td></tr>`;
     return;
   }
 
-  $.honorsTableBody.innerHTML = items.map(item => `
-    <tr>
-      <td>${esc(item.position || "—")}</td>
-      <td>${esc(item.tournament || "—")}</td>
-      <td>${esc(item.year || "—")}</td>
-      <td>
-        <button class="btn btn-outline-danger btn-sm" type="button" data-delete-honor="${esc(item.id)}">
-          Eliminar
-        </button>
-      </td>
-    </tr>
-  `).join("");
+  $.honorsTableBody.innerHTML = honorsItems
+    .map((item, index) => `
+      <tr>
+        <td>${esc(item.position || "—")}</td>
+        <td>${esc(item.tournament || "—")}</td>
+        <td>${esc(item.year || "—")}</td>
+        <td>
+          <button class="btn btn-outline-danger btn-sm" type="button" data-delete-honor="${index}">
+            Eliminar
+          </button>
+        </td>
+      </tr>
+    `)
+    .join("");
+}
+
+async function saveHonorSettings(ev) {
+  ev.preventDefault();
+
+  try {
+    await setDoc(
+      doc(db, COL_CLUB_CONFIG, "honors"),
+      {
+        title: ($.honorsTitle.value || "").trim() || "Palmarés",
+        items: honorsItems,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    showAlert("Palmarés guardado.", "success");
+  } catch (err) {
+    console.error(err);
+    showAlert("No se pudo guardar el palmarés.");
+  }
 }
 
 async function addHonor(ev) {
@@ -550,15 +575,19 @@ async function addHonor(ev) {
     return;
   }
 
+  honorsItems.push({ position, tournament, year });
+  honorsItems.sort((a, b) => Number(b.year || 0) - Number(a.year || 0));
+
   try {
-    await addDoc(collection(db, COL_HONORS), {
-      position,
-      tournament,
-      year,
-      active: true,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
+    await setDoc(
+      doc(db, COL_CLUB_CONFIG, "honors"),
+      {
+        title: ($.honorsTitle.value || "").trim() || "Palmarés",
+        items: honorsItems,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
 
     $.honorForm.reset();
     await loadHonorsAdmin();
@@ -569,10 +598,23 @@ async function addHonor(ev) {
   }
 }
 
-async function deleteHonor(id) {
-  if (!id) return;
+async function deleteHonor(index) {
+  const idx = Number(index);
+  if (!Number.isInteger(idx) || idx < 0 || idx >= honorsItems.length) return;
+
+  honorsItems.splice(idx, 1);
+
   try {
-    await deleteDoc(doc(db, COL_HONORS, id));
+    await setDoc(
+      doc(db, COL_CLUB_CONFIG, "honors"),
+      {
+        title: ($.honorsTitle.value || "").trim() || "Palmarés",
+        items: honorsItems,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
     await loadHonorsAdmin();
     showAlert("Logro eliminado.", "success");
   } catch (err) {
@@ -582,61 +624,67 @@ async function deleteHonor(id) {
 }
 
 //UNIFORMS
-async function loadUniformSettings() {
-  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "uniforms_settings")).catch(() => null);
+async function loadUniformsAdmin() {
+  if ($.uniformsTableBody) {
+    $.uniformsTableBody.innerHTML = `<tr><td colspan="4" class="text-muted">Cargando…</td></tr>`;
+  }
+
+  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "uniforms")).catch(() => null);
   const data = snap?.exists?.() ? (snap.data() || {}) : {};
 
   $.uniformsTitle.value = data.title || "Uniformes del Equipo";
   $.uniformsSubtitle.value = data.subtitle || "Compra tu indumentaria oficial del club";
   $.uniformsCtaLabel.value = data.ctaLabel || "Comprar";
   $.uniformsOrderUrl.value = data.orderUrl || "";
+
+  uniformsItems = Array.isArray(data.items) ? [...data.items] : [];
+  uniformsItems.sort((a, b) =>
+    String(a.name || "").localeCompare(String(b.name || ""), "es", { sensitivity: "base" })
+  );
+
+  if (!uniformsItems.length) {
+    $.uniformsTableBody.innerHTML = `<tr><td colspan="4" class="text-muted">No hay uniformes registrados.</td></tr>`;
+    return;
+  }
+
+  $.uniformsTableBody.innerHTML = uniformsItems
+    .map((item, index) => `
+      <tr>
+        <td>${esc(item.name || "—")}</td>
+        <td>${esc(item.category || "—")}</td>
+        <td class="text-truncate" style="max-width:240px">${esc(item.image || "—")}</td>
+        <td>
+          <button class="btn btn-outline-danger btn-sm" type="button" data-delete-uniform="${index}">
+            Eliminar
+          </button>
+        </td>
+      </tr>
+    `)
+    .join("");
 }
 
 async function saveUniformSettings(ev) {
   ev.preventDefault();
 
   try {
-    await setDoc(doc(db, COL_CLUB_CONFIG, "uniforms_settings"), {
-      title: ($.uniformsTitle.value || "").trim() || "Uniformes del Equipo",
-      subtitle: ($.uniformsSubtitle.value || "").trim() || "",
-      ctaLabel: ($.uniformsCtaLabel.value || "").trim() || "Comprar",
-      orderUrl: safeUrl($.uniformsOrderUrl.value),
-      updatedAt: serverTimestamp(),
-    }, { merge: true });
+    await setDoc(
+      doc(db, COL_CLUB_CONFIG, "uniforms"),
+      {
+        title: ($.uniformsTitle.value || "").trim() || "Uniformes del Equipo",
+        subtitle: ($.uniformsSubtitle.value || "").trim() || "",
+        ctaLabel: ($.uniformsCtaLabel.value || "").trim() || "Comprar",
+        orderUrl: safeUrl($.uniformsOrderUrl.value),
+        items: uniformsItems,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
 
     showAlert("Configuración de uniformes guardada.", "success");
   } catch (err) {
     console.error(err);
     showAlert("No se pudo guardar la configuración de uniformes.");
   }
-}
-
-async function loadUniformsAdmin() {
-  $.uniformsTableBody.innerHTML = `<tr><td colspan="4" class="text-muted">Cargando…</td></tr>`;
-
-  const snap = await getDocs(collection(db, COL_UNIFORMS));
-  const items = snap.docs
-    .map(d => ({ id: d.id, ...d.data() }))
-    .filter(x => x.active !== false)
-    .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "es", { sensitivity: "base" }));
-
-  if (!items.length) {
-    $.uniformsTableBody.innerHTML = `<tr><td colspan="4" class="text-muted">No hay uniformes registrados.</td></tr>`;
-    return;
-  }
-
-  $.uniformsTableBody.innerHTML = items.map(item => `
-    <tr>
-      <td>${esc(item.name || "—")}</td>
-      <td>${esc(item.category || "—")}</td>
-      <td class="text-truncate" style="max-width:240px">${esc(item.image || "—")}</td>
-      <td>
-        <button class="btn btn-outline-danger btn-sm" type="button" data-delete-uniform="${esc(item.id)}">
-          Eliminar
-        </button>
-      </td>
-    </tr>
-  `).join("");
 }
 
 async function addUniform(ev) {
@@ -651,15 +699,30 @@ async function addUniform(ev) {
     return;
   }
 
+  uniformsItems.push({
+    id: `uniform_${Date.now()}`,
+    name,
+    category,
+    image,
+  });
+
+  uniformsItems.sort((a, b) =>
+    String(a.name || "").localeCompare(String(b.name || ""), "es", { sensitivity: "base" })
+  );
+
   try {
-    await addDoc(collection(db, COL_UNIFORMS), {
-      name,
-      category,
-      image,
-      active: true,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
+    await setDoc(
+      doc(db, COL_CLUB_CONFIG, "uniforms"),
+      {
+        title: ($.uniformsTitle.value || "").trim() || "Uniformes del Equipo",
+        subtitle: ($.uniformsSubtitle.value || "").trim() || "",
+        ctaLabel: ($.uniformsCtaLabel.value || "").trim() || "Comprar",
+        orderUrl: safeUrl($.uniformsOrderUrl.value),
+        items: uniformsItems,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
 
     $.uniformForm.reset();
     await loadUniformsAdmin();
@@ -670,10 +733,26 @@ async function addUniform(ev) {
   }
 }
 
-async function deleteUniform(id) {
-  if (!id) return;
+async function deleteUniform(index) {
+  const idx = Number(index);
+  if (!Number.isInteger(idx) || idx < 0 || idx >= uniformsItems.length) return;
+
+  uniformsItems.splice(idx, 1);
+
   try {
-    await deleteDoc(doc(db, COL_UNIFORMS, id));
+    await setDoc(
+      doc(db, COL_CLUB_CONFIG, "uniforms"),
+      {
+        title: ($.uniformsTitle.value || "").trim() || "Uniformes del Equipo",
+        subtitle: ($.uniformsSubtitle.value || "").trim() || "",
+        ctaLabel: ($.uniformsCtaLabel.value || "").trim() || "Comprar",
+        orderUrl: safeUrl($.uniformsOrderUrl.value),
+        items: uniformsItems,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
     await loadUniformsAdmin();
     showAlert("Uniforme eliminado.", "success");
   } catch (err) {
@@ -713,11 +792,12 @@ async function boot() {
 
     await loadPendingUsers();
     await loadPlayers();
-    await loadSocialLinks();
-    await loadHonorSettings();
-    await loadHonorsAdmin();
-    await loadUniformSettings();
-    await loadUniformsAdmin();
+    try { await loadSocialLinks(); } catch (e) { console.error("loadSocialLinks", e); }
+    try { await loadHonorSettings(); } catch (e) { console.error("loadHonorSettings", e); }
+    try { await loadHonorsAdmin(); } catch (e) { console.error("loadHonorsAdmin", e); }
+    try { await loadUniformSettings(); } catch (e) { console.error("loadUniformSettings", e); }
+    try { await loadUniformsAdmin(); } catch (e) { console.error("loadUniformsAdmin", e); }
+
 
     $.refreshPendingBtn?.addEventListener("click", loadPendingUsers);
     $.refreshPlayersBtn?.addEventListener("click", loadPlayers);
