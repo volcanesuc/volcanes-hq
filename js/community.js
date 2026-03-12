@@ -20,6 +20,8 @@ import {
   Timestamp,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+import { loadPartialOnce } from "/js/ui/loadPartial.js";
+
 const COL = APP_CONFIG.collections;
 const COMMUNITY_COL = COL.communityPosts || "community_posts";
 
@@ -46,22 +48,24 @@ const $ = {
   pinnedFilter: document.getElementById("communityPinnedFilter"),
   clearFiltersBtn: document.getElementById("clearCommunityFiltersBtn"),
 
-  form: document.getElementById("communityPostForm"),
-  modalTitle: document.getElementById("communityModalTitle"),
-  postId: document.getElementById("communityPostId"),
-  title: document.getElementById("postTitle"),
-  type: document.getElementById("postType"),
-  summary: document.getElementById("postSummary"),
-  body: document.getElementById("postBody"),
-  externalUrl: document.getElementById("postExternalUrl"),
-  youtubeUrl: document.getElementById("postYouTubeUrl"),
-  mediaType: document.getElementById("postMediaType"),
-  mediaUrl: document.getElementById("postMediaUrl"),
-  tags: document.getElementById("postTags"),
-  visibility: document.getElementById("postVisibility"),
-  pinned: document.getElementById("postPinned"),
-  saveBtn: document.getElementById("savePostBtn"),
   newPostBtn: document.getElementById("newPostBtn"),
+
+  form: null,
+  modalTitle: null,
+  modalSubtitle: null,
+  postId: null,
+  title: null,
+  type: null,
+  summary: null,
+  body: null,
+  externalUrl: null,
+  youtubeUrl: null,
+  mediaType: null,
+  mediaUrl: null,
+  tags: null,
+  visibility: null,
+  pinned: null,
+  saveBtn: null,
 };
 
 let postModal = null;
@@ -80,11 +84,7 @@ async function boot() {
 
     document.getElementById("logoutBtn")?.addEventListener("click", logout);
 
-    const modalEl = document.getElementById("communityPostModal");
-    if (modalEl && window.bootstrap) {
-      postModal = new bootstrap.Modal(modalEl);
-    }
-
+    await ensureCommunityModalPartial();
     bindEvents();
     
   watchAuth(async (user) => {
@@ -104,6 +104,33 @@ async function boot() {
   } catch (err) {
     console.error("Error booting community:", err);
     releaseUI();
+  }
+}
+
+//init del modal partial
+async function ensureCommunityModalPartial() {
+  await loadPartialOnce("/partials/community_post_modal.html", "communityModalMount");
+
+  $.form = document.getElementById("communityPostForm");
+  $.modalTitle = document.getElementById("communityModalTitle");
+  $.modalSubtitle = document.getElementById("communityModalSubtitle");
+  $.postId = document.getElementById("communityPostId");
+  $.title = document.getElementById("postTitle");
+  $.type = document.getElementById("postType");
+  $.summary = document.getElementById("postSummary");
+  $.body = document.getElementById("postBody");
+  $.externalUrl = document.getElementById("postExternalUrl");
+  $.youtubeUrl = document.getElementById("postYouTubeUrl");
+  $.mediaType = document.getElementById("postMediaType");
+  $.mediaUrl = document.getElementById("postMediaUrl");
+  $.tags = document.getElementById("postTags");
+  $.visibility = document.getElementById("postVisibility");
+  $.pinned = document.getElementById("postPinned");
+  $.saveBtn = document.getElementById("savePostBtn");
+
+  const modalEl = document.getElementById("communityPostModal");
+  if (modalEl && window.bootstrap) {
+    postModal = bootstrap.Modal.getOrCreateInstance(modalEl);
   }
 }
 
@@ -128,6 +155,8 @@ function bindEvents() {
   $.newPostBtn?.addEventListener("click", () => {
     resetForm();
     $.modalTitle.textContent = "Nuevo post";
+    $.modalSubtitle.textContent = "Compartí ideas, sesiones grabadas y recursos del club";
+    postModal?.show();
   });
 
   $.type?.addEventListener("change", syncFormByType);
@@ -526,6 +555,7 @@ function resetForm() {
   $.form.reset();
   $.postId.value = "";
   $.modalTitle.textContent = "Nuevo post";
+  $.modalSubtitle.textContent = "Compartí ideas, sesiones grabadas y recursos del club";
   $.type.value = "opinion";
   $.visibility.value = "club";
   syncFormByType();
@@ -560,6 +590,7 @@ async function openEditPost(id) {
   $.visibility.value = post.visibility || "club";
   $.pinned.checked = !!post.pinned;
   $.modalTitle.textContent = "Editar post";
+  $.modalSubtitle.textContent = "Actualizá contenido, links, visibilidad y destacados";
 
   syncFormByType();
   postModal?.show();
