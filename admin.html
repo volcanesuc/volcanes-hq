@@ -194,6 +194,48 @@
       </div>
     </section>
 
+    <!-- HERO SECTION -->
+    <section class="card shadow-sm mt-4">
+      <div class="card-body">
+        <div class="mb-3">
+          <h2 class="h5 mb-1">Hero del landing</h2>
+          <p class="text-muted mb-0">Título, descripción e imagen principal.</p>
+        </div>
+
+        <form id="heroSettingsForm" class="row g-3">
+          <div class="col-12">
+            <label class="form-label">Título</label>
+            <input id="heroTitleInput" class="form-control" type="text" />
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Descripción</label>
+            <textarea id="heroDescriptionInput" class="form-control" rows="4"></textarea>
+          </div>
+
+          <div class="col-md-8">
+            <label class="form-label">Image URL</label>
+            <input id="heroImageUrlInput" class="form-control" type="url" placeholder="https://..." />
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Subir imagen</label>
+            <input id="heroImageFileInput" class="form-control" type="file" accept="image/*" />
+          </div>
+
+          <div class="col-12">
+            <img id="heroImagePreview" class="img-fluid rounded border d-none" style="max-height:220px; object-fit:cover;" />
+          </div>
+
+          <div class="col-12">
+            <button class="btn btn-primary" type="submit">
+              Guardar hero
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
     <!-- ENTRENAMIENTOS -->
     <section class="card shadow-sm mt-4">
       <div class="card-body">
@@ -385,6 +427,68 @@
             </tbody>
           </table>
         </div>
+      </div>
+    </section>
+
+    <!-- EVENTOS -->
+    <section class="card shadow-sm mt-4">
+      <div class="card-body">
+        <div class="mb-3">
+          <h2 class="h5 mb-1">Torneo / Evento principal</h2>
+          <p class="text-muted mb-0">Contenido editable de la sección pública.</p>
+        </div>
+
+        <form id="eventsSettingsForm" class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Título</label>
+            <input id="eventTitleInput" class="form-control" type="text" />
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Subtítulo</label>
+            <input id="eventSubtitleInput" class="form-control" type="text" />
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Imagen 1</label>
+            <input id="eventImage1Input" class="form-control" type="url" />
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Imagen 2</label>
+            <input id="eventImage2Input" class="form-control" type="url" />
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Imagen 3</label>
+            <input id="eventImage3Input" class="form-control" type="url" />
+          </div>
+
+          <div class="col-md-4">
+            <div class="form-check form-switch mt-4 pt-2">
+              <input class="form-check-input" type="checkbox" id="eventCtaEnabledInput" />
+              <label class="form-check-label" for="eventCtaEnabledInput">
+                Mostrar botón
+              </label>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Texto del botón</label>
+            <input id="eventCtaTextInput" class="form-control" type="text" placeholder="Registro abierto" />
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Link del botón</label>
+            <input id="eventCtaUrlInput" class="form-control" type="url" placeholder="https://..." />
+          </div>
+
+          <div class="col-12">
+            <button class="btn btn-primary" type="submit">
+              Guardar torneo
+            </button>
+          </div>
+        </form>
       </div>
     </section>
 

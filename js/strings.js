@@ -41,17 +41,7 @@ export const CLUB_DATA = {
       title: "Más que un equipo, una comunidad",
       image: "img/club/teamclub.jpg",
       description:
-        "La misión del club es fortalecer la comunidad y promover el conocimiento y la práctica del deporte bajo el correcto espíritu de juego. Queremos crear espacios donde se practique de manera saludable el Ultimate.",
-      cta: {
-        primary: {
-            label: "Ver entrenamientos",
-            href: "#entrenamientos"
-        },
-        secondary: {
-            label: "Contactar por WhatsApp",
-            type: "whatsapp"
-        }
-      }
+        "Como club queremos fortalecer la comunidad y promover el conocimiento y la práctica del deporte bajo el correcto espíritu de juego. Queremos crear espacios donde se practique de manera saludable el Ultimate.",
     },
 
     contacts: {
@@ -83,25 +73,6 @@ export const CLUB_DATA = {
         ]
       }
     ],
-
-    trainings: {
-      title: "Entrenamientos y Juegos",
-      blocks: [
-        {
-          id: "trainings",
-          name: "Entrenamientos",
-          schedule: [
-            { day: "Domingos", time: "8:00 am – 10:30 am" },
-            { day: "Miércoles", time: "7:00 pm – 9:30 pm" }
-          ]
-        },
-        {
-          id: "games",
-          name: "Juegos y Torneos",
-          schedule: [{ day: "Martes", time: "8:00 pm – 10:00 pm" }]
-        }
-      ]
-    },
 
     uniforms: {
       title: "Uniformes del Equipo",

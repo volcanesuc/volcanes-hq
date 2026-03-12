@@ -16,6 +16,12 @@ import {
   setDoc,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { storage } from "./auth/firebase.js";
+import {
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
 const COL = APP_CONFIG.collections;
 const COL_USERS = COL.users;
@@ -79,6 +85,23 @@ const $ = {
   socialX: document.getElementById("socialX"),
   socialWhatsapp: document.getElementById("socialWhatsapp"),
   socialWhatsappLabel: document.getElementById("socialWhatsappLabel"),
+
+  heroSettingsForm: document.getElementById("heroSettingsForm"),
+  heroTitleInput: document.getElementById("heroTitleInput"),
+  heroDescriptionInput: document.getElementById("heroDescriptionInput"),
+  heroImageUrlInput: document.getElementById("heroImageUrlInput"),
+  heroImageFileInput: document.getElementById("heroImageFileInput"),
+  heroImagePreview: document.getElementById("heroImagePreview"),
+
+  eventsSettingsForm: document.getElementById("eventsSettingsForm"),
+  eventTitleInput: document.getElementById("eventTitleInput"),
+  eventSubtitleInput: document.getElementById("eventSubtitleInput"),
+  eventImage1Input: document.getElementById("eventImage1Input"),
+  eventImage2Input: document.getElementById("eventImage2Input"),
+  eventImage3Input: document.getElementById("eventImage3Input"),
+  eventCtaEnabledInput: document.getElementById("eventCtaEnabledInput"),
+  eventCtaTextInput: document.getElementById("eventCtaTextInput"),
+  eventCtaUrlInput: document.getElementById("eventCtaUrlInput"),
 
   honorsSettingsForm: document.getElementById("honorsSettingsForm"),
   honorsTitle: document.getElementById("honorsTitle"),
@@ -508,6 +531,91 @@ function comparePlayersByName(a, b) {
   );
 }
 
+// HERO INFO
+async function loadHeroAdmin() {
+  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "hero")).catch(() => null);
+  const data = snap?.exists?.() ? (snap.data() || {}) : {};
+
+  $.heroTitleInput.value = data.title || "";
+  $.heroDescriptionInput.value = data.description || "";
+  $.heroImageUrlInput.value = data.imageUrl || "";
+
+  if (data.imageUrl && $.heroImagePreview) {
+    $.heroImagePreview.src = data.imageUrl;
+    $.heroImagePreview.classList.remove("d-none");
+  } else {
+    $.heroImagePreview?.classList.add("d-none");
+  }
+}
+
+async function saveHeroSettings(ev) {
+  ev.preventDefault();
+  hideAlert();
+
+  try {
+    const uploadedUrl = await uploadHeroImageIfNeeded();
+    const manualUrl = safeUrl($.heroImageUrlInput?.value || "");
+    const finalImageUrl = uploadedUrl || manualUrl;
+
+    await setDoc(
+      doc(db, COL_CLUB_CONFIG, "hero"),
+      {
+        title: ($.heroTitleInput?.value || "").trim(),
+        description: ($.heroDescriptionInput?.value || "").trim(),
+        imageUrl: finalImageUrl,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    if ($.heroImageUrlInput && uploadedUrl) {
+      $.heroImageUrlInput.value = uploadedUrl;
+    }
+
+    if ($.heroImagePreview) {
+      if (finalImageUrl) {
+        $.heroImagePreview.src = finalImageUrl;
+        $.heroImagePreview.classList.remove("d-none");
+      } else {
+        $.heroImagePreview.src = "";
+        $.heroImagePreview.classList.add("d-none");
+      }
+    }
+
+    if ($.heroImageFileInput) {
+      $.heroImageFileInput.value = "";
+    }
+
+    showAlert("Hero guardado correctamente.", "success");
+    await loadHeroAdmin();
+  } catch (err) {
+    console.error("saveHeroSettings error:", err);
+    showAlert(err?.message || "No se pudo guardar el hero.");
+  }
+}
+
+async function uploadHeroImageIfNeeded() {
+  const file = $.heroImageFileInput?.files?.[0];
+  if (!file) return "";
+
+  const clubId =
+    APP_CONFIG?.clubId ||
+    APP_CONFIG?.club?.id ||
+    APP_CONFIG?.brand?.clubId ||
+    "default";
+
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const path = `clubs/${clubId}/landing/hero.${ext}`;
+  const ref = storageRef(storage, path);
+
+  await uploadBytes(ref, file, {
+    contentType: file.type || "image/jpeg",
+    cacheControl: "no-cache",
+  });
+
+  return await getDownloadURL(ref);
+}
+
 //TRAININGS INFO
 async function loadTrainingsAdmin() {
   if ($.trainingsTableBody) {
@@ -698,6 +806,55 @@ async function deleteTrainingRow(pointer) {
   } catch (err) {
     console.error("deleteTrainingRow error:", err);
     showAlert("No se pudo eliminar el horario.");
+  }
+}
+
+//EVENTOS
+async function loadEventsAdmin() {
+  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "events")).catch(() => null);
+  const data = snap?.exists?.() ? (snap.data() || {}) : {};
+
+  const images = Array.isArray(data.images) ? data.images : [];
+
+  $.eventTitleInput.value = data.title || "";
+  $.eventSubtitleInput.value = data.subtitle || "";
+  $.eventImage1Input.value = images[0] || "";
+  $.eventImage2Input.value = images[1] || "";
+  $.eventImage3Input.value = images[2] || "";
+  $.eventCtaEnabledInput.checked = data.ctaEnabled === true;
+  $.eventCtaTextInput.value = data.ctaText || "";
+  $.eventCtaUrlInput.value = data.ctaUrl || "";
+}
+
+async function saveEventsSettings(ev) {
+  ev.preventDefault();
+
+  try {
+    const images = [
+      safeUrl($.eventImage1Input.value),
+      safeUrl($.eventImage2Input.value),
+      safeUrl($.eventImage3Input.value),
+    ].filter(Boolean);
+
+    await setDoc(
+      doc(db, COL_CLUB_CONFIG, "events"),
+      {
+        title: ($.eventTitleInput.value || "").trim(),
+        subtitle: ($.eventSubtitleInput.value || "").trim(),
+        images,
+        ctaEnabled: !!$.eventCtaEnabledInput.checked,
+        ctaText: ($.eventCtaTextInput.value || "").trim(),
+        ctaUrl: safeUrl($.eventCtaUrlInput.value),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    showAlert("Torneo guardado.", "success");
+    await loadEventsAdmin();
+  } catch (err) {
+    console.error("saveEventsSettings error:", err);
+    showAlert("No se pudo guardar la sección de torneo.");
   }
 }
 
@@ -1109,6 +1266,8 @@ async function boot() {
     try { await loadHonorsAdmin(); } catch (e) { console.error("loadHonorsAdmin", e); }
     try { await loadUniformsAdmin(); } catch (e) { console.error("loadUniformsAdmin", e); }
     try { await loadTrainingsAdmin(); } catch (e) { console.error("loadTrainingsAdmin", e); }
+    try { await loadHeroAdmin(); } catch (e) { console.error("loadHeroAdmin", e); }
+    try { await loadEventsAdmin(); } catch (e) { console.error("loadEventsAdmin", e); }
 
 
     $.indexSettingsForm?.addEventListener("submit", saveIndexSettings);
@@ -1119,6 +1278,8 @@ async function boot() {
     $.approveLinkMode?.addEventListener("change", syncApproveModeUI);
     $.approveUserForm?.addEventListener("submit", approveUserFlow);
     $.socialLinksForm?.addEventListener("submit", saveSocialLinks);
+    $.heroSettingsForm?.addEventListener("submit", saveHeroSettings);
+    $.eventsSettingsForm?.addEventListener("submit", saveEventsSettings);
     $.honorsSettingsForm?.addEventListener("submit", saveHonorSettings);
     $.honorForm?.addEventListener("submit", addHonor);
     $.uniformSettingsForm?.addEventListener("submit", saveUniformSettings);

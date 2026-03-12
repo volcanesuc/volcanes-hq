@@ -189,25 +189,36 @@ async function loadIndexSettings() {
 /* =========================================================
    HERO
 ========================================================= */
+async function loadHeroData() {
+  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "hero")).catch(() => null);
+  const data = snap?.exists?.() ? (snap.data() || {}) : {};
 
-function renderHero() {
+  return {
+    title: data.title || CLUB_DATA.landing.hero.title,
+    description: data.description || CLUB_DATA.landing.hero.description,
+    imageUrl: data.imageUrl || CLUB_DATA.landing.hero.image,
+  };
+}
+
+function renderHero(heroData = {}) {
   const heroTitle = document.querySelector(".hero h2");
   const heroText = document.querySelector(".hero p");
   const heroImg = document.querySelector(".hero-img");
 
   if (heroTitle) {
-    heroTitle.innerHTML = CLUB_DATA.landing.hero.title.replace(",", ",<br>");
+    heroTitle.innerHTML = String(heroData.title || "").replace(",", ",<br>");
   }
 
   if (heroText) {
-    heroText.textContent = CLUB_DATA.landing.hero.description;
+    heroText.textContent = heroData.description || "";
   }
 
   if (heroImg) {
-    heroImg.src = CLUB_DATA.landing.hero.image;
+    heroImg.src = heroData.imageUrl || "";
     heroImg.alt = CLUB_DATA.club.name;
   }
 }
+
 /* =========================================================
    SOCIALS
 ========================================================= */
@@ -255,51 +266,58 @@ function renderSocials(socials = {}) {
 /* =========================================================
    EVENTS
 ========================================================= */
+async function loadEventsData() {
+  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "events")).catch(() => null);
+  const data = snap?.exists?.() ? (snap.data() || {}) : {};
 
-function renderEvents() {
+  return {
+    title: data.title || "",
+    subtitle: data.subtitle || "",
+    images: Array.isArray(data.images) ? data.images : [],
+    ctaEnabled: data.ctaEnabled === true,
+    ctaText: data.ctaText || "",
+    ctaUrl: data.ctaUrl || "",
+  };
+}
+
+function renderEvents(eventsData = {}) {
   const eventsSection = document.getElementById("eventsSection");
-  if (!eventsSection || !CLUB_DATA.landing.events?.length) return;
-
-  const event = CLUB_DATA.landing.events[0];
+  if (!eventsSection) return;
 
   const titleEl = eventsSection.querySelector("h2");
   const descEl = eventsSection.querySelector("p");
   const eventsContainer = eventsSection.querySelector(".events");
 
-  const existingBtn = eventsSection.querySelector(".landing-btn-disabled");
-  if (!existingBtn) {
-    const registerBtn = document.createElement("button");
-    registerBtn.className = "landing-btn landing-btn-disabled";
-    registerBtn.textContent = "Registro Cartaglow 2026 (Próximamente)";
-    registerBtn.disabled = true;
-    registerBtn.title = "El registro para Cartaglow 2026 abrirá próximamente";
-    eventsSection.appendChild(registerBtn);
-  }
-
-  if (titleEl) {
-    titleEl.textContent = `${event.name} ${event.edition}`;
-  }
-
-  if (descEl) {
-    descEl.textContent =
-      `${event.description} Contamos con ${event.participants} participantes en la edición ${event.edition}. Próxima edición en ${event.nextEdition.month} ${event.nextEdition.year}.`;
-  }
+  if (titleEl) titleEl.textContent = eventsData.title || "Evento";
+  if (descEl) descEl.textContent = eventsData.subtitle || "";
 
   if (eventsContainer) {
     eventsContainer.innerHTML = "";
 
-    event.images.forEach((src) => {
-      const link = document.createElement("a");
-      link.href = "pages/public/tournament_info.html";
-      link.className = "event-link";
-
+    (eventsData.images || []).forEach((src) => {
       const img = document.createElement("img");
       img.src = src;
-      img.alt = event.name;
-
-      link.appendChild(img);
-      eventsContainer.appendChild(link);
+      img.alt = eventsData.title || "Evento";
+      eventsContainer.appendChild(img);
     });
+  }
+
+  let ctaBtn = eventsSection.querySelector("#eventsCtaBtn");
+  if (!ctaBtn) {
+    ctaBtn = document.createElement("a");
+    ctaBtn.id = "eventsCtaBtn";
+    ctaBtn.className = "landing-btn mt-3";
+    ctaBtn.target = "_blank";
+    ctaBtn.rel = "noopener noreferrer";
+    eventsSection.appendChild(ctaBtn);
+  }
+
+  if (eventsData.ctaEnabled && safeUrl(eventsData.ctaUrl)) {
+    ctaBtn.style.display = "";
+    ctaBtn.href = safeUrl(eventsData.ctaUrl);
+    ctaBtn.textContent = eventsData.ctaText || "Ver más";
+  } else {
+    ctaBtn.style.display = "none";
   }
 }
 
@@ -552,17 +570,19 @@ async function bootNormalLanding() {
   await init();
   await loadIndexSettings();
 
-  const [socials, honorsData, uniformsData, trainingsData] = await Promise.all([
+ const [socials, heroData, eventsData, honorsData, uniformsData, trainingsData] = await Promise.all([
     loadSocialLinks(),
+    loadHeroData(),
+    loadEventsData(),
     loadHonorsData(),
     loadUniformsData(),
     loadTrainingsData(),
   ]);
 
-  renderHero();
+  renderHero(heroData);
   renderSocials(socials);
   renderTrainings(trainingsData, socials);
-  renderEvents();
+  renderEvents(eventsData);
   renderHonors(honorsData);
   renderUniforms(uniformsData);
   renderFooter();
