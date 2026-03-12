@@ -5,14 +5,21 @@
       <form id="tournamentForm" class="h-100 d-flex flex-column">
         <input type="hidden" id="tournamentId" />
 
+        <!-- HEADER -->
         <div class="modal-header app-modal__header">
           <div>
             <h5 class="modal-title mb-0" id="tournamentModalTitle">—</h5>
             <small class="app-modal__subtitle" id="tournamentModalSubtitle">—</small>
           </div>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          <button
+            type="button"
+            class="btn-close btn-close-white"
+            data-bs-dismiss="modal"
+            aria-label="Cerrar"
+          ></button>
         </div>
 
+        <!-- BODY -->
         <div class="modal-body app-modal__body">
           <div class="card app-form-card">
             <div class="card-body">
@@ -54,7 +61,7 @@
                 </div>
 
                 <div class="col-md-6">
-                  <label class="form-label">Sitio oficial del torneo</label>
+                  <label class="form-label" for="officialUrl">Sitio oficial del torneo</label>
                   <input
                     id="officialUrl"
                     type="url"
@@ -89,9 +96,11 @@
                   <textarea id="notes" class="form-control" rows="3"></textarea>
                 </div>
 
-                <div class="col-12 form-check mt-2">
-                  <input id="confirmed" type="checkbox" class="form-check-input" />
-                  <label id="lblConfirmed" class="form-check-label"></label>
+                <div class="col-12">
+                  <div class="form-check form-switch mt-2">
+                    <input id="confirmed" type="checkbox" class="form-check-input" />
+                    <label id="lblConfirmed" class="form-check-label" for="confirmed"></label>
+                  </div>
                 </div>
 
               </div>
@@ -99,20 +108,23 @@
           </div>
         </div>
 
-        <div class="modal-footer app-modal__footer d-flex justify-content-between">
-          <button
-            type="button"
-            id="deleteTournamentBtn"
-            class="btn btn-outline-danger"
-          >
-            Eliminar
-          </button>
+        <!-- FOOTER -->
+        <div class="modal-footer app-modal__footer">
+          <div class="app-modal__footer-left">
+            <button
+              type="button"
+              id="deleteTournamentBtn"
+              class="btn btn-outline-danger"
+            >
+              Eliminar
+            </button>
+          </div>
 
-          <div class="d-flex gap-2">
+          <div class="app-modal__footer-right d-flex gap-2">
             <button
               type="button"
               id="btnCancel"
-              class="btn btn-secondary"
+              class="btn btn-outline-secondary"
               data-bs-dismiss="modal"
             >
               Cancelar

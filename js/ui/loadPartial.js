@@ -1,9 +1,10 @@
 // js/ui/loadPartial.js
 export async function loadPartialOnce(url, mountId = "modalMount") {
-  const mount = document.getElementById(mountId);
-  if (!mount) throw new Error(`No existe el mount #${mountId} en el HTML`);
+  const cleanMountId = String(mountId).replace(/^#/, "");
+  const mount = document.getElementById(cleanMountId);
 
-  // ya está cargado?
+  if (!mount) throw new Error(`No existe el mount #${cleanMountId} en el HTML`);
+
   const already = mount.querySelector(`[data-partial-url="${cssEscape(url)}"]`);
   if (already) return already;
 
@@ -18,7 +19,6 @@ export async function loadPartialOnce(url, mountId = "modalMount") {
   const el = wrapper.firstElementChild;
   if (!el) throw new Error(`El partial ${url} vino vacío`);
 
-  // marcamos el root del partial con una key segura
   el.setAttribute("data-partial-url", url);
 
   mount.appendChild(el);

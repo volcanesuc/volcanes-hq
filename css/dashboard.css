@@ -449,6 +449,42 @@ mark.search-hit {
   overflow: auto;
 }
 
+.app-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.app-modal__footer-left,
+.app-modal__footer-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.app-modal__footer-right {
+  margin-left: auto;
+}
+
+@media (max-width: 767.98px) {
+  .app-modal__footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .app-modal__footer-left,
+  .app-modal__footer-right {
+    width: 100%;
+  }
+
+  .app-modal__footer-left .btn,
+  .app-modal__footer-right .btn {
+    flex: 1 1 auto;
+  }
+}
+
 @media (min-width: 1200px) {
   .app-list-scroll--selected {
     max-height: 38vh;

@@ -580,7 +580,7 @@ async function initPlayerModal() {
   const mount = document.getElementById("playerModalMount");
   if (!mount) return;
 
-  await loadPartialOnce("/partials/player_modal.html", "#playerModalMount");
+  await loadPartialOnce("/partials/player_modal.html", "playerModalMount");
 
   modalEl = document.getElementById("playerModal");
   form = document.getElementById("playerForm");
