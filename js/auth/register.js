@@ -90,6 +90,9 @@ const $ = {
   termsWrap: document.getElementById("termsWrap"),
   termsAccepted: document.getElementById("termsAccepted"),
   termsLink: document.getElementById("termsLink"),
+
+  wantsPlayer: document.getElementById("wantsPlayer"),
+  wantsMembershipPayment: document.getElementById("wantsMembershipPayment"),
 };
 
 let PUBLIC_CFG = {
@@ -136,7 +139,7 @@ function computeFormComplete() {
   if (PUBLIC_CFG.requireInfoDeclaration) requiredEls.push($.infoDeclaration);
   if (PUBLIC_CFG.requireTerms) requiredEls.push($.termsAccepted);
 
-  if (PUBLIC_CFG.enableMembershipPayment) {
+  if (shouldEnableMembershipPaymentUI()) {
     requiredEls.push($.planId, $.proofFile);
   }
 
@@ -280,6 +283,35 @@ function toYmd(tsLike) {
   } catch {
     return null;
   }
+}
+
+function shouldEnableMembershipPaymentUI() {
+  return PUBLIC_CFG.enableMembershipPayment && !!$.wantsMembershipPayment?.checked;
+}
+
+function refreshMembershipPaymentUI() {
+  const enabled = shouldEnableMembershipPaymentUI();
+
+  if (!enabled) {
+    paymentSection?.classList.add("d-none");
+    setEnabled($.planId, false);
+    setEnabled($.proofFile, false);
+    setRequired($.planId, false);
+    setRequired($.proofFile, false);
+
+    if ($.planId) $.planId.value = "";
+    if ($.proofFile) $.proofFile.value = "";
+    if ($.planMeta) $.planMeta.textContent = "";
+    clearProofStatus();
+  } else {
+    paymentSection?.classList.remove("d-none");
+    setEnabled($.planId, true);
+    setEnabled($.proofFile, true);
+    setRequired($.planId, true);
+    setRequired($.proofFile, true);
+  }
+
+  updateSubmitState();
 }
 
 /* =========================
@@ -727,25 +759,20 @@ async function loadPublicRegConfig() {
   const requireTerms = cfg.requireTerms === true;
   const termsUrl = cfg.termsUrl || null;
 
-  const paymentSection = document.getElementById("paymentSection");
+  PUBLIC_CFG = { enableMembershipPayment, requireTerms, requireInfoDeclaration };
 
   if (!enableMembershipPayment) {
-    paymentSection?.classList.add("d-none");
-    setEnabled($.planId, false);
-    setEnabled($.proofFile, false);
-    setRequired($.planId, false);
-    setRequired($.proofFile, false);
-
-    if ($.planId) $.planId.value = "";
-    if ($.proofFile) $.proofFile.value = "";
-    if ($.planMeta) $.planMeta.textContent = "";
+    if ($.wantsMembershipPayment) {
+      $.wantsMembershipPayment.checked = false;
+      $.wantsMembershipPayment.disabled = true;
+    }
   } else {
-    paymentSection?.classList.remove("d-none");
-    setEnabled($.planId, true);
-    setEnabled($.proofFile, true);
-    setRequired($.planId, true);
-    setRequired($.proofFile, true);
+    if ($.wantsMembershipPayment) {
+      $.wantsMembershipPayment.disabled = false;
+    }
   }
+
+  refreshMembershipPaymentUI();
 
   if (!requireInfoDeclaration) {
     setEnabled($.infoDeclaration, false);
@@ -784,7 +811,6 @@ async function loadPublicRegConfig() {
     }
   }
 
-  PUBLIC_CFG = { enableMembershipPayment, requireTerms, requireInfoDeclaration };
   updateSubmitState();
 
   return { requireInfoDeclaration, requireTerms, termsUrl, enableMembershipPayment };
@@ -1099,14 +1125,7 @@ async function init() {
   try {
     fillProvinceCanton();
     await loadPlans();
-
-    const cfg = await loadPublicRegConfig();
-
-    if (!cfg.enableMembershipPayment) {
-      const sec = document.getElementById("paymentSection");
-      if (sec) sec.classList.add("d-none");
-      updateSubmitState();
-    }
+    await loadPublicRegConfig();
   } catch (e) {
     console.warn(e);
     showAlert("No se pudo cargar la configuración. Refresca la página.");
@@ -1142,6 +1161,9 @@ $.form?.addEventListener("submit", async (ev) => {
 
   const idType = normLower($.idType?.value);
   const idNumber = cleanIdNum($.idNumber?.value);
+
+  const wantsPlayer = !!$.wantsPlayer?.checked;
+  const wantsMembershipPayment = shouldEnableMembershipPaymentUI();
 
   const email = user.email
     ? String(user.email).toLowerCase()
@@ -1181,7 +1203,7 @@ $.form?.addEventListener("submit", async (ev) => {
     return;
   }
 
-  const paymentsEnabled = !!cfg.enableMembershipPayment;
+  const paymentsEnabled = !!cfg.enableMembershipPayment && wantsMembershipPayment;
   if (paymentsEnabled) {
     if (!planId || !plan) {
       showAlert("Selecciona un plan de pago válido.");
@@ -1311,6 +1333,10 @@ $.form?.addEventListener("submit", async (ev) => {
         onboardingComplete: true,
         updatedAt: serverTimestamp(),
         lastSignInAt: serverTimestamp(),
+        registration: {
+          wantsPlayer: wantsPlayer === true,
+          wantsMembershipPayment: wantsMembershipPayment === true,
+        },
       };
 
       return setDoc(uref, payload, { merge: true });
@@ -1346,12 +1372,16 @@ function wireUpFormCompleteness() {
     $.proofFile,
     $.infoDeclaration,
     $.termsAccepted,
+    $.wantsPlayer,
+    $.wantsMembershipPayment,
   ].filter(Boolean);
 
   els.forEach((el) => {
     el.addEventListener("input", updateSubmitState);
     el.addEventListener("change", updateSubmitState);
   });
+
+  $.wantsMembershipPayment?.addEventListener("change", refreshMembershipPaymentUI);
 
   $.province?.addEventListener("change", () => setTimeout(updateSubmitState, 0));
   updateSubmitState();
