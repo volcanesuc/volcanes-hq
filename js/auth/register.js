@@ -155,7 +155,7 @@ function updateSubmitState() {
 function showAlert(msg, type = "danger") {
   if (!$.alertBox) return;
   $.alertBox.className = `alert alert-${type}`;
-  $.alertBox.textContent = msg;
+  $.alertBox.innerHTML = String(msg || "").replace(/\n/g, "<br>");
   $.alertBox.classList.remove("d-none");
 }
 
@@ -182,6 +182,70 @@ function fmtMoney(n, cur = "CRC") {
     style: "currency",
     currency: cur,
   }).format(v);
+}
+
+function ensureProofStatusBox() {
+  let el = document.getElementById("proofUploadStatus");
+  if (el) return el;
+
+  el = document.createElement("div");
+  el.id = "proofUploadStatus";
+  el.className = "small mt-2 d-none";
+
+  $.proofFile?.insertAdjacentElement("afterend", el);
+  return el;
+}
+
+function setProofStatus(message, type = "muted", withSpinner = false) {
+  const el = ensureProofStatusBox();
+  if (!el) return;
+
+  const cls =
+    type === "danger"
+      ? "text-danger"
+      : type === "success"
+      ? "text-success"
+      : type === "warning"
+      ? "text-warning"
+      : "text-muted";
+
+  el.className = `small mt-2 ${cls}`;
+
+  el.innerHTML = withSpinner
+    ? `
+      <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+      <span>${message}</span>
+    `
+    : `<span>${message}</span>`;
+
+  el.classList.remove("d-none");
+}
+
+function clearProofStatus() {
+  const el = document.getElementById("proofUploadStatus");
+  if (!el) return;
+  el.innerHTML = "";
+  el.classList.add("d-none");
+}
+
+function setSubmittingState(isSubmitting, label = "Enviar registro") {
+  if (!$.submitBtn) return;
+
+  $.submitBtn.disabled = isSubmitting;
+
+  if (isSubmitting) {
+    $.submitBtn.dataset.originalHtml ||= $.submitBtn.innerHTML;
+    $.submitBtn.innerHTML = `
+      <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+      ${label}
+    `;
+  } else if ($.submitBtn.dataset.originalHtml) {
+    $.submitBtn.innerHTML = $.submitBtn.dataset.originalHtml;
+  }
+
+  if (!isSubmitting) {
+    updateSubmitState();
+  }
 }
 
 function makePayCode(len = 7) {
@@ -223,10 +287,49 @@ function toYmd(tsLike) {
 ========================= */
 function firebaseErrMsg(e) {
   const code = e?.code ? String(e.code) : "";
-  if (code.includes("permission-denied")) return "Permisos insuficientes (rules).";
-  if (code.includes("unauthenticated")) return "No hay sesión (login) activa.";
-  if (code.includes("failed-precondition")) return "Falta un índice o precondición en Firestore.";
-  return e?.message ? e.message : "Error desconocido.";
+  const raw = e?.message ? String(e.message) : "Error desconocido.";
+
+  if (code.includes("storage/unauthorized")) {
+    return "No tienes permiso para subir el comprobante. Revisa las Storage Rules para membership_submissions/{uid}/...";
+  }
+
+  if (code.includes("storage/canceled")) {
+    return "La subida del comprobante fue cancelada.";
+  }
+
+  if (code.includes("storage/retry-limit-exceeded")) {
+    return "La subida tardó demasiado o falló por conexión. Intenta con una red más estable o un archivo más liviano.";
+  }
+
+  if (code.includes("storage/invalid-checksum")) {
+    return "El archivo subido llegó corrupto. Intenta subirlo otra vez.";
+  }
+
+  if (code.includes("storage/quota-exceeded")) {
+    return "El bucket de Storage superó su cuota.";
+  }
+
+  if (code.includes("storage/object-not-found")) {
+    return "No se encontró el archivo en Storage.";
+  }
+
+  if (code.includes("permission-denied")) {
+    return "Permisos insuficientes (rules).";
+  }
+
+  if (code.includes("unauthenticated")) {
+    return "No hay sesión activa.";
+  }
+
+  if (code.includes("failed-precondition")) {
+    return "Falta un índice o una precondición de Firestore.";
+  }
+
+  if (code.includes("invalid-argument")) {
+    return "Hay un dato inválido en la solicitud.";
+  }
+
+  return raw;
 }
 
 async function step(name, fn) {
@@ -737,6 +840,26 @@ $.planId?.addEventListener("change", () => {
   updateSubmitState();
 });
 
+$.proofFile?.addEventListener("change", () => {
+  const file = $.proofFile.files?.[0] || null;
+
+  if (!file) {
+    clearProofStatus();
+    updateSubmitState();
+    return;
+  }
+
+  try {
+    validateProofFile(file);
+    const kb = Math.round(file.size / 1024);
+    setProofStatus(`Archivo listo: ${file.name} (${kb} KB)`, "muted", false);
+  } catch (e) {
+    setProofStatus(e.message || "Archivo inválido.", "danger", false);
+  }
+
+  updateSubmitState();
+});
+
 /* =========================
    Membership builders
 ========================= */
@@ -868,7 +991,33 @@ async function syncUserMembershipSummary({
 /* =========================
    Upload proof
 ========================= */
+function validateProofFile(file) {
+  if (!file) {
+    throw new Error("No seleccionaste ningún comprobante.");
+  }
+
+  const maxMb = 10;
+  const maxBytes = maxMb * 1024 * 1024;
+
+  if (file.size > maxBytes) {
+    throw new Error(`El comprobante pesa demasiado. Máximo permitido: ${maxMb} MB.`);
+  }
+
+  const allowed = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "application/pdf",
+  ];
+
+  if (file.type && !allowed.includes(file.type)) {
+    throw new Error("Formato no permitido. Usa JPG, PNG, WEBP o PDF.");
+  }
+}
+
 async function uploadProofFile({ uid, file }) {
+  validateProofFile(file);
+
   const ext = (file.name.split(".").pop() || "").toLowerCase();
   const safeExt = ext ? `.${ext}` : "";
   const path = `membership_submissions/${uid || "anonymous"}/${Date.now()}_proof${safeExt}`;
@@ -878,11 +1027,30 @@ async function uploadProofFile({ uid, file }) {
     contentType: file.type || "application/octet-stream",
   });
 
+  setProofStatus(`Subiendo comprobante: 0%`, "muted", true);
+
   await new Promise((resolve, reject) => {
-    task.on("state_changed", null, reject, resolve);
+    task.on(
+      "state_changed",
+      (snapshot) => {
+        const total = snapshot.totalBytes || 0;
+        const transferred = snapshot.bytesTransferred || 0;
+        const pct = total > 0 ? Math.round((transferred / total) * 100) : 0;
+        setProofStatus(`Subiendo comprobante: ${pct}%`, "muted", true);
+      },
+      (error) => {
+        console.error("uploadProofFile error:", error);
+        setProofStatus(firebaseErrMsg(error), "danger", false);
+        reject(error);
+      },
+      () => resolve()
+    );
   });
 
   const fileUrl = await getDownloadURL(task.snapshot.ref);
+
+  setProofStatus("Comprobante subido correctamente.", "success", false);
+
   return {
     filePath: path,
     fileUrl,
@@ -925,7 +1093,9 @@ applyPrefillFromSession();
    Init
 ========================= */
 async function init() {
-  showLoader("Cargando…");
+  showLoader("Procesando registro…");
+  setSubmittingState(true, "Enviando...");
+  clearProofStatus();
   try {
     fillProvinceCanton();
     await loadPlans();
@@ -941,6 +1111,7 @@ async function init() {
     console.warn(e);
     showAlert("No se pudo cargar la configuración. Refresca la página.");
   } finally {
+    setSubmittingState(false);
     hideLoader();
     releaseUI();
     updateSubmitState();
@@ -1147,10 +1318,16 @@ $.form?.addEventListener("submit", async (ev) => {
 
     sessionStorage.removeItem("prefill_register");
     window.location.replace("../index.html?pending=1");
-  } catch (e) {
+    } catch (e) {
     console.warn(e);
-    showAlert(String(e.message || e), "danger");
+    const msg = String(e?.message || e || "Ocurrió un error inesperado.");
+    showAlert(msg, "danger");
+
+    if (/upload proof|storage|comprobante/i.test(msg)) {
+      setProofStatus(msg, "danger", false);
+    }
   } finally {
+    setSubmittingState(false);
     hideLoader();
   }
 });
