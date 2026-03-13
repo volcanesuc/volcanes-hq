@@ -230,6 +230,9 @@ export async function mount(root, cfg) {
     ev.preventDefault();
 
     const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error("No hay usuario autenticado.");
+    }
 
     const payload = {
       type: $.type.value,
@@ -242,7 +245,7 @@ export async function mount(root, cfg) {
       method: $.method.value || "otro",
       source: "manual",
       sourceId: null,
-      relatedAssociateId: null,
+      relatedUserId: null,
       relatedMembershipId: null,
       relatedSubmissionId: null,
       notes: $.notes.value.trim() || null,
