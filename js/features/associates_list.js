@@ -71,8 +71,7 @@ function pickBestMembership(list) {
   return sorted[0] || null;
 }
 
-function userKeyFromMembership(membership, userActive = true) {
-  if (userActive === false) return "inactive";
+function userKeyFromMembership(membership) {
   if (!membership) return "pending";
 
   const s = (membership.status || "").toLowerCase();
@@ -123,8 +122,7 @@ function membershipBadge(key, membership) {
   return badge(`Pendiente${suffix}`, "orange");
 }
 
-function isMoroso(membershipKey, userActive) {
-  if (userActive === false) return false;
+function isMoroso(membershipKey) {
   return membershipKey === "pending" || membershipKey === "overdue";
 }
 
@@ -198,7 +196,6 @@ function cacheDom(container) {
 
   $.searchInput = container.querySelector("#searchInput");
   $.typeFilter = container.querySelector("#typeFilter");
-  $.statusFilter = container.querySelector("#statusFilter");
   $.assocFilter = container.querySelector("#associationFilter");
 
   $.btnRefresh = container.querySelector("#btnRefresh");
@@ -238,15 +235,6 @@ function renderShell(container) {
         </select>
       </div>
 
-      <div class="col-6 col-md-2">
-        <label class="form-label mb-1">Estado (perfil)</label>
-        <select id="statusFilter" class="form-select">
-          <option value="all" selected>Todos</option>
-          <option value="active">Activos</option>
-          <option value="inactive">Inactivos</option>
-        </select>
-      </div>
-
       <div class="col-6 col-md-3">
         <label class="form-label mb-1">Asociación</label>
         <select id="associationFilter" class="form-select">
@@ -276,7 +264,6 @@ function renderShell(container) {
                 <th>Contacto</th>
                 <th>Tipo</th>
                 <th>Asociación</th>
-                <th>Estado</th>
                 <th class="text-end">Acciones</th>
               </tr>
             </thead>
@@ -361,14 +348,14 @@ async function loadAssociates() {
         membership._plan = null;
       }
 
-      const membershipKey = userKeyFromMembership(membership, isActive);
+      const membershipKey = userKeyFromMembership(membership);
 
       return {
         ...u,
         membership,
         _season: season,
         _assocKey: membershipKey,
-        _isMoroso: isMoroso(membershipKey, isActive),
+        _isMoroso: isMoroso(membershipKey),
       };
     }).sort((a, b) =>
       getFullName(a).localeCompare(getFullName(b), "es", { sensitivity: "base" })
@@ -397,15 +384,11 @@ function render() {
 
   const qText = normalize($.searchInput?.value);
   const typeVal = $.typeFilter?.value || "all";
-  const statusVal = $.statusFilter?.value || "all";
   const assocVal = $.assocFilter?.value || "all";
 
   let list = [...all];
 
   if (typeVal !== "all") list = list.filter((u) => getUserType(u) === typeVal);
-
-  if (statusVal === "active") list = list.filter((u) => u.isActive !== false);
-  else if (statusVal === "inactive") list = list.filter((u) => u.isActive === false);
 
   if (assocVal !== "all") {
     if (assocVal === "moroso") list = list.filter((u) => u._isMoroso);
@@ -529,7 +512,6 @@ export async function mount(container, cfg) {
   $.btnRefresh?.addEventListener("click", loadAssociates);
   $.searchInput?.addEventListener("input", render);
   $.typeFilter?.addEventListener("change", render);
-  $.statusFilter?.addEventListener("change", render);
   $.assocFilter?.addEventListener("change", render);
 
   $.btnNewAssociate?.addEventListener("click", () => openModal(`partials/user_modal.html`));
