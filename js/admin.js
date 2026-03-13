@@ -172,18 +172,6 @@ function fillStaticOptions() {
       .join("");
 }
 
-function getPlayerFullName(player) {
-  return `${player.firstName || ""} ${player.lastName || ""}`.trim();
-}
-
-function comparePlayersByName(a, b) {
-  return getPlayerFullName(a).localeCompare(
-    getPlayerFullName(b),
-    "es",
-    { sensitivity: "base" }
-  );
-}
-
 function normalizeText(value) {
   return String(value || "")
     .normalize("NFD")
@@ -197,6 +185,40 @@ function safeUrl(url) {
   if (!s) return "";
   if (/^https?:\/\//i.test(s)) return s;
   return `https://${s}`;
+}
+
+function getUserProfile(user) {
+  return user?.profile || {};
+}
+
+function getPlayerUser(player) {
+  const userId = player?.userId || player?.uid || null;
+  return userId ? usersById.get(userId) || null : null;
+}
+
+function getPlayerFullName(player) {
+  const user = getPlayerUser(player);
+  const profile = getUserProfile(user);
+
+  const fromUser =
+    profile.fullName ||
+    `${profile.firstName || ""} ${profile.lastName || ""}`.trim() ||
+    user?.displayName ||
+    "";
+
+  const legacy =
+    `${player?.firstName || ""} ${player?.lastName || ""}`.trim() ||
+    "";
+
+  return (fromUser || legacy).trim();
+}
+
+function comparePlayersByName(a, b) {
+  return getPlayerFullName(a).localeCompare(
+    getPlayerFullName(b),
+    "es",
+    { sensitivity: "base" }
+  );
 }
 
 // =========================
@@ -257,16 +279,23 @@ async function loadPlayers() {
   allPlayers = playersSnap.docs
     .map((d) => {
       const data = d.data() || {};
-      const user = data.uid ? usersById.get(data.uid) : null;
-      const hasUserAssigned = Boolean(data.uid && user);
+      const userId = data.userId || data.uid || null;
+      const user = userId ? usersById.get(userId) : null;
+      const profile = getUserProfile(user);
+      const hasUserAssigned = Boolean(userId && user);
 
       return {
         id: d.id,
         ...data,
+        userId,
         hasUserAssigned,
         systemRole: user?.role || "",
         linkedUserEmail: user?.email || "",
-        linkedUserName: user?.displayName || "",
+        linkedUserName:
+          profile.fullName ||
+          `${profile.firstName || ""} ${profile.lastName || ""}`.trim() ||
+          user?.displayName ||
+          "",
       };
     })
     .sort((a, b) => {
@@ -285,7 +314,7 @@ function renderPlayersTable() {
 
   const filtered = allPlayers.filter((p) => {
     const fullName = normalizeText(getPlayerFullName(p));
-    const email = normalizeText(p.email || p.linkedUserEmail || "");
+    const email = normalizeText(p.linkedUserEmail || "");
     const systemRole = String(p.systemRole || "").toLowerCase();
 
     const textOk = !term || fullName.includes(term) || email.includes(term);
@@ -309,9 +338,9 @@ function renderPlayersTable() {
     .map((p) => `
       <tr>
         <td>${esc(getPlayerFullName(p) || "—")}</td>
-        <td>${esc(p.email || p.linkedUserEmail || "—")}</td>
+        <td>${esc(p.linkedUserEmail || "—")}</td>
         <td>${esc(p.systemRole || "Sin asignar")}</td>
-        <td>${esc(p.uid || "—")}</td>
+        <td>${esc(p.userId || "—")}</td>
         <td>${esc(p.id || "—")}</td>
       </tr>
     `)
@@ -322,16 +351,16 @@ function fillExistingPlayersSelect(currentUid = null, currentEmail = "") {
   const normalizedEmail = normalizeText(currentEmail);
 
   const availablePlayers = allPlayers.filter((p) => {
-    const linkedUid = p.uid || null;
-    return !linkedUid || linkedUid === currentUid;
+    const linkedUserId = p.userId || null;
+    return !linkedUserId || linkedUserId === currentUid;
   });
 
   availablePlayers.sort((a, b) => {
     const aName = normalizeText(getPlayerFullName(a));
     const bName = normalizeText(getPlayerFullName(b));
 
-    const aEmail = normalizeText(a.email || "");
-    const bEmail = normalizeText(b.email || "");
+    const aEmail = normalizeText(a.linkedUserEmail || "");
+    const bEmail = normalizeText(b.linkedUserEmail || "");
 
     const aMatch = normalizedEmail && aEmail === normalizedEmail ? 1 : 0;
     const bMatch = normalizedEmail && bEmail === normalizedEmail ? 1 : 0;
@@ -344,8 +373,8 @@ function fillExistingPlayersSelect(currentUid = null, currentEmail = "") {
     `<option value="">Seleccionar…</option>` +
     availablePlayers
       .map((p) => {
-        const name = getPlayerFullName(p) || p.email || p.id;
-        const suffix = p.email ? ` · ${p.email}` : "";
+        const name = getPlayerFullName(p) || p.id;
+        const suffix = p.linkedUserEmail ? ` · ${p.linkedUserEmail}` : "";
         return `<option value="${esc(p.id)}">${esc(name + suffix)}</option>`;
       })
       .join("");
@@ -361,6 +390,8 @@ async function openApproveModal(uid) {
   const user = pendingUsers.find((u) => u.id === uid);
   if (!user) return;
 
+  const profile = getUserProfile(user);
+
   $.approveUid.value = user.id;
   $.approveEmail.value = user.email || "";
   $.approveSystemRole.value = user.role || "viewer";
@@ -369,19 +400,21 @@ async function openApproveModal(uid) {
   fillExistingPlayersSelect(uid, user.email || "");
   $.approveExistingPlayerId.value = user.playerId || "";
 
-  $.newPlayerFirstName.value = "";
-  $.newPlayerLastName.value = "";
-  $.newPlayerBirthday.value = "";
+  $.newPlayerFirstName.value = profile.firstName || "";
+  $.newPlayerLastName.value = profile.lastName || "";
+  $.newPlayerBirthday.value = profile.birthDate || "";
   $.newPlayerFieldRole.value = "";
 
-  const displayName = String(user.displayName || "").trim();
-  if (displayName) {
-    const parts = displayName.split(/\s+/).filter(Boolean);
-    if (parts.length >= 2) {
-      $.newPlayerFirstName.value = parts.slice(0, -1).join(" ");
-      $.newPlayerLastName.value = parts.slice(-1).join(" ");
-    } else {
-      $.newPlayerFirstName.value = displayName;
+  if (!$.newPlayerFirstName.value && !$.newPlayerLastName.value) {
+    const displayName = String(user.displayName || "").trim();
+    if (displayName) {
+      const parts = displayName.split(/\s+/).filter(Boolean);
+      if (parts.length >= 2) {
+        $.newPlayerFirstName.value = parts.slice(0, -1).join(" ");
+        $.newPlayerLastName.value = parts.slice(-1).join(" ");
+      } else {
+        $.newPlayerFirstName.value = displayName;
+      }
     }
   }
 
@@ -400,31 +433,39 @@ async function assertPlayerCanBeLinked(playerId, uid) {
   }
 
   const data = snap.data() || {};
-  const currentUid = data.uid || null;
+  const currentUserId = data.userId || data.uid || null;
 
-  if (currentUid && currentUid !== uid) {
+  if (currentUserId && currentUserId !== uid) {
     throw new Error("Ese jugador ya está ligado a otro usuario.");
   }
 
   return data;
 }
 
+async function getRequiredUserProfile(uid) {
+  const snap = await getDoc(doc(db, COL_USERS, uid));
+  if (!snap.exists()) {
+    throw new Error("El usuario no existe.");
+  }
+
+  const user = snap.data() || {};
+  const profile = getUserProfile(user);
+
+  if (!profile.firstName || !profile.lastName) {
+    throw new Error("El usuario no tiene nombre y apellido en su perfil.");
+  }
+
+  return { user, profile };
+}
+
 async function createPlayerForUser({
   uid,
-  email,
-  firstName,
-  lastName,
-  birthday,
   fieldRole,
 }) {
   const ref = await addDoc(collection(db, COL_PLAYERS), {
     active: true,
-    firstName: firstName || null,
-    lastName: lastName || null,
-    birthday: birthday || null,
+    userId: uid || null,
     fieldRole: fieldRole || null,
-    uid: uid || null,
-    email: email || null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -432,10 +473,9 @@ async function createPlayerForUser({
   return ref.id;
 }
 
-async function linkExistingPlayer({ playerId, uid, email }) {
+async function linkExistingPlayer({ playerId, uid }) {
   await updateDoc(doc(db, COL_PLAYERS, playerId), {
-    uid: uid || null,
-    email: email || null,
+    userId: uid || null,
     updatedAt: serverTimestamp(),
   });
 }
@@ -445,7 +485,6 @@ async function approveUserFlow(ev) {
   hideAlert();
 
   const uid = $.approveUid.value;
-  const email = $.approveEmail.value || null;
   const systemRole = $.approveSystemRole.value || "viewer";
   const mode = $.approveLinkMode.value;
 
@@ -468,26 +507,16 @@ async function approveUserFlow(ev) {
       await linkExistingPlayer({
         playerId,
         uid,
-        email,
       });
     }
 
     if (mode === "new") {
-      const firstName = $.newPlayerFirstName.value.trim();
-      const lastName = $.newPlayerLastName.value.trim();
-      const birthday = $.newPlayerBirthday.value || null;
-      const fieldRole = $.newPlayerFieldRole.value || null;
+      await getRequiredUserProfile(uid);
 
-      if (!firstName || !lastName) {
-        throw new Error("Completa nombre y apellido para crear el jugador.");
-      }
+      const fieldRole = $.newPlayerFieldRole.value || null;
 
       playerId = await createPlayerForUser({
         uid,
-        email,
-        firstName,
-        lastName,
-        birthday,
         fieldRole,
       });
     }
