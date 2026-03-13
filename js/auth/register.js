@@ -73,11 +73,18 @@ const $ = {
   email: document.getElementById("email"),
 
   phone: document.getElementById("phone"),
+
+  emergencyContactName: document.getElementById("emergencyContactName"),
+  emergencyContactRelation: document.getElementById("emergencyContactRelation"),
+  emergencyContactPhone: document.getElementById("emergencyContactPhone"),
+
   payerName: document.getElementById("payerName"),
   payMethod: document.getElementById("payMethod"),
 
   province: document.getElementById("province"),
   canton: document.getElementById("canton"),
+
+  paymentSection: document.getElementById("paymentSection"),
 
   planId: document.getElementById("planId"),
   planMeta: document.getElementById("planMeta"),
@@ -132,6 +139,10 @@ function computeFormComplete() {
     $.idType,
     $.idNumber,
     $.email,
+    $.phone,
+    $.emergencyContactName,
+    $.emergencyContactRelation,
+    $.emergencyContactPhone,
     $.province,
     $.canton,
   ];
@@ -293,7 +304,7 @@ function refreshMembershipPaymentUI() {
   const enabled = shouldEnableMembershipPaymentUI();
 
   if (!enabled) {
-    paymentSection?.classList.add("d-none");
+    $.paymentSection?.classList.add("d-none");
     setEnabled($.planId, false);
     setEnabled($.proofFile, false);
     setRequired($.planId, false);
@@ -304,7 +315,7 @@ function refreshMembershipPaymentUI() {
     if ($.planMeta) $.planMeta.textContent = "";
     clearProofStatus();
   } else {
-    paymentSection?.classList.remove("d-none");
+    $.paymentSection?.classList.remove("d-none");
     setEnabled($.planId, true);
     setEnabled($.proofFile, true);
     setRequired($.planId, true);
@@ -473,6 +484,7 @@ function buildUserProfile({
   idNumber,
   phone,
   residence,
+  emergencyContact,
 }) {
   const fullName = `${firstName} ${lastName}`.trim();
 
@@ -485,6 +497,7 @@ function buildUserProfile({
     idNumber: idNumber || null,
     phone: phone || null,
     residence: residence || null,
+    emergencyContact: emergencyContact || null,
   };
 }
 
@@ -498,6 +511,7 @@ async function saveUserProfileAndConsents({
   idNumber,
   phone,
   residence,
+  emergencyContact,
   consents,
 }) {
   const user = auth.currentUser;
@@ -517,7 +531,11 @@ async function saveUserProfileAndConsents({
       idNumber,
       phone,
       residence,
+      emergencyContact,
     }),
+
+    phone: phone || null,
+    emergencyContact: emergencyContact || null,
 
     consents: {
       requireInfoDeclaration: !!consents.requireInfoDeclaration,
@@ -539,6 +557,7 @@ async function saveUserProfileAndConsents({
     fullName,
     email,
     phone: phone || null,
+    emergencyContact: emergencyContact || null,
   };
 }
 
@@ -708,13 +727,24 @@ onAuthStateChanged(auth, async (user) => {
 
       const profile = data.profile || {};
       const residence = profile.residence || {};
+      const emergencyContact = profile.emergencyContact || data.emergencyContact || {};
 
       if ($.firstName && !$.firstName.value && profile.firstName) $.firstName.value = profile.firstName;
       if ($.lastName && !$.lastName.value && profile.lastName) $.lastName.value = profile.lastName;
       if ($.birthDate && !$.birthDate.value && profile.birthDate) $.birthDate.value = toYmd(profile.birthDate) || "";
       if ($.idType && !$.idType.value && profile.idType) $.idType.value = profile.idType;
       if ($.idNumber && !$.idNumber.value && profile.idNumber) $.idNumber.value = profile.idNumber;
-      if ($.phone && !$.phone.value && profile.phone) $.phone.value = profile.phone;
+      if ($.phone && !$.phone.value && (profile.phone || data.phone)) $.phone.value = profile.phone || data.phone;
+
+      if ($.emergencyContactName && !$.emergencyContactName.value && emergencyContact.name) {
+        $.emergencyContactName.value = emergencyContact.name;
+      }
+      if ($.emergencyContactRelation && !$.emergencyContactRelation.value && emergencyContact.relation) {
+        $.emergencyContactRelation.value = emergencyContact.relation;
+      }
+      if ($.emergencyContactPhone && !$.emergencyContactPhone.value && emergencyContact.phone) {
+        $.emergencyContactPhone.value = emergencyContact.phone;
+      }
 
       if ($.province && !$.province.value && residence.province) {
         $.province.value = residence.province;
@@ -1171,6 +1201,12 @@ $.form?.addEventListener("submit", async (ev) => {
 
   const phone = norm($.phone?.value);
 
+  const emergencyContact = {
+    name: norm($.emergencyContactName?.value),
+    relation: norm($.emergencyContactRelation?.value),
+    phone: norm($.emergencyContactPhone?.value),
+  };
+
   const residence = {
     province: norm($.province?.value),
     canton: norm($.canton?.value),
@@ -1195,6 +1231,16 @@ $.form?.addEventListener("submit", async (ev) => {
 
   if (!firstName || !lastName || !birthDate || !idType || !idNumber || !email) {
     showAlert("Completa todos los campos obligatorios.");
+    return;
+  }
+
+  if (!phone) {
+    showAlert("Ingresa tu número de teléfono.");
+    return;
+  }
+
+  if (!emergencyContact.name || !emergencyContact.relation || !emergencyContact.phone) {
+    showAlert("Completa el contacto de emergencia: nombre, parentesco o relación, y teléfono.");
     return;
   }
 
@@ -1250,6 +1296,7 @@ $.form?.addEventListener("submit", async (ev) => {
         idNumber,
         phone,
         residence,
+        emergencyContact,
         consents,
       })
     );
@@ -1330,6 +1377,8 @@ $.form?.addEventListener("submit", async (ev) => {
         displayName:
           auth.currentUser?.displayName || `${firstName} ${lastName}`.trim() || null,
         photoURL: auth.currentUser?.photoURL || null,
+        phone: phone || null,
+        emergencyContact,
         onboardingComplete: true,
         updatedAt: serverTimestamp(),
         lastSignInAt: serverTimestamp(),
@@ -1344,7 +1393,7 @@ $.form?.addEventListener("submit", async (ev) => {
 
     sessionStorage.removeItem("prefill_register");
     window.location.replace("../index.html?pending=1");
-    } catch (e) {
+  } catch (e) {
     console.warn(e);
     const msg = String(e?.message || e || "Ocurrió un error inesperado.");
     showAlert(msg, "danger");
@@ -1366,6 +1415,10 @@ function wireUpFormCompleteness() {
     $.idType,
     $.idNumber,
     $.email,
+    $.phone,
+    $.emergencyContactName,
+    $.emergencyContactRelation,
+    $.emergencyContactPhone,
     $.province,
     $.canton,
     $.planId,
