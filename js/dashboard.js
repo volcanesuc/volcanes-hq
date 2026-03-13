@@ -67,20 +67,41 @@ function getClubPlayerUserId(cp = {}) {
   return safeCp.userId || safeCp.linkedUserId || safeCp.uid || safeCp.userRefId || null;
 }
 
-function getUserDisplayName(userData = {}) {
+function getUserProfile(userData = {}) {
   const safeUser = userData && typeof userData === "object" ? userData : {};
+  const profile = safeUser.profile && typeof safeUser.profile === "object"
+    ? safeUser.profile
+    : {};
 
-  const joinedName = [safeUser.firstName, safeUser.lastName]
+  return {
+    firstName: safeUser.firstName ?? profile.firstName ?? "",
+    lastName: safeUser.lastName ?? profile.lastName ?? "",
+    fullName: safeUser.fullName ?? profile.fullName ?? "",
+    displayName: safeUser.displayName ?? profile.displayName ?? "",
+    name: safeUser.name ?? profile.name ?? "",
+    email: safeUser.email ?? profile.email ?? "",
+    gender: safeUser.gender ?? profile.gender ?? null,
+    birthday: safeUser.birthday ?? safeUser.birthDate ?? profile.birthday ?? profile.birthDate ?? null,
+    number: safeUser.number ?? profile.number ?? null,
+    role: safeUser.role ?? profile.role ?? "",
+    photoURL: safeUser.photoURL ?? profile.photoURL ?? profile.avatarUrl ?? ""
+  };
+}
+
+function getUserDisplayName(userData = {}) {
+  const u = getUserProfile(userData);
+
+  const joinedName = [u.firstName, u.lastName]
     .filter(Boolean)
     .join(" ")
     .trim();
 
   return (
-    safeUser.fullName ||
-    safeUser.displayName ||
+    u.fullName ||
+    u.displayName ||
     joinedName ||
-    safeUser.name ||
-    safeUser.email ||
+    u.name ||
+    u.email ||
     "—"
   );
 }
@@ -90,6 +111,7 @@ function getClubPlayerName(cp = {}, user = null) {
   return (
     safeCp.fullName ||
     safeCp.displayName ||
+    safeCp.name ||
     getUserDisplayName(user || {}) ||
     "—"
   );
@@ -97,21 +119,27 @@ function getClubPlayerName(cp = {}, user = null) {
 
 function getClubPlayerNumber(cp = {}, user = null) {
   const safeCp = cp && typeof cp === "object" ? cp : {};
-  const safeUser = user && typeof user === "object" ? user : {};
-  const v = safeCp.number ?? safeCp.jerseyNumber ?? safeUser.number ?? null;
+  const u = getUserProfile(user || {});
+  const v = safeCp.number ?? safeCp.jerseyNumber ?? u.number ?? null;
   return v == null ? null : v;
 }
 
 function getClubPlayerRole(cp = {}, user = null) {
   const safeCp = cp && typeof cp === "object" ? cp : {};
-  const safeUser = user && typeof user === "object" ? user : {};
-  return normalizeRoleId(safeCp.role || safeCp.position || safeUser.role || "");
+  const u = getUserProfile(user || {});
+  return normalizeRoleId(safeCp.role || safeCp.position || u.role || "");
 }
 
 function getClubPlayerGender(cp = {}, user = null) {
   const safeCp = cp && typeof cp === "object" ? cp : {};
-  const safeUser = user && typeof user === "object" ? user : {};
-  return safeCp.gender || safeUser.gender || null;
+  const u = getUserProfile(user || {});
+  return safeCp.gender || u.gender || null;
+}
+
+function getClubPlayerBirthday(cp = {}, user = null) {
+  const safeCp = cp && typeof cp === "object" ? cp : {};
+  const u = getUserProfile(user || {});
+  return safeCp.birthday || safeCp.birthDate || u.birthday || null;
 }
 
 function buildPlayersFromClubData({ usersDocs = [], clubPlayersDocs = [] }) {
@@ -125,22 +153,39 @@ function buildPlayersFromClubData({ usersDocs = [], clubPlayersDocs = [] }) {
     const id = d.id;
     const userId = getClubPlayerUserId(cp);
     const user = userId ? usersById[userId] : null;
+    const userProfile = getUserProfile(user || {});
+
+    const fullName = getClubPlayerName(cp, user);
+    const split = fullName && fullName !== "—"
+      ? fullName.split(" ")
+      : [];
 
     return {
       id,
       clubPlayerId: id,
       userId,
-      firstName: cp.firstName ?? user?.firstName ?? "",
-      lastName: cp.lastName ?? user?.lastName ?? "",
-      displayName: cp.displayName ?? user?.displayName ?? "",
-      fullName: getClubPlayerName(cp, user),
-      shortName: getClubPlayerName(cp, user),
-      idNumber: cp.idNumber ?? user?.idNumber ?? null,
+
+      firstName:
+        cp.firstName ??
+        userProfile.firstName ??
+        (split.length > 1 ? split.slice(0, -1).join(" ") : split[0] || ""),
+
+      lastName:
+        cp.lastName ??
+        userProfile.lastName ??
+        (split.length > 1 ? split.slice(-1).join("") : ""),
+
+      displayName: cp.displayName ?? userProfile.displayName ?? fullName,
+      fullName,
+      shortName: fullName,
+
+      idNumber: cp.idNumber ?? user?.idNumber ?? userProfile.idNumber ?? null,
       number: getClubPlayerNumber(cp, user),
       gender: getClubPlayerGender(cp, user),
-      birthday: cp.birthday ?? user?.birthday ?? null,
+      birthday: getClubPlayerBirthday(cp, user),
       active: normalizeClubPlayerActive(cp),
       role: getClubPlayerRole(cp, user),
+
       rawClubPlayer: cp,
       rawUser: user || null
     };

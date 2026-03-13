@@ -164,33 +164,93 @@ function getGenderLabel(gender) {
   return found?.label || "—";
 }
 
-function getUserDisplayName(userData = {}) {
+function getUserProfile(userData = {}) {
   const safeUser = userData && typeof userData === "object" ? userData : {};
+  const profile = safeUser.profile && typeof safeUser.profile === "object"
+    ? safeUser.profile
+    : {};
 
-  const joinedName = [safeUser.firstName, safeUser.lastName]
+  return {
+    firstName: safeUser.firstName ?? profile.firstName ?? "",
+    lastName: safeUser.lastName ?? profile.lastName ?? "",
+    fullName: safeUser.fullName ?? profile.fullName ?? "",
+    displayName: safeUser.displayName ?? profile.displayName ?? "",
+    name: safeUser.name ?? profile.name ?? "",
+    email: safeUser.email ?? profile.email ?? "",
+    idNumber: safeUser.idNumber ?? profile.idNumber ?? null,
+    gender: safeUser.gender ?? profile.gender ?? null,
+    birthday: safeUser.birthday ?? safeUser.birthDate ?? profile.birthday ?? profile.birthDate ?? null,
+    number: safeUser.number ?? profile.number ?? null,
+    role: safeUser.role ?? profile.role ?? "",
+    photoURL: safeUser.photoURL ?? profile.photoURL ?? profile.avatarUrl ?? ""
+  };
+}
+
+function getUserDisplayName(userData = {}) {
+  const u = getUserProfile(userData);
+
+  const joinedName = [u.firstName, u.lastName]
     .filter(Boolean)
     .join(" ")
     .trim();
 
   return (
-    safeUser.fullName ||
-    safeUser.displayName ||
+    u.fullName ||
+    u.displayName ||
     joinedName ||
-    safeUser.name ||
-    safeUser.email ||
+    u.name ||
+    u.email ||
     "—"
   );
 }
 
 function getClubPlayerUserId(cp = {}) {
-  return cp.userId || cp.linkedUserId || cp.uid || cp.userRefId || null;
+  const safeCp = cp && typeof cp === "object" ? cp : {};
+  return safeCp.userId || safeCp.linkedUserId || safeCp.uid || safeCp.userRefId || null;
 }
 
 function normalizeClubPlayerActive(cp = {}) {
-  if (cp.active === false) return false;
-  if (cp.isActive === false) return false;
-  if (cp.status === "inactive") return false;
+  const safeCp = cp && typeof cp === "object" ? cp : {};
+  if (safeCp.active === false) return false;
+  if (safeCp.isActive === false) return false;
+  if (safeCp.status === "inactive") return false;
   return true;
+}
+
+function getClubPlayerName(cp = {}, user = null) {
+  const safeCp = cp && typeof cp === "object" ? cp : {};
+  return (
+    safeCp.fullName ||
+    safeCp.displayName ||
+    safeCp.name ||
+    getUserDisplayName(user || {}) ||
+    "—"
+  );
+}
+
+function getClubPlayerRole(cp = {}, user = null) {
+  const safeCp = cp && typeof cp === "object" ? cp : {};
+  const u = getUserProfile(user || {});
+  return normalizeRoleId(safeCp.role || safeCp.position || u.role || getDefaultRoleId());
+}
+
+function getClubPlayerNumber(cp = {}, user = null) {
+  const safeCp = cp && typeof cp === "object" ? cp : {};
+  const u = getUserProfile(user || {});
+  const v = safeCp.number ?? safeCp.jerseyNumber ?? u.number ?? null;
+  return v == null ? null : v;
+}
+
+function getClubPlayerGender(cp = {}, user = null) {
+  const safeCp = cp && typeof cp === "object" ? cp : {};
+  const u = getUserProfile(user || {});
+  return safeCp.gender || u.gender || null;
+}
+
+function getClubPlayerBirthday(cp = {}, user = null) {
+  const safeCp = cp && typeof cp === "object" ? cp : {};
+  const u = getUserProfile(user || {});
+  return safeCp.birthday || safeCp.birthDate || u.birthday || null;
 }
 
 function buildPlayerRecord(docSnap) {
@@ -198,18 +258,22 @@ function buildPlayerRecord(docSnap) {
   const id = docSnap.id;
   const userId = getClubPlayerUserId(cp);
   const linkedUser = userId ? usersById.get(userId) || null : null;
+  const userProfile = getUserProfile(linkedUser || {});
 
-  const firstName = cp.firstName ?? linkedUser?.firstName ?? "";
-  const lastName = cp.lastName ?? linkedUser?.lastName ?? "";
-  const displayName = cp.displayName ?? linkedUser?.displayName ?? "";
-  const fullName =
-    cp.fullName ||
-    displayName ||
-    getUserDisplayName(linkedUser || {}) ||
-    `${firstName} ${lastName}`.trim() ||
-    "—";
+  const fullName = getClubPlayerName(cp, linkedUser);
+  const split = fullName && fullName !== "—" ? fullName.split(" ") : [];
 
-  const role = normalizeRoleId(cp.role || cp.position || linkedUser?.role || getDefaultRoleId());
+  const firstName =
+    cp.firstName ??
+    userProfile.firstName ??
+    (split.length > 1 ? split.slice(0, -1).join(" ") : split[0] || "");
+
+  const lastName =
+    cp.lastName ??
+    userProfile.lastName ??
+    (split.length > 1 ? split.slice(-1).join("") : "");
+
+  const role = getClubPlayerRole(cp, linkedUser);
 
   return {
     id,
@@ -220,12 +284,12 @@ function buildPlayerRecord(docSnap) {
     firstName,
     lastName,
     fullName,
-    displayName,
+    displayName: cp.displayName ?? userProfile.displayName ?? fullName,
 
-    idNumber: cp.idNumber ?? linkedUser?.idNumber ?? null,
-    number: cp.number ?? cp.jerseyNumber ?? linkedUser?.number ?? null,
-    gender: cp.gender ?? linkedUser?.gender ?? null,
-    birthday: cp.birthday ?? linkedUser?.birthday ?? null,
+    idNumber: cp.idNumber ?? userProfile.idNumber ?? null,
+    number: getClubPlayerNumber(cp, linkedUser),
+    gender: getClubPlayerGender(cp, linkedUser),
+    birthday: getClubPlayerBirthday(cp, linkedUser),
     role,
     roleLabel: getRoleLabel(role),
 

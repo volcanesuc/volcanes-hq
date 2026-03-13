@@ -97,29 +97,79 @@ function inRange(dateStr, startStr, endStr) {
   return true;
 }
 
-function getUserDisplayName(userData = {}) {
+function getUserProfile(userData = {}) {
   const safeUser = userData && typeof userData === "object" ? userData : {};
+  const profile = safeUser.profile && typeof safeUser.profile === "object"
+    ? safeUser.profile
+    : {};
 
-  const joinedName = [safeUser.firstName, safeUser.lastName]
+  return {
+    firstName: safeUser.firstName ?? profile.firstName ?? "",
+    lastName: safeUser.lastName ?? profile.lastName ?? "",
+    fullName: safeUser.fullName ?? profile.fullName ?? "",
+    displayName: safeUser.displayName ?? profile.displayName ?? "",
+    name: safeUser.name ?? profile.name ?? "",
+    email: safeUser.email ?? profile.email ?? "",
+    gender: safeUser.gender ?? profile.gender ?? null,
+    birthday: safeUser.birthday ?? safeUser.birthDate ?? profile.birthday ?? profile.birthDate ?? null,
+    number: safeUser.number ?? profile.number ?? null,
+    role: safeUser.role ?? profile.role ?? "",
+    photoURL: safeUser.photoURL ?? profile.photoURL ?? profile.avatarUrl ?? ""
+  };
+}
+
+function getUserDisplayName(userData = {}) {
+  const u = getUserProfile(userData);
+
+  const joinedName = [u.firstName, u.lastName]
     .filter(Boolean)
     .join(" ")
     .trim();
 
   return (
-    safeUser.fullName ||
-    safeUser.displayName ||
+    u.fullName ||
+    u.displayName ||
     joinedName ||
-    safeUser.name ||
-    safeUser.email ||
+    u.name ||
+    u.email ||
     "—"
   );
 }
 
 function normalizeClubPlayerActive(cp = {}) {
-  if (cp.active === false) return false;
-  if (cp.isActive === false) return false;
-  if (cp.status === "inactive") return false;
+  const safeCp = cp && typeof cp === "object" ? cp : {};
+  if (safeCp.active === false) return false;
+  if (safeCp.isActive === false) return false;
+  if (safeCp.status === "inactive") return false;
   return true;
+}
+
+function getClubPlayerUserId(cp = {}) {
+  const safeCp = cp && typeof cp === "object" ? cp : {};
+  return safeCp.userId || safeCp.linkedUserId || safeCp.uid || safeCp.userRefId || null;
+}
+
+function getClubPlayerName(cp = {}, user = null) {
+  const safeCp = cp && typeof cp === "object" ? cp : {};
+  return (
+    safeCp.fullName ||
+    safeCp.displayName ||
+    safeCp.name ||
+    getUserDisplayName(user || {}) ||
+    "—"
+  );
+}
+
+function getClubPlayerEmail(cp = {}, user = null) {
+  const safeCp = cp && typeof cp === "object" ? cp : {};
+  const u = getUserProfile(user || {});
+  return safeCp.email || u.email || "";
+}
+
+function getClubPlayerPhoto(cp = {}, user = null) {
+  const safeCp = cp && typeof cp === "object" ? cp : {};
+  const u = getUserProfile(user || {});
+  return safeCp.photoURL || safeCp.avatarUrl || u.photoURL || "";
 }
 
 /**
@@ -222,21 +272,10 @@ async function loadAttendance() {
     const cp = d.data() || {};
     const clubPlayerId = d.id;
 
-    const userId =
-      cp.userId ||
-      cp.linkedUserId ||
-      cp.uid ||
-      cp.userRefId ||
-      null;
+    const userId = getClubPlayerUserId(cp);
+    const user = userId ? usersById[userId] || null : null;
 
-    const user = userId ? usersById[userId] : null;
-
-    const fullName =
-      cp.fullName ||
-      cp.displayName ||
-      getUserDisplayName(user || {}) ||
-      "—";
-
+    const fullName = getClubPlayerName(cp, user);
     const active = normalizeClubPlayerActive(cp);
 
     allPlayers[clubPlayerId] = {
@@ -246,8 +285,8 @@ async function loadAttendance() {
         userId,
         fullName,
         active,
-        email: cp.email || user?.email || "",
-        photoURL: cp.photoURL || user?.photoURL || user?.avatarUrl || "",
+        email: getClubPlayerEmail(cp, user),
+        photoURL: getClubPlayerPhoto(cp, user),
         rawClubPlayer: cp,
         rawUser: user || null,
       },
