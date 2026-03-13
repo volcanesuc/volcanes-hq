@@ -268,7 +268,7 @@ function renderShell(container) {
               </tr>
             </thead>
             <tbody id="associatesTbody">
-              <tr><td colspan="6" class="text-muted">Cargando…</td></tr>
+              <tr><td colspan="5" class="text-muted">Cargando…</td></tr>
             </tbody>
           </table>
         </div>
@@ -339,7 +339,6 @@ async function loadAssociates() {
     const plansMap = await loadPlansMap(planIds);
 
     all = users.map((u) => {
-      const isActive = u.isActive !== false;
       const membership = membershipMap[u.id] || null;
 
       if (membership && !membership.planSnapshot && membership.planId && plansMap[membership.planId]) {
@@ -417,8 +416,6 @@ function render() {
       : `Hola! Recordatorio de pago a la asociación.`;
 
   $.tbody.innerHTML = list.map((u) => {
-    const isActive = u.isActive !== false;
-    const perfilBadge = isActive ? badge("Activo", "yellow") : badge("Inactivo", "gray");
 
     const m = u.membership || null;
     const asocBadgeHtml = membershipBadge(u._assocKey, m);
@@ -475,8 +472,6 @@ function render() {
         <td>${typeLabel(getUserType(u))}</td>
 
         <td>${asocBadgeHtml}</td>
-
-        <td>${perfilBadge}</td>
 
         <td class="text-end">
           <div class="d-inline-flex gap-2">
