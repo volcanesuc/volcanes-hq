@@ -124,7 +124,6 @@ export async function loginWithGoogle(opts = {}) {
         isActive: false,
         role: "viewer",
         memberId: null,
-        associateId: null,
         playerId: null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),

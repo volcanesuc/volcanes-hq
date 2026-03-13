@@ -290,18 +290,16 @@ async function ensureUserDoc(uid, email, user = auth.currentUser) {
       isActive: false,
       role: "viewer",
 
-      memberId: null,
-      associateId: null,
       playerId: null,
-
-      profile: null,
-      consents: null,
+      profile: {},
+      consents: {},
 
       membershipIds: [],
       currentMembership: null,
 
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
+      lastSignInAt: serverTimestamp(),
     };
 
     await setDoc(uref, createPayload, { merge: true });
@@ -311,6 +309,7 @@ async function ensureUserDoc(uid, email, user = auth.currentUser) {
   const data = usnap.data() || {};
   const updatePayload = {
     updatedAt: serverTimestamp(),
+    lastSignInAt: serverTimestamp(),
   };
 
   const nextEmail = email || user?.email || null;
@@ -321,18 +320,14 @@ async function ensureUserDoc(uid, email, user = auth.currentUser) {
   if ((data.displayName || null) !== nextDisplayName) updatePayload.displayName = nextDisplayName;
   if ((data.photoURL || null) !== nextPhotoURL) updatePayload.photoURL = nextPhotoURL;
 
-  if (data.memberId === undefined) updatePayload.memberId = null;
-  if (data.associateId === undefined) updatePayload.associateId = null;
-  if (data.playerId === undefined) updatePayload.playerId = null;
   if (data.onboardingComplete === undefined) updatePayload.onboardingComplete = false;
-  if (data.profile === undefined) updatePayload.profile = null;
-  if (data.consents === undefined) updatePayload.consents = null;
+  if (data.profile === undefined || data.profile === null) updatePayload.profile = {};
+  if (data.consents === undefined || data.consents === null) updatePayload.consents = {};
   if (!Array.isArray(data.membershipIds)) updatePayload.membershipIds = [];
   if (data.currentMembership === undefined) updatePayload.currentMembership = null;
+  if (data.playerId === undefined) updatePayload.playerId = null;
 
-  if (Object.keys(updatePayload).length > 1) {
-    await setDoc(uref, updatePayload, { merge: true });
-  }
+  await setDoc(uref, updatePayload, { merge: true });
 }
 
 function buildUserProfile({
@@ -399,6 +394,7 @@ async function saveUserProfileAndConsents({
     },
 
     updatedAt: serverTimestamp(),
+    lastSignInAt: serverTimestamp(),
   };
 
   await setDoc(doc(db, COL_USERS, uid), payload, { merge: true });
@@ -768,10 +764,6 @@ async function createMembership({ uid, userSnapshot, plan, season, consents }) {
     userId: uid,
     userSnapshot,
 
-    // compat legacy temporal
-    associateId: null,
-    associateSnapshot: null,
-
     planId: plan.id,
     planSnapshot: planSnap,
 
@@ -1119,7 +1111,7 @@ $.form?.addEventListener("submit", async (ev) => {
           season,
 
           userId: uid,
-          associateId: null, // compat temporal
+          submittedByUid: uid,
 
           status: "pending",
           createdAt: serverTimestamp(),
@@ -1141,19 +1133,13 @@ $.form?.addEventListener("submit", async (ev) => {
       const uref = doc(db, COL_USERS, uid);
 
       const payload = {
-        uid,
         email: email || auth.currentUser?.email || null,
         displayName:
           auth.currentUser?.displayName || `${firstName} ${lastName}`.trim() || null,
         photoURL: auth.currentUser?.photoURL || null,
-
         onboardingComplete: true,
-
-        memberId: null,
-        associateId: null,
-        playerId: null,
-
         updatedAt: serverTimestamp(),
+        lastSignInAt: serverTimestamp(),
       };
 
       return setDoc(uref, payload, { merge: true });

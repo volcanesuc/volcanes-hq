@@ -1,4 +1,4 @@
-import { db } from "./auth/firebase.js";
+import { db, storage } from "./auth/firebase.js";
 import { APP_CONFIG } from "./config/config.js";
 import { guardPage } from "./page-guard.js";
 import { loadHeader } from "./components/header.js";
@@ -16,7 +16,7 @@ import {
   setDoc,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { storage } from "./auth/firebase.js";
+
 import {
   ref as storageRef,
   uploadBytes,
@@ -25,9 +25,7 @@ import {
 
 const COL = APP_CONFIG.collections;
 const COL_USERS = COL.users;
-const COL_ASSOC = COL.associates;
 const COL_PLAYERS = COL.players;
-
 const COL_CLUB_CONFIG = COL.club_config;
 
 const $ = {
@@ -54,7 +52,6 @@ const $ = {
 
   approveUserForm: document.getElementById("approveUserForm"),
   approveUid: document.getElementById("approveUid"),
-  approveAssociateId: document.getElementById("approveAssociateId"),
   approveEmail: document.getElementById("approveEmail"),
   approveSystemRole: document.getElementById("approveSystemRole"),
   approveLinkMode: document.getElementById("approveLinkMode"),
@@ -175,7 +172,347 @@ function fillStaticOptions() {
       .join("");
 }
 
+function getPlayerFullName(player) {
+  return `${player.firstName || ""} ${player.lastName || ""}`.trim();
+}
+
+function comparePlayersByName(a, b) {
+  return getPlayerFullName(a).localeCompare(
+    getPlayerFullName(b),
+    "es",
+    { sensitivity: "base" }
+  );
+}
+
+function normalizeText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function safeUrl(url) {
+  const s = String(url || "").trim();
+  if (!s) return "";
+  if (/^https?:\/\//i.test(s)) return s;
+  return `https://${s}`;
+}
+
+// =========================
+// PENDING USERS / PLAYERS
+// =========================
+async function loadPendingUsers() {
+  $.pendingUsersTable.innerHTML = `<tr><td colspan="5" class="text-muted">Cargando…</td></tr>`;
+
+  const qy = query(
+    collection(db, COL_USERS),
+    where("onboardingComplete", "==", true),
+    where("isActive", "==", false)
+  );
+
+  const snap = await getDocs(qy);
+  pendingUsers = snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => {
+      const aName = normalizeText(a.displayName || a.email || a.id);
+      const bName = normalizeText(b.displayName || b.email || b.id);
+      return aName.localeCompare(bName, "es");
+    });
+
+  if (!pendingUsers.length) {
+    $.pendingUsersTable.innerHTML = `<tr><td colspan="5" class="text-muted">No hay cuentas pendientes.</td></tr>`;
+    return;
+  }
+
+  $.pendingUsersTable.innerHTML = pendingUsers
+    .map((u) => `
+      <tr>
+        <td>${esc(u.email || "—")}</td>
+        <td>${esc(u.displayName || "—")}</td>
+        <td>${esc(u.playerId || "—")}</td>
+        <td>${esc(u.role || "viewer")}</td>
+        <td>
+          <button class="btn btn-sm btn-primary" type="button" data-approve-user="${esc(u.id)}">
+            Aprobar
+          </button>
+        </td>
+      </tr>
+    `)
+    .join("");
+}
+
+async function loadPlayers() {
+  $.playersTable.innerHTML = `<tr><td colspan="5" class="text-muted">Cargando…</td></tr>`;
+
+  const [playersSnap, usersSnap] = await Promise.all([
+    getDocs(collection(db, COL_PLAYERS)),
+    getDocs(collection(db, COL_USERS)),
+  ]);
+
+  usersById = new Map(
+    usersSnap.docs.map((d) => [d.id, { id: d.id, ...(d.data() || {}) }])
+  );
+
+  allPlayers = playersSnap.docs
+    .map((d) => {
+      const data = d.data() || {};
+      const user = data.uid ? usersById.get(data.uid) : null;
+      const hasUserAssigned = Boolean(data.uid && user);
+
+      return {
+        id: d.id,
+        ...data,
+        hasUserAssigned,
+        systemRole: user?.role || "",
+        linkedUserEmail: user?.email || "",
+        linkedUserName: user?.displayName || "",
+      };
+    })
+    .sort((a, b) => {
+      if (a.hasUserAssigned !== b.hasUserAssigned) {
+        return a.hasUserAssigned ? -1 : 1;
+      }
+      return comparePlayersByName(a, b);
+    });
+
+  renderPlayersTable();
+}
+
+function renderPlayersTable() {
+  const term = normalizeText($.playerSearchInput?.value || "");
+  const roleFilter = $.playerRoleFilter?.value || "";
+
+  const filtered = allPlayers.filter((p) => {
+    const fullName = normalizeText(getPlayerFullName(p));
+    const email = normalizeText(p.email || p.linkedUserEmail || "");
+    const systemRole = String(p.systemRole || "").toLowerCase();
+
+    const textOk = !term || fullName.includes(term) || email.includes(term);
+
+    let roleOk = true;
+    if (roleFilter === "__unassigned__") {
+      roleOk = !p.systemRole;
+    } else if (roleFilter) {
+      roleOk = p.systemRole === roleFilter;
+    }
+
+    return textOk && roleOk;
+  });
+
+  if (!filtered.length) {
+    $.playersTable.innerHTML = `<tr><td colspan="5" class="text-muted">No hay jugadores.</td></tr>`;
+    return;
+  }
+
+  $.playersTable.innerHTML = filtered
+    .map((p) => `
+      <tr>
+        <td>${esc(getPlayerFullName(p) || "—")}</td>
+        <td>${esc(p.email || p.linkedUserEmail || "—")}</td>
+        <td>${esc(p.systemRole || "Sin asignar")}</td>
+        <td>${esc(p.uid || "—")}</td>
+        <td>${esc(p.id || "—")}</td>
+      </tr>
+    `)
+    .join("");
+}
+
+function fillExistingPlayersSelect(currentUid = null, currentEmail = "") {
+  const normalizedEmail = normalizeText(currentEmail);
+
+  const availablePlayers = allPlayers.filter((p) => {
+    const linkedUid = p.uid || null;
+    return !linkedUid || linkedUid === currentUid;
+  });
+
+  availablePlayers.sort((a, b) => {
+    const aName = normalizeText(getPlayerFullName(a));
+    const bName = normalizeText(getPlayerFullName(b));
+
+    const aEmail = normalizeText(a.email || "");
+    const bEmail = normalizeText(b.email || "");
+
+    const aMatch = normalizedEmail && aEmail === normalizedEmail ? 1 : 0;
+    const bMatch = normalizedEmail && bEmail === normalizedEmail ? 1 : 0;
+
+    if (aMatch !== bMatch) return bMatch - aMatch;
+    return aName.localeCompare(bName, "es");
+  });
+
+  $.approveExistingPlayerId.innerHTML =
+    `<option value="">Seleccionar…</option>` +
+    availablePlayers
+      .map((p) => {
+        const name = getPlayerFullName(p) || p.email || p.id;
+        const suffix = p.email ? ` · ${p.email}` : "";
+        return `<option value="${esc(p.id)}">${esc(name + suffix)}</option>`;
+      })
+      .join("");
+}
+
+function syncApproveModeUI() {
+  const mode = $.approveLinkMode.value;
+  $.existingPlayerWrap.classList.toggle("d-none", mode !== "existing");
+  $.newPlayerWrap.classList.toggle("d-none", mode !== "new");
+}
+
+async function openApproveModal(uid) {
+  const user = pendingUsers.find((u) => u.id === uid);
+  if (!user) return;
+
+  $.approveUid.value = user.id;
+  $.approveEmail.value = user.email || "";
+  $.approveSystemRole.value = user.role || "viewer";
+  $.approveLinkMode.value = user.playerId ? "existing" : "none";
+
+  fillExistingPlayersSelect(uid, user.email || "");
+  $.approveExistingPlayerId.value = user.playerId || "";
+
+  $.newPlayerFirstName.value = "";
+  $.newPlayerLastName.value = "";
+  $.newPlayerBirthday.value = "";
+  $.newPlayerFieldRole.value = "";
+
+  const displayName = String(user.displayName || "").trim();
+  if (displayName) {
+    const parts = displayName.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      $.newPlayerFirstName.value = parts.slice(0, -1).join(" ");
+      $.newPlayerLastName.value = parts.slice(-1).join(" ");
+    } else {
+      $.newPlayerFirstName.value = displayName;
+    }
+  }
+
+  syncApproveModeUI();
+  approveModal.show();
+}
+
+async function assertPlayerCanBeLinked(playerId, uid) {
+  if (!playerId) {
+    throw new Error("Selecciona un jugador válido.");
+  }
+
+  const snap = await getDoc(doc(db, COL_PLAYERS, playerId));
+  if (!snap.exists()) {
+    throw new Error("El jugador seleccionado no existe.");
+  }
+
+  const data = snap.data() || {};
+  const currentUid = data.uid || null;
+
+  if (currentUid && currentUid !== uid) {
+    throw new Error("Ese jugador ya está ligado a otro usuario.");
+  }
+
+  return data;
+}
+
+async function createPlayerForUser({
+  uid,
+  email,
+  firstName,
+  lastName,
+  birthday,
+  fieldRole,
+}) {
+  const ref = await addDoc(collection(db, COL_PLAYERS), {
+    active: true,
+    firstName: firstName || null,
+    lastName: lastName || null,
+    birthday: birthday || null,
+    fieldRole: fieldRole || null,
+    uid: uid || null,
+    email: email || null,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+
+  return ref.id;
+}
+
+async function linkExistingPlayer({ playerId, uid, email }) {
+  await updateDoc(doc(db, COL_PLAYERS, playerId), {
+    uid: uid || null,
+    email: email || null,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+async function approveUserFlow(ev) {
+  ev.preventDefault();
+  hideAlert();
+
+  const uid = $.approveUid.value;
+  const email = $.approveEmail.value || null;
+  const systemRole = $.approveSystemRole.value || "viewer";
+  const mode = $.approveLinkMode.value;
+
+  if (!uid) {
+    showAlert("No se encontró el usuario a aprobar.");
+    return;
+  }
+
+  showLoader("Aprobando cuenta…");
+
+  try {
+    let playerId = null;
+
+    if (mode === "existing") {
+      playerId = $.approveExistingPlayerId.value || null;
+      if (!playerId) throw new Error("Selecciona un jugador existente.");
+
+      await assertPlayerCanBeLinked(playerId, uid);
+
+      await linkExistingPlayer({
+        playerId,
+        uid,
+        email,
+      });
+    }
+
+    if (mode === "new") {
+      const firstName = $.newPlayerFirstName.value.trim();
+      const lastName = $.newPlayerLastName.value.trim();
+      const birthday = $.newPlayerBirthday.value || null;
+      const fieldRole = $.newPlayerFieldRole.value || null;
+
+      if (!firstName || !lastName) {
+        throw new Error("Completa nombre y apellido para crear el jugador.");
+      }
+
+      playerId = await createPlayerForUser({
+        uid,
+        email,
+        firstName,
+        lastName,
+        birthday,
+        fieldRole,
+      });
+    }
+
+    await updateDoc(doc(db, COL_USERS, uid), {
+      isActive: true,
+      role: systemRole,
+      playerId: playerId || null,
+      updatedAt: serverTimestamp(),
+    });
+
+    approveModal.hide();
+    await Promise.all([loadPendingUsers(), loadPlayers()]);
+    showAlert("Cuenta aprobada correctamente.", "success");
+  } catch (err) {
+    console.error(err);
+    showAlert(err.message || "No se pudo aprobar la cuenta.");
+  } finally {
+    hideLoader();
+  }
+}
+
+// =========================
 // INDEX SETTINGS
+// =========================
 async function loadIndexSettingsAdmin() {
   try {
     const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "index_settings"));
@@ -220,331 +557,9 @@ async function saveIndexSettings(ev) {
   }
 }
 
-async function loadPendingUsers() {
-  $.pendingUsersTable.innerHTML = `<tr><td colspan="5" class="text-muted">Cargando…</td></tr>`;
-
-  const qy = query(
-    collection(db, COL_USERS),
-    where("onboardingComplete", "==", true),
-    where("isActive", "==", false)
-  );
-
-  const snap = await getDocs(qy);
-  pendingUsers = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-
-  if (!pendingUsers.length) {
-    $.pendingUsersTable.innerHTML = `<tr><td colspan="5" class="text-muted">No hay cuentas pendientes.</td></tr>`;
-    return;
-  }
-
-  $.pendingUsersTable.innerHTML = pendingUsers
-    .map((u) => `
-      <tr>
-        <td>${esc(u.email || "—")}</td>
-        <td>${esc(u.displayName || "—")}</td>
-        <td>${esc(u.associateId || "—")}</td>
-        <td>${esc(u.playerId || "—")}</td>
-        <td>
-          <button class="btn btn-sm btn-primary" type="button" data-approve-user="${esc(u.id)}">
-            Aprobar
-          </button>
-        </td>
-      </tr>
-    `)
-    .join("");
-}
-
-async function loadPlayers() {
-  $.playersTable.innerHTML = `<tr><td colspan="5" class="text-muted">Cargando…</td></tr>`;
-
-  const [playersSnap, usersSnap] = await Promise.all([
-    getDocs(collection(db, COL_PLAYERS)),
-    getDocs(collection(db, COL_USERS)),
-  ]);
-
-  usersById = new Map(
-    usersSnap.docs.map((d) => [d.id, d.data() || {}])
-  );
-
-  allPlayers = playersSnap.docs
-    .map((d) => {
-      const data = d.data() || {};
-      const user = data.uid ? usersById.get(data.uid) : null;
-      const hasUserAssigned = Boolean(data.uid && user);
-
-      return {
-        id: d.id,
-        ...data,
-        hasUserAssigned,
-        systemRole: user?.role || "",
-      };
-    })
-    .sort((a, b) => {
-      if (a.hasUserAssigned !== b.hasUserAssigned) {
-        return a.hasUserAssigned ? -1 : 1;
-      }
-
-      return comparePlayersByName(a, b);
-    });
-
-  renderPlayersTable();
-}
-
-function renderPlayersTable() {
-  const term = ($.playerSearchInput.value || "").trim().toLowerCase();
-  const roleFilter = $.playerRoleFilter.value || "";
-
-  const filtered = allPlayers.filter((p) => {
-    const fullName = getPlayerFullName(p).toLowerCase();
-    const email = String(p.email || "").toLowerCase();
-    const systemRole = String(p.systemRole || "").toLowerCase();
-
-    const textOk = !term || fullName.includes(term) || email.includes(term);
-
-    let roleOk = true;
-    if (roleFilter === "__unassigned__") {
-      roleOk = !p.systemRole;
-    } else if (roleFilter) {
-      roleOk = p.systemRole === roleFilter;
-    }
-
-    return textOk && roleOk;
-  });
-
-  if (!filtered.length) {
-    $.playersTable.innerHTML = `<tr><td colspan="5" class="text-muted">No hay jugadores.</td></tr>`;
-    return;
-  }
-
-  $.playersTable.innerHTML = filtered
-    .map((p) => `
-      <tr>
-        <td>${esc(getPlayerFullName(p) || "—")}</td>
-        <td>${esc(p.email || "—")}</td>
-        <td>${esc(p.systemRole || "Sin asignar")}</td>
-        <td>${esc(p.associateId || "—")}</td>
-        <td>${esc(p.uid || "—")}</td>
-      </tr>
-    `)
-    .join("");
-}
-
-function fillExistingPlayersSelect(currentUid = null) {
-  const availablePlayers = allPlayers.filter((p) => {
-    const linkedUid = p.uid || null;
-    return !linkedUid || linkedUid === currentUid;
-  });
-
-  $.approveExistingPlayerId.innerHTML =
-    `<option value="">Seleccionar…</option>` +
-    availablePlayers
-      .map((p) => {
-        const name =
-          `${p.firstName || ""} ${p.lastName || ""}`.trim() ||
-          p.email ||
-          p.id;
-
-        return `<option value="${esc(p.id)}">${esc(name)}</option>`;
-      })
-      .join("");
-}
-
-function syncApproveModeUI() {
-  const mode = $.approveLinkMode.value;
-  $.existingPlayerWrap.classList.toggle("d-none", mode !== "existing");
-  $.newPlayerWrap.classList.toggle("d-none", mode !== "new");
-}
-
-async function getAssociateData(associateId) {
-  if (!associateId) return null;
-
-  try {
-    const snap = await getDoc(doc(db, COL_ASSOC, associateId));
-    if (!snap.exists()) return null;
-    return snap.data() || null;
-  } catch (err) {
-    console.error("getAssociateData error:", err);
-    return null;
-  }
-}
-
-async function openApproveModal(uid) {
-  const user = pendingUsers.find((u) => u.id === uid);
-  if (!user) return;
-
-  $.approveUid.value = user.id;
-  $.approveAssociateId.value = user.associateId || "";
-  $.approveEmail.value = user.email || "";
-  $.approveSystemRole.value = user.role || "viewer";
-  $.approveLinkMode.value = user.playerId ? "existing" : "none";
-
-  fillExistingPlayersSelect(uid);
-  $.approveExistingPlayerId.value = user.playerId || "";
-
-  $.newPlayerFirstName.value = "";
-  $.newPlayerLastName.value = "";
-  $.newPlayerBirthday.value = "";
-  $.newPlayerFieldRole.value = "";
-
-  const assoc = await getAssociateData(user.associateId);
-  if (assoc?.profile) {
-    $.newPlayerFirstName.value = assoc.profile.firstName || "";
-    $.newPlayerLastName.value = assoc.profile.lastName || "";
-    $.newPlayerBirthday.value = assoc.profile.birthDate || "";
-  }
-
-  syncApproveModeUI();
-  approveModal.show();
-}
-
-async function assertPlayerCanBeLinked(playerId, uid) {
-  if (!playerId) {
-    throw new Error("Selecciona un jugador válido.");
-  }
-
-  const snap = await getDoc(doc(db, COL_PLAYERS, playerId));
-  if (!snap.exists()) {
-    throw new Error("El jugador seleccionado no existe.");
-  }
-
-  const data = snap.data() || {};
-  const currentUid = data.uid || null;
-
-  if (currentUid && currentUid !== uid) {
-    throw new Error("Ese jugador ya está ligado a otro usuario.");
-  }
-
-  return data;
-}
-
-async function createPlayerForUser({
-  uid,
-  email,
-  associateId,
-  firstName,
-  lastName,
-  birthday,
-  fieldRole,
-}) {
-  const ref = await addDoc(collection(db, COL_PLAYERS), {
-    active: true,
-    firstName: firstName || null,
-    lastName: lastName || null,
-    birthday: birthday || null,
-    fieldRole: fieldRole || null,
-    associateId: associateId || null,
-    uid: uid || null,
-    email: email || null,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
-
-  return ref.id;
-}
-
-async function linkExistingPlayer({ playerId, uid, email, associateId }) {
-  await updateDoc(doc(db, COL_PLAYERS, playerId), {
-    uid: uid || null,
-    email: email || null,
-    associateId: associateId || null,
-    updatedAt: serverTimestamp(),
-  });
-}
-
-async function approveUserFlow(ev) {
-  ev.preventDefault();
-  hideAlert();
-
-  const uid = $.approveUid.value;
-  const associateId = $.approveAssociateId.value || null;
-  const email = $.approveEmail.value || null;
-  const systemRole = $.approveSystemRole.value || "viewer";
-  const mode = $.approveLinkMode.value;
-
-  if (!uid) {
-    showAlert("No se encontró el usuario a aprobar.");
-    return;
-  }
-
-  showLoader("Aprobando cuenta…");
-
-  try {
-    let playerId = null;
-
-    if (mode === "existing") {
-      playerId = $.approveExistingPlayerId.value || null;
-      if (!playerId) throw new Error("Selecciona un jugador existente.");
-
-      await assertPlayerCanBeLinked(playerId, uid);
-
-      await linkExistingPlayer({
-        playerId,
-        uid,
-        email,
-        associateId,
-      });
-    }
-
-    if (mode === "new") {
-      const firstName = $.newPlayerFirstName.value.trim();
-      const lastName = $.newPlayerLastName.value.trim();
-      const birthday = $.newPlayerBirthday.value || null;
-      const fieldRole = $.newPlayerFieldRole.value || null;
-
-      if (!firstName || !lastName) {
-        throw new Error("Completa nombre y apellido para crear el jugador.");
-      }
-
-      playerId = await createPlayerForUser({
-        uid,
-        email,
-        associateId,
-        firstName,
-        lastName,
-        birthday,
-        fieldRole,
-      });
-    }
-
-    await updateDoc(doc(db, COL_USERS, uid), {
-      isActive: true,
-      role: systemRole,
-      playerId: playerId || null,
-      updatedAt: serverTimestamp(),
-    });
-
-    if (associateId) {
-      await updateDoc(doc(db, COL_ASSOC, associateId), {
-        playerId: playerId || null,
-        updatedAt: serverTimestamp(),
-      }).catch(() => {});
-    }
-
-    approveModal.hide();
-    await loadPendingUsers();
-    await loadPlayers();
-    showAlert("Cuenta aprobada correctamente.", "success");
-  } catch (err) {
-    console.error(err);
-    showAlert(err.message || "No se pudo aprobar la cuenta.");
-  } finally {
-    hideLoader();
-  }
-}
-
-function getPlayerFullName(player) {
-  return `${player.firstName || ""} ${player.lastName || ""}`.trim();
-}
-
-function comparePlayersByName(a, b) {
-  return getPlayerFullName(a).localeCompare(
-    getPlayerFullName(b),
-    "es",
-    { sensitivity: "base" }
-  );
-}
-
-// HERO INFO
+// =========================
+// HERO
+// =========================
 async function loadHeroAdmin() {
   const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "hero")).catch(() => null);
   const data = snap?.exists?.() ? (snap.data() || {}) : {};
@@ -629,7 +644,9 @@ async function uploadHeroImageIfNeeded() {
   return await getDownloadURL(ref);
 }
 
-//TRAININGS INFO
+// =========================
+// TRAININGS
+// =========================
 async function loadTrainingsAdmin() {
   if ($.trainingsTableBody) {
     $.trainingsTableBody.innerHTML = `<tr><td colspan="5" class="text-muted">Cargando…</td></tr>`;
@@ -761,7 +778,8 @@ async function addTrainingRow(ev) {
 
     trainingsBlocks = currentBlocks;
     $.trainingBlockForm?.reset();
-    $.trainingBlockId.value = "trainings";
+    if ($.trainingBlockId) $.trainingBlockId.value = "trainings";
+
     await loadTrainingsAdmin();
     await refreshIndexToggleAvailability(true);
     showAlert("Horario agregado.", "success");
@@ -824,7 +842,9 @@ async function deleteTrainingRow(pointer) {
   }
 }
 
-//EVENTOS
+// =========================
+// EVENTS
+// =========================
 async function loadEventsAdmin() {
   const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "events")).catch(() => null);
   const data = snap?.exists?.() ? (snap.data() || {}) : {};
@@ -873,7 +893,9 @@ async function saveEventsSettings(ev) {
   }
 }
 
-//REDES SOCIALES
+// =========================
+// SOCIAL
+// =========================
 async function loadSocialLinks() {
   const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "social_links")).catch(() => null);
   const data = snap?.exists?.() ? (snap.data() || {}) : {};
@@ -914,7 +936,9 @@ async function saveSocialLinks(ev) {
   }
 }
 
-//HONORS / PALMARES
+// =========================
+// HONORS
+// =========================
 async function loadHonorsAdmin() {
   if ($.honorsTableBody) {
     $.honorsTableBody.innerHTML = `<tr><td colspan="4" class="text-muted">Cargando…</td></tr>`;
@@ -1055,7 +1079,9 @@ async function deleteHonor(index) {
   }
 }
 
-//UNIFORMS
+// =========================
+// UNIFORMS
+// =========================
 async function loadUniformsAdmin() {
   if ($.uniformsTableBody) {
     $.uniformsTableBody.innerHTML = `<tr><td colspan="4" class="text-muted">Cargando…</td></tr>`;
@@ -1199,15 +1225,9 @@ async function deleteUniform(index) {
   }
 }
 
-
-//HELPERS
-function safeUrl(url) {
-  const s = String(url || "").trim();
-  if (!s) return "";
-  if (/^https?:\/\//i.test(s)) return s;
-  return `https://${s}`;
-}
-
+// =========================
+// UI HELPERS
+// =========================
 function bindCollapseCarets() {
   if (bindCollapseCarets._bound) return;
   bindCollapseCarets._bound = true;
@@ -1253,7 +1273,9 @@ function bindResponsiveUI() {
   });
 }
 
-//MANAGE SWITCHES
+// =========================
+// LANDING TOGGLES
+// =========================
 function setToggleAvailability(inputEl, stateEl, ok, checked, message) {
   if (!inputEl) return;
 
@@ -1405,7 +1427,9 @@ async function refreshIndexToggleAvailability(syncToFirestore = true) {
   }
 }
 
-//BOOT
+// =========================
+// BOOT
+// =========================
 async function boot() {
   showLoader("Cargando administración…");
 
@@ -1429,6 +1453,7 @@ async function boot() {
 
     await loadPendingUsers();
     await loadPlayers();
+
     try { await loadIndexSettingsAdmin(); } catch (e) { console.error("loadIndexSettingsAdmin", e); }
     try { await loadSocialLinks(); } catch (e) { console.error("loadSocialLinks", e); }
     try { await loadHonorsAdmin(); } catch (e) { console.error("loadHonorsAdmin", e); }
@@ -1437,7 +1462,6 @@ async function boot() {
     try { await loadHeroAdmin(); } catch (e) { console.error("loadHeroAdmin", e); }
     try { await loadEventsAdmin(); } catch (e) { console.error("loadEventsAdmin", e); }
     try { await refreshIndexToggleAvailability(true); } catch (e) { console.error("refreshIndexToggleAvailability", e); }
-
 
     $.indexSettingsForm?.addEventListener("submit", saveIndexSettings);
     $.refreshPendingBtn?.addEventListener("click", loadPendingUsers);

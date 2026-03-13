@@ -24,7 +24,9 @@ async function ensureUserDoc(firebaseUser) {
     const patch = {};
 
     if (data.uid !== uid) patch.uid = uid;
-    if (data.email !== (firebaseUser.email || null)) patch.email = firebaseUser.email || null;
+    if ((data.email || null) !== (firebaseUser.email || null)) {
+      patch.email = firebaseUser.email || null;
+    }
 
     if ((data.displayName || null) !== (firebaseUser.displayName || null)) {
       patch.displayName = firebaseUser.displayName || null;
@@ -38,9 +40,13 @@ async function ensureUserDoc(firebaseUser) {
     if (data.isActive === undefined) patch.isActive = false;
     if (data.role === undefined) patch.role = "viewer";
 
-    if (data.memberId === undefined) patch.memberId = null;
-    if (data.associateId === undefined) patch.associateId = null;
     if (data.playerId === undefined) patch.playerId = null;
+    if (data.profile === undefined || data.profile === null) patch.profile = {};
+    if (data.consents === undefined || data.consents === null) patch.consents = {};
+    if (!Array.isArray(data.membershipIds)) patch.membershipIds = [];
+    if (data.currentMembership === undefined) patch.currentMembership = null;
+
+    patch.lastSignInAt = serverTimestamp();
 
     if (Object.keys(patch).length) {
       patch.updatedAt = serverTimestamp();
@@ -56,14 +62,20 @@ async function ensureUserDoc(firebaseUser) {
     email: firebaseUser.email || null,
     displayName: firebaseUser.displayName || null,
     photoURL: firebaseUser.photoURL || null,
+
     onboardingComplete: false,
     isActive: false,
     role: "viewer",
-    memberId: null,
-    associateId: null,
+
     playerId: null,
+    profile: {},
+    consents: {},
+    membershipIds: [],
+    currentMembership: null,
+
     createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
+    updatedAt: serverTimestamp(),
+    lastSignInAt: serverTimestamp()
   };
 
   await setDoc(ref, payload, { merge: true });
