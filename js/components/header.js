@@ -243,9 +243,8 @@ function toAbsHref(href) {
 
 function filterMenuByRole(menu, cfg) {
   if (!cfg) return menu || [];
-
-  // Solo admins ven el tab Admin
   if (cfg.isAdmin === true) return menu || [];
 
-  return (menu || []).filter((item) => item.id !== "admin");
+  const adminOnlyTabs = new Set(["admin", "association"]);
+  return (menu || []).filter((item) => !adminOnlyTabs.has(item.id));
 }

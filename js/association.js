@@ -4,12 +4,11 @@ import { loadHeader } from "./components/header.js";
 import { initModalHost } from "./ui/modal_host.js";
 import { showLoader, hideLoader } from "./ui/loader.js";
 
-
 const TABS = ["associates", "memberships", "payments", "plans", "fiscalizacion"];
 
 function getTabFromUrl() {
   const params = new URLSearchParams(window.location.search);
-  const tab = (params.get("tab") || "associates").toLowerCase(); // default = associates
+  const tab = (params.get("tab") || "associates").toLowerCase();
   return TABS.includes(tab) ? tab : "associates";
 }
 
@@ -70,17 +69,18 @@ async function mountTab(tab, cfg) {
     }
 
     if (tab === "plans") {
-        const mod = await import("./features/subscription_plans.js?v=1");
-        if (!mod.mount) throw new Error("subscription_plans.js no exporta mount()");
-        await mod.mount(mount, cfg);
-        return;
+      const mod = await import("./features/subscription_plans.js?v=1");
+      if (!mod.mount) throw new Error("subscription_plans.js no exporta mount()");
+      await mod.mount(mount, cfg);
+      return;
     }
+
     if (tab === "fiscalizacion") {
-        const mod = await import("./features/fiscalizacion.js?v=1");
-        if (!mod.mount) throw new Error("fiscalizacion.js no exporta mount()");
-        await mod.mount(mount, cfg);
-        return;
-      }
+      const mod = await import("./features/fiscalizacion.js?v=1");
+      if (!mod.mount) throw new Error("fiscalizacion.js no exporta mount()");
+      await mod.mount(mount, cfg);
+      return;
+    }
   } catch (err) {
     console.error(err);
     mount.innerHTML = `
@@ -98,19 +98,28 @@ async function renderAssociation(cfg) {
   await mountTab(tab, cfg);
 }
 
+showLoader("Cargando asociación…");
+
 const { cfg, redirected } = await guardPage("association");
-if (!redirected) {
+
+if (redirected) {
+  hideLoader();
+} else if (!cfg?.isAdmin) {
+  window.location.replace("/dashboard.html");
+} else {
   try {
     await loadHeader("association", cfg);
     initModalHost();
 
-    // listeners...
     window.addEventListener("user:saved", async () => {
       const tab = getTabFromUrl();
       if (tab === "associates") {
         showLoader();
-        try { await renderAssociation(cfg); }
-        finally { hideLoader(); }
+        try {
+          await renderAssociation(cfg);
+        } finally {
+          hideLoader();
+        }
       }
     });
 
@@ -131,10 +140,14 @@ if (!redirected) {
     });
 
     await renderAssociation(cfg);
+
     window.addEventListener("popstate", async () => {
       showLoader();
-      try { await renderAssociation(cfg); }
-      finally { hideLoader(); }
+      try {
+        await renderAssociation(cfg);
+      } finally {
+        hideLoader();
+      }
     });
   } finally {
     hideLoader();
