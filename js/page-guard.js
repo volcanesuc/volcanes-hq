@@ -105,7 +105,8 @@ export async function guardPage(pageKey) {
     return { cfg, redirected: true };
   }
 
-  if (pageKey === "admin" && !cfg.isAdmin) {
+  const adminOnlyPages = new Set(["admin", "association"]);
+  if (adminOnlyPages.has(pageKey) && !cfg.isAdmin) {
     window.location.href = HOME_HREF;
     return { cfg, redirected: true };
   }
