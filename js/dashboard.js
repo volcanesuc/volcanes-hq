@@ -2,7 +2,7 @@
 // Dashboard principal: jugadores, entrenamientos, KPIs y alertas
 
 import { db } from "./auth/firebase.js";
-import { watchAuth, logout } from "./auth/auth.js";
+import { watchAuth } from "./auth/auth.js";
 import {
   collection,
   getDocs
@@ -13,8 +13,6 @@ import { showLoader, hideLoader } from "./ui/loader.js";
 import { guardPage } from "./page-guard.js";
 import { loadHeader } from "./components/header.js";
 
-import { Player } from "./models/player.js";
-
 /* =========================================================
    INIT
 ========================================================= */
@@ -22,7 +20,6 @@ const { cfg, redirected } = await guardPage("dashboard");
 if (!redirected) {
   await loadHeader("home", cfg);
 }
-
 
 watchAuth(async () => {
   showLoader();
@@ -32,7 +29,6 @@ watchAuth(async () => {
     hideLoader();
   }
 });
-
 
 function setNextTournamentLoading() {
   const dateEl = document.getElementById("nextTournamentDate");
@@ -50,6 +46,145 @@ function setNextTournamentError(msg) {
   setNextTournamentCardLink(null);
 }
 
+/* =========================================================
+   HELPERS: PLAYERS / USERS / ATTENDANCE
+========================================================= */
+
+function normalizeRoleId(role) {
+  return String(role || "").trim().toLowerCase();
+}
+
+function normalizeClubPlayerActive(cp = {}) {
+  if (cp.active === false) return false;
+  if (cp.isActive === false) return false;
+  if (cp.status === "inactive") return false;
+  return true;
+}
+
+function getClubPlayerUserId(cp = {}) {
+  return cp.userId || cp.linkedUserId || cp.uid || cp.userRefId || null;
+}
+
+function getUserDisplayName(userData = {}) {
+  const joinedName = [userData.firstName, userData.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  return (
+    userData.fullName ||
+    userData.displayName ||
+    joinedName ||
+    userData.name ||
+    userData.email ||
+    "—"
+  );
+}
+
+function getClubPlayerName(cp = {}, user = null) {
+  return (
+    cp.fullName ||
+    cp.displayName ||
+    getUserDisplayName(user || {}) ||
+    "—"
+  );
+}
+
+function getClubPlayerNumber(cp = {}, user = null) {
+  const v = cp.number ?? cp.jerseyNumber ?? user?.number ?? null;
+  return v == null ? null : v;
+}
+
+function getClubPlayerRole(cp = {}, user = null) {
+  return normalizeRoleId(cp.role || cp.position || user?.role || "");
+}
+
+function getClubPlayerGender(cp = {}, user = null) {
+  return cp.gender || user?.gender || null;
+}
+
+function buildPlayersFromClubData({ usersDocs = [], clubPlayersDocs = [] }) {
+  const usersById = {};
+  usersDocs.forEach((d) => {
+    usersById[d.id] = { id: d.id, ...d.data() };
+  });
+
+  return clubPlayersDocs.map((d) => {
+    const cp = d.data() || {};
+    const id = d.id;
+    const userId = getClubPlayerUserId(cp);
+    const user = userId ? usersById[userId] : null;
+
+    return {
+      id,
+      clubPlayerId: id,
+      userId,
+      firstName: cp.firstName ?? user?.firstName ?? "",
+      lastName: cp.lastName ?? user?.lastName ?? "",
+      displayName: cp.displayName ?? user?.displayName ?? "",
+      fullName: getClubPlayerName(cp, user),
+      shortName: getClubPlayerName(cp, user),
+      idNumber: cp.idNumber ?? user?.idNumber ?? null,
+      number: getClubPlayerNumber(cp, user),
+      gender: getClubPlayerGender(cp, user),
+      birthday: cp.birthday ?? user?.birthday ?? null,
+      active: normalizeClubPlayerActive(cp),
+      role: getClubPlayerRole(cp, user),
+      rawClubPlayer: cp,
+      rawUser: user || null
+    };
+  });
+}
+
+function resolveAttendancePlayerId(attendee, playersById, playersByUserId) {
+  if (!attendee) return null;
+
+  if (typeof attendee === "string") {
+    if (playersById.has(attendee)) return attendee;
+    if (playersByUserId.has(attendee)) return playersByUserId.get(attendee)?.id || null;
+    return null;
+  }
+
+  if (typeof attendee === "object") {
+    const clubPlayerId =
+      attendee.clubPlayerId ||
+      attendee.playerId ||
+      attendee.id ||
+      null;
+
+    if (clubPlayerId && playersById.has(clubPlayerId)) {
+      return clubPlayerId;
+    }
+
+    const userId =
+      attendee.userId ||
+      attendee.uid ||
+      attendee.linkedUserId ||
+      null;
+
+    if (userId && playersByUserId.has(userId)) {
+      return playersByUserId.get(userId)?.id || null;
+    }
+  }
+
+  return null;
+}
+
+function getTrainingAttendeePlayerIds(training, playersById, playersByUserId) {
+  const attendees = Array.isArray(training?.attendees) ? training.attendees : [];
+  const ids = [];
+
+  attendees.forEach((attendee) => {
+    const resolved = resolveAttendancePlayerId(attendee, playersById, playersByUserId);
+    if (resolved) ids.push(resolved);
+  });
+
+  return ids;
+}
+
+function getTrainingAttendeeCount(training, playersById, playersByUserId) {
+  return getTrainingAttendeePlayerIds(training, playersById, playersByUserId).length;
+}
 
 /* =========================================================
    DASHBOARD LOAD
@@ -60,26 +195,37 @@ async function loadDashboard() {
 
   const COL = APP_CONFIG.collections;
 
-  const PLAYERS_COL = COL.players;
+  const CLUB_PLAYERS_COL = COL.club_players;
+  const USERS_COL = COL.users;
   const TRAININGS_COL = COL.trainings;
   const TOURNAMENTS_COL = COL.tournaments;
 
-  const playersP = getDocs(collection(db, PLAYERS_COL));
+  const clubPlayersP = getDocs(collection(db, CLUB_PLAYERS_COL));
+  const usersP = getDocs(collection(db, USERS_COL));
   const trainingsP = getDocs(collection(db, TRAININGS_COL));
   const tournamentsP = getDocs(collection(db, TOURNAMENTS_COL));
 
-  const [playersRes, trainingsRes, tournamentsRes] = await Promise.allSettled([
-    playersP,
+  const [clubPlayersRes, usersRes, trainingsRes, tournamentsRes] = await Promise.allSettled([
+    clubPlayersP,
+    usersP,
     trainingsP,
     tournamentsP
   ]);
 
-  // --- Players
+  // --- Players from club_players + users
   let players = [];
-  if (playersRes.status === "fulfilled") {
-    players = playersRes.value.docs.map(doc => Player.fromFirestore(doc));
+  if (clubPlayersRes.status === "fulfilled" && usersRes.status === "fulfilled") {
+    players = buildPlayersFromClubData({
+      usersDocs: usersRes.value.docs,
+      clubPlayersDocs: clubPlayersRes.value.docs
+    });
   } else {
-    console.error("Error cargando players:", playersRes.reason);
+    if (clubPlayersRes.status !== "fulfilled") {
+      console.error("Error cargando club_players:", clubPlayersRes.reason);
+    }
+    if (usersRes.status !== "fulfilled") {
+      console.error("Error cargando users:", usersRes.reason);
+    }
   }
 
   // --- Trainings
@@ -96,11 +242,9 @@ async function loadDashboard() {
     renderNextTournament(tournaments);
   } else {
     console.error("Error cargando torneos:", tournamentsRes.reason);
-    // esto evita que se quede en "Cargando…"
     setNextTournamentError("Sin acceso a torneos");
   }
 
-  // Render resto aunque torneos falle
   renderBirthdays(players);
 
   const kpis = calculateMonthlyKPIs({ players, trainings });
@@ -110,8 +254,6 @@ async function loadDashboard() {
   renderAlerts(alerts);
 }
 
-
-
 /* =========================================================
    TOURNAMENTS
 ========================================================= */
@@ -119,18 +261,15 @@ async function loadDashboard() {
 function toDateSafeAny(value) {
   if (!value) return null;
 
-  // Firestore Timestamp
   if (typeof value === "object" && typeof value.toDate === "function") {
     const d = value.toDate();
     return isNaN(d) ? null : d;
   }
 
-  // JS Date
   if (value instanceof Date) {
     return isNaN(value) ? null : value;
   }
 
-  // String YYYY-MM-DD (local)
   if (typeof value === "string") {
     const s = value.trim().replaceAll("/", "-");
     const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -140,7 +279,6 @@ function toDateSafeAny(value) {
       const da = Number(m[3]);
       return new Date(y, mo, da);
     }
-    // fallback: Date parse
     const d2 = new Date(s);
     return isNaN(d2) ? null : d2;
   }
@@ -187,14 +325,12 @@ function pickNextTournament(tournaments) {
     })
     .filter(t => t._ds);
 
-  // futuros (incluye hoy)
   const future = parsed
     .filter(t => startOfDay(t._ds) >= now)
     .sort((a, b) => a._ds - b._ds);
 
   if (future.length) return future[0];
 
-  // si no hay futuros, agarrá el más reciente pasado
   parsed.sort((a, b) => b._ds - a._ds);
   return parsed[0] || null;
 }
@@ -242,9 +378,6 @@ function setNextTournamentCardLink(tournamentId) {
   };
 }
 
-
-
-
 /* =========================================================
    BIRTHDAYS
 ========================================================= */
@@ -252,18 +385,15 @@ function setNextTournamentCardLink(tournamentId) {
 function toDateSafe(birthday) {
   if (!birthday) return null;
 
-  // Firestore Timestamp
   if (typeof birthday === "object" && typeof birthday.toDate === "function") {
     const d = birthday.toDate();
     return isNaN(d) ? null : d;
   }
 
-  // JS Date
   if (birthday instanceof Date) {
     return isNaN(birthday) ? null : birthday;
   }
 
-  // String YYYY-MM-DD (LOCAL)
   if (typeof birthday === "string") {
     const s = birthday.trim().replaceAll("/", "-");
     const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -271,13 +401,12 @@ function toDateSafe(birthday) {
       const y = Number(m[1]);
       const mo = Number(m[2]) - 1;
       const da = Number(m[3]);
-      return new Date(y, mo, da); // 👈 FIX timezone
+      return new Date(y, mo, da);
     }
   }
 
   return null;
 }
-
 
 function renderBirthdays(players) {
   const birthdaysList = document.getElementById("birthdaysList");
@@ -305,11 +434,11 @@ function renderBirthdays(players) {
     .map(({ player, day }) => {
       const isToday = day === today.getDate();
       return `
-          <div class="birthday-item ${isToday ? "today" : ""}">
-            <strong>${escapeHtml(player.fullName)}</strong>
-            <span class="ms-2">${day}</span>
-          </div>
-        `;
+        <div class="birthday-item ${isToday ? "today" : ""}">
+          <strong>${escapeHtml(player.fullName)}</strong>
+          <span class="ms-2">${day}</span>
+        </div>
+      `;
     })
     .join("");
 }
@@ -323,7 +452,6 @@ function escapeHtml(str) {
     .replaceAll("'", "&#039;");
 }
 
-
 /* =========================================================
    KPIs
 ========================================================= */
@@ -333,16 +461,21 @@ function calculateMonthlyKPIs({ players, trainings }) {
   const THIRTY_DAYS = 1000 * 60 * 60 * 24 * 30;
   const since = new Date(now.getTime() - THIRTY_DAYS);
 
-  // Entrenamientos de los últimos 30 días
+  const playersById = new Map(players.map(p => [p.id, p]));
+  const playersByUserId = new Map(
+    players
+      .filter(p => p.userId)
+      .map(p => [p.userId, p])
+  );
+
   const recentTrainings = trainings.filter(t => {
     if (!t.date) return false;
-    const d = t.date.toDate?.() ?? new Date(t.date);
-    return d >= since && d <= now;
+    const d = toDateSafeAny(t.date);
+    return d && d >= since && d <= now;
   });
 
-  // Asistencia total
   const totalAttendance = recentTrainings.reduce(
-    (sum, t) => sum + (t.attendees?.length ?? 0),
+    (sum, t) => sum + getTrainingAttendeeCount(t, playersById, playersByUserId),
     0
   );
 
@@ -350,16 +483,15 @@ function calculateMonthlyKPIs({ players, trainings }) {
     ? Math.round(totalAttendance / recentTrainings.length)
     : 0;
 
-  // IDs de jugadores activos en roster
   const activeRosterIds = new Set(
     players.filter(p => p.active).map(p => p.id)
   );
 
-  // Jugadores activos que participaron al menos una vez
   const activeParticipants = new Set();
 
   recentTrainings.forEach(t => {
-    (t.attendees || []).forEach(id => {
+    const ids = getTrainingAttendeePlayerIds(t, playersById, playersByUserId);
+    ids.forEach(id => {
       if (activeRosterIds.has(id)) {
         activeParticipants.add(id);
       }
@@ -367,22 +499,16 @@ function calculateMonthlyKPIs({ players, trainings }) {
   });
 
   return {
-    activePlayers: activeParticipants.size, // activos que entrenaron en últimos 30 días
+    activePlayers: activeParticipants.size,
     avgAttendance,
     trainingsCount: recentTrainings.length
   };
 }
 
-
 function renderKPIs(kpis) {
-  document.getElementById("kpiActivePlayers").textContent =
-    kpis.activePlayers;
-
-  document.getElementById("kpiAvgAttendance").textContent =
-    kpis.avgAttendance;
-
-  document.getElementById("kpiTrainingsCount").textContent =
-    kpis.trainingsCount;
+  document.getElementById("kpiActivePlayers").textContent = kpis.activePlayers;
+  document.getElementById("kpiAvgAttendance").textContent = kpis.avgAttendance;
+  document.getElementById("kpiTrainingsCount").textContent = kpis.trainingsCount;
 }
 
 /* =========================================================
@@ -395,62 +521,37 @@ function calculateAlerts({ players, trainings }) {
   const THIRTY_DAYS_MS = 1000 * 60 * 60 * 24 * 30;
   const since = new Date(now.getTime() - THIRTY_DAYS_MS);
 
-  // helpers
-  const toDate = (v) => {
-    if (!v) return null;
-
-    // Firestore Timestamp
-    if (typeof v === "object" && typeof v.toDate === "function") {
-      const d = v.toDate();
-      return isNaN(d) ? null : d;
-    }
-
-    // JS Date
-    if (v instanceof Date) {
-      return isNaN(v) ? null : v;
-    }
-
-    // String YYYY-MM-DD => parse local
-    if (typeof v === "string") {
-      const s = v.trim().replaceAll("/", "-");
-      const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-      if (m) {
-        const y = Number(m[1]);
-        const mo = Number(m[2]) - 1;
-        const da = Number(m[3]);
-        return new Date(y, mo, da);
-      }
-
-      const d = new Date(s);
-      return isNaN(d) ? null : d;
-    }
-
-    return null;
-  };
-
-  const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const startOfDayLocal = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const fmt = (d) =>
-    d ? new Intl.DateTimeFormat("es-CR", { day: "2-digit", month: "short" }).format(d).replace(".", "") : "—";
+    d
+      ? new Intl.DateTimeFormat("es-CR", { day: "2-digit", month: "short" })
+          .format(d)
+          .replace(".", "")
+      : "—";
 
-  // index players
   const byId = new Map(players.map(p => [p.id, p]));
+  const byUserId = new Map(
+    players
+      .filter(p => p.userId)
+      .map(p => [p.userId, p])
+  );
+
   const activeIds = new Set(players.filter(p => p.active).map(p => p.id));
   const activePlayers = players.filter(p => p.active);
 
-  // only trainings in last 30 days (and active)
-  const today = startOfDay(now);
-  const sinceDay = startOfDay(since);
+  const today = startOfDayLocal(now);
+  const sinceDay = startOfDayLocal(since);
 
   const recentTrainings = (trainings || [])
-    .map(t => ({ ...t, _d: toDate(t.date) }))
+    .map(t => ({ ...t, _d: toDateSafeAny(t.date) }))
     .filter(t => {
-      if (!t.active || !t._d) return false;
-      const td = startOfDay(t._d);
+      const isActiveTraining = t.active !== false;
+      if (!isActiveTraining || !t._d) return false;
+      const td = startOfDayLocal(t._d);
       return td >= sinceDay && td <= today;
     })
     .sort((a, b) => a._d - b._d);
 
-  // If no trainings in last 30 days, that's the only alert that makes sense (and it respects scope)
   if (!recentTrainings.length) {
     alerts.push({
       type: "warning",
@@ -459,28 +560,29 @@ function calculateAlerts({ players, trainings }) {
     return alerts;
   }
 
-  // Attendance stats per training + global stats
-  const attendanceCounts = recentTrainings.map(t => (Array.isArray(t.attendees) ? t.attendees.length : 0));
+  const attendanceCounts = recentTrainings.map(t =>
+    getTrainingAttendeeCount(t, byId, byUserId)
+  );
+
   const avgAtt = attendanceCounts.reduce((a, b) => a + b, 0) / attendanceCounts.length;
 
   const lastTraining = recentTrainings[recentTrainings.length - 1];
-  const lastAtt = Array.isArray(lastTraining.attendees) ? lastTraining.attendees.length : 0;
+  const lastTrainingIds = getTrainingAttendeePlayerIds(lastTraining, byId, byUserId);
+  const lastAtt = lastTrainingIds.length;
 
-  // --- Per-player last attendance within last 30 days
-  const lastAttendance = {}; // pid -> Date
-  const attendCount30 = {};  // pid -> count (last 30 days)
+  const lastAttendance = {};
+  const attendCount30 = {};
 
   recentTrainings.forEach(t => {
     const d = t._d;
-    const list = Array.isArray(t.attendees) ? t.attendees : [];
+    const ids = getTrainingAttendeePlayerIds(t, byId, byUserId);
 
-    list.forEach(pid => {
+    ids.forEach(pid => {
       attendCount30[pid] = (attendCount30[pid] || 0) + 1;
       if (!lastAttendance[pid] || d > lastAttendance[pid]) lastAttendance[pid] = d;
     });
   });
 
-  // 🔴 Activos sin entrenar en los últimos 30 días (scope correcto)
   const inactive30 = activePlayers.filter(p => !lastAttendance[p.id]);
   if (inactive30.length) {
     alerts.push({
@@ -489,8 +591,10 @@ function calculateAlerts({ players, trainings }) {
     });
   }
 
-  // 🟠 Activos con muy baja participación (≤1 entreno en 30 días)
-  const lowParticipation = activePlayers.filter(p => (attendCount30[p.id] || 0) <= 1 && lastAttendance[p.id]);
+  const lowParticipation = activePlayers.filter(
+    p => (attendCount30[p.id] || 0) <= 1 && lastAttendance[p.id]
+  );
+
   if (lowParticipation.length) {
     alerts.push({
       type: "warning",
@@ -498,8 +602,7 @@ function calculateAlerts({ players, trainings }) {
     });
   }
 
-  // 🟡 Participación de roster activo en el último entreno
-  const lastAttIds = new Set(Array.isArray(lastTraining.attendees) ? lastTraining.attendees : []);
+  const lastAttIds = new Set(lastTrainingIds);
   const activeInLast = [...lastAttIds].filter(id => activeIds.has(id)).length;
   const activeRosterSize = activeIds.size || 1;
   const pctActiveInLast = Math.round((activeInLast / activeRosterSize) * 100);
@@ -511,7 +614,6 @@ function calculateAlerts({ players, trainings }) {
     });
   }
 
-  // 🟡 Drop fuerte vs promedio (último entreno)
   if (avgAtt >= 8 && lastAtt <= avgAtt * 0.6) {
     alerts.push({
       type: "warning",
@@ -519,41 +621,45 @@ function calculateAlerts({ players, trainings }) {
     });
   }
 
-  // 🟡 Entrenos con baja asistencia (umbral dinámico + mínimo)
   const lowAttThreshold = Math.max(8, Math.round(avgAtt * 0.6));
-  const lowAttendanceTrainings = recentTrainings.filter(t => (t.attendees?.length || 0) < lowAttThreshold);
+  const lowAttendanceTrainings = recentTrainings.filter(t => {
+    const att = getTrainingAttendeeCount(t, byId, byUserId);
+    return att < lowAttThreshold;
+  });
 
   if (lowAttendanceTrainings.length >= 2) {
     const worst = lowAttendanceTrainings
       .slice()
-      .sort((a, b) => (a.attendees?.length || 0) - (b.attendees?.length || 0))[0];
+      .sort((a, b) =>
+        getTrainingAttendeeCount(a, byId, byUserId) - getTrainingAttendeeCount(b, byId, byUserId)
+      )[0];
 
     alerts.push({
       type: "warning",
-      message: `${lowAttendanceTrainings.length} entrenos tuvieron asistencia baja (<${lowAttThreshold}) en los últimos 30 días. Peor caso: ${fmt(worst._d)} con ${(worst.attendees?.length || 0)}.`
+      message: `${lowAttendanceTrainings.length} entrenos tuvieron asistencia baja (<${lowAttThreshold}) en los últimos 30 días. Peor caso: ${fmt(worst._d)} con ${getTrainingAttendeeCount(worst, byId, byUserId)}.`
     });
   }
 
-  // 🟠 Pocos handlers en un entreno (últimos 30 días)
   const trainingsFewHandlers = [];
   recentTrainings.forEach(t => {
-    const handlerCount = (t.attendees || []).reduce((acc, id) => {
+    const ids = getTrainingAttendeePlayerIds(t, byId, byUserId);
+    const handlerCount = ids.reduce((acc, id) => {
       const p = byId.get(id);
-      return acc + (p?.role === "handler" ? 1 : 0);
+      return acc + (normalizeRoleId(p?.role) === "handler" ? 1 : 0);
     }, 0);
 
-    // umbral: mínimo 3 o 25% de asistentes (lo que sea mayor)
-    const att = t.attendees?.length || 0;
+    const att = ids.length;
     const minHandlers = Math.max(3, Math.ceil(att * 0.25));
 
     if (att >= 8 && handlerCount < minHandlers) {
-      trainingsFewHandlers.push({ t, handlerCount, minHandlers });
+      trainingsFewHandlers.push({ t, handlerCount, minHandlers, att });
     }
   });
 
   if (trainingsFewHandlers.length) {
-    // mostramos solo el peor (para no spamear)
-    trainingsFewHandlers.sort((a, b) => (a.handlerCount / (a.t.attendees?.length || 1)) - (b.handlerCount / (b.t.attendees?.length || 1)));
+    trainingsFewHandlers.sort(
+      (a, b) => (a.handlerCount / (a.att || 1)) - (b.handlerCount / (b.att || 1))
+    );
     const w = trainingsFewHandlers[0];
     alerts.push({
       type: "warning",
@@ -561,11 +667,14 @@ function calculateAlerts({ players, trainings }) {
     });
   }
 
-  // 🟡 Desbalance de género en el último entreno (si hay data)
   const lastGender = { M: 0, F: 0, X: 0, NA: 0 };
-  (lastTraining.attendees || []).forEach(id => {
-    const g = byId.get(id)?.gender;
-    if (g === "M" || g === "F" || g === "X") lastGender[g]++;
+  lastTrainingIds.forEach(id => {
+    const gRaw = byId.get(id)?.gender;
+    const g = String(gRaw || "").trim().toUpperCase();
+
+    if (g === "M") lastGender.M++;
+    else if (g === "F") lastGender.F++;
+    else if (g === "X") lastGender.X++;
     else lastGender.NA++;
   });
 
@@ -573,7 +682,7 @@ function calculateAlerts({ players, trainings }) {
   if (knownGender >= 10) {
     const max = Math.max(lastGender.M, lastGender.F);
     const min = Math.min(lastGender.M, lastGender.F);
-    // si uno es 2x el otro (o más)
+
     if (min > 0 && max / min >= 2) {
       alerts.push({
         type: "warning",
@@ -582,8 +691,11 @@ function calculateAlerts({ players, trainings }) {
     }
   }
 
-  // 🟠 Entrenos con data incompleta (últimos 30 días)
-  const incomplete = recentTrainings.filter(t => !Array.isArray(t.attendees) || !t.attendees.length);
+  const incomplete = recentTrainings.filter(t => {
+    const raw = t.attendees;
+    return !Array.isArray(raw) || raw.length === 0;
+  });
+
   if (incomplete.length >= 2) {
     alerts.push({
       type: "warning",
@@ -591,8 +703,6 @@ function calculateAlerts({ players, trainings }) {
     });
   }
 
-  // 🔴 “ausentes recurrentes” (activos con 0 o 1 asistencia) — ya cubierto,
-  // pero si querés un highlight de nombres (máx 5) para acción rápida:
   const topAbsents = inactive30
     .map(p => p.fullName || `${p.firstName || ""} ${p.lastName || ""}`.trim())
     .filter(Boolean)
@@ -639,9 +749,9 @@ function capitalize(s) {
   if (!s) return "";
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
+
 /* =========================================================
    VERSION
 ========================================================= */
-
 const appVer = document.getElementById("appVersion");
 if (appVer) appVer.textContent = `v${APP_CONFIG.version}`;

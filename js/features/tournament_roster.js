@@ -1,12 +1,11 @@
 // js/features/tournament_roster.js
 import { db } from "../auth/firebase.js";
 import { watchAuth, logout } from "../auth/auth.js";
-import { getCurrentPermissions, applyVisibilityMap  } from "../auth/permissions.js";
+import { getCurrentPermissions, applyVisibilityMap } from "../auth/permissions.js";
 import { APP_CONFIG } from "../config/config.js";
 import { showLoader, hideLoader } from "../ui/loader.js";
 import { loadHeader } from "../components/header.js";
 import { TOURNAMENT_STRINGS } from "../strings.js";
-import { Player } from "../models/player.js";
 import { createTournamentEditor } from "./tournament_editor.js";
 import { loadPartialOnce } from "../ui/loadPartial.js";
 import { createPaymentModal, sumPayments } from "./payment_modal.js";
@@ -35,7 +34,8 @@ const S = TOURNAMENT_STRINGS;
 const COL = APP_CONFIG.collections;
 
 const TOURNAMENTS_COL = COL.tournaments;
-const PLAYERS_COL = COL.players;
+const CLUB_PLAYERS_COL = COL.club_players;
+const USERS_COL = COL.users;
 const GUESTS_COL = COL.guests;
 
 const PLAYER_ROLES = Array.isArray(APP_CONFIG?.playerRoles) ? APP_CONFIG.playerRoles : [];
@@ -235,22 +235,91 @@ async function fetchTournament(id) {
   return { id: snap.id, ...snap.data() };
 }
 
+function getUserDisplayName(userData = {}) {
+  const joinedName = [userData.firstName, userData.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  return (
+    userData.fullName ||
+    userData.displayName ||
+    joinedName ||
+    userData.name ||
+    userData.email ||
+    "—"
+  );
+}
+
+function normalizeClubPlayerActive(cp = {}) {
+  if (cp.active === false) return false;
+  if (cp.isActive === false) return false;
+  if (cp.status === "inactive") return false;
+  return true;
+}
+
+function getClubPlayerUserId(cp = {}) {
+  return cp.userId || cp.linkedUserId || cp.uid || cp.userRefId || null;
+}
+
+function getClubPlayerName(cp = {}, user = null) {
+  return (
+    cp.fullName ||
+    cp.displayName ||
+    getUserDisplayName(user || {}) ||
+    "—"
+  );
+}
+
+function getClubPlayerNumber(cp = {}, user = null) {
+  const v = cp.number ?? cp.jerseyNumber ?? user?.number ?? null;
+  return v == null ? null : v;
+}
+
+function getClubPlayerRole(cp = {}, user = null) {
+  return cp.role || cp.position || user?.role || null;
+}
+
+function getClubPlayerGender(cp = {}, user = null) {
+  return cp.gender || user?.gender || null;
+}
+
 async function loadRoster() {
   const snap = await getDocs(collection(db, TOURNAMENTS_COL, tournamentId, "roster"));
   const raw = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
   const playersById = new Map(players.map(p => [p.id, p]));
+  const playersByUserId = new Map(
+    players
+      .filter(p => p.userId)
+      .map(p => [p.userId, p])
+  );
+
   const guestsById = new Map(guests.map(g => [g.id, g]));
   const defaultFeeTotal = toNumberOrZero(tournament?.playerFee);
 
   roster = raw
     .map(r => {
-      const refId = (r.playerId || r.guestId || r.id || "").trim();
       const isGuest = !!r.isGuest;
 
-      const source = isGuest
-        ? guestsById.get(r.guestId || refId)
-        : playersById.get(r.playerId || refId);
+      let source = null;
+      let sourceId = "";
+
+      if (isGuest) {
+        const gid = (r.guestId || r.id || "").trim();
+        source = guestsById.get(gid) || null;
+        sourceId = gid;
+      } else {
+        const clubPlayerId = (r.clubPlayerId || r.playerId || r.id || "").trim();
+        const userId = (r.userId || "").trim();
+
+        source =
+          playersById.get(clubPlayerId) ||
+          (userId ? playersByUserId.get(userId) : null) ||
+          null;
+
+        sourceId = source?.id || clubPlayerId || userId || "";
+      }
 
       const payments = Array.isArray(r.payments) ? r.payments : [];
       const feeTotal = Number.isFinite(Number(r.feeTotal))
@@ -263,7 +332,7 @@ async function loadRoster() {
 
       return {
         ...r,
-        sourceId: refId,
+        sourceId,
         isGuest,
 
         name: source?.name ?? "—",
@@ -272,8 +341,11 @@ async function loadRoster() {
         gender: source?.gender ?? null,
         loanFrom: isGuest ? (source?.loanFrom || r.loanFrom || "") : "",
 
-        playerId: !isGuest ? (r.playerId || refId) : null,
-        guestId: isGuest ? (r.guestId || refId) : null,
+        clubPlayerId: !isGuest ? (source?.id || r.clubPlayerId || r.playerId || null) : null,
+        userId: !isGuest ? (source?.userId || r.userId || null) : null,
+        playerId: !isGuest ? (source?.id || r.playerId || r.clubPlayerId || null) : null,
+
+        guestId: isGuest ? (r.guestId || sourceId || null) : null,
 
         payments,
         feeTotal,
@@ -287,20 +359,40 @@ async function loadRoster() {
 }
 
 async function loadPlayers() {
-  const snap = await getDocs(collection(db, PLAYERS_COL));
+  const [usersSnap, clubPlayersSnap] = await Promise.all([
+    getDocs(collection(db, USERS_COL)),
+    getDocs(collection(db, CLUB_PLAYERS_COL))
+  ]);
 
-  players = snap.docs
-    .map(d => Player.fromFirestore(d))
-    .map(p => ({
-      id: p.id,
-      name: p.fullName,
-      nickname: "",
-      role: p.role,
-      number: p.number ?? null,
-      gender: p.gender,
-      active: p.active !== false,
-      isGuest: false
-    }))
+  const usersById = {};
+  usersSnap.forEach(d => {
+    usersById[d.id] = { id: d.id, ...d.data() };
+  });
+
+  players = clubPlayersSnap.docs
+    .map(d => {
+      const cp = d.data() || {};
+      const id = d.id;
+      const userId = getClubPlayerUserId(cp);
+      const user = userId ? usersById[userId] : null;
+
+      return {
+        id,
+        clubPlayerId: id,
+        userId,
+        name: getClubPlayerName(cp, user),
+        nickname: cp.nickname || user?.nickname || "",
+        role: getClubPlayerRole(cp, user),
+        number: getClubPlayerNumber(cp, user),
+        gender: getClubPlayerGender(cp, user),
+        active: normalizeClubPlayerActive(cp),
+        isGuest: false,
+        email: cp.email || user?.email || "",
+        photoURL: cp.photoURL || user?.photoURL || "",
+        rawClubPlayer: cp,
+        rawUser: user || null
+      };
+    })
     .filter(p => p.active === true)
     .filter(p => (p.name || "").trim().length > 0)
     .sort((a, b) => (a.name || "").localeCompare(b.name || "", "es"));
@@ -338,15 +430,13 @@ async function loadGuests() {
 ========================== */
 function applyRoleUI() {
   const canManageRoster = !!permissions?.canManageRoster;
-  const canEditTournament = !!permissions?.canEditTournament;
   const canManagePayments = !!permissions?.canManagePayments;
-  const canCreateGuests = !!permissions?.canCreateGuests;
   const isViewerOnly = !canManageRoster;
 
   applyVisibilityMap(permissions, {
-      canEditTournament: editTournamentBtn,
-      canManagePayments: toggleTeamFeeBtn,
-      canCreateGuests: addGuestBtn
+    canEditTournament: editTournamentBtn,
+    canManagePayments: toggleTeamFeeBtn,
+    canCreateGuests: addGuestBtn
   });
 
   if (playersPanelCol) {
@@ -491,7 +581,7 @@ function render() {
   });
 }
 
-function renderRosterCounters(visibleList) {
+function renderRosterCounters() {
   const base = roster;
 
   const total = base.length;
@@ -524,7 +614,7 @@ function renderDynamicRoleCounters(list) {
 
   roleCounters.innerHTML = PLAYER_ROLES.map(role => `
     <span class="badge text-bg-light border" title="${escapeHtml(role.label || role.id)}">
-      ${escapeHtml(role.label || role.id)} <strong>${counts[role.id] || 0}</strong>
+      ${escapeHtml(role.label || role.id)} <strong>${counts[normalizeRoleId(role.id)] || 0}</strong>
     </span>
   `).join("");
 }
@@ -544,7 +634,11 @@ function renderPlayers() {
 
   const q = (playersSearch?.value || "").trim().toLowerCase();
 
-  const rosterIds = new Set(roster.map(r => r.playerId || r.guestId || r.id));
+  const rosterIds = new Set(
+    roster
+      .map(r => r.isGuest ? r.guestId : r.clubPlayerId)
+      .filter(Boolean)
+  );
 
   let pool = [...players, ...guests];
   let list = pool.filter(p => !rosterIds.has(p.id));
@@ -602,7 +696,12 @@ async function addToRoster(itemId) {
     const feeTotal = toNumberOrZero(tournament?.playerFee);
 
     await setDoc(ref, {
+      clubPlayerId: item.isGuest ? null : item.id,
+      userId: item.isGuest ? null : (item.userId || null),
+
+      // legacy compatibility
       playerId: item.isGuest ? null : item.id,
+
       isGuest: !!item.isGuest,
       guestId: item.isGuest ? item.id : null,
       loanFrom: item.isGuest ? (item.loanFrom || "") : "",
@@ -1146,7 +1245,7 @@ function getRoleCounts(list) {
   const counts = {};
 
   PLAYER_ROLES.forEach(role => {
-    counts[role.id] = 0;
+    counts[normalizeRoleId(role.id)] = 0;
   });
 
   list.forEach(item => {

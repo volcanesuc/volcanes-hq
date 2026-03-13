@@ -25,7 +25,7 @@ import {
 
 const COL = APP_CONFIG.collections;
 const COL_USERS = COL.users;
-const COL_PLAYERS = COL.players;
+const COL_PLAYERS = COL.club_players;
 const COL_CLUB_CONFIG = COL.club_config;
 
 const $ = {
@@ -461,11 +461,15 @@ async function getRequiredUserProfile(uid) {
 async function createPlayerForUser({
   uid,
   fieldRole,
+  gender = null,
+  number = null,
 }) {
   const ref = await addDoc(collection(db, COL_PLAYERS), {
     active: true,
     userId: uid || null,
     fieldRole: fieldRole || null,
+    gender,
+    number,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });

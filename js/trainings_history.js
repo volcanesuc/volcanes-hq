@@ -24,7 +24,7 @@ import { loadPartialOnce } from "/js/ui/loadPartial.js";
 const COL = APP_CONFIG.collections;
 
 const COL_TRAININGS = COL.trainings;
-const COL_PLAYERS = COL.players;
+const COL_PLAYERS = COL.club_players;
 const COL_DRILLS = COL.drills;
 const COL_PLAYBOOK_TRAININGS = COL.playbookTrainings;
 

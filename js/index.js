@@ -1,4 +1,5 @@
-import "./config/config.js";
+// js/index.js
+import { APP_CONFIG } from "./config/config.js";
 import { CLUB_DATA } from "./strings.js";
 import { loadHeader } from "./components/header.js";
 import { showLoader, hideLoader, updateLoaderMessage } from "./ui/loader.js";
@@ -9,7 +10,6 @@ import {
   doc,
   getDoc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { APP_CONFIG } from "./config/config.js";
 
 const COL = APP_CONFIG.collections;
 const COL_CLUB_CONFIG = COL.club_config;
@@ -60,6 +60,14 @@ function showPendingState() {
   hideLoader();
 }
 
+async function readCurrentUserState(uid) {
+  if (!uid) return {};
+
+  const userRef = doc(db, COL_USERS, uid);
+  const userSnap = await getDoc(userRef).catch(() => null);
+  return userSnap?.exists?.() ? (userSnap.data() || {}) : {};
+}
+
 async function bootPendingMode() {
   showLoader("Validando estado…");
 
@@ -70,9 +78,7 @@ async function bootPendingMode() {
         return;
       }
 
-      const userRef = doc(db, "users", user.uid);
-      const userSnap = await getDoc(userRef).catch(() => null);
-      const userData = userSnap?.exists?.() ? userSnap.data() || {} : {};
+      const userData = await readCurrentUserState(user.uid);
 
       if (userData.isActive === true && userData.onboardingComplete === true) {
         window.location.replace("/dashboard.html");
@@ -97,9 +103,7 @@ async function bootPendingMode() {
         return;
       }
 
-      const userRef = doc(db, "users", user.uid);
-      const userSnap = await getDoc(userRef).catch(() => null);
-      const userData = userSnap?.exists?.() ? userSnap.data() || {} : {};
+      const userData = await readCurrentUserState(user.uid);
 
       if (userData.isActive === true && userData.onboardingComplete === true) {
         window.location.replace("/dashboard.html");
@@ -170,7 +174,7 @@ function applyIndexSettings(indexSettings = {}) {
 
 async function loadIndexSettings() {
   try {
-    const ref = doc(db, "club_config", "index_settings");
+    const ref = doc(db, COL_CLUB_CONFIG, "index_settings");
     const snap = await getDoc(ref);
 
     if (snap.exists()) {
@@ -178,7 +182,7 @@ async function loadIndexSettings() {
       applyIndexSettings(data);
     } else {
       applyIndexSettings();
-      console.error("No existe club_config/index_settings");
+      console.error(`No existe ${COL_CLUB_CONFIG}/index_settings`);
     }
   } catch (err) {
     console.error("Error loading index settings:", err);
@@ -189,6 +193,7 @@ async function loadIndexSettings() {
 /* =========================================================
    HERO
 ========================================================= */
+
 async function loadHeroData() {
   const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "hero")).catch(() => null);
   const data = snap?.exists?.() ? (snap.data() || {}) : {};
@@ -266,6 +271,7 @@ function renderSocials(socials = {}) {
 /* =========================================================
    EVENTS
 ========================================================= */
+
 async function loadEventsData() {
   const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "events")).catch(() => null);
   const data = snap?.exists?.() ? (snap.data() || {}) : {};
@@ -340,6 +346,8 @@ function renderTrainings(trainingsData = {}, socials = {}) {
     trainingsData.title || "Entrenamientos y Juegos";
 
   const container = trainingsSection.querySelector(".landing-cards");
+  if (!container) return;
+
   container.innerHTML = "";
 
   blocks.forEach((block) => {
@@ -391,6 +399,8 @@ function renderHonors(honorsData = {}) {
   honorsSection.querySelector("h2").textContent = honorsData.title || "Palmarés";
 
   const container = honorsSection.querySelector(".landing-cards");
+  if (!container) return;
+
   container.innerHTML = "";
 
   items.forEach((item) => {
@@ -470,16 +480,19 @@ function renderUniforms(uniformData = {}) {
       const card = document.createElement("div");
       card.className = "uniform-card";
 
+      const orderUrl = safeUrl(uniformData.orderUrl);
+
       card.innerHTML = `
         <div class="uniform-img-wrapper">
-          <img src="${item.image}" alt="${item.name || "Uniforme"}" />
+          <img src="${item.image || ""}" alt="${item.name || "Uniforme"}" />
         </div>
         <div class="uniform-info">
           <h3>${item.name || "—"}</h3>
           <a
             class="landing-btn"
-            href="${safeUrl(uniformData.orderUrl)}"
+            href="${orderUrl}"
             target="_blank"
+            rel="noopener noreferrer"
           >
             ${uniformData.ctaLabel || "Comprar"}
           </a>
@@ -495,7 +508,7 @@ function renderUniforms(uniformData = {}) {
 
   const carouselEl = document.getElementById("uniformsCarousel");
   if (carouselEl && window.bootstrap?.Carousel) {
-    new bootstrap.Carousel(carouselEl);
+    new window.bootstrap.Carousel(carouselEl);
   }
 }
 
@@ -516,7 +529,7 @@ async function loadSocialLinks() {
 }
 
 async function loadHonorsData() {
-  const snap = await getDoc(doc(db, "club_config", "honors")).catch(() => null);
+  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "honors")).catch(() => null);
   const data = snap?.exists?.() ? (snap.data() || {}) : {};
 
   return {
@@ -526,7 +539,7 @@ async function loadHonorsData() {
 }
 
 async function loadUniformsData() {
-  const snap = await getDoc(doc(db, "club_config", "uniforms")).catch(() => null);
+  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "uniforms")).catch(() => null);
   const data = snap?.exists?.() ? (snap.data() || {}) : {};
 
   return {
@@ -570,7 +583,7 @@ async function bootNormalLanding() {
   await init();
   await loadIndexSettings();
 
- const [socials, heroData, eventsData, honorsData, uniformsData, trainingsData] = await Promise.all([
+  const [socials, heroData, eventsData, honorsData, uniformsData, trainingsData] = await Promise.all([
     loadSocialLinks(),
     loadHeroData(),
     loadEventsData(),
@@ -588,7 +601,7 @@ async function bootNormalLanding() {
   renderFooter();
 }
 
-//start screen
+// start screen
 if (isPendingView) {
   bootPendingMode();
 } else {

@@ -10,7 +10,8 @@ import {
   getDocs,
   doc,
   setDoc,
-  updateDoc
+  updateDoc,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 import { APP_CONFIG } from "./config/config.js";
@@ -20,13 +21,13 @@ import { guardPage } from "./page-guard.js";
 import { loadHeader } from "./components/header.js";
 
 import { showLoader, hideLoader } from "./ui/loader.js";
-import { Player } from "./models/player.js";
 
 /*************************************************
  * INIT
  *************************************************/
 const COL = APP_CONFIG.collections;
-const PLAYERS_COL = COL.players;
+const CLUB_PLAYERS_COL = COL.club_players;
+const USERS_COL = COL.users;
 
 // Header del dashboard
 const { cfg, redirected } = await guardPage("roster");
@@ -56,6 +57,7 @@ let fields = {};
 
 // Array plano de jugadores
 let players = [];
+let usersById = new Map();
 
 // Filtros
 const filters = {
@@ -68,103 +70,8 @@ const filters = {
 let rosterFilterEventsBound = false;
 
 /*************************************************
- * HELPERS UI MODAL
+ * HELPERS GENERALES
  *************************************************/
-
-function setModalCopy(isEdit = false, player = null) {
-  if (modalTitle) {
-    modalTitle.textContent = isEdit ? "Editar jugador" : "Nuevo jugador";
-  }
-
-  if (modalSubtitle) {
-    if (isEdit && player) {
-      modalSubtitle.textContent = player.fullName || "Actualizar información del jugador";
-    } else {
-      modalSubtitle.textContent = "Registrar jugador en el roster";
-    }
-  }
-
-  if (modalSaveBtn) {
-    modalSaveBtn.textContent = isEdit ? "Guardar cambios" : "Crear jugador";
-  }
-}
-
-function resetFormForCreate() {
-  form?.reset();
-
-  fields.id.value = "";
-  fields.idNumber.value = "";
-  fields.number.value = "";
-  fields.gender.value = "";
-  fields.birthday.value = "";
-  fields.role.value = APP_CONFIG?.playerRoles?.[0]?.id || "cutter";
-  fields.active.checked = true;
-
-  setModalCopy(false, null);
-}
-
-function fillFormForEdit(player) {
-  fields.id.value = player.id || "";
-  fields.firstName.value = player.firstName || "";
-  fields.lastName.value = player.lastName || "";
-  fields.idNumber.value = player.idNumber ?? "";
-  fields.number.value = player.number ?? "";
-  fields.gender.value = player.gender ?? "";
-  fields.birthday.value = player.birthday ?? "";
-  fields.role.value = player.role ?? (APP_CONFIG?.playerRoles?.[0]?.id || "cutter");
-  fields.active.checked = !!player.active;
-
-  setModalCopy(true, player);
-}
-
-function openCreateModal() {
-  if (!permissions?.canEditPlayers || !modal) return;
-  resetFormForCreate();
-  modal.show();
-}
-
-function openEditModal(player) {
-  if (!permissions?.canEditPlayers || !modal || !player) return;
-  fillFormForEdit(player);
-  modal.show();
-}
-
-/*************************************************
- * LABELS / CONFIG
- *************************************************/
-
-function getRosterFilterConfig() {
-  const rosterCfg = APP_CONFIG?.roster || {};
-  const filtersCfg = rosterCfg.filters || {};
-
-  const rolesFromConfig = Array.isArray(APP_CONFIG?.playerRoles) && APP_CONFIG.playerRoles.length
-    ? APP_CONFIG.playerRoles.map(r => ({
-        value: r.id,
-        label: r.label
-      }))
-    : [
-        { value: "cutter", label: "Cutter" },
-        { value: "hybrid", label: "Hybrid" },
-        { value: "handler", label: "Handler" }
-      ];
-
-  return {
-    genders: Array.isArray(filtersCfg.genders) && filtersCfg.genders.length
-      ? filtersCfg.genders
-      : [
-          { value: "F", label: "Femenino" },
-          { value: "M", label: "Masculino" }
-        ],
-
-    roles: rolesFromConfig
-  };
-}
-
-function getGenderLabel(gender) {
-  const cfg = getRosterFilterConfig();
-  const found = cfg.genders.find(g => g.value === gender);
-  return found?.label || "—";
-}
 
 function normalizeText(value) {
   return String(value || "")
@@ -183,15 +90,178 @@ function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
+function normalizeRoleId(role) {
+  return String(role || "").trim().toLowerCase();
+}
+
+function toStartCase(value) {
+  return String(value || "")
+    .trim()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function splitName(fullName) {
+  const clean = String(fullName || "").trim().replace(/\s+/g, " ");
+  if (!clean) return { firstName: "", lastName: "" };
+
+  const parts = clean.split(" ");
+  if (parts.length === 1) {
+    return {
+      firstName: parts[0],
+      lastName: ""
+    };
+  }
+
+  return {
+    firstName: parts.slice(0, -1).join(" "),
+    lastName: parts.slice(-1).join("")
+  };
+}
+
+function getConfigRoles() {
+  return Array.isArray(APP_CONFIG?.playerRoles) ? APP_CONFIG.playerRoles : [];
+}
+
+function getDefaultRoleId() {
+  return getConfigRoles()?.[0]?.id || "player";
+}
+
+function getRoleLabel(roleId) {
+  const rid = normalizeRoleId(roleId);
+  const found = getConfigRoles().find((r) => normalizeRoleId(r.id) === rid);
+  return found?.label || toStartCase(rid || getDefaultRoleId());
+}
+
+function getRosterFilterConfig() {
+  const rosterCfg = APP_CONFIG?.roster || {};
+  const filtersCfg = rosterCfg.filters || {};
+
+  const rolesFromConfig = getConfigRoles().length
+    ? getConfigRoles().map((r) => ({
+        value: r.id,
+        label: r.label || toStartCase(r.id)
+      }))
+    : [{ value: getDefaultRoleId(), label: toStartCase(getDefaultRoleId()) }];
+
+  return {
+    genders: Array.isArray(filtersCfg.genders) && filtersCfg.genders.length
+      ? filtersCfg.genders
+      : [
+          { value: "F", label: "Femenino" },
+          { value: "M", label: "Masculino" },
+          { value: "X", label: "Otro" }
+        ],
+    roles: rolesFromConfig
+  };
+}
+
+function getGenderLabel(gender) {
+  const cfg = getRosterFilterConfig();
+  const found = cfg.genders.find(g => g.value === gender);
+  return found?.label || "—";
+}
+
+function getUserDisplayName(userData = {}) {
+  const joinedName = [userData.firstName, userData.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  return (
+    userData.fullName ||
+    userData.displayName ||
+    joinedName ||
+    userData.name ||
+    userData.email ||
+    "—"
+  );
+}
+
+function getClubPlayerUserId(cp = {}) {
+  return cp.userId || cp.linkedUserId || cp.uid || cp.userRefId || null;
+}
+
+function normalizeClubPlayerActive(cp = {}) {
+  if (cp.active === false) return false;
+  if (cp.isActive === false) return false;
+  if (cp.status === "inactive") return false;
+  return true;
+}
+
+function buildPlayerRecord(docSnap) {
+  const cp = docSnap.data() || {};
+  const id = docSnap.id;
+  const userId = getClubPlayerUserId(cp);
+  const linkedUser = userId ? usersById.get(userId) || null : null;
+
+  const firstName = cp.firstName ?? linkedUser?.firstName ?? "";
+  const lastName = cp.lastName ?? linkedUser?.lastName ?? "";
+  const displayName = cp.displayName ?? linkedUser?.displayName ?? "";
+  const fullName =
+    cp.fullName ||
+    displayName ||
+    getUserDisplayName(linkedUser || {}) ||
+    `${firstName} ${lastName}`.trim() ||
+    "—";
+
+  const role = normalizeRoleId(cp.role || cp.position || linkedUser?.role || getDefaultRoleId());
+
+  return {
+    id,
+    clubPlayerId: id,
+    userId,
+    linkedUser,
+
+    firstName,
+    lastName,
+    fullName,
+    displayName,
+
+    idNumber: cp.idNumber ?? linkedUser?.idNumber ?? null,
+    number: cp.number ?? cp.jerseyNumber ?? linkedUser?.number ?? null,
+    gender: cp.gender ?? linkedUser?.gender ?? null,
+    birthday: cp.birthday ?? linkedUser?.birthday ?? null,
+    role,
+    roleLabel: getRoleLabel(role),
+
+    active: normalizeClubPlayerActive(cp),
+
+    rawClubPlayer: cp,
+    rawUser: linkedUser || null
+  };
+}
+
+function getPlayerFullName(player) {
+  return String(player?.fullName || "").trim() || "—";
+}
+
+function getPlayerFirstName(player) {
+  return String(player?.firstName || "").trim();
+}
+
+function getPlayerLastName(player) {
+  return String(player?.lastName || "").trim();
+}
+
+function getPlayerBirthDate(player) {
+  return String(player?.birthday || "").trim();
+}
+
 function getPlayerInitials(player) {
-  const first = String(player?.firstName || "").trim();
-  const last = String(player?.lastName || "").trim();
+  const first = getPlayerFirstName(player);
+  const last = getPlayerLastName(player);
 
   const firstInitial = first ? first.charAt(0).toUpperCase() : "";
   const lastInitial = last ? last.charAt(0).toUpperCase() : "";
 
   const initials = `${firstInitial}${lastInitial}`.trim();
-  return initials || "—";
+  if (initials) return initials;
+
+  const full = getPlayerFullName(player);
+  return full !== "—" ? full.charAt(0).toUpperCase() : "—";
 }
 
 function formatBirthdayMonthDay(value) {
@@ -200,7 +270,6 @@ function formatBirthdayMonthDay(value) {
   const s = String(value).trim();
   if (!s) return "—";
 
-  // YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
     const [, mm, dd] = s.split("-");
     const months = [
@@ -224,6 +293,85 @@ function formatBirthdayMonthDay(value) {
 }
 
 /*************************************************
+ * HELPERS UI MODAL
+ *************************************************/
+
+function setModalCopy(isEdit = false, player = null) {
+  if (modalTitle) {
+    modalTitle.textContent = isEdit ? "Editar jugador" : "Nuevo jugador";
+  }
+
+  if (modalSubtitle) {
+    if (isEdit && player) {
+      modalSubtitle.textContent = player.fullName || "Actualizar información del jugador";
+    } else {
+      modalSubtitle.textContent = "Registrar jugador en el roster";
+    }
+  }
+
+  if (modalSaveBtn) {
+    modalSaveBtn.textContent = isEdit ? "Guardar cambios" : "Crear jugador";
+  }
+}
+
+function populateRoleSelect() {
+  if (!fields.role) return;
+
+  const roles = getConfigRoles();
+  const defaultRole = getDefaultRoleId();
+
+  fields.role.innerHTML = roles.length
+    ? roles.map((role) => `
+        <option value="${escapeHtml(role.id)}">
+          ${escapeHtml(role.label || toStartCase(role.id))}
+        </option>
+      `).join("")
+    : `<option value="${escapeHtml(defaultRole)}">${escapeHtml(toStartCase(defaultRole))}</option>`;
+}
+
+function resetFormForCreate() {
+  form?.reset();
+
+  fields.id.value = "";
+  fields.firstName.value = "";
+  fields.lastName.value = "";
+  fields.idNumber.value = "";
+  fields.number.value = "";
+  fields.gender.value = "";
+  fields.birthday.value = "";
+  fields.role.value = getDefaultRoleId();
+  fields.active.checked = true;
+
+  setModalCopy(false, null);
+}
+
+function fillFormForEdit(player) {
+  fields.id.value = player.id || "";
+  fields.firstName.value = player.firstName || "";
+  fields.lastName.value = player.lastName || "";
+  fields.idNumber.value = player.idNumber ?? "";
+  fields.number.value = player.number ?? "";
+  fields.gender.value = player.gender ?? "";
+  fields.birthday.value = player.birthday ?? "";
+  fields.role.value = player.role ?? getDefaultRoleId();
+  fields.active.checked = !!player.active;
+
+  setModalCopy(true, player);
+}
+
+function openCreateModal() {
+  if (!permissions?.canEditPlayers || !modal) return;
+  resetFormForCreate();
+  modal.show();
+}
+
+function openEditModal(player) {
+  if (!permissions?.canEditPlayers || !modal || !player) return;
+  fillFormForEdit(player);
+  modal.show();
+}
+
+/*************************************************
  * SORT STATE
  *************************************************/
 
@@ -237,9 +385,16 @@ let currentSort = {
  *************************************************/
 
 async function loadPlayers() {
-  const snap = await getDocs(collection(db, PLAYERS_COL));
+  const [clubPlayersSnap, usersSnap] = await Promise.all([
+    getDocs(collection(db, CLUB_PLAYERS_COL)),
+    getDocs(collection(db, USERS_COL)),
+  ]);
 
-  players = snap.docs.map(d => Player.fromFirestore(d));
+  usersById = new Map(
+    usersSnap.docs.map(d => [d.id, { id: d.id, ...(d.data() || {}) }])
+  );
+
+  players = clubPlayersSnap.docs.map(buildPlayerRecord);
 
   applySort();
   render();
@@ -257,7 +412,7 @@ function populateRosterFilters() {
     filters.gender.innerHTML = `
       <option value="">Todos</option>
       ${cfg.genders
-        .map(g => `<option value="${g.value}">${g.label}</option>`)
+        .map(g => `<option value="${escapeHtml(g.value)}">${escapeHtml(g.label)}</option>`)
         .join("")}
     `;
   }
@@ -266,7 +421,7 @@ function populateRosterFilters() {
     filters.role.innerHTML = `
       <option value="">Todos</option>
       ${cfg.roles
-        .map(r => `<option value="${r.value}">${r.label}</option>`)
+        .map(r => `<option value="${escapeHtml(r.value)}">${escapeHtml(r.label)}</option>`)
         .join("")}
     `;
   }
@@ -291,13 +446,13 @@ function bindRosterFilterEvents() {
 function getFilteredPlayers() {
   const term = normalizeText(filters.search?.value);
   const gender = filters.gender?.value || "";
-  const role = filters.role?.value || "";
+  const role = normalizeRoleId(filters.role?.value || "");
 
   return players.filter(p => {
-    const fullName = normalizeText(`${p.firstName || ""} ${p.lastName || ""}`);
+    const fullName = normalizeText(getPlayerFullName(p));
     const matchesName = !term || fullName.includes(term);
     const matchesGender = !gender || (p.gender || "") === gender;
-    const matchesRole = !role || (p.role || "") === role;
+    const matchesRole = !role || normalizeRoleId(p.role) === role;
 
     return matchesName && matchesGender && matchesRole;
   });
@@ -311,7 +466,6 @@ function applySort() {
   const dir = currentSort.direction === "asc" ? 1 : -1;
 
   players.sort((a, b) => {
-    // activos primero
     if (a.active !== b.active) {
       return a.active ? -1 : 1;
     }
@@ -321,8 +475,8 @@ function applySort() {
 
     switch (currentSort.key) {
       case "name":
-        valA = `${a.firstName || ""} ${a.lastName || ""}`.toLowerCase();
-        valB = `${b.firstName || ""} ${b.lastName || ""}`.toLowerCase();
+        valA = normalizeText(getPlayerFullName(a));
+        valB = normalizeText(getPlayerFullName(b));
         break;
 
       case "number":
@@ -331,8 +485,8 @@ function applySort() {
         break;
 
       case "role":
-        valA = a.role ?? "";
-        valB = b.role ?? "";
+        valA = normalizeRoleId(a.role);
+        valB = normalizeRoleId(b.role);
         break;
 
       case "gender":
@@ -341,8 +495,8 @@ function applySort() {
         break;
 
       case "birthday":
-        valA = a.birthday ?? "";
-        valB = b.birthday ?? "";
+        valA = getPlayerBirthDate(a);
+        valB = getPlayerBirthDate(b);
         break;
 
       case "active":
@@ -370,7 +524,7 @@ function render() {
       .map(
         p => `
           <tr
-            data-id="${p.id}"
+            data-id="${escapeHtml(p.id)}"
             class="player-row"
             style="cursor:${permissions?.canEditPlayers ? "pointer" : "default"}"
           >
@@ -380,18 +534,18 @@ function render() {
                   ${escapeHtml(getPlayerInitials(p))}
                 </div>
                 <div class="player-cell-text">
-                  <div class="player-cell-name fw-semibold">${escapeHtml(p.fullName)}</div>
+                  <div class="player-cell-name fw-semibold">${escapeHtml(getPlayerFullName(p))}</div>
                 </div>
               </div>
             </td>
             <td>
               <span class="badge role-badge">
-                ${escapeHtml(p.roleLabel)}
+                ${escapeHtml(p.roleLabel || "—")}
               </span>
             </td>
             <td>${escapeHtml(p.number ?? "—")}</td>
             <td>${escapeHtml(getGenderLabel(p.gender))}</td>
-            <td>${escapeHtml(formatBirthdayMonthDay(p.birthday))}</td>
+            <td>${escapeHtml(formatBirthdayMonthDay(getPlayerBirthDate(p)))}</td>
             <td>
               <span class="badge ${p.active ? "bg-success" : "bg-secondary"}">
                 ${p.active ? "Activo" : "Inactivo"}
@@ -413,7 +567,7 @@ function renderMobileCards(list = players) {
   playersCards.innerHTML = list.map(p => `
     <div
       class="card mb-2 player-card"
-      data-id="${p.id}"
+      data-id="${escapeHtml(p.id)}"
       style="cursor:${permissions?.canEditPlayers ? "pointer" : "default"}"
     >
       <div class="card-body">
@@ -424,11 +578,11 @@ function renderMobileCards(list = players) {
             </div>
 
             <div class="flex-grow-1 min-w-0">
-              <div class="player-name">${escapeHtml(p.fullName)}</div>
+              <div class="player-name">${escapeHtml(getPlayerFullName(p))}</div>
               <div class="player-extra mt-2">
-                <span class="player-chip role-chip">${escapeHtml(p.roleLabel)}</span>
+                <span class="player-chip role-chip">${escapeHtml(p.roleLabel || "—")}</span>
                 <span class="player-chip gender-chip">${escapeHtml(getGenderLabel(p.gender))}</span>
-                <span class="player-chip">${escapeHtml(formatBirthdayMonthDay(p.birthday))}</span>
+                <span class="player-chip">${escapeHtml(formatBirthdayMonthDay(getPlayerBirthDate(p)))}</span>
               </div>
             </div>
           </div>
@@ -492,7 +646,7 @@ function updateRosterStats(source = players) {
   let u24M = 0;
 
   activeList.forEach(p => {
-    const age = calculateAge(p.birthday);
+    const age = calculateAge(getPlayerBirthDate(p));
     if (age === null || !p.gender) return;
 
     if (p.gender === "M" && age >= 33) masterH++;
@@ -576,6 +730,63 @@ function updateSortIndicators() {
   });
 }
 
+/*************************************************
+ * SAVE
+ *************************************************/
+
+async function savePlayerFromForm() {
+  if (!permissions?.canEditPlayers) return;
+
+  const firstName = fields.firstName.value.trim();
+  const lastName = fields.lastName.value.trim();
+  const fullName = `${firstName} ${lastName}`.trim();
+  const role = normalizeRoleId(fields.role.value || getDefaultRoleId());
+
+  const payload = {
+    firstName,
+    lastName,
+    fullName,
+    displayName: fullName,
+
+    idNumber: (fields.idNumber.value || "").trim() || null,
+    number: fields.number.value === "" ? null : Number(fields.number.value),
+    gender: fields.gender.value || null,
+    birthday: fields.birthday.value || null,
+    role,
+    active: fields.active.checked,
+    isActive: fields.active.checked,
+
+    updatedAt: serverTimestamp()
+  };
+
+  showLoader();
+
+  try {
+    if (fields.id.value) {
+      await updateDoc(doc(db, CLUB_PLAYERS_COL, fields.id.value), payload);
+    } else {
+      const nameParts = splitName(fullName);
+      await setDoc(doc(collection(db, CLUB_PLAYERS_COL)), {
+        ...payload,
+        firstName: firstName || nameParts.firstName || "",
+        lastName: lastName || nameParts.lastName || "",
+        userId: null,
+        linkedUserId: null,
+        createdAt: serverTimestamp()
+      });
+    }
+
+    modal?.hide();
+    await loadPlayers();
+  } finally {
+    hideLoader();
+  }
+}
+
+/*************************************************
+ * MODAL
+ *************************************************/
+
 async function initPlayerModal() {
   const mount = document.getElementById("playerModalMount");
   if (!mount) return;
@@ -601,6 +812,8 @@ async function initPlayerModal() {
     active: document.getElementById("active")
   };
 
+  populateRoleSelect();
+
   if (modalEl) {
     modal = new bootstrap.Modal(modalEl);
   }
@@ -608,39 +821,7 @@ async function initPlayerModal() {
   if (form) {
     form.addEventListener("submit", async e => {
       e.preventDefault();
-      if (!permissions?.canEditPlayers) return;
-
-      const data = {
-        firstName: fields.firstName.value.trim(),
-        lastName: fields.lastName.value.trim(),
-        idNumber: (fields.idNumber.value || "").trim() || null,
-        number: fields.number.value === "" ? null : Number(fields.number.value),
-        gender: fields.gender.value || null,
-        birthday: fields.birthday.value || null,
-        role: fields.role.value || null,
-        active: fields.active.checked
-      };
-
-      showLoader();
-
-      try {
-        if (fields.id.value) {
-          await updateDoc(
-            doc(db, PLAYERS_COL, fields.id.value),
-            new Player(null, data).toFirestore()
-          );
-        } else {
-          await setDoc(
-            doc(collection(db, PLAYERS_COL)),
-            new Player(null, data).toFirestore()
-          );
-        }
-
-        modal?.hide();
-        await loadPlayers();
-      } finally {
-        hideLoader();
-      }
+      await savePlayerFromForm();
     });
   }
 }
@@ -651,47 +832,6 @@ async function initPlayerModal() {
 
 addPlayerBtn?.addEventListener("click", () => {
   openCreateModal();
-});
-
-/*************************************************
- * SAVE FORM
- *************************************************/
-
-form?.addEventListener("submit", async e => {
-  e.preventDefault();
-  if (!permissions?.canEditPlayers) return;
-
-  const data = {
-    firstName: fields.firstName.value.trim(),
-    lastName: fields.lastName.value.trim(),
-    idNumber: (fields.idNumber.value || "").trim() || null,
-    number: fields.number.value === "" ? null : Number(fields.number.value),
-    gender: fields.gender.value || null,
-    birthday: fields.birthday.value || null,
-    role: fields.role.value || null,
-    active: fields.active.checked
-  };
-
-  showLoader();
-
-  try {
-    if (fields.id.value) {
-      await updateDoc(
-        doc(db, PLAYERS_COL, fields.id.value),
-        new Player(null, data).toFirestore()
-      );
-    } else {
-      await setDoc(
-        doc(collection(db, PLAYERS_COL)),
-        new Player(null, data).toFirestore()
-      );
-    }
-
-    modal?.hide();
-    await loadPlayers();
-  } finally {
-    hideLoader();
-  }
 });
 
 /*************************************************

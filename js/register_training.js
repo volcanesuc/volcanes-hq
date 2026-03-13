@@ -19,7 +19,7 @@ import {
 
 const COL = APP_CONFIG.collections || {};
 
-const PLAYERS_COL = COL.players || "club_players";
+const PLAYERS_COL = COL.club_players || "club_players";
 const TRAININGS_COL = COL.trainings || "club_trainings";
 const ATTENDANCE_COL = COL.attendance || "club_attendance";
 

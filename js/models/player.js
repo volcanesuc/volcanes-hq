@@ -1,11 +1,33 @@
 // js/models/player.js
+import { APP_CONFIG } from "../config/config.js";
+
+function normalizeRoleId(role) {
+  return String(role || "").trim().toLowerCase();
+}
+
+function toStartCase(value) {
+  return String(value || "")
+    .trim()
+    .replaceAll(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function getConfigRoles() {
+  return Array.isArray(APP_CONFIG?.playerRoles) ? APP_CONFIG.playerRoles : [];
+}
+
+function getDefaultRole() {
+  const roles = getConfigRoles();
+  return roles?.[0]?.id || "player";
+}
 
 export const PLAYER_ROLES = {
-  HANDLER: "handler",
-  CUTTER: "cutter",
-  HYBRID: "hybrid"
+  get DEFAULT() {
+    return getDefaultRole();
+  }
 };
-
 
 export class Player {
   constructor(id, data = {}) {
@@ -13,12 +35,15 @@ export class Player {
 
     this.firstName = data.firstName ?? "";
     this.lastName = data.lastName ?? "";
+    this.displayName = data.displayName ?? "";
+    this.fullNameField = data.fullName ?? "";
+
     this.idNumber = data?.idNumber ?? null;
     this.number = data.number ?? null;
     this.gender = data.gender ?? null;
     this.birthday = data.birthday ?? null;
-    this.active = data.active ?? true;
-    this.role = data.role ?? PLAYER_ROLES.HYBRID;
+    this.active = data.active ?? data.isActive ?? true;
+    this.role = data.role ?? PLAYER_ROLES.DEFAULT;
   }
 
   /* =========================
@@ -26,25 +51,20 @@ export class Player {
   ========================= */
 
   get fullName() {
-    const name = `${this.firstName} ${this.lastName}`.trim();
-    return name || "—";
+    const joined = `${this.firstName} ${this.lastName}`.trim();
+    return this.fullNameField || this.displayName || joined || "—";
   }
 
   get shortName() {
-    return this.lastName
-      ? `${this.firstName} ${this.lastName[0]}.`
-      : this.firstName || "—";
+    if (this.lastName) {
+      return `${this.firstName} ${this.lastName[0]}.`.trim();
+    }
+
+    return this.firstName || this.displayName || this.fullNameField || "—";
   }
 
   get roleLabel() {
-    switch (this.role) {
-      case PLAYER_ROLES.HANDLER:
-        return "Handler";
-      case PLAYER_ROLES.CUTTER:
-        return "Cutter";
-      default:
-        return "Hybrid";
-    }
+    return toStartCase(this.role || PLAYER_ROLES.DEFAULT);
   }
 
   /* =========================
@@ -55,12 +75,14 @@ export class Player {
     return {
       firstName: this.firstName,
       lastName: this.lastName,
+      fullName: this.fullNameField || this.fullName,
+      displayName: this.displayName || this.fullName,
       idNumber: this.idNumber,
       number: this.number,
       gender: this.gender,
       birthday: this.birthday,
       active: this.active,
-      role: this.role
+      role: normalizeRoleId(this.role || PLAYER_ROLES.DEFAULT)
     };
   }
 

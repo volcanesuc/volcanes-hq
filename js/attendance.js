@@ -5,7 +5,6 @@ import { getCurrentPermissions, applyVisibilityByPermission } from "./auth/permi
 import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { APP_CONFIG } from "./config/config.js";
 import { showLoader, hideLoader } from "./ui/loader.js";
-import { Player } from "./models/player.js";
 import { guardPage } from "./page-guard.js";
 import { loadHeader } from "./components/header.js";
 
@@ -20,7 +19,8 @@ if (!redirected) {
 ========================== */
 const COL = APP_CONFIG.collections;
 const TRAININGS_COL = COL.trainings;
-const PLAYERS_COL = COL.players;
+const CLUB_PLAYERS_COL = COL.club_players;
+const USERS_COL = COL.users;
 
 /* ==========================
    DOM
@@ -45,6 +45,25 @@ const closeChartBtn = document.getElementById("closeChartBtn");
 ========================== */
 let permissions = null;
 
+/**
+ * allPlayers shape:
+ * {
+ *   [clubPlayerId]: {
+ *     player: {
+ *       id,
+ *       clubPlayerId,
+ *       userId,
+ *       fullName,
+ *       active,
+ *       email,
+ *       photoURL,
+ *       rawClubPlayer,
+ *       rawUser
+ *     },
+ *     count
+ *   }
+ * }
+ */
 let allTrainings = {};
 let allPlayers = {};
 let attendanceChart;
@@ -53,9 +72,8 @@ let filteredTrainings = [];
 let filteredPlayersArr = [];
 
 /* ==========================
-   FILTERS START AND END DATE
+   HELPERS
 ========================== */
-
 function yyyyMmDd(d) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -79,6 +97,80 @@ function inRange(dateStr, startStr, endStr) {
   return true;
 }
 
+function getUserDisplayName(userData = {}) {
+  const joinedName = [userData.firstName, userData.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  return (
+    userData.fullName ||
+    userData.displayName ||
+    joinedName ||
+    userData.name ||
+    userData.email ||
+    "—"
+  );
+}
+
+function normalizeClubPlayerActive(cp = {}) {
+  if (cp.active === false) return false;
+  if (cp.isActive === false) return false;
+  if (cp.status === "inactive") return false;
+  return true;
+}
+
+/**
+ * Intenta resolver el attendeeId a un clubPlayerId.
+ * Soporta:
+ * - attendees guardando clubPlayerId
+ * - attendees guardando userId
+ * - attendees guardando objetos { clubPlayerId, userId, id, uid }
+ */
+function resolveAttendanceKey(attendee) {
+  if (!attendee) return null;
+
+  const clubPlayerKeys = Object.keys(allPlayers);
+
+  // Caso simple: string
+  if (typeof attendee === "string") {
+    if (allPlayers[attendee]) return attendee;
+
+    const byUser = clubPlayerKeys.find(
+      (key) => allPlayers[key]?.player?.userId === attendee
+    );
+    return byUser || null;
+  }
+
+  // Caso objeto
+  if (typeof attendee === "object") {
+    const possibleClubPlayerId =
+      attendee.clubPlayerId ||
+      attendee.playerId ||
+      attendee.id ||
+      null;
+
+    if (possibleClubPlayerId && allPlayers[possibleClubPlayerId]) {
+      return possibleClubPlayerId;
+    }
+
+    const possibleUserId =
+      attendee.userId ||
+      attendee.uid ||
+      attendee.linkedUserId ||
+      null;
+
+    if (possibleUserId) {
+      const byUser = clubPlayerKeys.find(
+        (key) => allPlayers[key]?.player?.userId === possibleUserId
+      );
+      if (byUser) return byUser;
+    }
+  }
+
+  return null;
+}
+
 setDefaultRange();
 
 /* ==========================
@@ -89,7 +181,6 @@ document.getElementById("logoutBtn")?.addEventListener("click", logout);
 watchAuth(async () => {
   showLoader();
   try {
-    
     permissions = await getCurrentPermissions();
     applyVisibilityByPermission(permissions, "canExportAttendancePdf", btnPdf);
 
@@ -109,26 +200,72 @@ async function loadAttendance() {
   allTrainings = {};
   allPlayers = {};
 
-  // PLAYERS
-  const playersSnap = await getDocs(collection(db, PLAYERS_COL));
-  playersSnap.forEach(d => {
-    const player = Player.fromFirestore(d);
-    allPlayers[player.id] = { player, count: 0 };
-  });
+  const [usersSnap, clubPlayersSnap, trainingsSnap] = await Promise.all([
+    getDocs(collection(db, USERS_COL)),
+    getDocs(collection(db, CLUB_PLAYERS_COL)),
+    getDocs(collection(db, TRAININGS_COL)),
+  ]);
 
-  // TRAININGS
-  const trainingsSnap = await getDocs(collection(db, TRAININGS_COL));
-  trainingsSnap.forEach(d => {
-    const data = d.data();
-    allTrainings[d.id] = {
+  // USERS INDEX
+  const usersById = {};
+  usersSnap.forEach((d) => {
+    usersById[d.id] = {
       id: d.id,
-      date: data.date, // "YYYY-MM-DD"
-      attendees: data.attendees ?? [],
-      count: 0
+      ...d.data(),
     };
   });
 
-  console.log("Players:", Object.keys(allPlayers).length, `(${PLAYERS_COL})`);
+  // CLUB PLAYERS => roster normalizado
+  clubPlayersSnap.forEach((d) => {
+    const cp = d.data() || {};
+    const clubPlayerId = d.id;
+
+    const userId =
+      cp.userId ||
+      cp.linkedUserId ||
+      cp.uid ||
+      cp.userRefId ||
+      null;
+
+    const user = userId ? usersById[userId] : null;
+
+    const fullName =
+      cp.fullName ||
+      cp.displayName ||
+      getUserDisplayName(user) ||
+      "—";
+
+    const active = normalizeClubPlayerActive(cp);
+
+    allPlayers[clubPlayerId] = {
+      player: {
+        id: clubPlayerId,
+        clubPlayerId,
+        userId,
+        fullName,
+        active,
+        email: cp.email || user?.email || "",
+        photoURL: cp.photoURL || user?.photoURL || user?.avatarUrl || "",
+        rawClubPlayer: cp,
+        rawUser: user || null,
+      },
+      count: 0,
+    };
+  });
+
+  // TRAININGS
+  trainingsSnap.forEach((d) => {
+    const data = d.data() || {};
+    allTrainings[d.id] = {
+      id: d.id,
+      date: data.date || "",
+      attendees: Array.isArray(data.attendees) ? data.attendees : [],
+      count: 0,
+    };
+  });
+
+  console.log("Users:", Object.keys(usersById).length, `(${USERS_COL})`);
+  console.log("Club players:", Object.keys(allPlayers).length, `(${CLUB_PLAYERS_COL})`);
   console.log("Trainings:", Object.keys(allTrainings).length, `(${TRAININGS_COL})`);
 }
 
@@ -141,7 +278,6 @@ function applyFilter() {
 
   // Validación simple (si end < start, no rompas todo)
   if (start && end && end < start) {
-    // swap automático (más cómodo)
     const tmp = startDate.value;
     startDate.value = endDate.value;
     endDate.value = tmp;
@@ -150,7 +286,7 @@ function applyFilter() {
   const start2 = startDate?.value || "";
   const end2 = endDate?.value || "";
 
-  filteredTrainings = Object.values(allTrainings).filter(t =>
+  filteredTrainings = Object.values(allTrainings).filter((t) =>
     inRange(t.date, start2, end2)
   );
 
@@ -166,38 +302,56 @@ function applyFilter() {
         `<tr><td colspan="3" class="text-muted p-3">No hay datos para calcular asistencia.</td></tr>`;
     }
 
-    trainingsCards && (trainingsCards.innerHTML = "");
-    playersCards && (playersCards.innerHTML = "");
+    if (trainingsCards) trainingsCards.innerHTML = "";
+    if (playersCards) playersCards.innerHTML = "";
 
     updateKPIs([]);
     renderTopPlayers([], 0);
 
-    const activeRoster = Object.values(allPlayers).filter(p => p.player.active !== false).length;
-    renderChart([], activeRoster);
+    const activeRoster = Object.values(allPlayers).filter(
+      (p) => p.player.active !== false
+    ).length;
 
+    renderChart([], activeRoster);
     return;
   }
 
   // reset counts
-  filteredTrainings.forEach(t => (t.count = 0));
-  Object.values(allPlayers).forEach(p => (p.count = 0));
+  filteredTrainings.forEach((t) => {
+    t.count = 0;
+  });
+
+  Object.values(allPlayers).forEach((p) => {
+    p.count = 0;
+  });
 
   // compute counts
-  filteredTrainings.forEach(training => {
-    training.count = training.attendees.length;
-    training.attendees.forEach(playerId => {
-      if (allPlayers[playerId]) allPlayers[playerId].count++;
+  filteredTrainings.forEach((training) => {
+    let counted = 0;
+
+    (training.attendees || []).forEach((attendee) => {
+      const matchedKey = resolveAttendanceKey(attendee);
+      if (!matchedKey || !allPlayers[matchedKey]) return;
+
+      allPlayers[matchedKey].count++;
+      counted++;
     });
+
+    training.count = counted;
   });
 
   const totalTrainings = filteredTrainings.length;
 
-  filteredPlayersArr = Object.values(allPlayers).filter(p => p.player.active !== false)
-    .map(p => ({
+  filteredPlayersArr = Object.values(allPlayers)
+    .filter((p) => p.player.active !== false)
+    .map((p) => ({
       ...p,
-      pct: totalTrainings ? Math.round((p.count / totalTrainings) * 100) : 0
+      pct: totalTrainings ? Math.round((p.count / totalTrainings) * 100) : 0,
     }))
-    .sort((a, b) => b.count - a.count);
+    .sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count;
+      return (a.player.fullName || "").localeCompare(b.player.fullName || "");
+    });
 
   // search
   const q = (playerSearch?.value || "").trim().toLowerCase();
@@ -213,14 +367,16 @@ function applyFilter() {
   updateKPIs(filteredTrainings);
   renderTopPlayers(filteredPlayersArr, totalTrainings);
 
-  const activeRoster = Object.values(allPlayers).filter(p => p.player.active !== false).length;
+  const activeRoster = Object.values(allPlayers).filter(
+    (p) => p.player.active !== false
+  ).length;
+
   renderChart(filteredTrainings, activeRoster);
 }
 
 /* ==========================
    PDF GENERATION
 ========================== */
-
 async function generatePdf() {
   if (!permissions?.canExportAttendancePdf) return;
 
@@ -229,26 +385,68 @@ async function generatePdf() {
     const end = endDate?.value || "";
 
     const trainingsInRange = Object.values(allTrainings)
-      .filter(t => inRange(t.date, start, end))
+      .filter((t) => inRange(t.date, start, end))
       .sort((a, b) => (a.date || "").localeCompare(b.date || ""));
 
     const totalTrainings = trainingsInRange.length;
 
     const activePlayers = Object.values(allPlayers)
-      .map(p => p.player)
-      .filter(pl => pl && pl.active !== false)
+      .map((p) => p.player)
+      .filter((pl) => pl && pl.active !== false)
       .sort((a, b) => (a.fullName || "").localeCompare(b.fullName || ""));
 
-    const rows = activePlayers.map(pl => {
+    const rows = activePlayers.map((pl) => {
       let count = 0;
+
       for (const t of trainingsInRange) {
-        if ((t.attendees || []).includes(pl.id)) count++;
+        const attendees = Array.isArray(t.attendees) ? t.attendees : [];
+
+        const attended = attendees.some((attendee) => {
+          // clubPlayer directo
+          if (typeof attendee === "string") {
+            return attendee === pl.clubPlayerId || (!!pl.userId && attendee === pl.userId);
+          }
+
+          if (typeof attendee === "object" && attendee) {
+            const attendeeClubPlayerId =
+              attendee.clubPlayerId ||
+              attendee.playerId ||
+              attendee.id ||
+              null;
+
+            const attendeeUserId =
+              attendee.userId ||
+              attendee.uid ||
+              attendee.linkedUserId ||
+              null;
+
+            return (
+              attendeeClubPlayerId === pl.clubPlayerId ||
+              (!!pl.userId && attendeeUserId === pl.userId)
+            );
+          }
+
+          return false;
+        });
+
+        if (attended) count++;
       }
+
       const pct = totalTrainings ? Math.round((count / totalTrainings) * 100) : 0;
-      return { name: pl.fullName || "—", count, total: totalTrainings, pct };
+      return {
+        name: pl.fullName || "—",
+        count,
+        total: totalTrainings,
+        pct,
+      };
     });
 
-    rows.sort((a, b) => (b.pct - a.pct) || (b.count - a.count) || a.name.localeCompare(b.name));
+    rows.sort(
+      (a, b) =>
+        (b.pct - a.pct) ||
+        (b.count - a.count) ||
+        a.name.localeCompare(b.name)
+    );
 
     const { jsPDF } = window.jspdf || {};
     if (!jsPDF) throw new Error("jsPDF no está cargado. Revisá el script CDN.");
@@ -267,11 +465,16 @@ async function generatePdf() {
     doc.autoTable({
       startY: 110,
       head: [["Jugador", "Asistencias", "Total entrenos", "% participación"]],
-      body: rows.map(r => [r.name, String(r.count), String(r.total), `${r.pct}%`]),
+      body: rows.map((r) => [
+        r.name,
+        String(r.count),
+        String(r.total),
+        `${r.pct}%`,
+      ]),
       styles: { font: "helvetica", fontSize: 10, cellPadding: 6 },
       headStyles: { fillColor: [245, 245, 245], textColor: 20 },
       alternateRowStyles: { fillColor: [252, 252, 252] },
-      margin: { left: 40, right: 40 }
+      margin: { left: 40, right: 40 },
     });
 
     const filename = `Reporte_Asistencia_${(start || "inicio").replaceAll("-", "")}_${(end || "hoy").replaceAll("-", "")}.pdf`;
@@ -282,8 +485,6 @@ async function generatePdf() {
   }
 }
 
-
-
 /* ==========================
    RENDERS
 ========================== */
@@ -293,7 +494,7 @@ function renderTrainings(list) {
   // TABLE (desktop)
   if (trainingsTable) {
     trainingsTable.innerHTML = sorted
-      .map(t => {
+      .map((t) => {
         const pillClass = t.count >= 12 ? "pill pill--good" : "pill pill--warn";
         return `
           <tr>
@@ -308,7 +509,7 @@ function renderTrainings(list) {
   // CARDS (mobile)
   if (trainingsCards) {
     trainingsCards.innerHTML = sorted
-      .map(t => {
+      .map((t) => {
         const pillClass = t.count >= 12 ? "pill pill--good" : "pill pill--warn";
         return `
           <div class="mobile-card">
@@ -442,9 +643,9 @@ function renderChart(trainings, activeRoster = 0) {
   const threshold = 66;
 
   const sorted = [...trainings].sort((a, b) => (a.date || "").localeCompare(a.date || ""));
-  const labels = sorted.map(t => t.date ?? "—");
+  const labels = sorted.map((t) => t.date ?? "—");
 
-  const values = sorted.map(t => {
+  const values = sorted.map((t) => {
     if (activeRoster > 0) return Math.round(((t.count || 0) / activeRoster) * 1000) / 10;
     return t.count || 0;
   });
@@ -463,15 +664,12 @@ function renderChart(trainings, activeRoster = 0) {
           borderWidth: 3,
           pointRadius: 4,
           pointHoverRadius: 6,
-
           borderColor: GREEN,
-
           pointBackgroundColor: (c) => {
             const v = c.raw ?? 0;
             if (activeRoster > 0) return v >= threshold ? GOOD : YELLOW;
             return GREEN;
           },
-
           segment: activeRoster > 0
             ? {
                 borderColor: (seg) => {
@@ -479,38 +677,43 @@ function renderChart(trainings, activeRoster = 0) {
                   const y1 = seg.p1.parsed.y ?? 0;
                   const avg = (y0 + y1) / 2;
                   return avg >= threshold ? GOOD : YELLOW;
-                }
+                },
               }
-            : {}
-        }
-      ]
+            : {},
+        },
+      ],
     },
     options: {
       responsive: true,
       plugins: {
         legend: { display: false },
         tooltip: {
-          callbacks: { label: (c) => (activeRoster > 0 ? `${c.raw}%` : `${c.raw}`) },
+          callbacks: {
+            label: (c) => (activeRoster > 0 ? `${c.raw}%` : `${c.raw}`),
+          },
           titleColor: TEXT,
           bodyColor: TEXT,
           backgroundColor: cssVar("--card", "#ffffff"),
           borderColor: BORDER,
-          borderWidth: 1
-        }
+          borderWidth: 1,
+        },
       },
       scales: {
         x: {
           ticks: { color: TEXT_SOFT },
-          grid: { color: BORDER }
+          grid: { color: BORDER },
         },
         y: {
           beginAtZero: true,
           suggestedMax: activeRoster > 0 ? 100 : undefined,
-          ticks: { color: TEXT_SOFT, callback: (v) => (activeRoster > 0 ? `${v}%` : `${v}`) },
-          grid: { color: BORDER }
-        }
-      }
-    }
+          ticks: {
+            color: TEXT_SOFT,
+            callback: (v) => (activeRoster > 0 ? `${v}%` : `${v}`),
+          },
+          grid: { color: BORDER },
+        },
+      },
+    },
   });
 }
 
@@ -522,7 +725,6 @@ endDate?.addEventListener("change", applyFilter);
 btnPdf?.addEventListener("click", generatePdf);
 
 clearFilterBtn?.addEventListener("click", () => {
-  // vuelve a default CACUC: Jan 1 -> hoy
   startDate.value = "";
   endDate.value = "";
   setDefaultRange();
@@ -534,7 +736,11 @@ playerSearch?.addEventListener("input", applyFilter);
 function showChartPanel() {
   if (!chartPanel) return;
   chartPanel.classList.remove("d-none");
-  const activeRoster = Object.values(allPlayers).filter(p => p.player.active !== false).length;
+
+  const activeRoster = Object.values(allPlayers).filter(
+    (p) => p.player.active !== false
+  ).length;
+
   renderChart(filteredTrainings, activeRoster);
 }
 
@@ -550,7 +756,6 @@ closeChartBtn?.addEventListener("click", hideChartPanel);
 
 /* ==========================
    VERSION
-
+========================== 
 const v = document.getElementById("appVersion");
-if (v) v.textContent = `v${APP_CONFIG.version}`;
-========================== */
+if (v) v.textContent = `v${APP_CONFIG.version}`;*/
