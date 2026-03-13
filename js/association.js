@@ -105,7 +105,7 @@ if (!redirected) {
     initModalHost();
 
     // listeners...
-    window.addEventListener("associate:saved", async () => {
+    window.addEventListener("user:saved", async () => {
       const tab = getTabFromUrl();
       if (tab === "associates") {
         showLoader();

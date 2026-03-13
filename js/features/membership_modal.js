@@ -384,7 +384,7 @@ function wireUI() {
     if (ev.origin !== window.location.origin) return;
     const msg = ev.data || {};
 
-    if (msg.type === "user:saved" || msg.type === "associate:saved") {
+    if (msg.type === "user:saved") {
       await loadUsers();
       const savedId = msg.detail?.id || null;
       if (savedId && users.some((u) => u.id === savedId)) {

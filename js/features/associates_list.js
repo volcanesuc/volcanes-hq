@@ -1,4 +1,4 @@
-// js/features/associates_list.js
+// /js/features/associates_list.js
 import { db } from "../auth/firebase.js";
 import { watchAuth, logout } from "../auth/auth.js";
 import { showLoader, hideLoader } from "../ui/loader.js";
@@ -13,7 +13,7 @@ import {
   documentId,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-const COL_ASSOCIATES = "associates";
+const COL_USERS = "users";
 const COL_MEMBERSHIPS = "memberships";
 const COL_PLANS = "subscription_plans";
 
@@ -23,23 +23,10 @@ let $ = {};
 let _cfg = {};
 
 /* =========================
-   Date helpers (season policy)
+   Helpers
 ========================= */
-function seasonStartDate(season, startPolicy) {
-  const y = Number(season);
-  if (!Number.isFinite(y)) return new Date(new Date().getFullYear(), 0, 1);
-
-  // por ahora solo "jan" (podemos ampliar a JAN_OR_JUL, ANY, etc luego)
-  if ((startPolicy || "jan") === "jan") return new Date(y, 0, 1);
-  return new Date(y, 0, 1);
-}
-
-function addMonths(date, months) {
-  const d = new Date(date);
-  const day = d.getDate();
-  d.setMonth(d.getMonth() + months);
-  if (d.getDate() < day) d.setDate(0);
-  return d;
+function normalize(s) {
+  return (s || "").toString().toLowerCase().trim();
 }
 
 function tsMillis(ts) {
@@ -54,32 +41,16 @@ function tsMillis(ts) {
 function statusRank(st) {
   const s = (st || "pending").toLowerCase();
 
-  // ✅ top
   if (s === "validated") return 50;
   if (s === "paid") return 40;
-
-  // ✅ mid
   if (s === "partial") return 30;
-
-  // ✅ “en revisión”
   if (s === "submitted" || s === "validating") return 20;
-
-  // ✅ base
   if (s === "pending") return 10;
-
-  // ✅ low
   if (s === "rejected") return 5;
 
   return 0;
 }
 
-/**
- * Elige la membresía "más relevante" para el asociado en la temporada.
- * Orden:
- * 1) statusRank
- * 2) lastPaymentAt (si existe)
- * 3) updatedAt / createdAt
- */
 function pickBestMembership(list) {
   if (!list?.length) return null;
 
@@ -88,12 +59,10 @@ function pickBestMembership(list) {
     const rb = statusRank(b.status);
     if (rb !== ra) return rb - ra;
 
-    // 🔥 evidencia de pago
     const pa = tsMillis(a.lastPaymentAt);
     const pb = tsMillis(b.lastPaymentAt);
     if (pb !== pa) return pb - pa;
 
-    // fallback: reciente
     const ta = Math.max(tsMillis(a.updatedAt), tsMillis(a.createdAt));
     const tb = Math.max(tsMillis(b.updatedAt), tsMillis(b.createdAt));
     return tb - ta;
@@ -102,24 +71,22 @@ function pickBestMembership(list) {
   return sorted[0] || null;
 }
 
-function assocKeyFromMembership(membership, associateActive = true) {
-  if (associateActive === false) return "inactive";
+function userKeyFromMembership(membership, userActive = true) {
+  if (userActive === false) return "inactive";
   if (!membership) return "pending";
 
   const s = (membership.status || "").toLowerCase();
 
-  // si está en revisión, no es moroso
   if (s === "submitted" || s === "validating") return "validating";
 
   const total = Number(membership.installmentsTotal || 0);
   const settled = Number(membership.installmentsSettled || 0);
 
-  // Plan por cuotas
   if (total > 0) {
     if (settled <= 0) return "pending";
 
-    const dueStr = membership.nextUnpaidDueDate; // "YYYY-MM-DD"
-    if (!dueStr) return "up_to_date"; // no quedan cuotas
+    const dueStr = membership.nextUnpaidDueDate;
+    if (!dueStr) return "up_to_date";
 
     const due = new Date(dueStr + "T00:00:00");
     const now = new Date();
@@ -127,18 +94,8 @@ function assocKeyFromMembership(membership, associateActive = true) {
     return now > due ? "overdue" : "up_to_date";
   }
 
-  // Pago único
   if (s === "validated" || s === "paid") return "up_to_date";
   return "pending";
-}
-
-
-
-/* =========================
-   UI helpers
-========================= */
-function normalize(s) {
-  return (s || "").toString().toLowerCase().trim();
 }
 
 function badge(text, cls = "") {
@@ -155,7 +112,7 @@ function typeLabel(t) {
   return map[t] || "—";
 }
 
-function assocBadge(key, membership) {
+function membershipBadge(key, membership) {
   const prog = progressText(membership);
   const suffix = prog ? ` • ${prog}` : "";
 
@@ -166,20 +123,66 @@ function assocBadge(key, membership) {
   return badge(`Pendiente${suffix}`, "orange");
 }
 
-/**
- * ✅ “Moroso” recomendado:
- * - Activo y (pendiente o vencido)
- * - “Validando” NO debería ser moroso (ya mandó comprobante)
- */
-function isMoroso(assocKey, associateActive) {
-  if (associateActive === false) return false;
-  return assocKey === "pending" || assocKey === "overdue";
+function isMoroso(membershipKey, userActive) {
+  if (userActive === false) return false;
+  return membershipKey === "pending" || membershipKey === "overdue";
 }
 
 function chunk(arr, size = 10) {
   const out = [];
   for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
   return out;
+}
+
+function getFullName(user) {
+  const profile = user?.profile || {};
+  const first = profile.firstName || "";
+  const last = profile.lastName || "";
+  const full = `${first} ${last}`.trim();
+  return full || user?.displayName || "—";
+}
+
+function getUserType(user) {
+  return user?.profile?.type || "other";
+}
+
+function getUserPhone(user) {
+  return user?.profile?.phone || user?.phone || "";
+}
+
+function getUserIdNumber(user) {
+  return user?.profile?.idNumber || "";
+}
+
+function progressText(membership) {
+  const total = Number(membership?.installmentsTotal || 0);
+  const settled = Number(membership?.installmentsSettled || 0);
+  if (!total) return "";
+  return `${settled}/${total} cuotas`;
+}
+
+function baseDir() {
+  const p = window.location.pathname.replace(/\/[^/]+$/, "/");
+  return `${window.location.origin}${p}`;
+}
+
+function payUrlForMembership(m) {
+  if (!m?.id || !m?.payCode) return null;
+  return `${baseDir()}pages/admin/membership_pay.html?mid=${encodeURIComponent(m.id)}&code=${encodeURIComponent(m.payCode)}`;
+}
+
+function normalizePhoneForWa(phone) {
+  const digits = String(phone || "").replace(/\D+/g, "");
+  if (!digits) return null;
+  if (digits.length === 8) return "506" + digits;
+  if (digits.length === 11 && digits.startsWith("506")) return digits;
+  return digits;
+}
+
+function whatsappLink(phone, text) {
+  const p = normalizePhoneForWa(phone);
+  if (!p) return null;
+  return `https://wa.me/${p}?text=${encodeURIComponent(text || "")}`;
 }
 
 /* =========================
@@ -269,7 +272,7 @@ function renderShell(container) {
           <table class="table align-middle mb-0">
             <thead>
               <tr>
-                <th>Asociado</th>
+                <th>Miembro</th>
                 <th>Contacto</th>
                 <th>Tipo</th>
                 <th>Asociación</th>
@@ -290,28 +293,29 @@ function renderShell(container) {
 /* =========================
    Data
 ========================= */
-async function loadMembershipMapForSeason(season, associateIds) {
-  const byAid = {}; // aid -> [membership,...]
-  const groups = chunk(associateIds.filter(Boolean), 10);
+async function loadMembershipMapForSeason(season, userIds) {
+  const byUid = {};
+  const groups = chunk(userIds.filter(Boolean), 10);
 
   for (const ids of groups) {
     const q = query(
       collection(db, COL_MEMBERSHIPS),
       where("season", "==", season),
-      where("associateId", "in", ids)
+      where("userId", "in", ids)
     );
+
     const snap = await getDocs(q);
     snap.forEach((d) => {
       const m = d.data();
-      if (!m?.associateId) return;
-      if (!byAid[m.associateId]) byAid[m.associateId] = [];
-      byAid[m.associateId].push({ id: d.id, ...m });
+      if (!m?.userId) return;
+      if (!byUid[m.userId]) byUid[m.userId] = [];
+      byUid[m.userId].push({ id: d.id, ...m });
     });
   }
 
   const map = {};
-  Object.keys(byAid).forEach((aid) => {
-    map[aid] = pickBestMembership(byAid[aid]);
+  Object.keys(byUid).forEach((uid) => {
+    map[uid] = pickBestMembership(byUid[uid]);
   });
 
   return map;
@@ -336,21 +340,20 @@ async function loadPlansMap(planIds) {
 async function loadAssociates() {
   showLoader?.("Cargando Miembros…");
   try {
-    const q = query(collection(db, COL_ASSOCIATES), orderBy("fullName", "asc"));
+    const q = query(collection(db, COL_USERS), orderBy("displayName", "asc"));
     const snap = await getDocs(q);
-    const associates = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
+    const users = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     const season = (_cfg?.season || new Date().getFullYear().toString());
-    const ids = associates.map((a) => a.id);
+    const ids = users.map((u) => u.id);
 
     const membershipMap = await loadMembershipMapForSeason(season, ids);
-
     const planIds = Object.values(membershipMap).map((m) => m?.planId);
     const plansMap = await loadPlansMap(planIds);
 
-    all = associates.map((a) => {
-      const isActive = a.active !== false;
-      const membership = membershipMap[a.id] || null;
+    all = users.map((u) => {
+      const isActive = u.isActive !== false;
+      const membership = membershipMap[u.id] || null;
 
       if (membership && !membership.planSnapshot && membership.planId && plansMap[membership.planId]) {
         membership._plan = plansMap[membership.planId];
@@ -358,16 +361,18 @@ async function loadAssociates() {
         membership._plan = null;
       }
 
-      const assocKey = assocKeyFromMembership(membership, isActive);
+      const membershipKey = userKeyFromMembership(membership, isActive);
 
       return {
-        ...a,
+        ...u,
         membership,
         _season: season,
-        _assocKey: assocKey,
-        _isMoroso: isMoroso(assocKey, isActive),
+        _assocKey: membershipKey,
+        _isMoroso: isMoroso(membershipKey, isActive),
       };
-    });
+    }).sort((a, b) =>
+      getFullName(a).localeCompare(getFullName(b), "es", { sensitivity: "base" })
+    );
 
     render();
   } catch (err) {
@@ -385,55 +390,6 @@ async function loadAssociates() {
 }
 
 /* =========================
-   Helper
-========================= */
-
-function progressText(membership) {
-  const total = Number(membership?.installmentsTotal || 0);
-  const settled = Number(membership?.installmentsSettled || 0);
-  if (!total) return "";
-
-  const next = membership?.nextUnpaidDueDate;
-  return `${settled}/${total} cuotas`;
-  //const nextTxt = next ? ` • Próx: ${next}` : "";
-  //return `${settled}/${total} cuotas${nextTxt}`;
-}
-
-function baseDir() {
-  // .../asociacion.html -> .../
-  const p = window.location.pathname.replace(/\/[^/]+$/, "/");
-  return `${window.location.origin}${p}`;
-}
-
-function payUrlForMembership(m) {
-  if (!m?.id || !m?.payCode) return null;
-  return `${baseDir()}pages/admin/membership_pay.html?mid=${encodeURIComponent(m.id)}&code=${encodeURIComponent(m.payCode)}`;
-}
-
-function normalizePhoneForWa(phone) {
-  // wa.me quiere: countrycode + number, sin '+'
-  const digits = String(phone || "").replace(/\D+/g, "");
-  if (!digits) return null;
-
-  // Costa Rica: 8 dígitos locales -> prefijo 506
-  if (digits.length === 8) return "506" + digits;
-
-  // Si ya viene con 506 y 11 dígitos
-  if (digits.length === 11 && digits.startsWith("506")) return digits;
-
-  // Si viene con +506 ya quedó limpio arriba.
-  // Para otros largos, lo devolvemos como esté (mejor que nada)
-  return digits;
-}
-
-function whatsappLink(phone, text) {
-  const p = normalizePhoneForWa(phone);
-  if (!p) return null;
-  return `https://wa.me/${p}?text=${encodeURIComponent(text || "")}`;
-}
-
-
-/* =========================
    Render
 ========================= */
 function render() {
@@ -446,22 +402,21 @@ function render() {
 
   let list = [...all];
 
-  // filters
-  if (typeVal !== "all") list = list.filter((a) => (a.type || "other") === typeVal);
+  if (typeVal !== "all") list = list.filter((u) => getUserType(u) === typeVal);
 
-  if (statusVal === "active") list = list.filter((a) => a.active !== false);
-  else if (statusVal === "inactive") list = list.filter((a) => a.active === false);
+  if (statusVal === "active") list = list.filter((u) => u.isActive !== false);
+  else if (statusVal === "inactive") list = list.filter((u) => u.isActive === false);
 
   if (assocVal !== "all") {
-    if (assocVal === "moroso") list = list.filter((a) => a._isMoroso);
-    else list = list.filter((a) => a._assocKey === assocVal);
+    if (assocVal === "moroso") list = list.filter((u) => u._isMoroso);
+    else list = list.filter((u) => u._assocKey === assocVal);
   }
 
   if (qText) {
-    list = list.filter((a) => {
-      const fullName = normalize(a.fullName);
-      const email = normalize(a.email);
-      const phone = normalize(a.phone);
+    list = list.filter((u) => {
+      const fullName = normalize(getFullName(u));
+      const email = normalize(u.email);
+      const phone = normalize(getUserPhone(u));
       return fullName.includes(qText) || email.includes(qText) || phone.includes(qText);
     });
   }
@@ -473,98 +428,89 @@ function render() {
     return;
   }
 
-  // helpers local
-  const baseDir = () => {
-    const p = window.location.pathname.replace(/\/[^/]+$/, "/");
-    return `${window.location.origin}${p}`;
-  };
-
-  const payUrlForMembership = (m) => {
-    if (!m?.id || !m?.payCode) return null;
-    return `${baseDir()}pages/admin/membership_pay.html?mid=${encodeURIComponent(m.id)}&code=${encodeURIComponent(m.payCode)}`;
-  };
-
   const waMsgFor = (payLink) =>
     payLink
       ? `Hola! Recordatorio de pago a la asociación usando el siguiente link ${payLink}`
       : `Hola! Recordatorio de pago a la asociación.`;
 
-  $.tbody.innerHTML = list
-    .map((a) => {
-      const isActive = a.active !== false;
-      const perfilBadge = isActive ? badge("Activo", "yellow") : badge("Inactivo", "gray");
+  $.tbody.innerHTML = list.map((u) => {
+    const isActive = u.isActive !== false;
+    const perfilBadge = isActive ? badge("Activo", "yellow") : badge("Inactivo", "gray");
 
-      const m = a.membership || null;
-      const asocBadgeHtml = assocBadge(a._assocKey, m);
+    const m = u.membership || null;
+    const asocBadgeHtml = membershipBadge(u._assocKey, m);
 
-      // contacto clickeable
-      const emailHtml = a.email
-        ? `<div><a href="mailto:${a.email}" class="link-dark text-decoration-none">${a.email}</a></div>`
+    const fullName = getFullName(u);
+    const emailVal = u.email || "";
+    const phoneVal = getUserPhone(u);
+    const idNumber = getUserIdNumber(u);
+
+    const emailHtml = emailVal
+      ? `<div><a href="mailto:${emailVal}" class="link-dark text-decoration-none">${emailVal}</a></div>`
+      : "";
+
+    const phoneHtml = phoneVal
+      ? (() => {
+          const telHref = `tel:${String(phoneVal).replace(/\s+/g, "")}`;
+          const waQuick = whatsappLink(phoneVal, "Hola!");
+          const waBtn = waQuick
+            ? `<a class="ms-2 small text-decoration-none" href="${waQuick}" target="_blank" rel="noreferrer" title="WhatsApp">
+                 <i class="bi bi-whatsapp"></i>
+               </a>`
+            : "";
+
+          return `<div class="text-muted small">
+                    <a href="${telHref}" class="link-dark text-decoration-none">${phoneVal}</a>
+                    ${waBtn}
+                  </div>`;
+        })()
+      : "";
+
+    const contactoHtml = (emailHtml || phoneHtml)
+      ? `${emailHtml}${phoneHtml}`
+      : `<span class="text-muted">—</span>`;
+
+    const payLink = payUrlForMembership(m);
+    const waHref = u._isMoroso ? whatsappLink(phoneVal, waMsgFor(payLink)) : null;
+
+    const waActionBtn =
+      u._isMoroso && waHref
+        ? `<a class="btn btn-sm btn-outline-success" href="${waHref}" target="_blank" rel="noreferrer" title="Enviar WhatsApp">
+             <i class="bi bi-whatsapp me-1"></i> WhatsApp
+           </a>`
         : "";
 
-      const phoneHtml = a.phone
-        ? (() => {
-            const telHref = `tel:${String(a.phone).replace(/\s+/g, "")}`;
-            const waQuick = whatsappLink(a.phone, "Hola!");
-            const waBtn = waQuick
-              ? `<a class="ms-2 small text-decoration-none" href="${waQuick}" target="_blank" rel="noreferrer" title="WhatsApp">
-                   <i class="bi bi-whatsapp"></i>
-                 </a>`
-              : "";
-            return `<div class="text-muted small">
-                      <a href="${telHref}" class="link-dark text-decoration-none">${a.phone}</a>
-                      ${waBtn}
-                    </div>`;
-          })()
-        : "";
+    return `
+      <tr>
+        <td>
+          <div class="fw-bold">${fullName || "—"}</div>
+          ${idNumber ? `<div class="text-muted small">Cédula: ${idNumber}</div>` : ""}
+        </td>
 
-      const contactoHtml = (emailHtml || phoneHtml)
-        ? `${emailHtml}${phoneHtml}`
-        : `<span class="text-muted">—</span>`;
+        <td>${contactoHtml}</td>
 
-      // acción WhatsApp recordatorio SOLO si moroso (pending u overdue)
-      const payLink = payUrlForMembership(m);
-      const waHref = a._isMoroso ? whatsappLink(a.phone, waMsgFor(payLink)) : null;
+        <td>${typeLabel(getUserType(u))}</td>
 
-      const waActionBtn =
-        a._isMoroso && waHref
-          ? `<a class="btn btn-sm btn-outline-success" href="${waHref}" target="_blank" rel="noreferrer" title="Enviar WhatsApp">
-               <i class="bi bi-whatsapp me-1"></i> WhatsApp
-             </a>`
-          : "";
+        <td>${asocBadgeHtml}</td>
 
-      return `
-        <tr>
-          <td>
-            <div class="fw-bold">${a.fullName || "—"}</div>
-            ${a.idNumber ? `<div class="text-muted small">Cédula: ${a.idNumber}</div>` : ""}
-          </td>
+        <td>${perfilBadge}</td>
 
-          <td>${contactoHtml}</td>
-
-          <td>${typeLabel(a.type)}</td>
-
-          <td>${asocBadgeHtml}</td>
-
-          <td>${perfilBadge}</td>
-
-          <td class="text-end">
-            <div class="d-inline-flex gap-2">
-              ${waActionBtn}
-              <button class="btn btn-sm btn-outline-primary btnEdit" data-id="${a.id}" type="button">
-                <i class="bi bi-pencil me-1"></i> Editar
-              </button>
-            </div>
-          </td>
-        </tr>
-      `;
-    })
-    .join("");
+        <td class="text-end">
+          <div class="d-inline-flex gap-2">
+            ${waActionBtn}
+            <button class="btn btn-sm btn-outline-primary btnEdit" data-id="${u.id}" type="button">
+              <i class="bi bi-pencil me-1"></i> Editar
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
 
   $.root.querySelectorAll(".btnEdit").forEach((btn) => {
     btn.addEventListener("click", () => {
       const id = btn.dataset.id;
-      openModal(`partials/associate_modal.html?aid=${encodeURIComponent(id)}`);
+      openModal(`partials/user_modal.html?uid=${encodeURIComponent(id)}`);
     });
   });
 }
@@ -586,7 +532,7 @@ export async function mount(container, cfg) {
   $.statusFilter?.addEventListener("change", render);
   $.assocFilter?.addEventListener("change", render);
 
-  $.btnNewAssociate?.addEventListener("click", () => openModal(`partials/associate_modal.html`));
+  $.btnNewAssociate?.addEventListener("click", () => openModal(`partials/user_modal.html`));
 
   watchAuth(async (user) => {
     if (!user) return;

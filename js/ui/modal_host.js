@@ -27,9 +27,9 @@ export function initModalHost(){
       frame.style.height = `${h}px`;
     }
 
-    if (msg.type === "associate:saved"){
+    if (msg.type === "user:saved"){
       closeModal();
-      window.dispatchEvent(new CustomEvent("associate:saved", { detail: msg.detail || {} }));
+      window.dispatchEvent(new CustomEvent("uer:saved", { detail: msg.detail || {} }));
     }
   });
 }
