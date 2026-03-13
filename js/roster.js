@@ -165,17 +165,19 @@ function getGenderLabel(gender) {
 }
 
 function getUserDisplayName(userData = {}) {
-  const joinedName = [userData.firstName, userData.lastName]
+  const safeUser = userData && typeof userData === "object" ? userData : {};
+
+  const joinedName = [safeUser.firstName, safeUser.lastName]
     .filter(Boolean)
     .join(" ")
     .trim();
 
   return (
-    userData.fullName ||
-    userData.displayName ||
+    safeUser.fullName ||
+    safeUser.displayName ||
     joinedName ||
-    userData.name ||
-    userData.email ||
+    safeUser.name ||
+    safeUser.email ||
     "—"
   );
 }

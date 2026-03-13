@@ -55,52 +55,63 @@ function normalizeRoleId(role) {
 }
 
 function normalizeClubPlayerActive(cp = {}) {
-  if (cp.active === false) return false;
-  if (cp.isActive === false) return false;
-  if (cp.status === "inactive") return false;
+  const safeCp = cp && typeof cp === "object" ? cp : {};
+  if (safeCp.active === false) return false;
+  if (safeCp.isActive === false) return false;
+  if (safeCp.status === "inactive") return false;
   return true;
 }
 
 function getClubPlayerUserId(cp = {}) {
-  return cp.userId || cp.linkedUserId || cp.uid || cp.userRefId || null;
+  const safeCp = cp && typeof cp === "object" ? cp : {};
+  return safeCp.userId || safeCp.linkedUserId || safeCp.uid || safeCp.userRefId || null;
 }
 
 function getUserDisplayName(userData = {}) {
-  const joinedName = [userData.firstName, userData.lastName]
+  const safeUser = userData && typeof userData === "object" ? userData : {};
+
+  const joinedName = [safeUser.firstName, safeUser.lastName]
     .filter(Boolean)
     .join(" ")
     .trim();
 
   return (
-    userData.fullName ||
-    userData.displayName ||
+    safeUser.fullName ||
+    safeUser.displayName ||
     joinedName ||
-    userData.name ||
-    userData.email ||
+    safeUser.name ||
+    safeUser.email ||
     "—"
   );
 }
 
 function getClubPlayerName(cp = {}, user = null) {
+  const safeCp = cp && typeof cp === "object" ? cp : {};
   return (
-    cp.fullName ||
-    cp.displayName ||
+    safeCp.fullName ||
+    safeCp.displayName ||
     getUserDisplayName(user || {}) ||
     "—"
   );
 }
 
 function getClubPlayerNumber(cp = {}, user = null) {
-  const v = cp.number ?? cp.jerseyNumber ?? user?.number ?? null;
+  const safeCp = cp && typeof cp === "object" ? cp : {};
+  const safeUser = user && typeof user === "object" ? user : {};
+  const v = safeCp.number ?? safeCp.jerseyNumber ?? safeUser.number ?? null;
   return v == null ? null : v;
 }
 
 function getClubPlayerRole(cp = {}, user = null) {
-  return normalizeRoleId(cp.role || cp.position || user?.role || "");
+  const safeCp = cp && typeof cp === "object" ? cp : {};
+  const safeUser = user && typeof user === "object" ? user : {};
+  return normalizeRoleId(safeCp.role || safeCp.position || safeUser.role || "");
 }
 
 function getClubPlayerGender(cp = {}, user = null) {
-  return cp.gender || user?.gender || null;
+  const safeCp = cp && typeof cp === "object" ? cp : {};
+  const safeUser = user && typeof user === "object" ? user : {};
+  return safeCp.gender || safeUser.gender || null;
 }
 
 function buildPlayersFromClubData({ usersDocs = [], clubPlayersDocs = [] }) {

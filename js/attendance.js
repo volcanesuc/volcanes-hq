@@ -1,4 +1,4 @@
-// attendance.js
+``// attendance.js
 import { db } from "./auth/firebase.js";
 import { watchAuth, logout } from "./auth/auth.js";
 import { getCurrentPermissions, applyVisibilityByPermission } from "./auth/permissions.js";
@@ -98,17 +98,19 @@ function inRange(dateStr, startStr, endStr) {
 }
 
 function getUserDisplayName(userData = {}) {
-  const joinedName = [userData.firstName, userData.lastName]
+  const safeUser = userData && typeof userData === "object" ? userData : {};
+
+  const joinedName = [safeUser.firstName, safeUser.lastName]
     .filter(Boolean)
     .join(" ")
     .trim();
 
   return (
-    userData.fullName ||
-    userData.displayName ||
+    safeUser.fullName ||
+    safeUser.displayName ||
     joinedName ||
-    userData.name ||
-    userData.email ||
+    safeUser.name ||
+    safeUser.email ||
     "—"
   );
 }
@@ -232,7 +234,7 @@ async function loadAttendance() {
     const fullName =
       cp.fullName ||
       cp.displayName ||
-      getUserDisplayName(user) ||
+      getUserDisplayName(user || {}) ||
       "—";
 
     const active = normalizeClubPlayerActive(cp);
@@ -758,4 +760,4 @@ closeChartBtn?.addEventListener("click", hideChartPanel);
    VERSION
 ========================== 
 const v = document.getElementById("appVersion");
-if (v) v.textContent = `v${APP_CONFIG.version}`;*/
+if (v) v.textContent = `v${APP_CONFIG.version}`;*/``
