@@ -7,7 +7,6 @@ import {
   doc,
   getDoc,
   updateDoc,
-  setDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
@@ -23,16 +22,14 @@ const uid = params.get("uid");
    UI
 ========================= */
 const modalTitle = document.getElementById("modalTitle");
-const userId = document.getElementById("userId");
+const userId = document.getElementById("associateId");
 
-const firstName = document.getElementById("firstName");
-const lastName = document.getElementById("lastName");
+const fullName = document.getElementById("fullName");
 const profileType = document.getElementById("type");
 const email = document.getElementById("email");
 const phone = document.getElementById("phone");
 const idNumber = document.getElementById("idNumber");
 const active = document.getElementById("active");
-const role = document.getElementById("role");
 const notes = document.getElementById("notes");
 
 const btnClose = document.getElementById("btnClose");
@@ -71,31 +68,48 @@ function scheduleSize() {
   setTimeout(sendSize, 200);
 }
 
-function getDisplayName(fn, ln, fallbackEmail = "") {
-  const full = `${clean(fn)} ${clean(ln)}`.trim();
-  return full || fallbackEmail || null;
+function splitFullName(value = "") {
+  const parts = clean(value).split(/\s+/).filter(Boolean);
+  if (!parts.length) {
+    return { firstName: "", lastName: "" };
+  }
+  if (parts.length === 1) {
+    return { firstName: parts[0], lastName: "" };
+  }
+  return {
+    firstName: parts.slice(0, -1).join(" "),
+    lastName: parts.slice(-1).join(" "),
+  };
+}
+
+function buildFullName(profile = {}, fallbackDisplayName = "", fallbackEmail = "") {
+  const fn = clean(profile.firstName);
+  const ln = clean(profile.lastName);
+  const fromParts = `${fn} ${ln}`.trim();
+  return fromParts || clean(profile.fullName) || clean(fallbackDisplayName) || clean(fallbackEmail) || "";
 }
 
 function buildPayload(existing = {}) {
-  const fn = clean(firstName?.value);
-  const ln = clean(lastName?.value);
+  const nameVal = clean(fullName?.value);
   const mail = clean(email?.value).toLowerCase() || null;
   const phoneVal = clean(phone?.value) || null;
   const idNumberVal = clean(idNumber?.value) || null;
   const typeVal = clean(profileType?.value) || "other";
   const notesVal = clean(notes?.value) || null;
 
+  const parsed = splitFullName(nameVal);
+  const existingProfile = existing.profile || {};
+
   return {
     email: mail,
-    displayName: getDisplayName(fn, ln, mail),
+    displayName: nameVal || mail || existing.displayName || null,
     isActive: !!active?.checked,
-    role: clean(role?.value) || existing.role || "viewer",
     notes: notesVal,
     profile: {
-      ...(existing.profile || {}),
-      firstName: fn || null,
-      lastName: ln || null,
-      fullName: getDisplayName(fn, ln, mail),
+      ...existingProfile,
+      firstName: parsed.firstName || existingProfile.firstName || null,
+      lastName: parsed.lastName || existingProfile.lastName || null,
+      fullName: nameVal || null,
       type: typeVal,
       phone: phoneVal,
       idNumber: idNumberVal,
@@ -142,14 +156,12 @@ function prepareCreateMode() {
   if (modalTitle) modalTitle.textContent = "Nuevo miembro";
   if (userId) userId.value = "";
 
-  if (firstName) firstName.value = "";
-  if (lastName) lastName.value = "";
+  if (fullName) fullName.value = "";
   if (profileType) profileType.value = "other";
   if (email) email.value = "";
   if (phone) phone.value = "";
   if (idNumber) idNumber.value = "";
   if (active) active.checked = true;
-  if (role) role.value = "viewer";
   if (notes) notes.value = "";
 
   scheduleSize();
@@ -172,14 +184,15 @@ async function loadUser(id) {
     if (userId) userId.value = snap.id;
     if (modalTitle) modalTitle.textContent = "Editar miembro";
 
-    if (firstName) firstName.value = profile.firstName || "";
-    if (lastName) lastName.value = profile.lastName || "";
+    if (fullName) {
+      fullName.value = buildFullName(profile, u.displayName, u.email);
+    }
+
     if (profileType) profileType.value = profile.type || "other";
     if (email) email.value = u.email || "";
     if (phone) phone.value = profile.phone || "";
     if (idNumber) idNumber.value = profile.idNumber || "";
     if (active) active.checked = u.isActive !== false;
-    if (role) role.value = u.role || "viewer";
     if (notes) notes.value = u.notes || "";
 
     scheduleSize();
@@ -197,11 +210,10 @@ async function loadUser(id) {
    SAVE
 ========================= */
 btnSave?.addEventListener("click", async () => {
-  const fn = clean(firstName?.value);
-  const ln = clean(lastName?.value);
+  const nameVal = clean(fullName?.value);
   const mail = clean(email?.value);
 
-  if (!fn && !ln && !mail) {
+  if (!nameVal && !mail) {
     return alert("Completa al menos nombre o correo.");
   }
 
@@ -223,6 +235,7 @@ btnSave?.addEventListener("click", async () => {
 
     await updateDoc(doc(db, COL, uid), payload);
     post("user:saved", { detail: { id: uid, mode: "update" } });
+    close();
   } catch (e) {
     console.error(e);
     alert("❌ Error guardando: " + (e?.message || e));
