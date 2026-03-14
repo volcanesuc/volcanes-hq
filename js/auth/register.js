@@ -952,35 +952,14 @@ $.proofFile?.addEventListener("change", () => {
 /* =========================
    Membership builders
 ========================= */
-function buildPlanSnapshot(plan) {
-  return {
-    id: plan.id,
-    name: plan.name || null,
-    currency: plan.currency || "CRC",
-    totalAmount: planAmount(plan),
-    durationMonths: plan.durationMonths ?? 12,
-    requiresValidation: plan.requiresValidation !== false,
-    startPolicy: plan.startPolicy || "jan",
-    allowPartial: !!plan.allowPartial,
-    allowCustomAmount: !!plan.allowCustomAmount,
-    benefits: plan.benefits || [],
-    tags: plan.tags || [],
-  };
-}
-
 async function createMembership({ uid, userSnapshot, plan, season, consents }) {
   const payCode = makePayCode(7);
-  const planSnap = buildPlanSnapshot(plan);
 
   const payload = {
     userId: uid,
     userSnapshot,
 
     planId: plan.id,
-    planSnapshot: planSnap,
-
-    currency: planSnap.currency,
-    totalAmount: planSnap.totalAmount,
     season,
 
     status: "pending",

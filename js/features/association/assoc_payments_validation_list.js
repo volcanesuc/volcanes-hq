@@ -31,6 +31,7 @@ const COL_MEMBERSHIPS = COL.memberships;
 const COL_USERS = COL.users;
 const COL_SUBMISSIONS = COL.membershipPaymentSubmissions;
 const COL_INSTALLMENTS = COL.membershipInstallments;
+const COL_PLANS = COL.subscriptionPlans;
 
 const DEFAULT_LIMIT = 300;
 
@@ -204,6 +205,96 @@ function computeInstallmentsSummary(installments) {
     nextUnpaidN: next?.n ?? null,
     nextUnpaidDueDate: next?.dueDate || null,
   };
+
+function tsToDate(ts) {
+  try {
+    if (!ts) return null;
+    if (typeof ts?.toDate === "function") {
+      const d = ts.toDate();
+      return Number.isNaN(d?.getTime?.()) ? null : d;
+    }
+    const d = new Date(ts);
+    return Number.isNaN(d.getTime()) ? null : d;
+  } catch {
+    return null;
+  }
+}
+
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+
+function toYmd(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null;
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
+function addMonthsClamped(baseDate, months) {
+  const d = new Date(baseDate);
+  const originalDay = d.getDate();
+
+  d.setMonth(d.getMonth() + Number(months || 0));
+
+  if (d.getDate() !== originalDay) {
+    d.setDate(0);
+  }
+
+  return d;
+}
+
+function subtractDays(date, days) {
+  const d = new Date(date);
+  d.setDate(d.getDate() - Number(days || 0));
+  return d;
+}
+
+function resolveMembershipBaseDate(membership, submission) {
+  return (
+    tsToDate(membership?.createdAt) ||
+    tsToDate(submission?.createdAt) ||
+    new Date()
+  );
+}
+
+function computeCoverageDates({ membership, submission, plan }) {
+  const durationMonths = Number(plan?.durationMonths || 0);
+  const startPolicy = String(plan?.startPolicy || "paid_date").trim().toLowerCase();
+  const season = Number(membership?.season || plan?.season || 0);
+
+  if (!durationMonths || !["jan", "paid_date"].includes(startPolicy)) {
+    return { coverageStartDate: null, coverageEndDate: null };
+  }
+
+  let startDate = null;
+
+  if (startPolicy === "jan") {
+    if (!Number.isInteger(season) || season < 2000 || season > 2100) {
+      return { coverageStartDate: null, coverageEndDate: null };
+    }
+    startDate = new Date(season, 0, 1);
+  } else {
+    startDate = resolveMembershipBaseDate(membership, submission);
+  }
+
+  if (!(startDate instanceof Date) || Number.isNaN(startDate.getTime())) {
+    return { coverageStartDate: null, coverageEndDate: null };
+  }
+
+  const nextCycleDate = addMonthsClamped(startDate, durationMonths);
+  const endDate = subtractDays(nextCycleDate, 1);
+
+  return {
+    coverageStartDate: toYmd(startDate),
+    coverageEndDate: toYmd(endDate),
+  };
+}
+
+async function loadPlanById(planId) {
+  if (!planId) return null;
+  const snap = await getDoc(doc(db, COL_PLANS, planId));
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...snap.data() };
+}
 }
 
 async function loadInstallmentsForMembership(membershipId) {
@@ -227,11 +318,10 @@ function shouldEnablePayLinkFromInstallments(installments) {
  * - active: membresía aprobada / completamente al día
  * - rejected: rechazo explícito
  */
-function computeMembershipStatus(membership, installments, subs, decision) {
+function computeMembershipStatus(membership, plan, installments, subs, decision) {
   if (decision === "rejected") return "rejected";
 
-  const p = membership?.planSnapshot || {};
-  const requiresValidation = !!p.requiresValidation;
+  const requiresValidation = plan?.requiresValidation !== false;
 
   const subStatuses = (subs || []).map((s) => (s.status || "pending").toLowerCase());
   const hasPendingSubmission = subStatuses.some((s) => s === "pending" || s === "submitted");
@@ -264,7 +354,7 @@ function computeMembershipStatus(membership, installments, subs, decision) {
   return anySubPaidOrValidated ? "active" : "pending";
 }
 
-async function syncUserCurrentMembership(membership) {
+async function syncUserCurrentMembership(membership, plan = null) {
   const uid = membership?.userId || membership?.userSnapshot?.uid || null;
   if (!uid) return;
 
@@ -273,14 +363,16 @@ async function syncUserCurrentMembership(membership) {
       currentMembership: {
         membershipId: membership.id,
         season: membership.season || null,
-        planId: membership.planId || membership.planSnapshot?.id || null,
-        label: `${membership.planSnapshot?.name || "Membresía"} ${membership.season || ""}`.trim(),
+        planId: membership.planId || plan?.id || null,
+        label: `${plan?.name || "Membresía"} ${membership.season || ""}`.trim(),
         status: membership.status || "pending",
         installmentsTotal: membership.installmentsTotal ?? 0,
         installmentsSettled: membership.installmentsSettled ?? 0,
         installmentsPending: membership.installmentsPending ?? 0,
         nextUnpaidN: membership.nextUnpaidN ?? null,
         nextUnpaidDueDate: membership.nextUnpaidDueDate ?? null,
+        coverageStartDate: membership.coverageStartDate || null,
+        coverageEndDate: membership.coverageEndDate || null,
       },
       updatedAt: serverTimestamp(),
     });
@@ -641,6 +733,10 @@ async function applyDecision(sub, decision /* "validated" | "rejected" */) {
     }
 
     const membership = { id: mSnap.id, ...mSnap.data() };
+    const plan = await loadPlanById(membership.planId);
+    if (!plan) {
+      throw new Error(`No se encontró subscription_plans/${membership.planId}`);
+    }
     const installmentIds = getAllInstallmentIdsFromSubmission(sub);
 
     if (installmentIds.length) {
@@ -675,7 +771,7 @@ async function applyDecision(sub, decision /* "validated" | "rejected" */) {
       payLinkDisabledReason = null;
     }
 
-    const nextStatus = computeMembershipStatus(membership, inst, subsForMembership, decision);
+    const nextStatus = computeMembershipStatus(membership, plan, inst, subsForMembership, decision);
 
     const mUpdates = {
       updatedAt: serverTimestamp(),
@@ -691,8 +787,28 @@ async function applyDecision(sub, decision /* "validated" | "rejected" */) {
       nextUnpaidDueDate: instSummary.nextUnpaidDueDate,
     };
 
-    if (decision === "validated") mUpdates.validatedAt = serverTimestamp();
-    if (decision === "rejected") mUpdates.rejectedAt = serverTimestamp();
+    if (decision === "validated") {
+      const alreadyHasCoverage =
+        !!membership?.coverageStartDate &&
+        !!membership?.coverageEndDate;
+
+      if (!alreadyHasCoverage) {
+        const coverage = computeCoverageDates({
+          membership,
+          submission: sub,
+          plan,
+        });
+
+        mUpdates.coverageStartDate = coverage.coverageStartDate;
+        mUpdates.coverageEndDate = coverage.coverageEndDate;
+      }
+
+      mUpdates.validatedAt = serverTimestamp();
+    }
+
+    if (decision === "rejected") {
+      mUpdates.rejectedAt = serverTimestamp();
+    }
 
     await updateDoc(mRef, mUpdates);
 
@@ -705,9 +821,11 @@ async function applyDecision(sub, decision /* "validated" | "rejected" */) {
       installmentsPending: instSummary.installmentsPending,
       nextUnpaidN: instSummary.nextUnpaidN,
       nextUnpaidDueDate: instSummary.nextUnpaidDueDate,
+      coverageStartDate: mUpdates.coverageStartDate ?? membership.coverageStartDate ?? null,
+      coverageEndDate: mUpdates.coverageEndDate ?? membership.coverageEndDate ?? null,
     };
 
-    await syncUserCurrentMembership(updatedMembership);
+    await syncUserCurrentMembership(updatedMembership, plan);
     await syncUserAssociationStatus(updatedMembership, decision);
 
     const idx = allSubs.findIndex((x) => x.id === sid);

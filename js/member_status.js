@@ -82,55 +82,29 @@ function endOfMonth(year, monthIndex) {
   return new Date(year, monthIndex + 1, 0);
 }
 
-function inferCoverageDates(membership) {
-  const plan = membership?.planSnapshot || {};
-  const season = String(membership?.season || plan?.season || "").trim();
+function inferCoverageDates(membership, plan) {
   const durationMonths = Number(plan?.durationMonths || 0);
-  const rawStartPolicy = String(plan?.startPolicy || "").trim().toLowerCase();
+  const startPolicy = String(plan?.startPolicy || "").trim().toLowerCase();
 
-  if (!season || !/^\d{4}$/.test(season) || !durationMonths) {
+  const startRaw = membership?.coverageStartDate || null;
+  const endRaw = membership?.coverageEndDate || null;
+
+  if (!durationMonths || !["jan", "paid_date"].includes(startPolicy)) {
     return { startDate: null, endDate: null };
   }
 
-  const year = Number(season);
-
-  // anual enero-diciembre
-  if (durationMonths === 12 && (rawStartPolicy === "jan" || rawStartPolicy === "jan_only")) {
-    return {
-      startDate: new Date(year, 0, 1),
-      endDate: new Date(year, 11, 31),
-    };
+  if (!startRaw || !endRaw) {
+    return { startDate: null, endDate: null };
   }
 
-  // semestral empezando enero
-  if (durationMonths === 6 && (rawStartPolicy === "jan" || rawStartPolicy === "jan_only")) {
-    return {
-      startDate: new Date(year, 0, 1),
-      endDate: endOfMonth(year, 5),
-    };
+  const startDate = new Date(startRaw);
+  const endDate = new Date(endRaw);
+
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return { startDate: null, endDate: null };
   }
 
-  // semestral enero o julio
-  if (
-    durationMonths === 6 &&
-    (rawStartPolicy === "jan_or_jul" || rawStartPolicy === "jan-jul" || rawStartPolicy === "jan_or_july")
-  ) {
-    const startMonth = membership?.startMonth === 7 ? 6 : 0;
-    return {
-      startDate: new Date(year, startMonth, 1),
-      endDate: endOfMonth(year, startMonth + 5),
-    };
-  }
-
-  // mensual por temporada: por defecto enero del season
-  if (durationMonths === 1) {
-    return {
-      startDate: new Date(year, 0, 1),
-      endDate: endOfMonth(year, 0),
-    };
-  }
-
-  return { startDate: null, endDate: null };
+  return { startDate, endDate };
 }
 
 function getMembershipCoverageDates(membership) {

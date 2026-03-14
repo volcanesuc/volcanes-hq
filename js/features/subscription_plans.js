@@ -57,7 +57,20 @@ function validateMonthDay(mmdd) {
   return /^\d{2}-\d{2}$/.test(mmdd);
 }
 
-function pad2(n){ return String(n).padStart(2, "0"); }
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+
+function currentSeasonYear() {
+  return new Date().getFullYear();
+}
+
+function normalizeSeasonYear(value) {
+  const n = Number(value);
+  if (!Number.isInteger(n)) return null;
+  if (n < 2000 || n > 2100) return null;
+  return n;
+}
 
 function defaultDueMonthDays(n, day = "01") {
   n = Math.max(1, Number(n || 1));
@@ -80,7 +93,7 @@ function defaultDueMonthDays(n, day = "01") {
   const used = new Set();
   const out = [];
   for (let i = 0; i < n; i++) {
-    let month = 1 + Math.round((i * 11) / Math.max(1, (n - 1)));
+    let month = 1 + Math.round((i * 11) / Math.max(1, n - 1));
     month = Math.min(12, Math.max(1, month));
 
     while (used.has(month) && month < 12) month++;
@@ -106,14 +119,12 @@ function distributeAmounts(total, n) {
 
 /**
  * startPolicy values (persisted in Firestore):
- * - "any"      => puede iniciar cualquier mes
- * - "jan"      => solo enero
- * - "jan_jul"  => solo enero o julio
+ * - "jan"       => inicia en enero
+ * - "paid_date" => inicia el día exacto en que paga
  */
 function startPolicyLabel(plan) {
   const sp = (plan.startPolicy || "jan").toLowerCase();
-  if (sp === "any") return "Cualquier mes";
-  if (sp === "jan_jul") return "Ene o Jul";
+  if (sp === "paid_date") return "Día de pago";
   return "Ene";
 }
 
@@ -128,7 +139,11 @@ function durationLabel(plan) {
 
 function validatePlanPayload(p) {
   if (!p.name) return "Falta el nombre del plan.";
-  if (!p.season) return "Falta la temporada (ej: 2026 o all).";
+
+  const season = Number(p.season);
+  if (!Number.isInteger(season) || season < 2000 || season > 2100) {
+    return "La temporada debe ser un año válido (ej: 2026).";
+  }
 
   const dm = Number(p.durationMonths);
   if (!Number.isInteger(dm) || dm < 1 || dm > 12) {
@@ -136,13 +151,8 @@ function validatePlanPayload(p) {
   }
 
   const sp = (p.startPolicy || "").toLowerCase();
-  if (!["any", "jan", "jan_jul"].includes(sp)) {
+  if (!["jan", "paid_date"].includes(sp)) {
     return "Política de inicio inválida.";
-  }
-
-  // Coherencia mínima (anual -> enero)
-  if (dm === 12 && sp !== "jan") {
-    return "Un plan anual debe iniciar en Enero (startPolicy = jan).";
   }
 
   if (
@@ -162,33 +172,18 @@ function validatePlanPayload(p) {
   return null;
 }
 
-/**
- * Default sugerido por duración (admin puede cambiarlo)
- */
-function defaultStartPolicyForDuration(dm) {
-  if (dm === 12) return "jan";
-  if (dm === 6) return "jan_jul";
-  if (dm === 1) return "any";
-  // 2-11: default enero (más conservador)
-  return "jan";
+function defaultStartPolicyForDuration() {
+  return "paid_date";
 }
 
 function toggleStartPolicyUI() {
   const dm = Number($.planDurationMonths?.value || 0);
-
-  // ✅ mostrar startPolicy cuando durationMonths < 12
-  const show = dm > 0 && dm < 12;
+  const show = dm > 0;
 
   if ($.startPolicyWrap) $.startPolicyWrap.classList.toggle("d-none", !show);
 
-  // Defaults/normalización visible
-  if ($.planStartPolicy) {
-    if (!$.planStartPolicy.value) {
-      $.planStartPolicy.value = defaultStartPolicyForDuration(dm);
-    }
-
-    // anual fuerza enero (aunque esté oculto)
-    if (dm === 12) $.planStartPolicy.value = "jan";
+  if ($.planStartPolicy && !$.planStartPolicy.value) {
+    $.planStartPolicy.value = defaultStartPolicyForDuration(dm);
   }
 }
 
@@ -196,6 +191,8 @@ function toggleStartPolicyUI() {
    DOM
 ========================= */
 function renderShell(container, { inAssociation }) {
+  const seasonNow = currentSeasonYear();
+
   container.innerHTML = inAssociation
     ? `
       <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap mb-2">
@@ -217,10 +214,10 @@ function renderShell(container, { inAssociation }) {
         <div class="col-6 col-md-3">
           <select id="seasonFilter" class="form-select">
             <option value="all">Todas las temporadas</option>
-            <option value="all">all</option>
-            <option value="2024">2024</option>
-            <option value="2025">2025</option>
-            <option value="2026">2026</option>
+            <option value="${seasonNow - 1}">${seasonNow - 1}</option>
+            <option value="${seasonNow}">${seasonNow}</option>
+            <option value="${seasonNow + 1}">${seasonNow + 1}</option>
+            <option value="${seasonNow + 2}">${seasonNow + 2}</option>
           </select>
         </div>
         <div class="col-6 col-md-4">
@@ -277,10 +274,10 @@ function renderShell(container, { inAssociation }) {
           <div class="col-6 col-md-3">
             <select id="seasonFilter" class="form-select">
               <option value="all">Todas las temporadas</option>
-              <option value="all">all</option>
-              <option value="2024">2024</option>
-              <option value="2025">2025</option>
-              <option value="2026">2026</option>
+              <option value="${seasonNow - 1}">${seasonNow - 1}</option>
+              <option value="${seasonNow}">${seasonNow}</option>
+              <option value="${seasonNow + 1}">${seasonNow + 1}</option>
+              <option value="${seasonNow + 2}">${seasonNow + 2}</option>
             </select>
           </div>
           <div class="col-6 col-md-4">
@@ -317,6 +314,8 @@ function renderShell(container, { inAssociation }) {
 }
 
 function renderModalHtml() {
+  const seasonNow = currentSeasonYear();
+
   return `
   <div class="modal fade" id="planModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-fullscreen-md-down modal-xl modal-dialog-scrollable">
@@ -380,7 +379,15 @@ function renderModalHtml() {
 
                     <div class="col-6 col-md-3">
                       <label class="form-label">Temporada</label>
-                      <input id="planSeason" class="form-control" placeholder="2026 / all" value="2026" />
+                      <input
+                        id="planSeason"
+                        class="form-control"
+                        type="number"
+                        min="2000"
+                        max="2100"
+                        step="1"
+                        placeholder="${seasonNow}"
+                        value="${seasonNow}" />
                     </div>
 
                     <div class="col-6 col-md-2">
@@ -407,21 +414,18 @@ function renderModalHtml() {
                       <div class="small text-muted mt-1">Ej: 12=anual, 6=semestral, 1=mensual</div>
                     </div>
 
-                    <!-- ✅ Start policy: visible cuando durationMonths < 12 -->
                     <div class="col-12 col-md-8 d-none" id="startPolicyWrap">
                       <label class="form-label">Política de inicio</label>
                       <select id="planStartPolicy" class="form-select">
-                        <option value="any">Puede iniciar en cualquier mes</option>
-                        <option value="jan">Solo puede iniciar en Enero</option>
-                        <option value="jan_jul">Solo puede iniciar en Enero o Julio</option>
+                        <option value="paid_date">Desde la fecha de pago</option>
+                        <option value="jan">Desde Enero</option>
                       </select>
                       <div class="small text-muted mt-1">
-                        Define desde qué mes puede arrancar la cobertura del plan (para planes &lt; 12 meses).
+                        Define desde cuándo inicia la cobertura del plan y cómo se calcula su próxima renovación.
                       </div>
                     </div>
                   </div>
 
-                  <!-- Monto -->
                   <div class="row g-2 mt-2">
                     <div class="col-12 col-md-4">
                       <label class="form-label">Monto total</label>
@@ -429,7 +433,6 @@ function renderModalHtml() {
                     </div>
                   </div>
 
-                  <!-- ✅ CHECKS agrupados en card -->
                   <div class="card border-0 bg-light mt-3">
                     <div class="card-body py-3">
                       <div class="fw-semibold mb-2">Opciones</div>
@@ -467,7 +470,6 @@ function renderModalHtml() {
                     </div>
                   </div>
 
-                  <!-- ✅ Tags DEBAJO del card -->
                   <div class="row g-2 mt-3">
                     <div class="col-12">
                       <label class="form-label">Tags</label>
@@ -593,7 +595,6 @@ function cacheDom(container) {
    Installments UI
 ========================= */
 function installmentRow(n, dueMonthDay, amount) {
-  // data-touched: evita que auto-cálculo pise lo editado por el user
   return `
     <tr data-row="installment">
       <td class="fw-bold"><span class="installment-n">${n}</span></td>
@@ -658,7 +659,6 @@ function syncInstallmentDefaults({ forceDates = false, forceAmounts = false } = 
   const n = rows.length;
   const dueDefaults = defaultDueMonthDays(n, "01");
 
-  // 1) fechas sugeridas
   rows.forEach((tr, idx) => {
     const dueEl = tr.querySelector(".due");
     if (!dueEl) return;
@@ -671,7 +671,6 @@ function syncInstallmentDefaults({ forceDates = false, forceAmounts = false } = 
     }
   });
 
-  // 2) montos sugeridos (si hay total y NO editable)
   const allowCustom = !!$.planAllowCustomAmount?.checked;
   const totalVal = $.planTotal?.value;
   const total = totalVal === "" ? 0 : Number(totalVal || 0);
@@ -693,15 +692,8 @@ function syncInstallmentDefaults({ forceDates = false, forceAmounts = false } = 
   }
 }
 
-/**
- * Cuando el user agrega/elimina cuotas, normalmente querés:
- * - renumerar
- * - sugerir fechas SI están vacías
- * - recalcular montos SI hay total (y no editable)
- */
 function afterInstallmentCountChanged() {
   renumberInstallments();
-  // no pises lo que el user tocó, pero completá vacíos
   syncInstallmentDefaults({ forceDates: false, forceAmounts: true });
 }
 
@@ -729,15 +721,17 @@ function toggleInstallmentsUI() {
 function clearModal() {
   if (!$.planIdEl) return;
 
+  const seasonNow = currentSeasonYear();
+
   $.planIdEl.value = "";
   if ($.planModalTitle) $.planModalTitle.textContent = "Nuevo plan";
 
   $.planName.value = "";
-  $.planSeason.value = "2026";
+  $.planSeason.value = String(seasonNow);
   $.planCurrency.value = "CRC";
 
   $.planDurationMonths.value = "12";
-  if ($.planStartPolicy) $.planStartPolicy.value = "jan";
+  if ($.planStartPolicy) $.planStartPolicy.value = defaultStartPolicyForDuration(12);
 
   $.planTotal.value = "";
   $.planAllowCustomAmount.checked = false;
@@ -780,7 +774,7 @@ function renderPlans() {
   let list = [...allPlans];
 
   if (seasonVal !== "all") {
-    list = list.filter((p) => (p.season || "all") === seasonVal);
+    list = list.filter((p) => String(p.season || "") === seasonVal);
   }
 
   if (statusVal === "active") {
@@ -799,7 +793,11 @@ function renderPlans() {
     });
   }
 
-  list.sort((a, b) => (a.name || "").localeCompare(b.name || "", "es"));
+  list.sort((a, b) => {
+    const bySeason = Number(b.season || 0) - Number(a.season || 0);
+    if (bySeason !== 0) return bySeason;
+    return (a.name || "").localeCompare(b.name || "", "es");
+  });
 
   if (!list.length) {
     $.tbody.innerHTML = `<tr><td colspan="6" class="text-muted">No hay planes con esos filtros.</td></tr>`;
@@ -808,11 +806,10 @@ function renderPlans() {
 
   $.tbody.innerHTML = list
     .map((p) => {
-      const season = p.season || "all";
+      const season = Number(p.season) || "—";
       const cur = p.currency || "CRC";
       const cuotas = (p.installmentsTemplate || []).length || 0;
       const monto = p.allowCustomAmount ? "Editable" : fmtMoney(p.totalAmount, cur);
-
       const meta = [`Cubre: ${durationLabel(p)}`, `Inicio: ${startPolicyLabel(p)}`].join(" · ");
 
       return `
@@ -842,9 +839,18 @@ function renderPlans() {
 ========================= */
 async function loadPlans() {
   showLoader?.("Cargando planes…");
-  const q = query(collection(db, COL));
-  const snap = await getDocs(q);
-  allPlans = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const qRef = query(collection(db, COL));
+  const snap = await getDocs(qRef);
+
+  allPlans = snap.docs.map((d) => {
+    const data = d.data() || {};
+    return {
+      id: d.id,
+      ...data,
+      season: normalizeSeasonYear(data.season) ?? currentSeasonYear(),
+    };
+  });
+
   renderPlans();
   hideLoader?.();
 }
@@ -864,21 +870,26 @@ async function openEdit(id) {
     return;
   }
 
-  const p = { id: snap.id, ...snap.data() };
+  const raw = snap.data() || {};
+  const p = {
+    id: snap.id,
+    ...raw,
+    season: normalizeSeasonYear(raw.season) ?? currentSeasonYear(),
+  };
 
   clearModal();
   $.planIdEl.value = p.id;
   $.planModalTitle.textContent = "Editar plan";
 
   $.planName.value = p.name || "";
-  $.planSeason.value = p.season || "all";
+  $.planSeason.value = String(p.season || currentSeasonYear());
   $.planCurrency.value = p.currency || "CRC";
 
   $.planDurationMonths.value = String(p.durationMonths ?? 12);
 
-  // startPolicy persistido
   const dm = Number($.planDurationMonths.value || 12);
-  const sp = (p.startPolicy || defaultStartPolicyForDuration(dm)).toLowerCase();
+  let sp = (p.startPolicy || defaultStartPolicyForDuration(dm)).toLowerCase();
+  if (sp !== "jan" && sp !== "paid_date") sp = defaultStartPolicyForDuration(dm);
   if ($.planStartPolicy) $.planStartPolicy.value = sp;
 
   toggleStartPolicyUI();
@@ -907,16 +918,13 @@ async function savePlan() {
   const id = $.planIdEl?.value || null;
 
   const durationMonths = Number($.planDurationMonths?.value || 0);
-
-  // startPolicy:
-  // - si <12: el admin decide
-  // - si 12: forzamos "jan"
   const spUi = ($.planStartPolicy?.value || "").toLowerCase();
-  const startPolicy = durationMonths < 12 ? (spUi || defaultStartPolicyForDuration(durationMonths)) : "jan";
+  const season = normalizeSeasonYear($.planSeason?.value);
+  const startPolicy = spUi || defaultStartPolicyForDuration(durationMonths);
 
   const payload = {
     name: $.planName.value.trim(),
-    season: $.planSeason.value.trim() || "all",
+    season,
     currency: $.planCurrency.value,
 
     durationMonths,
@@ -939,9 +947,14 @@ async function savePlan() {
   const err = validatePlanPayload(payload);
   if (err) return alert(err);
 
-  // si no es editable y no hay monto, lo calculamos por cuotas
-  if (!payload.allowCustomAmount && (payload.totalAmount === null || payload.totalAmount === undefined)) {
-    payload.totalAmount = (payload.installmentsTemplate || []).reduce((sum, x) => sum + (Number(x.amount) || 0), 0);
+  if (
+    !payload.allowCustomAmount &&
+    (payload.totalAmount === null || payload.totalAmount === undefined)
+  ) {
+    payload.totalAmount = (payload.installmentsTemplate || []).reduce(
+      (sum, x) => sum + (Number(x.amount) || 0),
+      0
+    );
   }
 
   showLoader?.("Guardando…");
@@ -1054,7 +1067,6 @@ function bindEvents() {
     }
   });
 
-  // ✅ si el user edita una cuota, no la pisamos luego
   $.installmentsTbody?.addEventListener("input", (e) => {
     const t = e.target;
     if (!t) return;
@@ -1075,45 +1087,41 @@ function bindEvents() {
       const dm = Number($.planDurationMonths?.value || 12);
 
       let n;
-      if (dm === 12) n = 12;       // mensual
-      else if (dm === 6) n = 2;    // semestral (ene/jul)
+      if (dm === 12) n = 12;
+      else if (dm === 6) n = 2;
       else if (dm === 1) n = 1;
-      else n = dm;                // default: mensual según duración
+      else n = dm;
 
       const dues = defaultDueMonthDays(n, "01");
       const totalVal = $.planTotal?.value;
       const total = totalVal === "" ? 0 : Number(totalVal || 0);
       const allowCustom = !!$.planAllowCustomAmount?.checked;
-      const amts = (!allowCustom && total > 0) ? distributeAmounts(total, n) : Array(n).fill("");
+      const amts = !allowCustom && total > 0 ? distributeAmounts(total, n) : Array(n).fill("");
 
       setInstallments(
         Array.from({ length: n }).map((_, i) => ({
           n: i + 1,
           dueMonthDay: dues[i] || "",
-          amount: amts[i] ?? ""
+          amount: amts[i] ?? "",
         }))
       );
     }
 
-    // recalcular/normalizar por si ya existían filas vacías
     syncInstallmentDefaults({ forceDates: false, forceAmounts: true });
   });
 
   $.planTotal?.addEventListener("input", () => {
-    // si hay cuotas activas, recalculá montos (sin tocar fechas)
     if ($.planAllowPartial?.checked) {
       syncInstallmentDefaults({ forceDates: false, forceAmounts: true });
     }
   });
 
   $.planAllowCustomAmount?.addEventListener("change", () => {
-    // si deja de ser editable y hay total + cuotas, sugerimos montos
     if (!$.planAllowCustomAmount.checked && $.planAllowPartial?.checked) {
       syncInstallmentDefaults({ forceDates: false, forceAmounts: true });
     }
   });
 
-  // ✅ duration changes => mostrar/ocultar startPolicy + defaults
   $.planDurationMonths?.addEventListener("input", () => {
     toggleStartPolicyUI();
   });
