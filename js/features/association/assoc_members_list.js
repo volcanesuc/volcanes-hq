@@ -1,4 +1,4 @@
-// /js/features/association/associates_list.js
+// js\features\association\assoc_members_list.js
 import { db } from "/js/auth/firebase.js";
 import { watchAuth, logout } from "/js/auth/auth.js";
 import { showLoader, hideLoader } from "/js/ui/loader.js";
@@ -112,8 +112,8 @@ function typeLabel(t) {
   return map[t] || "—";
 }
 
-function membershipBadge(key, membership) {
-  const prog = progressText(membership);
+function membershipBadge(key, currentMembership) {
+  const prog = progressText(currentMembership);
   const suffix = prog ? ` • ${prog}` : "";
 
   if (key === "up_to_date") return badge(`Al día${suffix}`, "green");
@@ -153,9 +153,9 @@ function getUserIdNumber(user) {
   return user?.profile?.idNumber || "";
 }
 
-function progressText(membership) {
-  const total = Number(membership?.installmentsTotal || 0);
-  const settled = Number(membership?.installmentsSettled || 0);
+function progressText(cm) {
+  const total = Number(cm?.installmentsTotal || 0);
+  const settled = Number(cm?.installmentsSettled || 0);
   if (!total) return "";
   return `${settled}/${total} cuotas`;
 }
@@ -182,6 +182,66 @@ function whatsappLink(phone, text) {
   const p = normalizePhoneForWa(phone);
   if (!p) return null;
   return `https://wa.me/${p}?text=${encodeURIComponent(text || "")}`;
+}
+
+function toDateSafe(v) {
+  if (!v) return null;
+  if (v?.toDate) return v.toDate();
+  if (v?.seconds) return new Date(v.seconds * 1000);
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function fmtDate(v) {
+  const d = toDateSafe(v);
+  if (!d) return "—";
+
+  return new Intl.DateTimeFormat("es-CR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+}
+
+function startOfToday() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+//GET MEMBERSHIPS
+
+function getCurrentMembership(user) {
+  return user?.currentMembership || null;
+}
+
+function userKeyFromCurrentMembership(cm) {
+  if (!cm) return "pending";
+
+  const s = (cm.status || "").toLowerCase();
+  const today = startOfToday();
+
+  const startDate = toDateSafe(cm.startDate);
+  const endDate = toDateSafe(cm.endDate);
+  const nextDue = toDateSafe(cm.nextUnpaidDueDate);
+
+  if (s === "submitted" || s === "validating") return "validating";
+  if (s === "rejected") return "inactive";
+
+  if (endDate && today > endDate) return "inactive";
+
+  if (nextDue) {
+    if (today > nextDue) return "overdue";
+    return "up_to_date";
+  }
+
+  if (s === "validated" || s === "active" || s === "paid") return "up_to_date";
+
+  if (s === "partial") {
+    const pending = Number(cm.installmentsPending || 0);
+    return pending > 0 ? "pending" : "up_to_date";
+  }
+
+  return "pending";
 }
 
 /* =========================
@@ -264,12 +324,14 @@ function renderShell(container) {
                 <th>Miembro</th>
                 <th>Contacto</th>
                 <th>Tipo</th>
-                <th>Asociación</th>
+                <th>Inicio</th>
+                <th>Fin</th>
+                <th>Estado</th>
                 <th class="text-end">Acciones</th>
               </tr>
             </thead>
             <tbody id="associatesTbody">
-              <tr><td colspan="5" class="text-muted">Cargando…</td></tr>
+              <tr><td colspan="7" class="text-muted">Cargando…</td></tr>
             </tbody>
           </table>
         </div>
@@ -386,22 +448,37 @@ async function loadAssociates() {
     const plansMap = await loadPlansMap(planIds);
 
     all = users.map((u) => {
-      const membership = membershipMap[u.id] || null;
+      const currentMembership = getCurrentMembership(u);
+      const membershipKey = userKeyFromCurrentMembership(currentMembership);
 
-      if (membership && !membership.planSnapshot && membership.planId && plansMap[membership.planId]) {
-        membership._plan = plansMap[membership.planId];
-      } else if (membership) {
-        membership._plan = null;
-      }
-
-      const membershipKey = userKeyFromMembership(membership);
+      console.log("[assoc_members_list][currentMembership]", {
+        uid: u.id,
+        name: getFullName(u),
+        currentMembership: currentMembership
+          ? {
+              membershipId: currentMembership.membershipId || null,
+              planId: currentMembership.planId || null,
+              season: currentMembership.season || null,
+              label: currentMembership.label || null,
+              status: currentMembership.status || null,
+              startDate: currentMembership.startDate || null,
+              endDate: currentMembership.endDate || null,
+              installmentsPending: currentMembership.installmentsPending || 0,
+              installmentsSettled: currentMembership.installmentsSettled || 0,
+              installmentsTotal: currentMembership.installmentsTotal || 0,
+              nextUnpaidDueDate: currentMembership.nextUnpaidDueDate || null,
+            }
+          : null,
+        assocKey: membershipKey,
+      });
 
       return {
         ...u,
-        membership,
-        _season: season,
+        currentMembership,
         _assocKey: membershipKey,
-        _isMoroso: isMoroso(membershipKey),
+        _isMoroso: membershipKey === "pending" || membershipKey === "overdue",
+        _membershipStart: toDateSafe(currentMembership?.startDate),
+        _membershipEnd: toDateSafe(currentMembership?.endDate),
       };
     }).sort((a, b) =>
       getFullName(a).localeCompare(getFullName(b), "es", { sensitivity: "base" })
@@ -431,6 +508,9 @@ function render() {
   const qText = normalize($.searchInput?.value);
   const typeVal = $.typeFilter?.value || "all";
   const assocVal = $.assocFilter?.value || "all";
+  const cm = u.currentMembership || null;
+  const startTxt = fmtDate(cm?.startDate);
+  const endTxt = fmtDate(cm?.endDate);
 
   let list = [...all];
 
@@ -465,7 +545,7 @@ function render() {
   $.tbody.innerHTML = list.map((u) => {
 
     const m = u.membership || null;
-    const asocBadgeHtml = membershipBadge(u._assocKey, m);
+    const asocBadgeHtml = membershipBadge(u._assocKey, u.currentMembership)
 
     const fullName = getFullName(u);
     const emailVal = u.email || "";
@@ -517,7 +597,8 @@ function render() {
         <td>${contactoHtml}</td>
 
         <td>${typeLabel(getUserType(u))}</td>
-
+        <td>${startTxt}</td>
+        <td>${endTxt}</td>
         <td>${asocBadgeHtml}</td>
 
         <td class="text-end">
