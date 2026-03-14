@@ -40,6 +40,44 @@ function fmtDate(v) {
   return new Intl.DateTimeFormat("es-CR", { dateStyle: "medium" }).format(d);
 }
 
+function tsMillis(v) {
+  if (!v) return 0;
+  if (typeof v?.toMillis === "function") return v.toMillis();
+  if (typeof v?.toDate === "function") return v.toDate().getTime();
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+}
+
+function isValidatedMembershipSubmission(p) {
+  const st = String(p?.status || "").toLowerCase();
+  return st === "validated" || st === "approved" || st === "applied";
+}
+
+function getSubmissionDisplayDate(p) {
+  return (
+    p?.decidedAt ||
+    p?.updatedAt ||
+    p?.createdAt ||
+    null
+  );
+}
+
+function getSubmissionDescription(p) {
+  const payer = String(p?.payerName || "").trim();
+  const season = String(p?.season || "").trim();
+  const planId = String(p?.planId || "").trim();
+  const membershipId = String(p?.membershipId || "").trim();
+
+  const bits = [];
+  bits.push("Pago de membresía");
+  if (payer) bits.push(`— ${payer}`);
+  if (season) bits.push(`• Temp. ${season}`);
+  if (membershipId) bits.push(`• Membresía ${membershipId}`);
+  else if (planId) bits.push(`• Plan ${planId}`);
+
+  return bits.join(" ");
+}
+
 export async function mount(root, cfg) {
   root.innerHTML = `
     <div class="card shadow-sm mb-3">
@@ -188,9 +226,12 @@ export async function mount(root, cfg) {
     const movements = movSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
     const paymentSubs = paymentsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-    const membershipIncome = paymentSubs
-      .filter((p) => p.status === "approved" || p.status === "validated" || p.status === "applied")
-      .reduce((acc, p) => acc + Number(p.amountReported || 0), 0);
+    const validatedMembershipPayments = paymentSubs.filter(isValidatedMembershipSubmission);
+
+    const membershipIncome = validatedMembershipPayments.reduce(
+      (acc, p) => acc + Number(p.amountReported || 0),
+      0
+    );
 
     const otherIncome = movements
       .filter((m) => m.isVoided !== true && m.type === "income")
@@ -207,24 +248,58 @@ export async function mount(root, cfg) {
     $.expenses.textContent = CRC(expenses);
     $.balance.textContent = CRC(balance);
 
-    if (!movements.length) {
-      $.tableBody.innerHTML = `<tr><td colspan="7" class="text-muted">No hay movimientos manuales registrados.</td></tr>`;
-      return;
-    }
-
-    $.tableBody.innerHTML = movements.map((m) => `
-      <tr>
-        <td>${esc(fmtDate(m.movementDate || m.createdAt))}</td>
-        <td>
+    const manualRows = movements
+      .filter((m) => m.isVoided !== true)
+      .map((m) => ({
+        _kind: "movement",
+        _sortTs: tsMillis(m.movementDate || m.createdAt),
+        dateHtml: esc(fmtDate(m.movementDate || m.createdAt)),
+        typeHtml: `
           <span class="badge text-bg-${m.type === "income" ? "success" : "danger"}">
             ${m.type === "income" ? "Ingreso" : "Gasto"}
           </span>
-        </td>
-        <td>${esc(m.category || "—")}</td>
-        <td>${esc(m.description || "—")}</td>
-        <td>${CRC(m.amount || 0)}</td>
-        <td>${esc(m.source || "manual")}</td>
-        <td>${esc(m.createdByName || m.createdByUid || "—")}</td>
+        `,
+        category: m.category || "—",
+        description: m.description || "—",
+        amount: Number(m.amount || 0),
+        amountHtml: CRC(m.amount || 0),
+        source: m.source || "manual",
+        createdBy: m.createdByName || m.createdByUid || "—",
+      }));
+
+    const membershipRows = validatedMembershipPayments.map((p) => ({
+      _kind: "membership_payment",
+      _sortTs: tsMillis(getSubmissionDisplayDate(p)),
+      dateHtml: esc(fmtDate(getSubmissionDisplayDate(p))),
+      typeHtml: `
+        <span class="badge text-bg-success">
+          Ingreso
+        </span>
+      `,
+      category: "membresía",
+      description: getSubmissionDescription(p),
+      amount: Number(p.amountReported || 0),
+      amountHtml: CRC(p.amountReported || 0),
+      source: "membresía",
+      createdBy: p.payerName || p.email || p.userId || "—",
+    }));
+
+    const rows = [...manualRows, ...membershipRows].sort((a, b) => b._sortTs - a._sortTs);
+
+    if (!rows.length) {
+      $.tableBody.innerHTML = `<tr><td colspan="7" class="text-muted">No hay movimientos ni pagos validados registrados.</td></tr>`;
+      return;
+    }
+
+    $.tableBody.innerHTML = rows.map((r) => `
+      <tr>
+        <td>${r.dateHtml}</td>
+        <td>${r.typeHtml}</td>
+        <td>${esc(r.category)}</td>
+        <td>${esc(r.description)}</td>
+        <td>${r.amountHtml}</td>
+        <td>${esc(r.source)}</td>
+        <td>${esc(r.createdBy)}</td>
       </tr>
     `).join("");
   }
