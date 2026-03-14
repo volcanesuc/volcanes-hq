@@ -1,4 +1,4 @@
-import { db, auth } from "../auth/firebase.js";
+import { db, auth } from "/js/auth/firebase.js";
 import {
   collection,
   addDoc,
@@ -8,9 +8,12 @@ import {
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-const COL_MOVEMENTS = "finance_movements";
-const COL_HISTORY = "finance_movements_history";
-const COL_SUBMISSIONS = "membership_payment_submissions";
+import { APP_CONFIG } from "/js/config/config.js";
+
+const COL = APP_CONFIG.collections;
+const COL_MOVEMENTS = COL.finance_movements;
+const COL_HISTORY = COL.finance_movements_history;
+const COL_SUBMISSIONS = COL.membershipPaymentSubmissions;
 
 const CRC = (n) =>
   new Intl.NumberFormat("es-CR", {
@@ -43,7 +46,7 @@ export async function mount(root, cfg) {
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
           <div>
-            <h3 class="mb-1">Fiscalización</h3>
+            <h3 class="mb-1">Contabilidad</h3>
             <div class="text-muted small">Control financiero del club</div>
           </div>
         </div>

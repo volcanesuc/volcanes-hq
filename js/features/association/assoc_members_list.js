@@ -1,9 +1,9 @@
-// /js/features/associates_list.js
-import { db } from "../auth/firebase.js";
-import { watchAuth, logout } from "../auth/auth.js";
-import { showLoader, hideLoader } from "../ui/loader.js";
-import { openModal } from "../ui/modal_host.js";
-
+// /js/features/association/associates_list.js
+import { db } from "/js/auth/firebase.js";
+import { watchAuth, logout } from "/js/auth/auth.js";
+import { showLoader, hideLoader } from "/js/ui/loader.js";
+import { openModal } from "/js/ui/modal_host.js";
+import { APP_CONFIG } from "/js/config/config.js";
 import {
   collection,
   getDocs,
@@ -13,9 +13,10 @@ import {
   documentId,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-const COL_USERS = "users";
-const COL_MEMBERSHIPS = "memberships";
-const COL_PLANS = "subscription_plans";
+const COL = APP_CONFIG.collections;
+const COL_MEMBERSHIPS = COL.memberships;
+const COL_USERS = COL.users;
+const COL_PLANS = COL.subscriptionPlans;
 
 // state
 let all = [];
@@ -296,13 +297,59 @@ async function loadMembershipMapForSeason(season, userIds) {
       const m = d.data();
       if (!m?.userId) return;
       if (!byUid[m.userId]) byUid[m.userId] = [];
-      byUid[m.userId].push({ id: d.id, ...m });
+
+      const item = { id: d.id, ...m };
+      byUid[m.userId].push(item);
+
+      console.log("[assoc][membership found]", {
+        membershipId: d.id,
+        userId: m.userId,
+        season: m.season,
+        status: m.status,
+        planId: m.planId,
+        installmentsTotal: m.installmentsTotal,
+        installmentsSettled: m.installmentsSettled,
+        nextUnpaidDueDate: m.nextUnpaidDueDate,
+        createdAt: m.createdAt,
+        updatedAt: m.updatedAt,
+        lastPaymentAt: m.lastPaymentAt,
+      });
     });
   }
 
   const map = {};
   Object.keys(byUid).forEach((uid) => {
+    console.log("[assoc][memberships by uid]", {
+      uid,
+      memberships: byUid[uid].map((m) => ({
+        id: m.id,
+        status: m.status,
+        installmentsTotal: m.installmentsTotal,
+        installmentsSettled: m.installmentsSettled,
+        nextUnpaidDueDate: m.nextUnpaidDueDate,
+        lastPaymentAt: m.lastPaymentAt,
+        updatedAt: m.updatedAt,
+        createdAt: m.createdAt,
+      })),
+    });
+
     map[uid] = pickBestMembership(byUid[uid]);
+
+    console.log("[assoc][picked membership]", {
+      uid,
+      picked: map[uid]
+        ? {
+            id: map[uid].id,
+            status: map[uid].status,
+            installmentsTotal: map[uid].installmentsTotal,
+            installmentsSettled: map[uid].installmentsSettled,
+            nextUnpaidDueDate: map[uid].nextUnpaidDueDate,
+            lastPaymentAt: map[uid].lastPaymentAt,
+            updatedAt: map[uid].updatedAt,
+            createdAt: map[uid].createdAt,
+          }
+        : null,
+    });
   });
 
   return map;

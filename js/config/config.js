@@ -33,6 +33,9 @@ export const APP_CONFIG = {
     membershipInstallments: "membership_installments",
     membershipPaymentSubmissions: "membership_payment_submissions",
 
+    finance_movements: "finance_movements",
+    finance_movements_history: "finance_movements_history",
+
     communityPosts: "community_posts",
 
     club_config: "club_config",

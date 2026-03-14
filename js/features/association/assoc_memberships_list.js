@@ -1,17 +1,20 @@
-// /js/features/memberships_list.js
-import { db } from "../auth/firebase.js";
-import { watchAuth, logout } from "../auth/auth.js";
-import { showLoader, hideLoader } from "../ui/loader.js";
-import { STR } from "../strings/membership_strings.js";
-import { openModal } from "../ui/modal_host.js";
+// /js/features/association/assoc_memberships_list.js
+import { db } from "/js/auth/firebase.js";
+import { watchAuth, logout } from "/js/auth/auth.js";
+import { showLoader, hideLoader } from "/js/ui/loader.js";
+import { STR } from "/js/strings/membership_strings.js";
+import { openModal } from "/js/ui/modal_host.js";
+import { APP_CONFIG } from "/js/config/config.js";
 
 import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 /* =========================
    Collections
 ========================= */
-const COL_MEMBERSHIPS = "memberships";
-const COL_PLANS = "subscription_plans";
+
+const COL = APP_CONFIG.collections;
+const COL_MEMBERSHIPS = COL.memberships;
+const COL_PLANS = COL.subscriptionPlans;
 
 /* =========================
    State
@@ -672,7 +675,7 @@ function render() {
    ejecución standalone
 ========================= */
 async function autoMountIfStandalone() {
-  const marker = document.querySelector('[data-page="memberships_list"]');
+  const marker = document.querySelector('[data-page="assoc_memberships_list"]');
   if (!marker) return;
 
   const container = document.getElementById("page-content") || document.body;

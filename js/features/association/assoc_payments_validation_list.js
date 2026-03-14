@@ -1,4 +1,4 @@
-// /js/features/payments_admin.js
+// /js/features/association/assoc_payments_validation_list.js
 // Admin tab: lista membership_payment_submissions + acciones Validar/Rechazar
 // Soporta multi-cuotas via selectedInstallmentIds
 // Refactor: usa users/{uid}.role en vez de user_roles
@@ -6,10 +6,10 @@
 // - users.associationStatus: pending | active | rejected | null
 // - memberships.status: pending | partial | active | rejected
 
-import { db } from "../auth/firebase.js";
-import { watchAuth, logout } from "../auth/auth.js";
-import { showLoader, hideLoader } from "../ui/loader.js";
-
+import { db } from "/js/auth/firebase.js";
+import { watchAuth, logout } from "/js/auth/auth.js";
+import { showLoader, hideLoader } from "/js/ui/loader.js";
+import { APP_CONFIG } from "/js/config/config.js";
 import {
   collection,
   getDocs,
@@ -26,10 +26,11 @@ import {
 /* =========================
    Collections
 ========================= */
-const COL_USERS = "users";
-const COL_SUBMISSIONS = "membership_payment_submissions";
-const COL_MEMBERSHIPS = "memberships";
-const COL_INSTALLMENTS = "membership_installments";
+const COL = APP_CONFIG.collections;
+const COL_MEMBERSHIPS = COL.memberships;
+const COL_USERS = COL.users;
+const COL_SUBMISSIONS = COL.membershipPaymentSubmissions;
+const COL_INSTALLMENTS = COL.membershipInstallments;
 
 const DEFAULT_LIMIT = 300;
 
@@ -284,7 +285,7 @@ async function syncUserCurrentMembership(membership) {
       updatedAt: serverTimestamp(),
     });
   } catch (e) {
-    console.warn("[payments_admin] No se pudo sincronizar users.currentMembership", e?.code || e);
+    console.warn("[assoc_payments_validation_list] No se pudo sincronizar users.currentMembership", e?.code || e);
   }
 }
 
@@ -310,7 +311,7 @@ async function syncUserAssociationStatus(membership, decision) {
       updatedAt: serverTimestamp(),
     });
   } catch (e) {
-    console.warn("[payments_admin] No se pudo sincronizar users.associationStatus", e?.code || e);
+    console.warn("[assoc_payments_validation_list] No se pudo sincronizar users.associationStatus", e?.code || e);
   }
 }
 
@@ -635,7 +636,7 @@ async function applyDecision(sub, decision /* "validated" | "rejected" */) {
     const mRef = doc(db, COL_MEMBERSHIPS, membershipId);
     const mSnap = await getDoc(mRef);
     if (!mSnap.exists()) {
-      console.warn("[payments_admin] membershipId no existe:", membershipId);
+      console.warn("[assoc_payments_validation_list] membershipId no existe:", membershipId);
       return;
     }
 
@@ -650,7 +651,7 @@ async function applyDecision(sub, decision /* "validated" | "rejected" */) {
             updatedAt: serverTimestamp(),
           });
         } catch (e) {
-          console.warn("[payments_admin] No se pudo actualizar installment", iid, e?.code || e);
+          console.warn("[assoc_payments_validation_list] No se pudo actualizar installment", iid, e?.code || e);
         }
       }
     }
@@ -912,7 +913,7 @@ export async function mount(container, cfg) {
     const ok = await ensureAdmin(user);
 
     if (!ok) {
-      console.warn("[payments_admin] No es admin según users");
+      console.warn("[assoc_payments_validation_list] No es admin según users");
       $.tbody.innerHTML = `<tr><td colspan="8" class="text-danger p-3">
         No tenés permisos de admin.
       </td></tr>`;

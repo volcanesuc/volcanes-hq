@@ -4,12 +4,12 @@ import { loadHeader } from "./components/header.js";
 import { initModalHost } from "./ui/modal_host.js";
 import { showLoader, hideLoader } from "./ui/loader.js";
 
-const TABS = ["associates", "memberships", "payments", "plans", "fiscalizacion"];
+const TABS = ["members", "memberships", "payments", "plans", "accounting"];
 
 function getTabFromUrl() {
   const params = new URLSearchParams(window.location.search);
-  const tab = (params.get("tab") || "associates").toLowerCase();
-  return TABS.includes(tab) ? tab : "associates";
+  const tab = (params.get("tab") || "members").toLowerCase();
+  return TABS.includes(tab) ? tab : "members";
 }
 
 function setTabInUrl(tab) {
@@ -47,37 +47,38 @@ async function mountTab(tab, cfg) {
   mount.innerHTML = `<div class="py-3">Cargando...</div>`;
 
   try {
-    if (tab === "associates") {
-      const mod = await import("./features/associates_list.js?v=1");
-      if (!mod.mount) throw new Error("associates_list.js no exporta mount()");
-      await mod.mount(mount, cfg);
-      return;
-    }
 
-    if (tab === "memberships") {
-      const mod = await import("./features/memberships_list.js?v=1");
-      if (!mod.mount) throw new Error("memberships_list.js no exporta mount()");
-      await mod.mount(mount, cfg);
-      return;
-    }
-
-    if (tab === "payments") {
-      const mod = await import("./features/payments_admin.js?v=1");
-      if (!mod.mount) throw new Error("payments_admin.js no exporta mount()");
-      await mod.mount(mount, cfg);
-      return;
-    }
-
-    if (tab === "plans") {
+    if (tab === "plans") { //muestra la lista de subscripciones (anualidad, etc)
       const mod = await import("./features/subscription_plans.js?v=1");
       if (!mod.mount) throw new Error("subscription_plans.js no exporta mount()");
       await mod.mount(mount, cfg);
       return;
     }
 
-    if (tab === "fiscalizacion") {
-      const mod = await import("./features/fiscalizacion.js?v=1");
-      if (!mod.mount) throw new Error("fiscalizacion.js no exporta mount()");
+    if (tab === "members") { //muestra la lista de miembros en el tab de asociacion
+      const mod = await import("./features/association/assoc_members_list.js?v=1");
+      if (!mod.mount) throw new Error("assoc_members_list.js no exporta mount()");
+      await mod.mount(mount, cfg);
+      return;
+    }
+
+    if (tab === "memberships") { //linkea miembro - pagos - plan de membresia
+      const mod = await import("./features/association/assoc_memberships_list.js?v=1");
+      if (!mod.mount) throw new Error("assoc_memberships_list.js no exporta mount()");
+      await mod.mount(mount, cfg);
+      return;
+    }
+
+    if (tab === "payments") { //lista de pagos realizados para membresias (asociarse)
+      const mod = await import("./features/association/assoc_payments_validation_list.js?v=1");
+      if (!mod.mount) throw new Error("assoc_payments_validation_list.js no exporta mount()");
+      await mod.mount(mount, cfg);
+      return;
+    }
+
+    if (tab === "accounting") { //entradas y salidas de dinero
+      const mod = await import("./features/association/assoc_accounting.js?v=1");
+      if (!mod.mount) throw new Error("assoc_accounting.js no exporta mount()");
       await mod.mount(mount, cfg);
       return;
     }
@@ -113,7 +114,7 @@ if (redirected) {
 
     window.addEventListener("user:saved", async () => {
       const tab = getTabFromUrl();
-      if (tab === "associates") {
+      if (tab === "members") {
         showLoader();
         try {
           await renderAssociation(cfg);
