@@ -272,6 +272,34 @@ async function syncUserCurrentMembership(membership) {
   }
 }
 
+async function syncUserAssociationStatus(membership, decision) {
+  const uid = membership?.userId || membership?.userSnapshot?.uid || null;
+  if (!uid) return;
+
+  const membershipStatus = String(membership?.status || "").toLowerCase();
+
+  let associationStatus = "payment_validation_pending";
+
+  if (decision === "rejected" || membershipStatus === "rejected") {
+    associationStatus = "associated_rejected";
+  } else if (
+    membershipStatus === "validated" ||
+    membershipStatus === "active" ||
+    membershipStatus === "paid"
+  ) {
+    associationStatus = "associated_active";
+  }
+
+  try {
+    await updateDoc(doc(db, COL_USERS, uid), {
+      associationStatus,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (e) {
+    console.warn("[payments_admin] No se pudo sincronizar users.associationStatus", e?.code || e);
+  }
+}
+
 /* =========================
    Shell
 ========================= */
@@ -630,7 +658,10 @@ async function applyDecision(sub, decision /* "validated" | "rejected" */) {
       payLinkDisabledReason = null;
     }
 
-    const nextStatus = computeMembershipStatus(membership, inst, subsForMembership);
+    let nextStatus = computeMembershipStatus(membership, inst, subsForMembership);
+    if (nextStatus === "validated") {
+      nextStatus = "active";
+    }
 
     const mUpdates = {
       updatedAt: serverTimestamp(),
@@ -663,6 +694,7 @@ async function applyDecision(sub, decision /* "validated" | "rejected" */) {
     };
 
     await syncUserCurrentMembership(updatedMembership);
+    await syncUserAssociationStatus(updatedMembership, decision);
 
     const idx = allSubs.findIndex((x) => x.id === sid);
     if (idx >= 0) {
