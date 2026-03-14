@@ -2,8 +2,10 @@
 import { db } from "/js/auth/firebase.js";
 import { watchAuth, logout } from "/js/auth/auth.js";
 import { showLoader, hideLoader } from "/js/ui/loader.js";
-import { openModal } from "/js/ui/modal_host.js";
 import { APP_CONFIG } from "/js/config/config.js";
+import { loadPartialOnce } from "/js/ui/loadPartial.js";
+import { openMemberModal } from "/js/features/association/assoc_member_modal.js";
+
 import {
   collection,
   getDocs,
@@ -38,12 +40,6 @@ function typeLabel(t) {
     other: "Otro",
   };
   return map[t] || "—";
-}
-
-function chunk(arr, size = 10) {
-  const out = [];
-  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
-  return out;
 }
 
 function getFullName(user) {
@@ -131,19 +127,11 @@ function getCurrentMembership(user) {
 }
 
 function getCoverageStart(cm) {
-  return (
-    cm?.coverageStartDate ||
-    cm?.startDate ||
-    null
-  );
+  return cm?.coverageStartDate || cm?.startDate || null;
 }
 
 function getCoverageEnd(cm) {
-  return (
-    cm?.coverageEndDate ||
-    cm?.endDate ||
-    null
-  );
+  return cm?.coverageEndDate || cm?.endDate || null;
 }
 
 function userKeyFromCurrentMembership(cm) {
@@ -186,10 +174,6 @@ function membershipBadge(key, currentMembership) {
   return badge(`Pendiente${suffix}`, "orange");
 }
 
-function isMoroso(membershipKey) {
-  return membershipKey === "pending" || membershipKey === "overdue";
-}
-
 /* =========================
    DOM
 ========================= */
@@ -216,9 +200,16 @@ function renderShell(container) {
         <div class="text-muted small">Listado de miembros con filtros y acceso a edición.</div>
       </div>
       <div class="d-flex gap-2">
-        <button id="btnNewAssociate" class="btn btn-primary btn-sm" type="button" disabled>
+        <button
+          id="btnNewAssociate"
+          class="btn btn-primary btn-sm"
+          type="button"
+          disabled
+          title="Crear miembros manualmente está deshabilitado por ahora"
+        >
           <i class="bi bi-plus-lg me-1"></i> Nuevo
         </button>
+
         <button id="btnRefresh" class="btn btn-outline-secondary btn-sm" type="button">
           <i class="bi bi-arrow-clockwise me-1"></i> Actualizar
         </button>
@@ -352,14 +343,15 @@ function render() {
   if (qText) {
     list = list.filter((u) => {
       const fullName = normalize(getFullName(u));
-      const email = normalize(u.email);
-      const phone = normalize(getUserPhone(u));
+      const emailTxt = normalize(u.email);
+      const phoneTxt = normalize(getUserPhone(u));
       const startTxt = normalize(fmtDate(getCoverageStart(u.currentMembership)));
       const endTxt = normalize(fmtDate(getCoverageEnd(u.currentMembership)));
+
       return (
         fullName.includes(qText) ||
-        email.includes(qText) ||
-        phone.includes(qText) ||
+        emailTxt.includes(qText) ||
+        phoneTxt.includes(qText) ||
         startTxt.includes(qText) ||
         endTxt.includes(qText)
       );
@@ -433,7 +425,6 @@ function render() {
           </td>
 
           <td>${contactoHtml}</td>
-
           <td>${typeLabel(getUserType(u))}</td>
           <td>${startTxt}</td>
           <td>${endTxt}</td>
@@ -453,9 +444,10 @@ function render() {
     .join("");
 
   $.root.querySelectorAll(".btnEdit").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       const id = btn.dataset.id;
-      openModal(`partials/assoc_member_modal.html?uid=${encodeURIComponent(id)}`);
+      await loadPartialOnce("/partials/assoc_member_modal.html", "modalMount");
+      await openMemberModal(id);
     });
   });
 }
@@ -476,7 +468,13 @@ export async function mount(container, cfg) {
   $.typeFilter?.addEventListener("change", render);
   $.assocFilter?.addEventListener("change", render);
 
-  $.btnNewAssociate?.addEventListener("click", () => openModal(`partials/assoc_member_modal.html`));
+  $.btnNewAssociate?.addEventListener("click", () => {
+    // deshabilitado por ahora
+  });
+
+  document.addEventListener("assoc-member:saved", loadAssociates);
+
+  await loadPartialOnce("/partials/assoc_member_modal.html", "modalMount");
 
   watchAuth(async (user) => {
     if (!user) return;
