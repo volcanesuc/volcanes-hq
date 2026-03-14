@@ -444,7 +444,11 @@ function render() {
   $.root.querySelectorAll(".btnEdit").forEach((btn) => {
     btn.addEventListener("click", () => {
       const id = btn.dataset.id;
-      openModal(`partials/assoc_member_modal.html?uid=${encodeURIComponent(id)}`);
+      openModal(
+        `partials/assoc_member_modal.html?uid=${encodeURIComponent(id)}`,
+        { fullscreen: true }
+      );
+
     });
   });
 }
