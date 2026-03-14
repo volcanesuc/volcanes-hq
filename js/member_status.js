@@ -65,6 +65,95 @@ function fmtDate(value) {
   }).format(d);
 }
 
+//Helpers to calculate duration of membership
+function startOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function endOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function addMonths(date, months) {
+  return new Date(date.getFullYear(), date.getMonth() + months, date.getDate());
+}
+
+function endOfMonth(year, monthIndex) {
+  return new Date(year, monthIndex + 1, 0);
+}
+
+function inferCoverageDates(membership) {
+  const plan = membership?.planSnapshot || {};
+  const season = String(membership?.season || plan?.season || "").trim();
+  const durationMonths = Number(plan?.durationMonths || 0);
+  const rawStartPolicy = String(plan?.startPolicy || "").trim().toLowerCase();
+
+  if (!season || !/^\d{4}$/.test(season) || !durationMonths) {
+    return { startDate: null, endDate: null };
+  }
+
+  const year = Number(season);
+
+  // anual enero-diciembre
+  if (durationMonths === 12 && (rawStartPolicy === "jan" || rawStartPolicy === "jan_only")) {
+    return {
+      startDate: new Date(year, 0, 1),
+      endDate: new Date(year, 11, 31),
+    };
+  }
+
+  // semestral empezando enero
+  if (durationMonths === 6 && (rawStartPolicy === "jan" || rawStartPolicy === "jan_only")) {
+    return {
+      startDate: new Date(year, 0, 1),
+      endDate: endOfMonth(year, 5),
+    };
+  }
+
+  // semestral enero o julio
+  if (
+    durationMonths === 6 &&
+    (rawStartPolicy === "jan_or_jul" || rawStartPolicy === "jan-jul" || rawStartPolicy === "jan_or_july")
+  ) {
+    const startMonth = membership?.startMonth === 7 ? 6 : 0;
+    return {
+      startDate: new Date(year, startMonth, 1),
+      endDate: endOfMonth(year, startMonth + 5),
+    };
+  }
+
+  // mensual por temporada: por defecto enero del season
+  if (durationMonths === 1) {
+    return {
+      startDate: new Date(year, 0, 1),
+      endDate: endOfMonth(year, 0),
+    };
+  }
+
+  return { startDate: null, endDate: null };
+}
+
+function getMembershipCoverageDates(membership) {
+  const explicitStart = asDate(membership?.startDate || membership?.activatedAt || null);
+  const explicitEnd = asDate(membership?.endDate || membership?.expiresAt || null);
+
+  if (explicitStart || explicitEnd) {
+    return {
+      startDate: explicitStart,
+      endDate: explicitEnd,
+      inferred: false,
+    };
+  }
+
+  const inferred = inferCoverageDates(membership);
+
+  return {
+    startDate: inferred.startDate,
+    endDate: inferred.endDate,
+    inferred: !!(inferred.startDate || inferred.endDate),
+  };
+}
+
 function daysBetweenNowAnd(dateValue) {
   const d = asDate(dateValue);
   if (!d) return null;
@@ -91,6 +180,8 @@ function clearMembershipFields() {
 }
 
 function fillMembershipFields({ membership, currentMembership }) {
+  const coverage = getMembershipCoverageDates(membership);
+
   setText(
     els.membershipPlan,
     membership?.planSnapshot?.name ||
@@ -112,12 +203,12 @@ function fillMembershipFields({ membership, currentMembership }) {
 
   setText(
     els.membershipStart,
-    fmtDate(membership?.startDate || membership?.activatedAt || membership?.createdAt)
+    fmtDate(coverage.startDate)
   );
 
   setText(
     els.membershipEnd,
-    fmtDate(membership?.endDate || membership?.expiresAt)
+    fmtDate(coverage.endDate)
   );
 
   setText(
@@ -158,18 +249,21 @@ function setPendingUI({ membership, currentMembership }) {
       : "Tu solicitud fue recibida. La fecha de vencimiento se mostrará cuando la membresía sea aprobada.";
   }
 
-  if (!membership?.startDate && !membership?.activatedAt) {
+  const coverage = getMembershipCoverageDates(membership);
+
+  if (!coverage.startDate) {
     setText(els.membershipStart, "Se asignará al aprobarse");
   }
 
-  if (!membership?.endDate && !membership?.expiresAt) {
+  if (!coverage.endDate) {
     setText(els.membershipEnd, "Se asignará al aprobarse");
   }
 }
 
 function setActiveUI({ membership, currentMembership }) {
   document.body.dataset.status = "active";
-  const endDate = membership?.endDate || membership?.expiresAt || null;
+  const coverage = getMembershipCoverageDates(membership);
+  const endDate = coverage.endDate || null;
   const daysLeft = daysBetweenNowAnd(endDate);
 
   if (els.statusIcon) {
@@ -194,21 +288,17 @@ function setActiveUI({ membership, currentMembership }) {
   fillMembershipFields({ membership, currentMembership });
 
   if (els.membershipSummaryText) {
-    if (daysLeft === null) {
-      els.membershipSummaryText.textContent =
-        "Tu membresía ya fue aprobada y se encuentra activa.";
-    } else if (daysLeft > 1) {
-      els.membershipSummaryText.textContent =
-        `Tu membresía está vigente y le quedan ${daysLeft} días de vigencia.`;
-    } else if (daysLeft === 1) {
-      els.membershipSummaryText.textContent =
-        "Tu membresía está vigente y vence mañana.";
-    } else if (daysLeft === 0) {
-      els.membershipSummaryText.textContent =
-        "Tu membresía está vigente y vence hoy.";
+    const submittedAt = membership?.createdAt || null;
+    const coverage = getMembershipCoverageDates(membership);
+
+    if (coverage.startDate && coverage.endDate) {
+      els.membershipSummaryText.textContent = submittedAt
+        ? `Tu solicitud fue registrada el ${fmtDate(submittedAt)}. Si se aprueba, esta membresía cubrirá del ${fmtDate(coverage.startDate)} al ${fmtDate(coverage.endDate)}.`
+        : `Si se aprueba, esta membresía cubrirá del ${fmtDate(coverage.startDate)} al ${fmtDate(coverage.endDate)}.`;
     } else {
-      els.membershipSummaryText.textContent =
-        "Tu membresía figura como aprobada, pero la fecha de vencimiento registrada ya pasó.";
+      els.membershipSummaryText.textContent = submittedAt
+        ? `Tu solicitud fue registrada el ${fmtDate(submittedAt)}. La fecha de vencimiento se mostrará cuando la membresía sea aprobada.`
+        : "Tu solicitud fue recibida. La fecha de vencimiento se mostrará cuando la membresía sea aprobada.";
     }
   }
 }
