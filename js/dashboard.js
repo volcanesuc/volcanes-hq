@@ -21,10 +21,10 @@ if (!redirected) {
   await loadHeader("home", cfg);
 }
 
-watchAuth(async () => {
+watchAuth(async (user, access) => {
   showLoader();
   try {
-    await loadDashboard();
+    await loadDashboard({ user, access });
   } finally {
     hideLoader();
   }
@@ -249,7 +249,7 @@ function getTrainingAttendeeCount(training, playersById, playersByUserId) {
    DASHBOARD LOAD
 ========================================================= */
 
-async function loadDashboard() {
+async function loadDashboard({ user, access } = {}) {
   setNextTournamentLoading();
 
   const COL = APP_CONFIG.collections;
@@ -310,7 +310,8 @@ async function loadDashboard() {
   renderKPIs(kpis);
 
   const alerts = calculateAlerts({ players, trainings });
-  renderAlerts(alerts);
+  const visibleAlerts = filterAlertsForViewer(alerts, { user, access });
+  renderAlerts(visibleAlerts);
 }
 
 /* =========================================================
@@ -614,7 +615,8 @@ function calculateAlerts({ players, trainings }) {
   if (!recentTrainings.length) {
     alerts.push({
       type: "warning",
-      message: "No hay entrenamientos registrados en los últimos 30 días."
+      message: "No hay entrenamientos registrados en los últimos 30 días.",
+      adminOnly: false,
     });
     return alerts;
   }
@@ -646,7 +648,9 @@ function calculateAlerts({ players, trainings }) {
   if (inactive30.length) {
     alerts.push({
       type: "danger",
-      message: `${inactive30.length} jugadores activos no entrenaron en los últimos 30 días.`
+      message: `${inactive30.length} jugadores activos no entrenaron en los últimos 30 días.`,
+      adminOnly: true,
+      mentionedUserIds: inactive30.map(p => p.userId).filter(Boolean)
     });
   }
 
@@ -657,7 +661,9 @@ function calculateAlerts({ players, trainings }) {
   if (lowParticipation.length) {
     alerts.push({
       type: "warning",
-      message: `${lowParticipation.length} jugadores activos entrenaron 1 vez o menos en los últimos 30 días.`
+      message: `${lowParticipation.length} jugadores activos entrenaron 1 vez o menos en los últimos 30 días.`,
+      adminOnly: true,
+      mentionedUserIds: lowParticipation.map(p => p.userId).filter(Boolean)
     });
   }
 
@@ -770,11 +776,30 @@ function calculateAlerts({ players, trainings }) {
   if (inactive30.length && topAbsents.length) {
     alerts.push({
       type: "danger",
-      message: `Sin entrenar (30 días): ${topAbsents.join(", ")}${inactive30.length > topAbsents.length ? "…" : ""}`
+      message: `Sin entrenar (30 días): ${topAbsents.join(", ")}${inactive30.length > topAbsents.length ? "…" : ""}`,
+      adminOnly: true,
+      mentionedUserIds: inactive30.map(p => p.userId).filter(Boolean)
     });
   }
 
   return alerts;
+}
+
+function filterAlertsForViewer(alerts = [], { user, access } = {}) {
+  const isAdmin = access?.isAdmin === true;
+  const uid = user?.uid || null;
+
+  if (isAdmin) return alerts;
+
+  return alerts.filter((alert) => {
+    if (alert?.adminOnly !== true) return true;
+
+    const mentioned = Array.isArray(alert?.mentionedUserIds)
+      ? alert.mentionedUserIds
+      : [];
+
+    return uid && mentioned.includes(uid);
+  });
 }
 
 function renderAlerts(alerts) {
