@@ -4,8 +4,6 @@ import { watchAuth, logout } from "/js/auth/auth.js";
 import { showLoader, hideLoader } from "/js/ui/loader.js";
 import { APP_CONFIG } from "/js/config/config.js";
 import { loadPartialOnce } from "/js/ui/loadPartial.js";
-import { openMemberModal } from "/js/features/association/assoc_member_modal.js";
-
 import {
   collection,
   getDocs,
@@ -444,10 +442,9 @@ function render() {
     .join("");
 
   $.root.querySelectorAll(".btnEdit").forEach((btn) => {
-    btn.addEventListener("click", async () => {
+    btn.addEventListener("click", () => {
       const id = btn.dataset.id;
-      await loadPartialOnce("/partials/assoc_member_modal.html", "modalMount");
-      await openMemberModal(id);
+      openModal(`partials/assoc_member_modal.html?uid=${encodeURIComponent(id)}`);
     });
   });
 }
