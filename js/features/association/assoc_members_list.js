@@ -166,8 +166,9 @@ function baseDir() {
 }
 
 function payUrlForMembership(m) {
-  if (!m?.id || !m?.payCode) return null;
-  return `${baseDir()}pages/admin/membership_pay.html?mid=${encodeURIComponent(m.id)}&code=${encodeURIComponent(m.payCode)}`;
+  const membershipId = m?.membershipId || m?.id;
+  if (!membershipId || !m?.payCode) return null;
+  return `${baseDir()}pages/admin/membership_pay.html?mid=${encodeURIComponent(membershipId)}&code=${encodeURIComponent(m.payCode)}`;
 }
 
 function normalizePhoneForWa(phone) {
@@ -440,12 +441,6 @@ async function loadAssociates() {
     const snap = await getDocs(q);
 
     const users = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    const season = (_cfg?.season || new Date().getFullYear().toString());
-    const ids = users.map((u) => u.id);
-
-    const membershipMap = await loadMembershipMapForSeason(season, ids);
-    const planIds = Object.values(membershipMap).map((m) => m?.planId);
-    const plansMap = await loadPlansMap(planIds);
 
     all = users.map((u) => {
       const currentMembership = getCurrentMembership(u);
@@ -489,7 +484,7 @@ async function loadAssociates() {
     console.error("[associates_list] load error", err);
     if ($.tbody) {
       $.tbody.innerHTML = `
-        <tr><td colspan="6" class="text-danger">
+        <tr><td colspan="7" class="text-danger">
           Error cargando miembros: ${String(err?.message || err)}
         </td></tr>
       `;
@@ -508,9 +503,6 @@ function render() {
   const qText = normalize($.searchInput?.value);
   const typeVal = $.typeFilter?.value || "all";
   const assocVal = $.assocFilter?.value || "all";
-  const cm = u.currentMembership || null;
-  const startTxt = fmtDate(cm?.startDate);
-  const endTxt = fmtDate(cm?.endDate);
 
   let list = [...all];
 
@@ -533,7 +525,7 @@ function render() {
   $.countLabel.textContent = `${list.length}`;
 
   if (!list.length) {
-    $.tbody.innerHTML = `<tr><td colspan="6" class="text-muted">No hay miembros con esos filtros.</td></tr>`;
+    $.tbody.innerHTML = `<tr><td colspan="7" class="text-muted">No hay miembros con esos filtros.</td></tr>`;
     return;
   }
 
@@ -543,9 +535,10 @@ function render() {
       : `Hola! Recordatorio de pago a la asociación.`;
 
   $.tbody.innerHTML = list.map((u) => {
-
-    const m = u.membership || null;
-    const asocBadgeHtml = membershipBadge(u._assocKey, u.currentMembership)
+    const m = u.currentMembership || null;
+    const startTxt = fmtDate(m?.startDate);
+    const endTxt = fmtDate(m?.endDate);
+    const asocBadgeHtml = membershipBadge(u._assocKey, m);
 
     const fullName = getFullName(u);
     const emailVal = u.email || "";
