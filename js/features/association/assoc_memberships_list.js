@@ -71,6 +71,7 @@ function normalizeMembershipStatus(status) {
   if (s === "validated" || s === "paid") return "active";
   if (s === "active") return "active";
   if (s === "partial") return "partial";
+  if (s === "moroso" || s === "vencido" || s === "expired") return "expired";
   if (s === "rejected") return "rejected";
   return "pending";
 }
@@ -79,7 +80,8 @@ function statusBadgeHtml(st) {
   const s = normalizeMembershipStatus(st);
 
   if (s === "active") return badge("Activa", "green");
-  if (s === "partial") return badge("Parcial", "yellow");
+  if (s === "partial") return badge("Validando", "yellow");
+  if (s === "expired") return badge("Vencida", "red");
   if (s === "rejected") return badge("Rechazada", "red");
   return badge("Pendiente", "gray");
 }
@@ -87,9 +89,10 @@ function statusBadgeHtml(st) {
 function statusRank(st) {
   const s = normalizeMembershipStatus(st);
 
-  if (s === "active") return 4;
-  if (s === "partial") return 3;
-  if (s === "pending") return 2;
+  if (s === "active") return 5;
+  if (s === "partial") return 4;
+  if (s === "pending") return 3;
+  if (s === "expired") return 2;
   if (s === "rejected") return 1;
   return 0;
 }
@@ -241,6 +244,10 @@ function buildViewMemberships() {
   }
 
   out.sort((a, b) => {
+    const ra = statusRank(a.status);
+    const rb = statusRank(b.status);
+    if (rb !== ra) return rb - ra;
+
     const ta = Math.max(tsMillis(a.updatedAt), tsMillis(a.createdAt));
     const tb = Math.max(tsMillis(b.updatedAt), tsMillis(b.createdAt));
     return tb - ta;
@@ -250,20 +257,21 @@ function buildViewMemberships() {
 }
 
 function renderKpis() {
-  const counts = { pending: 0, partial: 0, active: 0, rejected: 0 };
+  const counts = { pending: 0, partial: 0, active: 0, expired: 0, rejected: 0 };
 
   for (const m of viewMemberships) {
     const st = normalizeMembershipStatus(m.status);
     if (st === "pending") counts.pending++;
     else if (st === "partial") counts.partial++;
     else if (st === "active") counts.active++;
+    else if (st === "expired") counts.expired++;
     else if (st === "rejected") counts.rejected++;
   }
 
   if ($.kpiPending) $.kpiPending.textContent = counts.pending;
   if ($.kpiPartial) $.kpiPartial.textContent = counts.partial;
   if ($.kpiActive) $.kpiActive.textContent = counts.active;
-  if ($.kpiRejected) $.kpiRejected.textContent = counts.rejected;
+  if ($.kpiRejected) $.kpiRejected.textContent = counts.expired + counts.rejected;
 }
 
 function cacheDom(container) {
@@ -326,9 +334,10 @@ function renderShell(container) {
         <div class="col-6 col-md-2">
           <select id="statusFilter" class="form-select">
             <option value="all">${STR.filters.allStatus}</option>
-            <option value="pending">Pendiente</option>
-            <option value="partial">Parcial</option>
             <option value="active">Activa</option>
+            <option value="partial">Validando</option>
+            <option value="pending">Pendiente</option>
+            <option value="expired">Vencida</option>
             <option value="rejected">Rechazada</option>
           </select>
         </div>
@@ -350,7 +359,7 @@ function renderShell(container) {
         </div>
         <div class="col-6 col-md-3">
           <div class="kpi-box">
-            <div class="text-muted small">${STR.kpi.partial}</div>
+            <div class="text-muted small">Validando</div>
             <div class="fs-4 fw-bold" id="kpiPartial">0</div>
           </div>
         </div>
@@ -362,7 +371,7 @@ function renderShell(container) {
         </div>
         <div class="col-6 col-md-3">
           <div class="kpi-box">
-            <div class="text-muted small">Rechazadas</div>
+            <div class="text-muted small">Vencidas / Rechazadas</div>
             <div class="fs-4 fw-bold" id="kpiRejected">0</div>
           </div>
         </div>
@@ -424,9 +433,10 @@ function renderShellWithoutHeader(container) {
       <div class="col-6 col-md-2">
         <select id="statusFilter" class="form-select">
           <option value="all">${STR.filters.allStatus}</option>
-          <option value="pending">Pendiente</option>
-          <option value="partial">Parcial</option>
           <option value="active">Activa</option>
+          <option value="partial">Validando</option>
+          <option value="pending">Pendiente</option>
+          <option value="expired">Vencida</option>
           <option value="rejected">Rechazada</option>
         </select>
       </div>
@@ -448,7 +458,7 @@ function renderShellWithoutHeader(container) {
       </div>
       <div class="col-6 col-md-3">
         <div class="kpi-box">
-          <div class="text-muted small">${STR.kpi.partial}</div>
+          <div class="text-muted small">Validando</div>
           <div class="fs-4 fw-bold" id="kpiPartial">0</div>
         </div>
       </div>
@@ -460,7 +470,7 @@ function renderShellWithoutHeader(container) {
       </div>
       <div class="col-6 col-md-3">
         <div class="kpi-box">
-          <div class="text-muted small">Rechazadas</div>
+          <div class="text-muted small">Vencidas / Rechazadas</div>
           <div class="fs-4 fw-bold" id="kpiRejected">0</div>
         </div>
       </div>
