@@ -1,4 +1,4 @@
-// js\features\association\assoc_members_list.js
+// /js/features/association/assoc_members_list.js
 import { db } from "/js/auth/firebase.js";
 import { watchAuth, logout } from "/js/auth/auth.js";
 import { showLoader, hideLoader } from "/js/ui/loader.js";
@@ -9,14 +9,10 @@ import {
   getDocs,
   query,
   orderBy,
-  where,
-  documentId,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const COL = APP_CONFIG.collections;
-const COL_MEMBERSHIPS = COL.memberships;
 const COL_USERS = COL.users;
-const COL_PLANS = COL.subscriptionPlans;
 
 // state
 let all = [];
@@ -28,74 +24,6 @@ let _cfg = {};
 ========================= */
 function normalize(s) {
   return (s || "").toString().toLowerCase().trim();
-}
-
-function tsMillis(ts) {
-  if (!ts) return 0;
-  if (ts.toMillis) return ts.toMillis();
-  if (ts.seconds) return ts.seconds * 1000;
-  const d = new Date(ts);
-  const t = d.getTime();
-  return Number.isFinite(t) ? t : 0;
-}
-
-function statusRank(st) {
-  const s = (st || "pending").toLowerCase();
-
-  if (s === "validated") return 50;
-  if (s === "paid") return 40;
-  if (s === "partial") return 30;
-  if (s === "submitted" || s === "validating") return 20;
-  if (s === "pending") return 10;
-  if (s === "rejected") return 5;
-
-  return 0;
-}
-
-function pickBestMembership(list) {
-  if (!list?.length) return null;
-
-  const sorted = [...list].sort((a, b) => {
-    const ra = statusRank(a.status);
-    const rb = statusRank(b.status);
-    if (rb !== ra) return rb - ra;
-
-    const pa = tsMillis(a.lastPaymentAt);
-    const pb = tsMillis(b.lastPaymentAt);
-    if (pb !== pa) return pb - pa;
-
-    const ta = Math.max(tsMillis(a.updatedAt), tsMillis(a.createdAt));
-    const tb = Math.max(tsMillis(b.updatedAt), tsMillis(b.createdAt));
-    return tb - ta;
-  });
-
-  return sorted[0] || null;
-}
-
-function userKeyFromMembership(membership) {
-  if (!membership) return "pending";
-
-  const s = (membership.status || "").toLowerCase();
-
-  if (s === "submitted" || s === "validating") return "validating";
-
-  const total = Number(membership.installmentsTotal || 0);
-  const settled = Number(membership.installmentsSettled || 0);
-
-  if (total > 0) {
-    if (settled <= 0) return "pending";
-
-    const dueStr = membership.nextUnpaidDueDate;
-    if (!dueStr) return "up_to_date";
-
-    const due = new Date(dueStr + "T00:00:00");
-    const now = new Date();
-
-    return now > due ? "overdue" : "up_to_date";
-  }
-
-  if (s === "validated" || s === "paid") return "up_to_date";
-  return "pending";
 }
 
 function badge(text, cls = "") {
@@ -112,21 +40,6 @@ function typeLabel(t) {
   return map[t] || "—";
 }
 
-function membershipBadge(key, currentMembership) {
-  const prog = progressText(currentMembership);
-  const suffix = prog ? ` • ${prog}` : "";
-
-  if (key === "up_to_date") return badge(`Al día${suffix}`, "green");
-  if (key === "validating") return badge(`Validando${suffix}`, "yellow");
-  if (key === "overdue") return badge(`Vencido${suffix}`, "red");
-  if (key === "inactive") return badge("Inactivo", "gray");
-  return badge(`Pendiente${suffix}`, "orange");
-}
-
-function isMoroso(membershipKey) {
-  return membershipKey === "pending" || membershipKey === "overdue";
-}
-
 function chunk(arr, size = 10) {
   const out = [];
   for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
@@ -138,7 +51,7 @@ function getFullName(user) {
   const first = profile.firstName || "";
   const last = profile.lastName || "";
   const full = `${first} ${last}`.trim();
-  return full || user?.displayName || "—";
+  return full || profile.fullName || user?.displayName || "—";
 }
 
 function getUserType(user) {
@@ -189,6 +102,10 @@ function toDateSafe(v) {
   if (!v) return null;
   if (v?.toDate) return v.toDate();
   if (v?.seconds) return new Date(v.seconds * 1000);
+  if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+    const [y, m, d] = v.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  }
   const d = new Date(v);
   return Number.isNaN(d.getTime()) ? null : d;
 }
@@ -209,10 +126,24 @@ function startOfToday() {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
-//GET MEMBERSHIPS
-
 function getCurrentMembership(user) {
   return user?.currentMembership || null;
+}
+
+function getCoverageStart(cm) {
+  return (
+    cm?.coverageStartDate ||
+    cm?.startDate ||
+    null
+  );
+}
+
+function getCoverageEnd(cm) {
+  return (
+    cm?.coverageEndDate ||
+    cm?.endDate ||
+    null
+  );
 }
 
 function userKeyFromCurrentMembership(cm) {
@@ -221,8 +152,7 @@ function userKeyFromCurrentMembership(cm) {
   const s = (cm.status || "").toLowerCase();
   const today = startOfToday();
 
-  const startDate = toDateSafe(cm.startDate);
-  const endDate = toDateSafe(cm.endDate);
+  const endDate = toDateSafe(getCoverageEnd(cm));
   const nextDue = toDateSafe(cm.nextUnpaidDueDate);
 
   if (s === "submitted" || s === "validating") return "validating";
@@ -243,6 +173,21 @@ function userKeyFromCurrentMembership(cm) {
   }
 
   return "pending";
+}
+
+function membershipBadge(key, currentMembership) {
+  const prog = progressText(currentMembership);
+  const suffix = prog ? ` • ${prog}` : "";
+
+  if (key === "up_to_date") return badge(`Al día${suffix}`, "green");
+  if (key === "validating") return badge(`Validando${suffix}`, "yellow");
+  if (key === "overdue") return badge(`Vencido${suffix}`, "red");
+  if (key === "inactive") return badge("Inactivo", "gray");
+  return badge(`Pendiente${suffix}`, "orange");
+}
+
+function isMoroso(membershipKey) {
+  return membershipKey === "pending" || membershipKey === "overdue";
 }
 
 /* =========================
@@ -344,96 +289,6 @@ function renderShell(container) {
 /* =========================
    Data
 ========================= */
-async function loadMembershipMapForSeason(season, userIds) {
-  const byUid = {};
-  const groups = chunk(userIds.filter(Boolean), 10);
-
-  for (const ids of groups) {
-    const q = query(
-      collection(db, COL_MEMBERSHIPS),
-      where("season", "==", season),
-      where("userId", "in", ids)
-    );
-
-    const snap = await getDocs(q);
-    snap.forEach((d) => {
-      const m = d.data();
-      if (!m?.userId) return;
-      if (!byUid[m.userId]) byUid[m.userId] = [];
-
-      const item = { id: d.id, ...m };
-      byUid[m.userId].push(item);
-
-      console.log("[assoc][membership found]", {
-        membershipId: d.id,
-        userId: m.userId,
-        season: m.season,
-        status: m.status,
-        planId: m.planId,
-        installmentsTotal: m.installmentsTotal,
-        installmentsSettled: m.installmentsSettled,
-        nextUnpaidDueDate: m.nextUnpaidDueDate,
-        createdAt: m.createdAt,
-        updatedAt: m.updatedAt,
-        lastPaymentAt: m.lastPaymentAt,
-      });
-    });
-  }
-
-  const map = {};
-  Object.keys(byUid).forEach((uid) => {
-    console.log("[assoc][memberships by uid]", {
-      uid,
-      memberships: byUid[uid].map((m) => ({
-        id: m.id,
-        status: m.status,
-        installmentsTotal: m.installmentsTotal,
-        installmentsSettled: m.installmentsSettled,
-        nextUnpaidDueDate: m.nextUnpaidDueDate,
-        lastPaymentAt: m.lastPaymentAt,
-        updatedAt: m.updatedAt,
-        createdAt: m.createdAt,
-      })),
-    });
-
-    map[uid] = pickBestMembership(byUid[uid]);
-
-    console.log("[assoc][picked membership]", {
-      uid,
-      picked: map[uid]
-        ? {
-            id: map[uid].id,
-            status: map[uid].status,
-            installmentsTotal: map[uid].installmentsTotal,
-            installmentsSettled: map[uid].installmentsSettled,
-            nextUnpaidDueDate: map[uid].nextUnpaidDueDate,
-            lastPaymentAt: map[uid].lastPaymentAt,
-            updatedAt: map[uid].updatedAt,
-            createdAt: map[uid].createdAt,
-          }
-        : null,
-    });
-  });
-
-  return map;
-}
-
-async function loadPlansMap(planIds) {
-  const ids = [...new Set((planIds || []).filter(Boolean))];
-  const map = {};
-  const groups = chunk(ids, 10);
-
-  for (const g of groups) {
-    const q = query(collection(db, COL_PLANS), where(documentId(), "in", g));
-    const snap = await getDocs(q);
-    snap.forEach((d) => {
-      map[d.id] = { id: d.id, ...d.data() };
-    });
-  }
-
-  return map;
-}
-
 async function loadAssociates() {
   showLoader?.("Cargando Miembros…");
   try {
@@ -442,42 +297,23 @@ async function loadAssociates() {
 
     const users = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-    all = users.map((u) => {
-      const currentMembership = getCurrentMembership(u);
-      const membershipKey = userKeyFromCurrentMembership(currentMembership);
+    all = users
+      .map((u) => {
+        const currentMembership = getCurrentMembership(u);
+        const membershipKey = userKeyFromCurrentMembership(currentMembership);
 
-      console.log("[assoc_members_list][currentMembership]", {
-        uid: u.id,
-        name: getFullName(u),
-        currentMembership: currentMembership
-          ? {
-              membershipId: currentMembership.membershipId || null,
-              planId: currentMembership.planId || null,
-              season: currentMembership.season || null,
-              label: currentMembership.label || null,
-              status: currentMembership.status || null,
-              startDate: currentMembership.startDate || null,
-              endDate: currentMembership.endDate || null,
-              installmentsPending: currentMembership.installmentsPending || 0,
-              installmentsSettled: currentMembership.installmentsSettled || 0,
-              installmentsTotal: currentMembership.installmentsTotal || 0,
-              nextUnpaidDueDate: currentMembership.nextUnpaidDueDate || null,
-            }
-          : null,
-        assocKey: membershipKey,
-      });
-
-      return {
-        ...u,
-        currentMembership,
-        _assocKey: membershipKey,
-        _isMoroso: membershipKey === "pending" || membershipKey === "overdue",
-        _membershipStart: toDateSafe(currentMembership?.startDate),
-        _membershipEnd: toDateSafe(currentMembership?.endDate),
-      };
-    }).sort((a, b) =>
-      getFullName(a).localeCompare(getFullName(b), "es", { sensitivity: "base" })
-    );
+        return {
+          ...u,
+          currentMembership,
+          _assocKey: membershipKey,
+          _isMoroso: membershipKey === "pending" || membershipKey === "overdue",
+          _membershipStart: toDateSafe(getCoverageStart(currentMembership)),
+          _membershipEnd: toDateSafe(getCoverageEnd(currentMembership)),
+        };
+      })
+      .sort((a, b) =>
+        getFullName(a).localeCompare(getFullName(b), "es", { sensitivity: "base" })
+      );
 
     render();
   } catch (err) {
@@ -518,7 +354,15 @@ function render() {
       const fullName = normalize(getFullName(u));
       const email = normalize(u.email);
       const phone = normalize(getUserPhone(u));
-      return fullName.includes(qText) || email.includes(qText) || phone.includes(qText);
+      const startTxt = normalize(fmtDate(getCoverageStart(u.currentMembership)));
+      const endTxt = normalize(fmtDate(getCoverageEnd(u.currentMembership)));
+      return (
+        fullName.includes(qText) ||
+        email.includes(qText) ||
+        phone.includes(qText) ||
+        startTxt.includes(qText) ||
+        endTxt.includes(qText)
+      );
     });
   }
 
@@ -534,77 +378,79 @@ function render() {
       ? `Hola! Recordatorio de pago a la asociación usando el siguiente link ${payLink}`
       : `Hola! Recordatorio de pago a la asociación.`;
 
-  $.tbody.innerHTML = list.map((u) => {
-    const m = u.currentMembership || null;
-    const startTxt = fmtDate(m?.startDate);
-    const endTxt = fmtDate(m?.endDate);
-    const asocBadgeHtml = membershipBadge(u._assocKey, m);
+  $.tbody.innerHTML = list
+    .map((u) => {
+      const m = u.currentMembership || null;
+      const startTxt = fmtDate(getCoverageStart(m));
+      const endTxt = fmtDate(getCoverageEnd(m));
+      const asocBadgeHtml = membershipBadge(u._assocKey, m);
 
-    const fullName = getFullName(u);
-    const emailVal = u.email || "";
-    const phoneVal = getUserPhone(u);
-    const idNumber = getUserIdNumber(u);
+      const fullName = getFullName(u);
+      const emailVal = u.email || "";
+      const phoneVal = getUserPhone(u);
+      const idNumber = getUserIdNumber(u);
 
-    const emailHtml = emailVal
-      ? `<div><a href="mailto:${emailVal}" class="link-dark text-decoration-none">${emailVal}</a></div>`
-      : "";
-
-    const phoneHtml = phoneVal
-      ? (() => {
-          const telHref = `tel:${String(phoneVal).replace(/\s+/g, "")}`;
-          const waQuick = whatsappLink(phoneVal, "Hola!");
-          const waBtn = waQuick
-            ? `<a class="ms-2 small text-decoration-none" href="${waQuick}" target="_blank" rel="noreferrer" title="WhatsApp">
-                 <i class="bi bi-whatsapp"></i>
-               </a>`
-            : "";
-
-          return `<div class="text-muted small">
-                    <a href="${telHref}" class="link-dark text-decoration-none">${phoneVal}</a>
-                    ${waBtn}
-                  </div>`;
-        })()
-      : "";
-
-    const contactoHtml = (emailHtml || phoneHtml)
-      ? `${emailHtml}${phoneHtml}`
-      : `<span class="text-muted">—</span>`;
-
-    const payLink = payUrlForMembership(m);
-    const waHref = u._isMoroso ? whatsappLink(phoneVal, waMsgFor(payLink)) : null;
-
-    const waActionBtn =
-      u._isMoroso && waHref
-        ? `<a class="btn btn-sm btn-outline-success" href="${waHref}" target="_blank" rel="noreferrer" title="Enviar WhatsApp">
-             <i class="bi bi-whatsapp me-1"></i> WhatsApp
-           </a>`
+      const emailHtml = emailVal
+        ? `<div><a href="mailto:${emailVal}" class="link-dark text-decoration-none">${emailVal}</a></div>`
         : "";
 
-    return `
-      <tr>
-        <td>
-          <div class="fw-bold">${fullName || "—"}</div>
-          ${idNumber ? `<div class="text-muted small">Cédula: ${idNumber}</div>` : ""}
-        </td>
+      const phoneHtml = phoneVal
+        ? (() => {
+            const telHref = `tel:${String(phoneVal).replace(/\s+/g, "")}`;
+            const waQuick = whatsappLink(phoneVal, "Hola!");
+            const waBtn = waQuick
+              ? `<a class="ms-2 small text-decoration-none" href="${waQuick}" target="_blank" rel="noreferrer" title="WhatsApp">
+                   <i class="bi bi-whatsapp"></i>
+                 </a>`
+              : "";
 
-        <td>${contactoHtml}</td>
+            return `<div class="text-muted small">
+                      <a href="${telHref}" class="link-dark text-decoration-none">${phoneVal}</a>
+                      ${waBtn}
+                    </div>`;
+          })()
+        : "";
 
-        <td>${typeLabel(getUserType(u))}</td>
-        <td>${startTxt}</td>
-        <td>${endTxt}</td>
-        <td>${asocBadgeHtml}</td>
+      const contactoHtml = emailHtml || phoneHtml
+        ? `${emailHtml}${phoneHtml}`
+        : `<span class="text-muted">—</span>`;
 
-        <td class="text-end">
-          <div class="d-inline-flex gap-2">
-            ${waActionBtn}
-            <button class="btn btn-sm btn-outline-primary btnEdit" data-id="${u.id}" type="button">
-              <i class="bi bi-pencil me-1"></i> Editar
-            </button>
-          </div>
-        </td>
-      </tr>
-    `;
-  }).join("");
+      const payLink = payUrlForMembership(m);
+      const waHref = u._isMoroso ? whatsappLink(phoneVal, waMsgFor(payLink)) : null;
+
+      const waActionBtn =
+        u._isMoroso && waHref
+          ? `<a class="btn btn-sm btn-outline-success" href="${waHref}" target="_blank" rel="noreferrer" title="Enviar WhatsApp">
+               <i class="bi bi-whatsapp me-1"></i> WhatsApp
+             </a>`
+          : "";
+
+      return `
+        <tr>
+          <td>
+            <div class="fw-bold">${fullName || "—"}</div>
+            ${idNumber ? `<div class="text-muted small">Cédula: ${idNumber}</div>` : ""}
+          </td>
+
+          <td>${contactoHtml}</td>
+
+          <td>${typeLabel(getUserType(u))}</td>
+          <td>${startTxt}</td>
+          <td>${endTxt}</td>
+          <td>${asocBadgeHtml}</td>
+
+          <td class="text-end">
+            <div class="d-inline-flex gap-2">
+              ${waActionBtn}
+              <button class="btn btn-sm btn-outline-primary btnEdit" data-id="${u.id}" type="button">
+                <i class="bi bi-pencil me-1"></i> Editar
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    })
+    .join("");
 
   $.root.querySelectorAll(".btnEdit").forEach((btn) => {
     btn.addEventListener("click", () => {
