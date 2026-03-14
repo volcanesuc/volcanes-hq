@@ -762,17 +762,18 @@ onAuthStateChanged(auth, async (user) => {
       return;
     }
 
-    if (access.isActive) {
+    if (access.isActive) { //user has access to dashboard == is player
       window.location.replace("../dashboard.html");
       return;
     }
     const associationStatus = String(data.associationStatus || "").trim().toLowerCase();
-    if (associationStatus === "payment_validation_pending") {
-      window.location.replace("../index.html?state=association_pending");
+    if ( associationStatus === "payment_validation_pending" || associationStatus === "associated_active"  ) { // user is association member
+      window.location.replace("../member_status.html");
       return;
     }
-    window.location.replace("../index.html?state=platform_pending");
-    
+
+    window.location.replace("../index.html?state=platform_pending"); //pending validation
+
   } catch (e) {
     console.warn("onAuthStateChanged handler failed:", e);
   } finally {
@@ -1404,7 +1405,7 @@ $.form?.addEventListener("submit", async (ev) => {
     if (wantsPlayer) {
       window.location.replace("../index.html?state=platform_pending");
     } else {
-      window.location.replace("../index.html?state=association_pending");
+      window.location.replace("../member_status.html");
     }
   } catch (e) {
     console.warn(e);

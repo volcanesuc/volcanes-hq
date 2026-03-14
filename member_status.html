@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es" class="preload">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Estado de membresía – Volcanes Ultimate</title>
+
+  <script>document.documentElement.classList.add("preload");</script>
+  <script src="/js/ui/loader.preload.js"></script>
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/img/apple-touch-icon.png">
+
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+  />
+
+  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="/css/index.css" />
+  <link rel="stylesheet" href="/css/member_status.css" />
+</head>
+<body class="loading">
+
+  <div id="app-header"></div>
+
+  <main class="container py-4 member-status-page">
+    <section class="landing-section">
+      <div class="landing-card member-status-card">
+
+        <div class="member-status-hero">
+          <div class="member-status-hero__icon">
+            <i id="statusIcon" class="bi bi-person-badge-fill"></i>
+          </div>
+
+          <div class="member-status-hero__content">
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+              <h1 id="statusTitle" class="member-status-title mb-0">Estado de membresía</h1>
+              <span id="statusBadge" class="badge text-bg-secondary">Cargando…</span>
+            </div>
+
+            <p id="statusMessage" class="member-status-message mb-0">
+                Estamos cargando el estado actual de tu membresía.
+            </p>
+          </div>
+        </div>
+
+        <div class="row g-3 mt-1">
+          <div class="col-md-6 col-lg-4">
+            <div class="member-info-box">
+              <div class="member-info-box__label">Plan</div>
+              <div id="membershipPlan" class="member-info-box__value">—</div>
+            </div>
+          </div>
+
+          <div class="col-md-6 col-lg-4">
+            <div class="member-info-box">
+              <div class="member-info-box__label">Temporada</div>
+              <div id="membershipSeason" class="member-info-box__value">—</div>
+            </div>
+          </div>
+
+          <div class="col-md-6 col-lg-4">
+            <div class="member-info-box">
+              <div class="member-info-box__label">Código</div>
+              <div id="membershipCode" class="member-info-box__value">—</div>
+            </div>
+          </div>
+
+          <div class="col-md-6 col-lg-4">
+            <div class="member-info-box">
+              <div class="member-info-box__label">Fecha de inicio</div>
+              <div id="membershipStart" class="member-info-box__value">—</div>
+            </div>
+          </div>
+
+          <div class="col-md-6 col-lg-4">
+            <div class="member-info-box">
+              <div class="member-info-box__label">Fecha de vencimiento</div>
+              <div id="membershipEnd" class="member-info-box__value">—</div>
+            </div>
+          </div>
+
+          <div class="col-md-6 col-lg-4">
+            <div class="member-info-box">
+              <div class="member-info-box__label">Monto</div>
+              <div id="membershipAmount" class="member-info-box__value">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="member-status-summary mt-4">
+          <div class="member-status-summary__icon">
+            <i class="bi bi-stars"></i>
+          </div>
+          <div>
+            <div class="member-status-summary__title">Tu cuenta está al día</div>
+            <div id="membershipSummaryText" class="member-status-summary__text">
+              Estamos cargando el detalle de tu membresía.
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap mt-4">
+          <button id="refreshBtn" class="landing-btn" type="button">
+            Reintentar
+          </button>
+          <button id="logoutBtn" class="landing-btn landing-btn-whatsapp" type="button">
+            Cerrar sesión
+          </button>
+        </div>
+
+        <div id="statusAlert" class="alert alert-warning d-none mt-4 mb-0"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module" src="/js/member_status.js"></script>
+</body>
+</html>

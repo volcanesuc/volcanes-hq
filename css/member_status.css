@@ -1,0 +1,173 @@
+/* ======================================================
+   MEMBER STATUS PAGE
+   Pantalla de estado de membresía (asociados)
+   Usa variables de tema para soportar múltiples clubes
+====================================================== */
+
+.member-status-page{
+  padding-bottom: 2rem;
+}
+
+.member-status-card{
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+/* ======================================================
+   HERO
+====================================================== */
+
+.member-status-hero{
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+.member-status-hero__icon{
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+
+  background: var(--primary-soft);
+  color: var(--primary);
+
+  font-size: 1.7rem;
+  flex: 0 0 auto;
+}
+
+.member-status-title{
+  font-size: 1.8rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.member-status-message{
+  color: var(--text-soft);
+  font-size: 1rem;
+}
+
+/* ======================================================
+   INFO BOXES
+====================================================== */
+
+.member-info-box{
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 18px;
+  padding: 1rem 1rem;
+  background: var(--card);
+  height: 100%;
+}
+
+.member-info-box__label{
+  font-size: 0.82rem;
+  color: var(--text-soft);
+  margin-bottom: 0.35rem;
+}
+
+.member-info-box__value{
+  font-size: 1.05rem;
+  font-weight: 700;
+  word-break: break-word;
+}
+
+/* ======================================================
+   STATUS SUMMARY
+====================================================== */
+
+.member-status-summary{
+  display: flex;
+  gap: 0.9rem;
+  align-items: flex-start;
+
+  border-radius: 18px;
+  padding: 1rem 1rem;
+
+  background: var(--primary-soft);
+  border: 1px solid rgba(0,0,0,0.06);
+}
+
+.member-status-summary__icon{
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+
+  display: grid;
+  place-items: center;
+
+  background: rgba(0,0,0,0.05);
+  color: var(--primary);
+
+  font-size: 1.1rem;
+  flex: 0 0 auto;
+}
+
+.member-status-summary__title{
+  font-weight: 800;
+  margin-bottom: 0.2rem;
+}
+
+.member-status-summary__text{
+  color: var(--text-soft);
+}
+
+/* ======================================================
+   STATUS STATES
+   (aplicados dinámicamente desde JS)
+====================================================== */
+
+.member-status-page[data-status="active"] .member-status-hero__icon{
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.member-status-page[data-status="pending"] .member-status-hero__icon{
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.member-status-page[data-status="rejected"] .member-status-hero__icon{
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+/* ======================================================
+   BADGE ADJUSTMENTS
+====================================================== */
+
+.member-status-page[data-status="active"] #statusBadge{
+  background: var(--success);
+}
+
+.member-status-page[data-status="pending"] #statusBadge{
+  background: var(--warning);
+}
+
+.member-status-page[data-status="rejected"] #statusBadge{
+  background: var(--danger);
+}
+
+/* ======================================================
+   MOBILE
+====================================================== */
+
+@media (max-width: 767.98px){
+
+  .member-status-hero{
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .member-status-hero__icon{
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+  }
+
+  .member-status-title{
+    font-size: 1.45rem;
+  }
+
+}
