@@ -20,12 +20,35 @@ const STORAGE_KEY = "google_login_paths";
 
 const COL = APP_CONFIG.collections;
 
+function normalizePlayerStatus(userData = {}) {
+  const explicit = String(userData.playerStatus || "").trim().toLowerCase();
+  if (explicit) return explicit;
+
+  if (userData.isPlayerActive === true || userData.isActive === true) {
+    return "active";
+  }
+
+  return "";
+}
+
+function normalizeAssociationStatus(userData = {}) {
+  const explicit = String(userData.associationStatus || "").trim().toLowerCase();
+
+  if (explicit === "payment_validation_pending") return "pending";
+  if (explicit === "associated_active") return "active";
+  if (explicit === "associated_rejected") return "rejected";
+
+  return explicit || "";
+}
+
 async function getUserAccessState(uid) {
   if (!uid) {
     return {
       exists: false,
       onboardingComplete: false,
-      isActive: false,
+      isPlayerActive: false,
+      playerStatus: "",
+      associationStatus: "",
       role: "viewer",
       userData: {},
     };
@@ -35,24 +58,30 @@ async function getUserAccessState(uid) {
   const userSnap = await getDoc(userRef).catch(() => null);
   const userData = userSnap?.exists?.() ? userSnap.data() || {} : {};
 
+  const playerStatus = normalizePlayerStatus(userData);
+  const associationStatus = normalizeAssociationStatus(userData);
+
   return {
     exists: !!userSnap?.exists?.(),
     onboardingComplete: userData.onboardingComplete === true,
-    isActive: userData.isActive === true,
+    isPlayerActive: playerStatus === "active",
+    playerStatus,
+    associationStatus,
     role: String(userData.role || "viewer").trim().toLowerCase(),
     userData,
   };
 }
 
 export async function loginWithGoogle(opts = {}) {
-  const dashboardPath = opts.dashboardPath ?? "dashboard.html";
-  const registerPath = opts.registerPath ?? "public/register.html?google=1";
-  const landingPath = opts.landingPath ?? "index.html?pending=1";
+  const dashboardPath = opts.dashboardPath ?? "/dashboard.html";
+  const registerPath = opts.registerPath ?? "/public/register.html?google=1";
+  const memberStatusPath = opts.memberStatusPath ?? "/member_status.html";
+  const landingPath = opts.landingPath ?? "/index.html?state=platform_pending";
 
   try {
     sessionStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ dashboardPath, registerPath, landingPath })
+      JSON.stringify({ dashboardPath, registerPath, memberStatusPath, landingPath })
     );
 
     provider.setCustomParameters({ prompt: "select_account" });
@@ -73,6 +102,7 @@ export async function loginWithGoogle(opts = {}) {
     const stored = safeJson(sessionStorage.getItem(STORAGE_KEY)) || {};
     const dash = stored.dashboardPath ?? dashboardPath;
     const reg = stored.registerPath ?? registerPath;
+    const memberStatus = stored.memberStatusPath ?? memberStatusPath;
     const landing = stored.landingPath ?? landingPath;
 
     const userRef = doc(db, COL.users, user.uid);
@@ -104,12 +134,26 @@ export async function loginWithGoogle(opts = {}) {
         return cred;
       }
 
-      if (access.onboardingComplete && access.isActive) {
+      if (access.isPlayerActive) {
         window.location.href = dash;
         return cred;
       }
 
-      window.location.href = landing;
+      if (
+        access.associationStatus === "pending" ||
+        access.associationStatus === "active" ||
+        access.associationStatus === "rejected"
+      ) {
+        window.location.href = memberStatus;
+        return cred;
+      }
+
+      if (access.playerStatus === "pending") {
+        window.location.href = landing;
+        return cred;
+      }
+
+      window.location.href = reg;
       return cred;
     }
 
@@ -121,7 +165,9 @@ export async function loginWithGoogle(opts = {}) {
         displayName: user.displayName || null,
         photoURL: user.photoURL || null,
         onboardingComplete: false,
-        isActive: false,
+        isPlayerActive: false,
+        playerStatus: null,
+        associationStatus: null,
         role: "viewer",
         memberId: null,
         playerId: null,
@@ -155,7 +201,8 @@ function safeJson(s) {
 export function watchAuth(onLoggedIn, opts = {}) {
   const redirectTo = opts.redirectTo ?? "/index.html";
   const registerPath = opts.registerPath ?? "/public/register.html";
-  const pendingPath = opts.pendingPath ?? "/index.html?pending=1";
+  const pendingPath = opts.pendingPath ?? "/index.html?state=platform_pending";
+  const memberStatusPath = opts.memberStatusPath ?? "/member_status.html";
   const requireActiveUser = opts.requireActiveUser !== false;
 
   return onAuthStateChanged(auth, async (user) => {
@@ -172,7 +219,16 @@ export function watchAuth(onLoggedIn, opts = {}) {
         return;
       }
 
-      if (requireActiveUser && !access.isActive) {
+      if (
+        access.associationStatus === "pending" ||
+        access.associationStatus === "active" ||
+        access.associationStatus === "rejected"
+      ) {
+        window.location.replace(memberStatusPath);
+        return;
+      }
+
+      if (requireActiveUser && !access.isPlayerActive) {
         window.location.replace(pendingPath);
         return;
       }
@@ -186,7 +242,7 @@ export function watchAuth(onLoggedIn, opts = {}) {
 }
 
 export async function logout(opts = {}) {
-  const redirectTo = opts.redirectTo ?? "index.html";
+  const redirectTo = opts.redirectTo ?? "/index.html";
   await signOut(auth);
   window.location.href = redirectTo;
 }

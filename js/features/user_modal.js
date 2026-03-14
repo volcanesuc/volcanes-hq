@@ -99,11 +99,13 @@ function buildPayload(existing = {}) {
 
   const parsed = splitFullName(nameVal);
   const existingProfile = existing.profile || {};
+  const isPlayerActive = !!active?.checked;
 
   return {
     email: mail,
     displayName: nameVal || mail || existing.displayName || null,
-    isActive: !!active?.checked,
+    isPlayerActive,
+    playerStatus: isPlayerActive ? "active" : "pending",
     notes: notesVal,
     profile: {
       ...existingProfile,
@@ -192,7 +194,10 @@ async function loadUser(id) {
     if (email) email.value = u.email || "";
     if (phone) phone.value = profile.phone || "";
     if (idNumber) idNumber.value = profile.idNumber || "";
-    if (active) active.checked = u.isActive !== false;
+    if (active) {
+      active.checked =
+        u.isPlayerActive === true;
+    }
     if (notes) notes.value = u.notes || "";
 
     scheduleSize();

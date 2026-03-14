@@ -183,7 +183,10 @@ function buildPlayersFromClubData({ usersDocs = [], clubPlayersDocs = [] }) {
       number: getClubPlayerNumber(cp, user),
       gender: getClubPlayerGender(cp, user),
       birthday: getClubPlayerBirthday(cp, user),
-      active: normalizeClubPlayerActive(cp),
+      active:
+        cp && Object.keys(cp).length
+          ? normalizeClubPlayerActive(cp)
+          : (user?.isPlayerActive === true || user?.isActive === true),
       role: getClubPlayerRole(cp, user),
 
       rawClubPlayer: cp,

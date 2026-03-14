@@ -238,14 +238,24 @@ async function boot() {
   }
 }
 
+function normalizeAssociationStatus(u = {}) {
+  const raw = String(u.associationStatus || "").trim().toLowerCase();
+
+  if (raw === "payment_validation_pending") return "pending";
+  if (raw === "associated_active") return "active";
+  if (raw === "associated_rejected") return "rejected";
+
+  return raw || "";
+}
+
 async function loadUsers() {
   const snap = await getDocs(collection(db, COL_USERS));
 
   users = snap.docs
     .map((d) => ({ id: d.id, ...d.data() }))
     .filter((u) => u.onboardingComplete === true)
-    .filter((u) => u.isActive !== false)
     .filter((u) => !!getUserFullName(u))
+    .filter((u) => normalizeAssociationStatus(u) !== "rejected")
     .sort((a, b) =>
       getUserFullName(a).localeCompare(getUserFullName(b), "es", { sensitivity: "base" })
     );
@@ -490,6 +500,7 @@ async function findExistingMembership({ userId, season }) {
 
   const rank = (st) => {
     const s = (st || "pending").toLowerCase();
+    if (s === "active") return 6;
     if (s === "validated") return 5;
     if (s === "paid") return 4;
     if (s === "partial") return 3;
@@ -656,6 +667,7 @@ async function createMembership() {
           label: `${planSnap.name || "Membresía"} ${season}`,
           status: "pending",
         },
+        associationStatus: "pending",
         updatedAt: serverTimestamp(),
       });
     } catch (e) {

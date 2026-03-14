@@ -80,7 +80,7 @@ async function bootPendingMode() {
 
       const userData = await readCurrentUserState(user.uid);
 
-      if (userData.isActive === true && userData.onboardingComplete === true) {
+      if (userData.isPlayerActive === true && userData.onboardingComplete === true) {
         window.location.replace("/dashboard.html");
         return;
       }
@@ -105,7 +105,7 @@ async function bootPendingMode() {
 
       const userData = await readCurrentUserState(user.uid);
 
-      if (userData.isActive === true && userData.onboardingComplete === true) {
+      if (userData.isPlayerActive  === true && userData.onboardingComplete === true) {
         window.location.replace("/dashboard.html");
         return;
       }

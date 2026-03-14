@@ -230,7 +230,7 @@ async function loadPendingUsers() {
   const qy = query(
     collection(db, COL_USERS),
     where("onboardingComplete", "==", true),
-    where("isActive", "==", false)
+    where("isPlayerActive", "==", false)
   );
 
   const snap = await getDocs(qy);
@@ -526,7 +526,7 @@ async function approveUserFlow(ev) {
     }
 
     await updateDoc(doc(db, COL_USERS, uid), {
-      isActive: true,
+      isPlayerActive: true,
       role: systemRole,
       playerId: playerId || null,
       updatedAt: serverTimestamp(),

@@ -137,10 +137,14 @@ function getUserDisplayName(userData = {}) {
 }
 
 function normalizeClubPlayerActive(cp = {}) {
-  const safeCp = cp && typeof cp === "object" ? cp : {};
-  if (safeCp.active === false) return false;
-  if (safeCp.isActive === false) return false;
-  if (safeCp.status === "inactive") return false;
+  if (!cp || typeof cp !== "object") return false;
+
+  if (cp.active === false) return false; // nueva convención
+  if (cp.isActive === false) return false;  // compatibilidad vieja
+
+  const status = String(cp.status || "").toLowerCase();
+  if (status === "inactive" || status === "disabled") return false; // algunos modelos usan status
+
   return true;
 }
 

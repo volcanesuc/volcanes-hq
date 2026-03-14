@@ -26,8 +26,8 @@ export async function getCurrentPermissions(force = false) {
 }
 
 export function buildPermissions(accessInfo) {
-  const active = accessInfo?.isActive === true;
-  const role = active
+  const isPlayerActive = accessInfo?.isPlayerActive === true;
+  const role = isPlayerActive
     ? String(accessInfo?.role || "viewer").trim().toLowerCase()
     : "viewer";
 
@@ -39,7 +39,7 @@ export function buildPermissions(accessInfo) {
   const canExportReports = isAdmin || isEditor;
 
   return {
-    active,
+    isPlayerActive,
     role,
 
     isAdmin,
@@ -47,7 +47,7 @@ export function buildPermissions(accessInfo) {
     isViewer,
 
     // generales
-    canView: active,
+    canView: isPlayerActive,
 
     // capacidades base
     canManageContent,

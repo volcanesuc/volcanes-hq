@@ -2,6 +2,9 @@
 // Admin tab: lista membership_payment_submissions + acciones Validar/Rechazar
 // Soporta multi-cuotas via selectedInstallmentIds
 // Refactor: usa users/{uid}.role en vez de user_roles
+// Nuevo esquema:
+// - users.associationStatus: pending | active | rejected | null
+// - memberships.status: pending | partial | active | rejected
 
 import { db } from "../auth/firebase.js";
 import { watchAuth, logout } from "../auth/auth.js";
@@ -92,11 +95,15 @@ function badge(text, cls = "gray") {
 
 function statusBadge(st) {
   const s = (st || "pending").toString().toLowerCase();
+
+  if (s === "active") return badge("Activa", "green");
   if (s === "validated" || s === "approved") return badge("Validado", "green");
   if (s === "rejected") return badge("Rechazado", "red");
   if (s === "paid") return badge("Pagado", "yellow");
   if (s === "submitted") return badge("En revisión", "yellow");
+  if (s === "partial") return badge("Parcial", "yellow");
   if (s === "error") return badge("Error", "red");
+
   return badge("Pendiente", "gray");
 }
 
@@ -177,7 +184,7 @@ function getFileUrl(s) {
 ========================= */
 function isSettledInstallment(st) {
   const s = (st || "pending").toLowerCase();
-  return s === "validated" || s === "paid";
+  return s === "validated" || s === "paid" || s === "active";
 }
 
 function computeInstallmentsSummary(installments) {
@@ -212,39 +219,48 @@ function shouldEnablePayLinkFromInstallments(installments) {
   return installments.some((it) => !isSettledInstallment(it.status));
 }
 
-function computeMembershipStatus(membership, installments, subs) {
+/**
+ * Normalización de estado de membresía:
+ * - pending: nada validado todavía
+ * - partial: algunas cuotas validadas, faltan otras
+ * - active: membresía aprobada / completamente al día
+ * - rejected: rechazo explícito
+ */
+function computeMembershipStatus(membership, installments, subs, decision) {
+  if (decision === "rejected") return "rejected";
+
   const p = membership?.planSnapshot || {};
   const requiresValidation = !!p.requiresValidation;
 
   const subStatuses = (subs || []).map((s) => (s.status || "pending").toLowerCase());
-  const hasPendingSubmission = subStatuses.some((s) => s === "pending");
-  const anySubPaidOrValidated = subStatuses.some((s) => s === "paid" || s === "validated");
+  const hasPendingSubmission = subStatuses.some((s) => s === "pending" || s === "submitted");
+  const anySubValidated = subStatuses.some((s) => s === "validated" || s === "approved");
+  const anySubPaidOrValidated = subStatuses.some((s) => s === "paid" || s === "validated" || s === "approved");
 
   if (installments?.length) {
     const instStatuses = installments.map((i) => (i.status || "pending").toLowerCase());
-    const anySettled = instStatuses.some((s) => s === "paid" || s === "validated");
-    const allValidated = instStatuses.every((s) => s === "validated");
-    const allPaidOrValidated = instStatuses.every((s) => s === "paid" || s === "validated");
+    const anySettled = instStatuses.some((s) => s === "paid" || s === "validated" || s === "active");
+    const allValidated = instStatuses.every((s) => s === "validated" || s === "active");
+    const allPaidOrValidated = instStatuses.every((s) => s === "paid" || s === "validated" || s === "active");
 
     if (!anySettled) {
-      return hasPendingSubmission ? "submitted" : "pending";
+      return hasPendingSubmission ? "pending" : "pending";
     }
 
     if (requiresValidation) {
-      return allValidated ? "validated" : (hasPendingSubmission ? "submitted" : "partial");
+      return allValidated ? "active" : "partial";
     }
 
-    return allPaidOrValidated ? "paid" : (hasPendingSubmission ? "submitted" : "partial");
+    return allPaidOrValidated ? "active" : "partial";
   }
 
   if (!subStatuses.length) return "pending";
-  if (hasPendingSubmission) return "submitted";
 
   if (requiresValidation) {
-    return subStatuses.includes("validated") ? "validated" : "pending";
+    return anySubValidated ? "active" : "pending";
   }
 
-  return anySubPaidOrValidated ? "paid" : "pending";
+  return anySubPaidOrValidated ? "active" : "pending";
 }
 
 async function syncUserCurrentMembership(membership) {
@@ -278,16 +294,14 @@ async function syncUserAssociationStatus(membership, decision) {
 
   const membershipStatus = String(membership?.status || "").toLowerCase();
 
-  let associationStatus = "payment_validation_pending";
+  let associationStatus = null;
 
   if (decision === "rejected" || membershipStatus === "rejected") {
-    associationStatus = "associated_rejected";
-  } else if (
-    membershipStatus === "validated" ||
-    membershipStatus === "active" ||
-    membershipStatus === "paid"
-  ) {
-    associationStatus = "associated_active";
+    associationStatus = "rejected";
+  } else if (membershipStatus === "active") {
+    associationStatus = "active";
+  } else if (membershipStatus === "partial" || membershipStatus === "pending") {
+    associationStatus = "pending";
   }
 
   try {
@@ -331,6 +345,8 @@ function renderShell(container) {
           <option value="pending">Pendiente</option>
           <option value="submitted">En revisión</option>
           <option value="validated">Validado</option>
+          <option value="active">Activa</option>
+          <option value="partial">Parcial</option>
           <option value="paid">Pagado</option>
           <option value="rejected">Rechazado</option>
           <option value="error">Error</option>
@@ -658,10 +674,7 @@ async function applyDecision(sub, decision /* "validated" | "rejected" */) {
       payLinkDisabledReason = null;
     }
 
-    let nextStatus = computeMembershipStatus(membership, inst, subsForMembership);
-    if (nextStatus === "validated") {
-      nextStatus = "active";
-    }
+    const nextStatus = computeMembershipStatus(membership, inst, subsForMembership, decision);
 
     const mUpdates = {
       updatedAt: serverTimestamp(),
@@ -878,7 +891,7 @@ async function ensureAdmin(user) {
 
   const data = snap.data() || {};
   const role = String(data.role || "").toLowerCase();
-  const active = data.isActive !== false;
+  const active = data.isPlayerActive !== false;
 
   return role === "admin" && active;
 }

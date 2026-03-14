@@ -42,7 +42,7 @@ export class Player {
     this.number = data.number ?? null;
     this.gender = data.gender ?? null;
     this.birthday = data.birthday ?? null;
-    this.active = data.active ?? data.isActive ?? true;
+    this.isPlayerActive = data.isPlayerActive ?? data.isPlayerActive ?? true;
     this.role = data.role ?? PLAYER_ROLES.DEFAULT;
   }
 

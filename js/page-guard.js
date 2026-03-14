@@ -21,6 +21,27 @@ function waitForAuthReady() {
   });
 }
 
+function normalizePlayerStatus(data = {}) {
+  const explicit = String(data.playerStatus || "").trim().toLowerCase();
+  if (explicit) return explicit;
+
+  if (data.isPlayerActive === true || data.isActive === true) {
+    return "active";
+  }
+
+  return "";
+}
+
+function normalizeAssociationStatus(data = {}) {
+  const explicit = String(data.associationStatus || "").trim().toLowerCase();
+
+  if (explicit === "payment_validation_pending") return "pending";
+  if (explicit === "associated_active") return "active";
+  if (explicit === "associated_rejected") return "rejected";
+
+  return explicit || "";
+}
+
 async function loadUserRoleIntoCfg(cfg) {
   const user = getAuth().currentUser;
 
@@ -29,8 +50,10 @@ async function loadUserRoleIntoCfg(cfg) {
       ...cfg,
       role: "viewer",
       isAdmin: false,
-      isActive: false,
+      isPlayerActive: false,
       onboardingComplete: false,
+      playerStatus: "",
+      associationStatus: "",
     };
   }
 
@@ -42,24 +65,31 @@ async function loadUserRoleIntoCfg(cfg) {
         ...cfg,
         role: "viewer",
         isAdmin: false,
-        isActive: false,
+        isPlayerActive: false,
         onboardingComplete: false,
+        playerStatus: "",
+        associationStatus: "",
       };
     }
 
     const data = snap.data() || {};
     const role = String(data.role || "viewer").trim().toLowerCase();
-    const isActive = data.isActive === true;
     const onboardingComplete = data.onboardingComplete === true;
 
-    const finalRole = isActive ? role : "viewer";
+    const playerStatus = normalizePlayerStatus(data);
+    const associationStatus = normalizeAssociationStatus(data);
+    const isPlayerActive = playerStatus === "active";
+
+    const finalRole = isPlayerActive ? role : "viewer";
 
     return {
       ...cfg,
       role: finalRole,
       isAdmin: finalRole === "admin",
-      isActive,
+      isPlayerActive,
       onboardingComplete,
+      playerStatus,
+      associationStatus,
     };
   } catch (err) {
     console.warn("No se pudo cargar rol:", err);
@@ -67,8 +97,10 @@ async function loadUserRoleIntoCfg(cfg) {
       ...cfg,
       role: "viewer",
       isAdmin: false,
-      isActive: false,
+      isPlayerActive: false,
       onboardingComplete: false,
+      playerStatus: "",
+      associationStatus: "",
     };
   }
 }
@@ -92,8 +124,23 @@ export async function guardPage(pageKey) {
     return { cfg, redirected: true };
   }
 
-  if (cfg.isActive !== true) {
-    window.location.href = "/index.html?pending=1";
+  /* Asociados no jugadores: no deben entrar a páginas del dashboard */
+  if (
+    cfg.associationStatus === "pending" ||
+    cfg.associationStatus === "active" ||
+    cfg.associationStatus === "rejected"
+  ) {
+    window.location.href = "/member_status.html";
+    return { cfg, redirected: true };
+  }
+
+  /* Jugadores no activos aún */
+  if (cfg.isPlayerActive !== true) {
+    if (cfg.playerStatus === "pending") {
+      window.location.href = "/index.html?state=platform_pending";
+    } else {
+      window.location.href = HOME_HREF;
+    }
     return { cfg, redirected: true };
   }
 

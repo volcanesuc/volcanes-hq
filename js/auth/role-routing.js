@@ -12,6 +12,27 @@ import {
 const COL = APP_CONFIG.collections;
 const USERS_COL = COL.users;
 
+function normalizePlayerStatus(data = {}) {
+  const explicit = String(data.playerStatus || "").trim().toLowerCase();
+  if (explicit) return explicit;
+
+  if (data.isPlayerActive === true) {
+    return "active";
+  }
+
+  return "";
+}
+
+function normalizeAssociationStatus(data = {}) {
+  const explicit = String(data.associationStatus || "").trim().toLowerCase();
+
+  if (explicit === "payment_validation_pending") return "pending";
+  if (explicit === "associated_active") return "active";
+  if (explicit === "associated_rejected") return "rejected";
+
+  return explicit || "";
+}
+
 async function ensureUserDoc(firebaseUser) {
   const uid = firebaseUser?.uid;
   if (!uid) throw new Error("No hay firebaseUser.uid");
@@ -37,7 +58,16 @@ async function ensureUserDoc(firebaseUser) {
     }
 
     if (data.onboardingComplete === undefined) patch.onboardingComplete = false;
-    if (data.isActive === undefined) patch.isActive = false;
+
+    if (data.isPlayerActive === undefined && data.isActive !== undefined) {
+      patch.isPlayerActive = data.isActive === true;
+    } else if (data.isPlayerActive === undefined) {
+      patch.isPlayerActive = false;
+    }
+
+    if (data.playerStatus === undefined) patch.playerStatus = null;
+    if (data.associationStatus === undefined) patch.associationStatus = null;
+
     if (data.role === undefined) patch.role = "viewer";
 
     if (data.playerId === undefined) patch.playerId = null;
@@ -64,7 +94,10 @@ async function ensureUserDoc(firebaseUser) {
     photoURL: firebaseUser.photoURL || null,
 
     onboardingComplete: false,
-    isActive: false,
+    isPlayerActive: false,
+    isActive: false, // compat temporal
+    playerStatus: null,
+    associationStatus: null,
     role: "viewer",
 
     playerId: null,
@@ -91,11 +124,15 @@ export async function getUserAccess(uid) {
   if (!snap.exists()) return null;
 
   const data = snap.data() || {};
+  const playerStatus = normalizePlayerStatus(data);
+  const associationStatus = normalizeAssociationStatus(data);
 
   return {
-    isActive: data.isActive === true,
+    isPlayerActive: playerStatus === "active",
     onboardingComplete: data.onboardingComplete === true,
     role: String(data.role || "viewer").trim().toLowerCase(),
+    playerStatus,
+    associationStatus,
     raw: data
   };
 }
@@ -111,17 +148,34 @@ export async function routeAfterGoogleLogin(firebaseUser) {
 
   const data = ensured.data || {};
   const onboardingDone = data.onboardingComplete === true;
-  const isActive = data.isActive === true;
+
+  const playerStatus = normalizePlayerStatus(data);
+  const associationStatus = normalizeAssociationStatus(data);
+  const isPlayerActive = playerStatus === "active";
 
   if (!onboardingDone) {
     window.location.href = `/public/register.html?created=${createdFlag}`;
     return;
   }
 
-  if (onboardingDone && isActive) {
+  if (isPlayerActive) {
     window.location.href = "/dashboard.html";
     return;
   }
 
-  window.location.href = `/index.html?pending=1`;
+  if (
+    associationStatus === "pending" ||
+    associationStatus === "active" ||
+    associationStatus === "rejected"
+  ) {
+    window.location.href = "/member_status.html";
+    return;
+  }
+
+  if (playerStatus === "pending") {
+    window.location.href = "/index.html?state=platform_pending";
+    return;
+  }
+
+  window.location.href = "/index.html";
 }
