@@ -1,7 +1,7 @@
-// /js/features/user_modal.js
-import { db } from "../auth/firebase.js";
-import { watchAuth } from "../auth/auth.js";
-import { showLoader, hideLoader } from "../ui/loader.js";
+// /js/features/association/assoc_member_modal.js
+import { db } from "../../auth/firebase.js";
+import { watchAuth } from "../../auth/auth.js";
+import { showLoader, hideLoader } from "../../ui/loader.js";
 
 import {
   doc,

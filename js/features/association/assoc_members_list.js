@@ -455,7 +455,7 @@ function render() {
   $.root.querySelectorAll(".btnEdit").forEach((btn) => {
     btn.addEventListener("click", () => {
       const id = btn.dataset.id;
-      openModal(`partials/user_modal.html?uid=${encodeURIComponent(id)}`);
+      openModal(`partials/assoc_member_modal.html?uid=${encodeURIComponent(id)}`);
     });
   });
 }
@@ -476,7 +476,7 @@ export async function mount(container, cfg) {
   $.typeFilter?.addEventListener("change", render);
   $.assocFilter?.addEventListener("change", render);
 
-  $.btnNewAssociate?.addEventListener("click", () => openModal(`partials/user_modal.html`));
+  $.btnNewAssociate?.addEventListener("click", () => openModal(`partials/assoc_member_modal.html`));
 
   watchAuth(async (user) => {
     if (!user) return;

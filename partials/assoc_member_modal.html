@@ -1,0 +1,145 @@
+<div class="modal fade" id="memberModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-fullscreen">
+    <div class="modal-content app-modal">
+
+      <form id="memberForm" class="h-100 d-flex flex-column">
+        <input type="hidden" id="associateId" />
+
+        <div class="modal-header app-modal__header">
+          <div>
+            <h5 class="modal-title mb-0" id="modalTitle">Nuevo miembro</h5>
+            <small class="app-modal__subtitle" id="memberModalSubtitle">
+              Completá la información general del miembro de la asociación
+            </small>
+          </div>
+
+          <button
+            type="button"
+            class="btn-close btn-close-white"
+            data-bs-dismiss="modal"
+            aria-label="Cerrar"
+          ></button>
+        </div>
+
+        <div class="modal-body app-modal__body">
+          <div class="card app-form-card">
+            <div class="card-body">
+
+              <ul class="nav nav-tabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button
+                    class="nav-link active"
+                    data-bs-toggle="tab"
+                    data-bs-target="#memberTabGeneral"
+                    type="button"
+                    role="tab"
+                  >
+                    General
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button
+                    class="nav-link"
+                    data-bs-toggle="tab"
+                    data-bs-target="#memberTabNotas"
+                    type="button"
+                    role="tab"
+                  >
+                    Notas
+                  </button>
+                </li>
+              </ul>
+
+              <div class="tab-content pt-3">
+                <div class="tab-pane fade show active" id="memberTabGeneral" role="tabpanel">
+                  <div class="row g-3">
+
+                    <div class="col-12 col-md-8">
+                      <label class="form-label" for="fullName">Nombre completo</label>
+                      <input
+                        id="fullName"
+                        class="form-control"
+                        placeholder="Nombre completo"
+                      />
+                    </div>
+
+                    <div class="col-12 col-md-2">
+                      <label class="form-label" for="type">Tipo</label>
+                      <select id="type" class="form-select">
+                        <option value="player">Jugador/a</option>
+                        <option value="supporter">Supporter</option>
+                        <option value="parent">Encargado/a</option>
+                        <option value="other" selected>Otro</option>
+                      </select>
+                    </div>
+
+                    <div class="col-12 col-md-2">
+                      <label class="form-label d-block">Estado</label>
+                      <div class="form-check form-switch mt-2">
+                        <input class="form-check-input" type="checkbox" id="active" checked>
+                        <label class="form-check-label" for="active">Activo</label>
+                      </div>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                      <label class="form-label" for="email">Email</label>
+                      <input
+                        id="email"
+                        type="email"
+                        class="form-control"
+                        placeholder="correo@dominio.com"
+                      />
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                      <label class="form-label" for="phone">Teléfono</label>
+                      <input
+                        id="phone"
+                        class="form-control"
+                        placeholder="+506 ..."
+                      />
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                      <label class="form-label" for="idNumber">Cédula / ID</label>
+                      <input
+                        id="idNumber"
+                        class="form-control"
+                        placeholder="1-2345-6789"
+                      />
+                    </div>
+
+                  </div>
+                </div>
+
+                <div class="tab-pane fade" id="memberTabNotas" role="tabpanel">
+                  <label class="form-label" for="notes">Notas</label>
+                  <textarea
+                    id="notes"
+                    class="form-control"
+                    rows="7"
+                    placeholder="Observaciones..."
+                  ></textarea>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer app-modal__footer">
+          <div class="app-modal__footer-right d-flex gap-2 ms-auto">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+              Cancelar
+            </button>
+            <button id="btnSave" type="submit" class="btn btn-primary">
+              <i class="bi bi-save me-1"></i>
+              Guardar miembro
+            </button>
+          </div>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
