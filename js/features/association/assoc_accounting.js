@@ -78,13 +78,13 @@ function getSubmissionDescription(p) {
   const payer = String(p?.payerName || "").trim();
   const season = String(p?.season || "").trim();
   const planId = String(p?.planId || "").trim();
-  const membershipId = String(p?.membershipId || "").trim();
+  //const membershipId = String(p?.membershipId || "").trim();
 
   const bits = [];
   bits.push("Pago de membresía");
   if (payer) bits.push(`— ${payer}`);
   if (season) bits.push(`• Temp. ${season}`);
-  if (membershipId) bits.push(`• Membresía ${membershipId}`);
+  //if (membershipId) bits.push(`• Membresía ${membershipId}`);
   else if (planId) bits.push(`• Plan ${planId}`);
 
   return bits.join(" ");
