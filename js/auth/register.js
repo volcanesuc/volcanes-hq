@@ -189,6 +189,21 @@ function normLower(s) {
   return norm(s).toLowerCase();
 }
 
+function normalizePlayerStatus(data) {
+  const explicit = String(data?.playerStatus || "").trim().toLowerCase();
+  if (explicit) return explicit;
+  return data?.isActive === true ? "active" : "";
+}
+
+function normalizeAssociationStatus(data) {
+  const explicit = String(data?.associationStatus || "").trim().toLowerCase();
+  if (explicit === "associated_active") return "active";
+  if (explicit === "associated_rejected") return "rejected";
+  if (explicit === "payment_validation_pending") return "pending";
+  if (explicit) return explicit;
+  return "";
+}
+
 function fmtMoney(n, cur = "CRC") {
   const v = Number(n);
   if (Number.isNaN(v)) return "—";
@@ -436,6 +451,9 @@ async function ensureUserDoc(uid, email, user = auth.currentUser) {
       isActive: false,
       role: "viewer",
 
+      playerStatus: null,
+      associationStatus: null,
+
       playerId: null,
       profile: {},
       consents: {},
@@ -472,6 +490,8 @@ async function ensureUserDoc(uid, email, user = auth.currentUser) {
   if (!Array.isArray(data.membershipIds)) updatePayload.membershipIds = [];
   if (data.currentMembership === undefined) updatePayload.currentMembership = null;
   if (data.playerId === undefined) updatePayload.playerId = null;
+  if (data.playerStatus === undefined) updatePayload.playerStatus = null;
+  if (data.associationStatus === undefined) updatePayload.associationStatus = null;
 
   await setDoc(uref, updatePayload, { merge: true });
 }
@@ -762,31 +782,25 @@ onAuthStateChanged(auth, async (user) => {
       return;
     }
 
-   const associationStatus = String(data.associationStatus || "").trim().toLowerCase();
+    const playerStatus = normalizePlayerStatus(data);
+    const associationStatus = normalizeAssociationStatus(data);
 
-  if (access.isActive === true) {
-    window.location.replace("/dashboard.html");
-    return;
-  }
+    if (playerStatus === "active") {
+      window.location.replace("/dashboard.html");
+      return;
+    }
 
-  /* === Asociados (no jugadores) === */
-  if (
-    associationStatus === "associated_active" ||
-    associationStatus === "payment_validation_pending"
-  ) {
-    window.location.replace("/member_status.html");
-    return;
-  }
+    if (associationStatus === "pending" || associationStatus === "active") {
+      window.location.replace("/member_status.html");
+      return;
+    }
 
-  /* === Jugador pendiente de validación === */
-  if (associationStatus === "platform_pending") {
-    window.location.replace("/index.html?state=platform_pending");
-    return;
-  }
+    if (playerStatus === "pending") {
+      window.location.replace("/index.html?state=platform_pending");
+      return;
+    }
 
-  /* fallback */
-  window.location.replace("/index.html");
-
+    window.location.replace("/index.html");
   } catch (e) {
     console.warn("onAuthStateChanged handler failed:", e);
   } finally {
@@ -1407,18 +1421,22 @@ $.form?.addEventListener("submit", async (ev) => {
           wantsMembershipPayment: wantsMembershipPayment === true,
         },
 
-        associationStatus: wantsPlayer
-          ? "platform_pending"
-          : "payment_validation_pending",
+        playerStatus: wantsPlayer ? "pending" : null,
+        associationStatus: wantsMembershipPayment ? "pending" : null,
+
+        // compat con lógica vieja del dashboard
+        isActive: false,
       };
 
       return setDoc(uref, payload, { merge: true });
     });
+
     sessionStorage.removeItem("prefill_register");
+
     if (wantsPlayer) {
-      window.location.replace("../index.html?state=platform_pending");
+      window.location.replace("/index.html?state=platform_pending");
     } else {
-      window.location.replace("../member_status.html");
+      window.location.replace("/member_status.html");
     }
   } catch (e) {
     console.warn(e);
