@@ -296,7 +296,6 @@ async function loadPlanById(planId) {
   if (!snap.exists()) return null;
   return { id: snap.id, ...snap.data() };
 }
-}
 
 async function loadInstallmentsForMembership(membershipId) {
   if (!membershipId) return [];
