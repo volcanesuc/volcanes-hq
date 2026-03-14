@@ -1,10 +1,11 @@
 // /js/features/association/assoc_payments_validation_list.js
 // Admin tab: lista membership_payment_submissions + acciones Validar/Rechazar
 // Soporta multi-cuotas via selectedInstallmentIds
-// Refactor: usa users/{uid}.role en vez de user_roles
-// Nuevo esquema:
+// Esquema unificado:
+// - submission.status: pending | submitted | validated | rejected | error | approved | applied
+// - membership.status: pending | partial | active | rejected
 // - users.associationStatus: pending | active | rejected | null
-// - memberships.status: pending | partial | active | rejected
+// - users.currentMembership.status: pending | partial | active | rejected
 
 import { db } from "/js/auth/firebase.js";
 import { watchAuth, logout } from "/js/auth/auth.js";
@@ -20,7 +21,7 @@ import {
   getDoc,
   updateDoc,
   serverTimestamp,
-  where
+  where,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 /* =========================
@@ -123,6 +124,16 @@ function setBusy(on) {
   if ($.btnApprove) $.btnApprove.disabled = _busy || !currentSub;
   if ($.btnReject) $.btnReject.disabled = _busy || !currentSub;
   if ($.btnSaveNote) $.btnSaveNote.disabled = _busy || !currentSub;
+}
+
+function normalizeMembershipStatus(status) {
+  const s = String(status || "pending").toLowerCase();
+
+  if (s === "validated" || s === "paid") return "active";
+  if (s === "active") return "active";
+  if (s === "partial") return "partial";
+  if (s === "rejected") return "rejected";
+  return "pending";
 }
 
 /* =========================
@@ -250,11 +261,7 @@ function subtractDays(date, days) {
 }
 
 function resolveMembershipBaseDate(membership, submission) {
-  return (
-    tsToDate(membership?.createdAt) ||
-    tsToDate(submission?.createdAt) ||
-    new Date()
-  );
+  return tsToDate(membership?.createdAt) || tsToDate(submission?.createdAt) || new Date();
 }
 
 function computeCoverageDates({ membership, submission, plan }) {
@@ -312,11 +319,8 @@ function shouldEnablePayLinkFromInstallments(installments) {
 }
 
 /**
- * Normalización de estado de membresía:
- * - pending: nada validado todavía
- * - partial: algunas cuotas validadas, faltan otras
- * - active: membresía aprobada / completamente al día
- * - rejected: rechazo explícito
+ * Estado canónico de membresía:
+ * pending | partial | active | rejected
  */
 function computeMembershipStatus(membership, plan, installments, subs, decision) {
   if (decision === "rejected") return "rejected";
@@ -324,19 +328,20 @@ function computeMembershipStatus(membership, plan, installments, subs, decision)
   const requiresValidation = plan?.requiresValidation !== false;
 
   const subStatuses = (subs || []).map((s) => (s.status || "pending").toLowerCase());
-  const hasPendingSubmission = subStatuses.some((s) => s === "pending" || s === "submitted");
   const anySubValidated = subStatuses.some((s) => s === "validated" || s === "approved");
-  const anySubPaidOrValidated = subStatuses.some((s) => s === "paid" || s === "validated" || s === "approved");
+  const anySubPaidOrValidated = subStatuses.some(
+    (s) => s === "paid" || s === "validated" || s === "approved"
+  );
 
   if (installments?.length) {
     const instStatuses = installments.map((i) => (i.status || "pending").toLowerCase());
     const anySettled = instStatuses.some((s) => s === "paid" || s === "validated" || s === "active");
     const allValidated = instStatuses.every((s) => s === "validated" || s === "active");
-    const allPaidOrValidated = instStatuses.every((s) => s === "paid" || s === "validated" || s === "active");
+    const allPaidOrValidated = instStatuses.every(
+      (s) => s === "paid" || s === "validated" || s === "active"
+    );
 
-    if (!anySettled) {
-      return hasPendingSubmission ? "pending" : "pending";
-    }
+    if (!anySettled) return "pending";
 
     if (requiresValidation) {
       return allValidated ? "active" : "partial";
@@ -358,6 +363,8 @@ async function syncUserCurrentMembership(membership, plan = null) {
   const uid = membership?.userId || membership?.userSnapshot?.uid || null;
   if (!uid) return;
 
+  const normalizedStatus = normalizeMembershipStatus(membership?.status);
+
   try {
     await updateDoc(doc(db, COL_USERS, uid), {
       currentMembership: {
@@ -365,7 +372,7 @@ async function syncUserCurrentMembership(membership, plan = null) {
         season: membership.season || null,
         planId: membership.planId || plan?.id || null,
         label: `${plan?.name || "Membresía"} ${membership.season || ""}`.trim(),
-        status: membership.status || "pending",
+        status: normalizedStatus,
         installmentsTotal: membership.installmentsTotal ?? 0,
         installmentsSettled: membership.installmentsSettled ?? 0,
         installmentsPending: membership.installmentsPending ?? 0,
@@ -377,7 +384,10 @@ async function syncUserCurrentMembership(membership, plan = null) {
       updatedAt: serverTimestamp(),
     });
   } catch (e) {
-    console.warn("[assoc_payments_validation_list] No se pudo sincronizar users.currentMembership", e?.code || e);
+    console.warn(
+      "[assoc_payments_validation_list] No se pudo sincronizar users.currentMembership",
+      e?.code || e
+    );
   }
 }
 
@@ -385,7 +395,7 @@ async function syncUserAssociationStatus(membership, decision) {
   const uid = membership?.userId || membership?.userSnapshot?.uid || null;
   if (!uid) return;
 
-  const membershipStatus = String(membership?.status || "").toLowerCase();
+  const membershipStatus = normalizeMembershipStatus(membership?.status);
 
   let associationStatus = null;
 
@@ -403,7 +413,10 @@ async function syncUserAssociationStatus(membership, decision) {
       updatedAt: serverTimestamp(),
     });
   } catch (e) {
-    console.warn("[assoc_payments_validation_list] No se pudo sincronizar users.associationStatus", e?.code || e);
+    console.warn(
+      "[assoc_payments_validation_list] No se pudo sincronizar users.associationStatus",
+      e?.code || e
+    );
   }
 }
 
@@ -438,9 +451,6 @@ function renderShell(container) {
           <option value="pending">Pendiente</option>
           <option value="submitted">En revisión</option>
           <option value="validated">Validado</option>
-          <option value="active">Activa</option>
-          <option value="partial">Parcial</option>
-          <option value="paid">Pagado</option>
           <option value="rejected">Rechazado</option>
           <option value="error">Error</option>
         </select>
@@ -625,13 +635,15 @@ function render() {
         pick(s, ["phone"], ""),
         pick(s, ["membershipId"], ""),
         pick(s, ["installmentId"], ""),
-        (Array.isArray(s.selectedInstallmentIds) ? s.selectedInstallmentIds.join(" ") : ""),
+        Array.isArray(s.selectedInstallmentIds) ? s.selectedInstallmentIds.join(" ") : "",
         pick(s, ["planId"], ""),
         pick(s, ["method"], ""),
         pick(s, ["status"], ""),
         pick(s, ["amountReported"], ""),
         pick(s, ["filePath"], ""),
-      ].map(norm).join(" ");
+      ]
+        .map(norm)
+        .join(" ");
       return blob.includes(qText);
     });
   }
@@ -646,39 +658,42 @@ function render() {
     return;
   }
 
-  $.tbody.innerHTML = list.map((s) => {
-    const date = fmtDate(pick(s, ["createdAt", "updatedAt"], null));
-    const membershipId = getMembershipId(s);
-    const season = getSeason(s);
-    const membershipCell = membershipId ? `#${esc(membershipId)} (${esc(season)})` : "—";
+  $.tbody.innerHTML = list
+    .map((s) => {
+      const date = fmtDate(pick(s, ["createdAt", "updatedAt"], null));
+      const membershipId = getMembershipId(s);
+      const season = getSeason(s);
+      const membershipCell = membershipId ? `#${esc(membershipId)} (${esc(season)})` : "—";
 
-    const st = statusBadge(pick(s, ["status"], "pending"));
-    const method = esc(methodLabel(getMethod(s)));
+      const st = statusBadge(pick(s, ["status"], "pending"));
+      const method = esc(methodLabel(getMethod(s)));
 
-    const fileUrl = getFileUrl(s);
-    const proof = fileUrl
-      ? `<a href="${fileUrl}" target="_blank" rel="noopener noreferrer">Abrir</a>`
-      : "—";
+      const fileUrl = getFileUrl(s);
+      const proof = fileUrl
+        ? `<a href="${fileUrl}" target="_blank" rel="noopener noreferrer">Abrir</a>`
+        : "—";
 
-    const amt = fmtMoney(getAmount(s), getCurrency(s));
+      const amt = fmtMoney(getAmount(s), getCurrency(s));
 
-    const viewBtn = `
-      <button class="btn btn-sm btn-outline-primary" type="button" data-action="view" data-id="${s.id}">
-        <i class="bi bi-eye-fill me-1"></i><span>Ver</span>
-      </button>
-    `;
+      const viewBtn = `
+        <button class="btn btn-sm btn-outline-primary" type="button" data-action="view" data-id="${s.id}">
+          <i class="bi bi-eye-fill me-1"></i><span>Ver</span>
+        </button>
+      `;
 
-    const canQuickApprove = ["pending", "submitted"].includes(norm(pick(s, ["status"], "pending")));
+      const canQuickApprove = ["pending", "submitted"].includes(
+        norm(pick(s, ["status"], "pending"))
+      );
 
-    const quickApprove = canQuickApprove
-      ? `
+      const quickApprove = canQuickApprove
+        ? `
         <button class="btn btn-sm btn-success ms-2" type="button" data-action="approve" data-id="${s.id}">
           <i class="bi bi-check2 me-1"></i><span>Validar</span>
         </button>
       `
-      : "";
+        : "";
 
-    return `
+      return `
       <tr>
         <td style="white-space:nowrap;">${date}</td>
         <td>${getUserCell(s)}</td>
@@ -693,7 +708,8 @@ function render() {
         </td>
       </tr>
     `;
-  }).join("");
+    })
+    .join("");
 }
 
 /* =========================
@@ -737,6 +753,7 @@ async function applyDecision(sub, decision /* "validated" | "rejected" */) {
     if (!plan) {
       throw new Error(`No se encontró subscription_plans/${membership.planId}`);
     }
+
     const installmentIds = getAllInstallmentIdsFromSubmission(sub);
 
     if (installmentIds.length) {
@@ -747,7 +764,11 @@ async function applyDecision(sub, decision /* "validated" | "rejected" */) {
             updatedAt: serverTimestamp(),
           });
         } catch (e) {
-          console.warn("[assoc_payments_validation_list] No se pudo actualizar installment", iid, e?.code || e);
+          console.warn(
+            "[assoc_payments_validation_list] No se pudo actualizar installment",
+            iid,
+            e?.code || e
+          );
         }
       }
     }
@@ -771,7 +792,9 @@ async function applyDecision(sub, decision /* "validated" | "rejected" */) {
       payLinkDisabledReason = null;
     }
 
-    const nextStatus = computeMembershipStatus(membership, plan, inst, subsForMembership, decision);
+    const nextStatus = normalizeMembershipStatus(
+      computeMembershipStatus(membership, plan, inst, subsForMembership, decision)
+    );
 
     const mUpdates = {
       updatedAt: serverTimestamp(),
@@ -788,9 +811,7 @@ async function applyDecision(sub, decision /* "validated" | "rejected" */) {
     };
 
     if (decision === "validated") {
-      const alreadyHasCoverage =
-        !!membership?.coverageStartDate &&
-        !!membership?.coverageEndDate;
+      const alreadyHasCoverage = !!membership?.coverageStartDate && !!membership?.coverageEndDate;
 
       if (!alreadyHasCoverage) {
         const coverage = computeCoverageDates({

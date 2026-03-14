@@ -11,7 +11,6 @@ import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/f
 /* =========================
    Collections
 ========================= */
-
 const COL = APP_CONFIG.collections;
 const COL_MEMBERSHIPS = COL.memberships;
 const COL_PLANS = COL.subscriptionPlans;
@@ -40,8 +39,12 @@ function digitsOnly(s) {
 
 function tsMillis(ts) {
   if (!ts) return 0;
-  if (ts.toMillis) return ts.toMillis();
-  if (ts.seconds) return ts.seconds * 1000;
+  if (typeof ts?.toMillis === "function") return ts.toMillis();
+  if (typeof ts?.seconds === "number") return ts.seconds * 1000;
+  if (typeof ts?.toDate === "function") {
+    const d = ts.toDate();
+    return Number.isFinite(d?.getTime?.()) ? d.getTime() : 0;
+  }
   const d = new Date(ts);
   const t = d.getTime();
   return Number.isFinite(t) ? t : 0;
@@ -62,8 +65,18 @@ function badge(text, cls = "") {
   return `<span class="badge-soft ${cls}">${text}</span>`;
 }
 
+function normalizeMembershipStatus(status) {
+  const s = String(status || "pending").toLowerCase();
+
+  if (s === "validated" || s === "paid") return "active";
+  if (s === "active") return "active";
+  if (s === "partial") return "partial";
+  if (s === "rejected") return "rejected";
+  return "pending";
+}
+
 function statusBadgeHtml(st) {
-  const s = (st || "pending").toLowerCase();
+  const s = normalizeMembershipStatus(st);
 
   if (s === "active") return badge("Activa", "green");
   if (s === "partial") return badge("Parcial", "yellow");
@@ -72,7 +85,7 @@ function statusBadgeHtml(st) {
 }
 
 function statusRank(st) {
-  const s = (st || "pending").toLowerCase();
+  const s = normalizeMembershipStatus(st);
 
   if (s === "active") return 4;
   if (s === "partial") return 3;
@@ -116,6 +129,58 @@ function getOwnerEmail(m) {
 function getOwnerPhone(m) {
   const a = getOwnerSnapshot(m);
   return a.phone || null;
+}
+
+function fmtShortDate(v) {
+  if (!v) return null;
+
+  if (typeof v?.toDate === "function") {
+    const d = v.toDate();
+    if (!Number.isNaN(d.getTime())) {
+      return new Intl.DateTimeFormat("es-CR", { dateStyle: "medium" }).format(d);
+    }
+    return null;
+  }
+
+  if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+    const [y, m, d] = v.split("-").map(Number);
+    const dt = new Date(y, m - 1, d);
+    if (!Number.isNaN(dt.getTime())) {
+      return new Intl.DateTimeFormat("es-CR", { dateStyle: "medium" }).format(dt);
+    }
+  }
+
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return null;
+  return new Intl.DateTimeFormat("es-CR", { dateStyle: "medium" }).format(d);
+}
+
+function getCoverageRange(m) {
+  const start =
+    m.coverageStartDate ||
+    m.startDate ||
+    m.currentMembership?.coverageStartDate ||
+    m.currentMembership?.startDate ||
+    null;
+
+  const end =
+    m.coverageEndDate ||
+    m.endDate ||
+    m.currentMembership?.coverageEndDate ||
+    m.currentMembership?.endDate ||
+    null;
+
+  return { start, end };
+}
+
+function fmtCoverageRange(m) {
+  const { start, end } = getCoverageRange(m);
+  const startTxt = fmtShortDate(start);
+  const endTxt = fmtShortDate(end);
+
+  if (!startTxt && !endTxt) return "—";
+  if (startTxt && endTxt) return `${startTxt} → ${endTxt}`;
+  return startTxt || endTxt || "—";
 }
 
 /**
@@ -188,7 +253,7 @@ function renderKpis() {
   const counts = { pending: 0, partial: 0, active: 0, rejected: 0 };
 
   for (const m of viewMemberships) {
-    const st = (m.status || "pending").toLowerCase();
+    const st = normalizeMembershipStatus(m.status);
     if (st === "pending") counts.pending++;
     else if (st === "partial") counts.partial++;
     else if (st === "active") counts.active++;
@@ -197,8 +262,8 @@ function renderKpis() {
 
   if ($.kpiPending) $.kpiPending.textContent = counts.pending;
   if ($.kpiPartial) $.kpiPartial.textContent = counts.partial;
-  if ($.kpiPaid) $.kpiPaid.textContent = counts.active;
-  if ($.kpiValidated) $.kpiValidated.textContent = counts.rejected;
+  if ($.kpiActive) $.kpiActive.textContent = counts.active;
+  if ($.kpiRejected) $.kpiRejected.textContent = counts.rejected;
 }
 
 function cacheDom(container) {
@@ -219,8 +284,8 @@ function cacheDom(container) {
 
   $.kpiPending = root.querySelector("#kpiPending");
   $.kpiPartial = root.querySelector("#kpiPartial");
-  $.kpiPaid = root.querySelector("#kpiPaid");
-  $.kpiValidated = root.querySelector("#kpiValidated");
+  $.kpiActive = root.querySelector("#kpiActive");
+  $.kpiRejected = root.querySelector("#kpiRejected");
 }
 
 /* =========================
@@ -291,14 +356,14 @@ function renderShell(container) {
         </div>
         <div class="col-6 col-md-3">
           <div class="kpi-box">
-            <div class="text-muted small">${STR.kpi.paid}</div>
-            <div class="fs-4 fw-bold" id="kpiPaid">0</div>
+            <div class="text-muted small">Activas</div>
+            <div class="fs-4 fw-bold" id="kpiActive">0</div>
           </div>
         </div>
         <div class="col-6 col-md-3">
           <div class="kpi-box">
-            <div class="text-muted small">${STR.kpi.validated}</div>
-            <div class="fs-4 fw-bold" id="kpiValidated">0</div>
+            <div class="text-muted small">Rechazadas</div>
+            <div class="fs-4 fw-bold" id="kpiRejected">0</div>
           </div>
         </div>
       </div>
@@ -359,12 +424,10 @@ function renderShellWithoutHeader(container) {
       <div class="col-6 col-md-2">
         <select id="statusFilter" class="form-select">
           <option value="all">${STR.filters.allStatus}</option>
-          <option value="pending">${STR.status.pending}</option>
-          <option value="submitted">En revisión</option>
-          <option value="partial">${STR.status.partial}</option>
-          <option value="paid">${STR.status.paid}</option>
-          <option value="validated">${STR.status.validated}</option>
-          <option value="rejected">${STR.status.rejected}</option>
+          <option value="pending">Pendiente</option>
+          <option value="partial">Parcial</option>
+          <option value="active">Activa</option>
+          <option value="rejected">Rechazada</option>
         </select>
       </div>
       <div class="col-6 col-md-2">
@@ -391,14 +454,14 @@ function renderShellWithoutHeader(container) {
       </div>
       <div class="col-6 col-md-3">
         <div class="kpi-box">
-          <div class="text-muted small">${STR.kpi.paid}</div>
-          <div class="fs-4 fw-bold" id="kpiPaid">0</div>
+          <div class="text-muted small">Activas</div>
+          <div class="fs-4 fw-bold" id="kpiActive">0</div>
         </div>
       </div>
       <div class="col-6 col-md-3">
         <div class="kpi-box">
-          <div class="text-muted small">${STR.kpi.validated}</div>
-          <div class="fs-4 fw-bold" id="kpiValidated">0</div>
+          <div class="text-muted small">Rechazadas</div>
+          <div class="fs-4 fw-bold" id="kpiRejected">0</div>
         </div>
       </div>
     </div>
@@ -434,7 +497,6 @@ export async function mount(container, cfg) {
   cacheDom(container);
 
   $.logoutBtn?.addEventListener("click", logout);
-
   $.btnNewMembership?.addEventListener("click", () => openModal("partials/membership_modal.html"));
 
   if (!_msgListenerBound) {
@@ -462,7 +524,11 @@ export async function mount(container, cfg) {
     const code = btn.dataset.code || "";
 
     if (action === "detail") {
-      window.open(`pages/admin/membership_detail.html?mid=${encodeURIComponent(mid)}`, "_blank", "noopener");
+      window.open(
+        `pages/admin/membership_detail.html?mid=${encodeURIComponent(mid)}`,
+        "_blank",
+        "noopener"
+      );
       return;
     }
 
@@ -515,7 +581,11 @@ async function loadPlans() {
 }
 
 function getPlanForMembership(m) {
-  const directPlanId = m.planId || m.currentMembership?.planId || null;
+  const directPlanId =
+    m.planId ||
+    m.currentMembership?.planId ||
+    null;
+
   return plansById.get(directPlanId) || m.planSnapshot || null;
 }
 
@@ -541,9 +611,8 @@ function fillSeasonFilter() {
   if (!$.seasonFilter) return;
 
   const curr = $.seasonFilter.value || "all";
-  const seasons = Array.from(
-    new Set(viewMemberships.map((m) => m.season).filter(Boolean))
-  ).sort((a, b) => String(b).localeCompare(String(a), "es"));
+  const seasons = Array.from(new Set(viewMemberships.map((m) => m.season).filter(Boolean)))
+    .sort((a, b) => String(b).localeCompare(String(a), "es"));
 
   const opts = [`<option value="all">${STR.filters.allSeasons}</option>`].concat(
     seasons.map((s) => `<option value="${s}">${s}</option>`)
@@ -580,17 +649,17 @@ function render() {
   }
 
   if (statusVal !== "all") {
-    list = list.filter((m) => (m.status || "pending").toLowerCase() === statusVal);
+    list = list.filter((m) => normalizeMembershipStatus(m.status) === statusVal);
   }
 
   if (actionVal === "needs_action") {
     list = list.filter((m) => {
-      const st = (m.status || "pending").toLowerCase();
+      const st = normalizeMembershipStatus(m.status);
       return st === "pending" || st === "partial";
     });
   } else if (actionVal === "ok") {
     list = list.filter((m) => {
-      const st = (m.status || "pending").toLowerCase();
+      const st = normalizeMembershipStatus(m.status);
       return st === "active";
     });
   }
@@ -599,15 +668,19 @@ function render() {
     list = list.filter((m) => {
       const owner = getOwnerSnapshot(m);
       const p = getPlanForMembership(m) || {};
+      const coverage = fmtCoverageRange(m);
+
       const blob = [
         m.id,
         m.season,
         owner.fullName,
+        owner.displayName,
         owner.email,
         owner.phone,
         p.name,
         m.userId,
         m.associateId,
+        coverage,
       ].map(norm).join(" ");
 
       return blob.includes(qText);
@@ -622,10 +695,9 @@ function render() {
   }
 
   $.tbody.innerHTML = list.map((m) => {
-    const owner = getOwnerSnapshot(m);
     const p = getPlanForMembership(m) || {};
     const cur = m.currency || p.currency || "CRC";
-
+    const coverageText = fmtCoverageRange(m);
     const dupBadge = m._hasDup ? badge(`Duplicado x${m._dupCount}`, "orange") : "";
 
     const associateCell = `
@@ -644,6 +716,9 @@ function render() {
         ${(p.allowPartial ? STR.plan.installments : STR.plan.singlePay)} • ${
           p.requiresValidation ? STR.plan.validation : STR.plan.noValidation
         }
+      </div>
+      <div class="small text-muted tight">
+        Cobertura: ${coverageText}
       </div>
     `;
 
