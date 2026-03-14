@@ -452,6 +452,8 @@ function render() {
 /* =========================
    Public API
 ========================= */
+let userSavedBound = false;
+
 export async function mount(container, cfg) {
   _cfg = cfg || {};
 
@@ -468,6 +470,11 @@ export async function mount(container, cfg) {
   $.btnNewAssociate?.addEventListener("click", () => {
     // deshabilitado por ahora
   });
+
+  if (!userSavedBound) {
+    window.addEventListener("user:saved", loadAssociates);
+    userSavedBound = true;
+  }
 
   watchAuth(async (user) => {
     if (!user) return;
