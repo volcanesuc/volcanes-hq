@@ -762,17 +762,30 @@ onAuthStateChanged(auth, async (user) => {
       return;
     }
 
-    if (access.isActive) { //user has access to dashboard == is player
-      window.location.replace("../dashboard.html");
-      return;
-    }
-    const associationStatus = String(data.associationStatus || "").trim().toLowerCase();
-    if ( associationStatus === "payment_validation_pending" || associationStatus === "associated_active"  ) { // user is association member
-      window.location.replace("../member_status.html");
-      return;
-    }
+   const associationStatus = String(data.associationStatus || "").trim().toLowerCase();
 
-    window.location.replace("../index.html?state=platform_pending"); //pending validation
+  if (access.isActive === true) {
+    window.location.replace("/dashboard.html");
+    return;
+  }
+
+  /* === Asociados (no jugadores) === */
+  if (
+    associationStatus === "associated_active" ||
+    associationStatus === "payment_validation_pending"
+  ) {
+    window.location.replace("/member_status.html");
+    return;
+  }
+
+  /* === Jugador pendiente de validación === */
+  if (associationStatus === "platform_pending") {
+    window.location.replace("/index.html?state=platform_pending");
+    return;
+  }
+
+  /* fallback */
+  window.location.replace("/index.html");
 
   } catch (e) {
     console.warn("onAuthStateChanged handler failed:", e);
