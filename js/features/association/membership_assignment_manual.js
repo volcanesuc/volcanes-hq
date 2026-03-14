@@ -1,8 +1,10 @@
-// /js/features/membership_modal.js
-import { db } from "../auth/firebase.js";
-import { watchAuth } from "../auth/auth.js";
-import { showLoader, hideLoader } from "../ui/loader.js";
-import { recomputeMembershipRollup } from "./membership_rollup.js";
+// /js/features/association/membership_assignment_manual.js
+
+import { db } from "/js/auth/firebase.js";
+import { watchAuth } from "/js/auth/auth.js";
+import { showLoader, hideLoader } from "/js/ui/loader.js";
+import { APP_CONFIG } from "/js/config/config.js";
+import { recomputeMembershipRollup } from "/js/features/membership_rollup.js";
 
 import {
   collection,
@@ -20,10 +22,12 @@ import {
 /* =========================
    Collections
 ========================= */
-const COL_USERS = "users";
-const COL_PLANS = "subscription_plans";
-const COL_MEMBERSHIPS = "memberships";
-const COL_INSTALLMENTS = "membership_installments";
+const COL = APP_CONFIG.collections;
+
+const COL_USERS = COL.users;
+const COL_PLANS = COL.subscriptionPlans;
+const COL_MEMBERSHIPS = COL.memberships;
+const COL_INSTALLMENTS = COL.membershipInstallments;
 
 /* =========================
    DOM
@@ -102,8 +106,15 @@ function randomCode(len = 7) {
   return out;
 }
 
+function normalizeSeasonYear(value) {
+  const n = Number(value);
+  if (!Number.isInteger(n)) return null;
+  if (n < 2000 || n > 2100) return null;
+  return n;
+}
+
 function mmddToIsoDate(season, mmdd) {
-  if (!season || !/^\d{4}$/.test(season)) return null;
+  if (!Number.isInteger(Number(season))) return null;
   if (!mmdd || !/^\d{2}-\d{2}$/.test(mmdd)) return null;
   return `${season}-${mmdd}`;
 }
@@ -135,7 +146,7 @@ function clearResultLink() {
 
 function durationHint(p) {
   const dm = Number(p.durationMonths || 0);
-  const sp = p.startPolicy || "JAN_ONLY";
+  const sp = String(p.startPolicy || "paid_date").toLowerCase();
 
   if (!dm) return "";
 
@@ -145,12 +156,9 @@ function durationHint(p) {
     dm === 1 ? "1 mes" :
     `${dm} meses`;
 
-  const start =
-    dm === 1 ? "cualquier mes" :
-    dm === 6 ? (sp === "JAN_OR_JUL" ? "enero o julio" : "enero") :
-    "enero";
+  const start = sp === "jan" ? "enero" : "fecha de pago";
 
-  return `Cubre ${dur}. Inicio permitido: ${start}.`;
+  return `Cubre ${dur}. Inicio: ${start}.`;
 }
 
 function setCreating(on) {
@@ -203,22 +211,6 @@ function buildUserSnapshot(u) {
   };
 }
 
-function buildPlanSnapshot(plan) {
-  return {
-    id: plan.id,
-    name: plan.name || "",
-    currency: plan.currency || "CRC",
-    totalAmount: plan.totalAmount ?? null,
-    allowCustomAmount: !!plan.allowCustomAmount,
-    allowPartial: !!plan.allowPartial,
-    requiresValidation: !!plan.requiresValidation,
-    benefits: Array.isArray(plan.benefits) ? plan.benefits : [],
-    tags: Array.isArray(plan.tags) ? plan.tags : [],
-    durationMonths: Number(plan.durationMonths || 0),
-    startPolicy: plan.startPolicy || "JAN_ONLY",
-  };
-}
-
 /* =========================
    Load data
 ========================= */
@@ -239,13 +231,7 @@ async function boot() {
 }
 
 function normalizeAssociationStatus(u = {}) {
-  const raw = String(u.associationStatus || "").trim().toLowerCase();
-
-  if (raw === "payment_validation_pending") return "pending";
-  if (raw === "associated_active") return "active";
-  if (raw === "associated_rejected") return "rejected";
-
-  return raw || "";
+  return String(u.associationStatus || "").trim().toLowerCase() || "";
 }
 
 async function loadUsers() {
@@ -267,7 +253,11 @@ async function loadPlans() {
   plans = snap.docs
     .map((d) => ({ id: d.id, ...d.data() }))
     .filter((p) => !p.archived && p.active !== false)
-    .sort((a, b) => (a.name || "").localeCompare(b.name || "", "es"));
+    .sort((a, b) => {
+      const bySeason = Number(b.season || 0) - Number(a.season || 0);
+      if (bySeason !== 0) return bySeason;
+      return (a.name || "").localeCompare(b.name || "", "es");
+    });
 
   planSelect.innerHTML =
     `<option value="">Seleccioná un plan…</option>` +
@@ -371,7 +361,7 @@ function wireUI() {
     associateSearch.value = "";
     associateSelected.textContent = "Ninguno seleccionado";
     planSelect.value = "";
-    seasonEl.value = seasonEl.value || "2026";
+    seasonEl.value = String(new Date().getFullYear());
     clearResultLink();
     renderPreview();
   });
@@ -436,7 +426,7 @@ function renderPreview() {
     planHint.textContent = "";
   }
 
-  const season = (seasonEl.value || "").trim();
+  const season = normalizeSeasonYear(seasonEl.value);
 
   if (!selectedPlan) {
     previewTotal.textContent = "—";
@@ -467,7 +457,7 @@ function renderPreview() {
     .slice()
     .sort((a, b) => (a.n || 0) - (b.n || 0))
     .map((x) => {
-      const dueIso = mmddToIsoDate(season, x.dueMonthDay);
+      const dueIso = season ? mmddToIsoDate(season, x.dueMonthDay) : null;
       const dueTxt = dueIso || (x.dueMonthDay || "—");
       return `
         <tr>
@@ -486,14 +476,14 @@ function renderPreview() {
    Duplicate protection
 ========================= */
 async function findExistingMembership({ userId, season }) {
-  const q = query(
+  const qRef = query(
     collection(db, COL_MEMBERSHIPS),
     where("userId", "==", userId),
     where("season", "==", season),
     limit(5)
   );
 
-  const snap = await getDocs(q);
+  const snap = await getDocs(qRef);
   const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
   if (!list.length) return null;
@@ -532,10 +522,10 @@ async function findExistingMembership({ userId, season }) {
 async function createMembership() {
   if (_creating) return;
 
-  const season = (seasonEl.value || "").trim();
+  const season = normalizeSeasonYear(seasonEl.value);
 
-  if (!/^\d{4}$/.test(season) && season !== "all") {
-    return alert("Temporada inválida. Usá 2026 (YYYY) o 'all'.");
+  if (!season) {
+    return alert("Temporada inválida. Usá un año válido, por ejemplo 2026.");
   }
 
   if (!selectedUser) return alert("Seleccioná un usuario.");
@@ -547,50 +537,47 @@ async function createMembership() {
   try {
     const userId = selectedUser.uid || selectedUser.id;
 
-    if (season !== "all") {
-      const existing = await findExistingMembership({ userId, season });
+    const existing = await findExistingMembership({ userId, season });
 
-      if (existing) {
-        hideLoader?.();
+    if (existing) {
+      hideLoader?.();
 
-        if (existing.payCode) setResultLink(existing.id, existing.payCode);
-        else clearResultLink();
+      if (existing.payCode) setResultLink(existing.id, existing.payCode);
+      else clearResultLink();
 
-        alert(
-          `⚠️ Ya existe una membresía para este usuario en ${season}.\n\n` +
-          `Se usará la existente: ${existing.id}\n` +
-          `Estado: ${existing.status || "pending"}\n\n` +
-          `Si necesitás cambiar plan o corregir datos, abrí el detalle.`
-        );
+      alert(
+        `⚠️ Ya existe una membresía para este usuario en ${season}.\n\n` +
+        `Se usará la existente: ${existing.id}\n` +
+        `Estado: ${existing.status || "pending"}\n\n` +
+        `Si necesitás cambiar plan o corregir datos, abrí el detalle.`
+      );
 
-        const baseDir = window.location.href.replace(/\/[^/]+$/, "/");
-        window.open(
-          `${baseDir}pages/admin/membership_detail.html?mid=${encodeURIComponent(existing.id)}`,
-          "_blank",
-          "noopener"
-        );
+      const baseDir = window.location.href.replace(/\/[^/]+$/, "/");
+      window.open(
+        `${baseDir}pages/admin/membership_detail.html?mid=${encodeURIComponent(existing.id)}`,
+        "_blank",
+        "noopener"
+      );
 
-        post("membership:created", {
-          id: existing.id,
-          userId,
-          season,
-          existed: true,
-        });
+      post("membership:created", {
+        id: existing.id,
+        userId,
+        season,
+        existed: true,
+      });
 
-        return;
-      }
+      return;
     }
 
     showLoader?.("Creando membresía…");
 
-    const planSnap = buildPlanSnapshot(selectedPlan);
     const userSnap = buildUserSnapshot(selectedUser);
     const installmentsTemplate = Array.isArray(selectedPlan.installmentsTemplate)
       ? selectedPlan.installmentsTemplate
       : [];
 
     let totalAmount = selectedPlan.totalAmount ?? null;
-    if (!planSnap.allowCustomAmount && (totalAmount === null || totalAmount === undefined)) {
+    if (!selectedPlan.allowCustomAmount && (totalAmount === null || totalAmount === undefined)) {
       totalAmount = installmentsTemplate.reduce((sum, x) => sum + (Number(x.amount) || 0), 0);
     }
 
@@ -600,26 +587,21 @@ async function createMembership() {
       userId,
       userSnapshot: userSnap,
 
-      // compat temporal
       associateId: null,
       associateSnapshot: null,
 
       season,
-      planId: planSnap.id,
-      planSnapshot: planSnap,
+      planId: selectedPlan.id,
 
       status: "pending",
-      totalAmount: planSnap.allowCustomAmount ? null : (totalAmount ?? null),
-      currency: planSnap.currency,
-
       payCode,
       payLinkEnabled: true,
       payLinkDisabledReason: null,
 
-      installmentsTotal: planSnap.allowPartial ? installmentsTemplate.length : 0,
+      installmentsTotal: selectedPlan.allowPartial ? installmentsTemplate.length : 0,
       installmentsSettled: 0,
-      installmentsPending: planSnap.allowPartial ? installmentsTemplate.length : 0,
-      nextUnpaidN: planSnap.allowPartial ? 1 : null,
+      installmentsPending: selectedPlan.allowPartial ? installmentsTemplate.length : 0,
+      nextUnpaidN: selectedPlan.allowPartial ? 1 : null,
       nextUnpaidDueDate: null,
 
       createdAt: serverTimestamp(),
@@ -628,16 +610,16 @@ async function createMembership() {
 
     const mid = membershipDoc.id;
 
-    if (planSnap.allowPartial && installmentsTemplate.length) {
+    if (selectedPlan.allowPartial && installmentsTemplate.length) {
       const sorted = installmentsTemplate.slice().sort((a, b) => (a.n || 0) - (b.n || 0));
 
       for (const it of sorted) {
-        const dueIso = season === "all" ? null : mmddToIsoDate(season, it.dueMonthDay);
+        const dueIso = mmddToIsoDate(season, it.dueMonthDay);
 
         await addDoc(collection(db, COL_INSTALLMENTS), {
           membershipId: mid,
           season,
-          planId: planSnap.id,
+          planId: selectedPlan.id,
 
           n: Number(it.n || 0),
           dueMonthDay: it.dueMonthDay || null,
@@ -663,8 +645,8 @@ async function createMembership() {
         currentMembership: {
           membershipId: mid,
           season,
-          planId: planSnap.id,
-          label: `${planSnap.name || "Membresía"} ${season}`,
+          planId: selectedPlan.id,
+          label: `${selectedPlan.name || "Membresía"} ${season}`,
           status: "pending",
         },
         associationStatus: "pending",
