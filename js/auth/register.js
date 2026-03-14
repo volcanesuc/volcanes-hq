@@ -766,8 +766,13 @@ onAuthStateChanged(auth, async (user) => {
       window.location.replace("../dashboard.html");
       return;
     }
-
-    window.location.replace("../index.html?pending=1");
+    const associationStatus = String(data.associationStatus || "").trim().toLowerCase();
+    if (associationStatus === "payment_validation_pending") {
+      window.location.replace("../index.html?state=association_pending");
+      return;
+    }
+    window.location.replace("../index.html?state=platform_pending");
+    
   } catch (e) {
     console.warn("onAuthStateChanged handler failed:", e);
   } finally {
@@ -1382,17 +1387,25 @@ $.form?.addEventListener("submit", async (ev) => {
         onboardingComplete: true,
         updatedAt: serverTimestamp(),
         lastSignInAt: serverTimestamp(),
+
         registration: {
           wantsPlayer: wantsPlayer === true,
           wantsMembershipPayment: wantsMembershipPayment === true,
         },
+
+        associationStatus: wantsPlayer
+          ? "platform_pending"
+          : "payment_validation_pending",
       };
 
       return setDoc(uref, payload, { merge: true });
     });
-
     sessionStorage.removeItem("prefill_register");
-    window.location.replace("../index.html?pending=1");
+    if (wantsPlayer) {
+      window.location.replace("../index.html?state=platform_pending");
+    } else {
+      window.location.replace("../index.html?state=association_pending");
+    }
   } catch (e) {
     console.warn(e);
     const msg = String(e?.message || e || "Ocurrió un error inesperado.");
