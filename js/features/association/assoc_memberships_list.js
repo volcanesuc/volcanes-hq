@@ -22,6 +22,7 @@ const COL_PLANS = COL.subscriptionPlans;
 let allMemberships = [];
 let allPlans = [];
 let viewMemberships = [];
+let plansById = new Map();
 
 let $ = {};
 let _msgListenerBound = false;
@@ -63,20 +64,18 @@ function badge(text, cls = "") {
 
 function statusBadgeHtml(st) {
   const s = (st || "pending").toLowerCase();
-  if (s === "validated") return badge(STR.status.validated, "green");
-  if (s === "paid") return badge(STR.status.paid, "yellow");
-  if (s === "partial") return badge(STR.status.partial, "yellow");
-  if (s === "submitted") return badge("En revisión", "yellow");
-  if (s === "rejected") return badge(STR.status.rejected, "red");
-  return badge(STR.status.pending, "gray");
+
+  if (s === "active") return badge("Activa", "green");
+  if (s === "partial") return badge("Parcial", "yellow");
+  if (s === "rejected") return badge("Rechazada", "red");
+  return badge("Pendiente", "gray");
 }
 
 function statusRank(st) {
   const s = (st || "pending").toLowerCase();
-  if (s === "validated") return 6;
-  if (s === "paid") return 5;
-  if (s === "partial") return 4;
-  if (s === "submitted") return 3;
+
+  if (s === "active") return 4;
+  if (s === "partial") return 3;
   if (s === "pending") return 2;
   if (s === "rejected") return 1;
   return 0;
@@ -186,20 +185,20 @@ function buildViewMemberships() {
 }
 
 function renderKpis() {
-  const counts = { pending: 0, partial: 0, paid: 0, validated: 0 };
+  const counts = { pending: 0, partial: 0, active: 0, rejected: 0 };
 
   for (const m of viewMemberships) {
     const st = (m.status || "pending").toLowerCase();
     if (st === "pending") counts.pending++;
     else if (st === "partial") counts.partial++;
-    else if (st === "paid") counts.paid++;
-    else if (st === "validated") counts.validated++;
+    else if (st === "active") counts.active++;
+    else if (st === "rejected") counts.rejected++;
   }
 
   if ($.kpiPending) $.kpiPending.textContent = counts.pending;
   if ($.kpiPartial) $.kpiPartial.textContent = counts.partial;
-  if ($.kpiPaid) $.kpiPaid.textContent = counts.paid;
-  if ($.kpiValidated) $.kpiValidated.textContent = counts.validated;
+  if ($.kpiPaid) $.kpiPaid.textContent = counts.active;
+  if ($.kpiValidated) $.kpiValidated.textContent = counts.rejected;
 }
 
 function cacheDom(container) {
@@ -262,12 +261,10 @@ function renderShell(container) {
         <div class="col-6 col-md-2">
           <select id="statusFilter" class="form-select">
             <option value="all">${STR.filters.allStatus}</option>
-            <option value="pending">${STR.status.pending}</option>
-            <option value="submitted">En revisión</option>
-            <option value="partial">${STR.status.partial}</option>
-            <option value="paid">${STR.status.paid}</option>
-            <option value="validated">${STR.status.validated}</option>
-            <option value="rejected">${STR.status.rejected}</option>
+            <option value="pending">Pendiente</option>
+            <option value="partial">Parcial</option>
+            <option value="active">Activa</option>
+            <option value="rejected">Rechazada</option>
           </select>
         </div>
         <div class="col-6 col-md-2">
@@ -513,6 +510,13 @@ async function loadPlans() {
     .map((d) => ({ id: d.id, ...d.data() }))
     .filter((p) => !p.archived)
     .sort((a, b) => (a.name || "").localeCompare(b.name || "", "es"));
+
+  plansById = new Map(allPlans.map((p) => [p.id, p]));
+}
+
+function getPlanForMembership(m) {
+  const directPlanId = m.planId || m.currentMembership?.planId || null;
+  return plansById.get(directPlanId) || m.planSnapshot || null;
 }
 
 async function loadMemberships() {
@@ -569,7 +573,10 @@ function render() {
   }
 
   if (planVal !== "all") {
-    list = list.filter((m) => (m.planId || m.planSnapshot?.id) === planVal);
+    list = list.filter((m) => {
+      const p = getPlanForMembership(m);
+      return (m.planId || p?.id || null) === planVal;
+    });
   }
 
   if (statusVal !== "all") {
@@ -579,19 +586,19 @@ function render() {
   if (actionVal === "needs_action") {
     list = list.filter((m) => {
       const st = (m.status || "pending").toLowerCase();
-      return st === "pending" || st === "submitted" || st === "partial";
+      return st === "pending" || st === "partial";
     });
   } else if (actionVal === "ok") {
     list = list.filter((m) => {
       const st = (m.status || "pending").toLowerCase();
-      return st === "paid" || st === "validated";
+      return st === "active";
     });
   }
 
   if (qText) {
     list = list.filter((m) => {
       const owner = getOwnerSnapshot(m);
-      const p = m.planSnapshot || {};
+      const p = getPlanForMembership(m) || {};
       const blob = [
         m.id,
         m.season,
@@ -616,7 +623,7 @@ function render() {
 
   $.tbody.innerHTML = list.map((m) => {
     const owner = getOwnerSnapshot(m);
-    const p = m.planSnapshot || {};
+    const p = getPlanForMembership(m) || {};
     const cur = m.currency || p.currency || "CRC";
 
     const dupBadge = m._hasDup ? badge(`Duplicado x${m._dupCount}`, "orange") : "";
@@ -640,9 +647,15 @@ function render() {
       </div>
     `;
 
+    const totalAmount =
+      m.totalAmount ??
+      p.totalAmount ??
+      p.amount ??
+      null;
+
     const amountTxt = p.allowCustomAmount
       ? STR.amount.editable
-      : fmtMoney(m.totalAmount ?? p.totalAmount, cur);
+      : fmtMoney(totalAmount, cur);
 
     const actions = `
       <div class="btn-group btn-group-sm" role="group">

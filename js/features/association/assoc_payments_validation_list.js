@@ -205,6 +205,7 @@ function computeInstallmentsSummary(installments) {
     nextUnpaidN: next?.n ?? null,
     nextUnpaidDueDate: next?.dueDate || null,
   };
+}
 
 function tsToDate(ts) {
   try {
