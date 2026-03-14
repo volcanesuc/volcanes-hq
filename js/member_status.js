@@ -41,6 +41,11 @@ function hideAlert() {
   els.statusAlert?.classList.add("d-none");
 }
 
+function setText(el, value) {
+  if (!el) return;
+  el.textContent = value ?? "—";
+}
+
 function fmtMoney(amount, currency = "CRC") {
   const n = Number(amount);
   if (Number.isNaN(n)) return "—";
@@ -65,21 +70,15 @@ function fmtDate(value) {
   }).format(d);
 }
 
-//Helpers to calculate duration of membership
-function startOfDay(date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
+function daysBetweenNowAnd(dateValue) {
+  const d = asDate(dateValue);
+  if (!d) return null;
 
-function endOfDay(date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
-function addMonths(date, months) {
-  return new Date(date.getFullYear(), date.getMonth() + months, date.getDate());
-}
-
-function endOfMonth(year, monthIndex) {
-  return new Date(year, monthIndex + 1, 0);
+  return Math.round((target - startOfToday) / 86400000);
 }
 
 function inferCoverageDates(membership, plan) {
@@ -107,9 +106,20 @@ function inferCoverageDates(membership, plan) {
   return { startDate, endDate };
 }
 
-function getMembershipCoverageDates(membership) {
-  const explicitStart = asDate(membership?.startDate || membership?.activatedAt || null);
-  const explicitEnd = asDate(membership?.endDate || membership?.expiresAt || null);
+function getMembershipCoverageDates(membership, plan) {
+  const explicitStart = asDate(
+    membership?.coverageStartDate ||
+      membership?.startDate ||
+      membership?.activatedAt ||
+      null
+  );
+
+  const explicitEnd = asDate(
+    membership?.coverageEndDate ||
+      membership?.endDate ||
+      membership?.expiresAt ||
+      null
+  );
 
   if (explicitStart || explicitEnd) {
     return {
@@ -119,29 +129,13 @@ function getMembershipCoverageDates(membership) {
     };
   }
 
-  const inferred = inferCoverageDates(membership);
+  const inferred = inferCoverageDates(membership, plan);
 
   return {
     startDate: inferred.startDate,
     endDate: inferred.endDate,
     inferred: !!(inferred.startDate || inferred.endDate),
   };
-}
-
-function daysBetweenNowAnd(dateValue) {
-  const d = asDate(dateValue);
-  if (!d) return null;
-
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-
-  return Math.round((target - startOfToday) / 86400000);
-}
-
-function setText(el, value) {
-  if (!el) return;
-  el.textContent = value ?? "—";
 }
 
 function clearMembershipFields() {
@@ -153,20 +147,27 @@ function clearMembershipFields() {
   setText(els.membershipAmount, "—");
 }
 
-function fillMembershipFields({ membership, currentMembership }) {
-  const coverage = getMembershipCoverageDates(membership);
+function getPlanAmount(plan) {
+  if (!plan) return null;
+  const raw = plan.totalAmount ?? plan.amount ?? null;
+  const n = Number(raw);
+  return Number.isNaN(n) ? null : n;
+}
+
+function fillMembershipFields({ membership, currentMembership, plan }) {
+  const coverage = getMembershipCoverageDates(membership, plan);
 
   setText(
     els.membershipPlan,
-    membership?.planSnapshot?.name ||
+    plan?.name ||
       currentMembership?.label ||
       "—"
   );
 
   setText(
     els.membershipSeason,
-    membership?.season ||
-      currentMembership?.season ||
+    membership?.season ??
+      currentMembership?.season ??
       "—"
   );
 
@@ -188,14 +189,15 @@ function fillMembershipFields({ membership, currentMembership }) {
   setText(
     els.membershipAmount,
     fmtMoney(
-      membership?.totalAmount ?? membership?.planSnapshot?.totalAmount,
-      membership?.currency || membership?.planSnapshot?.currency || "CRC"
+      getPlanAmount(plan),
+      plan?.currency || "CRC"
     )
   );
 }
 
-function setPendingUI({ membership, currentMembership }) {
+function setPendingUI({ membership, currentMembership, plan }) {
   document.body.dataset.status = "pending";
+
   if (els.statusIcon) {
     els.statusIcon.className = "bi bi-hourglass-split";
   }
@@ -214,16 +216,16 @@ function setPendingUI({ membership, currentMembership }) {
       "Ya recibimos tu solicitud y tu comprobante de pago. Estamos validando la información antes de activar tu membresía.";
   }
 
-  fillMembershipFields({ membership, currentMembership });
+  fillMembershipFields({ membership, currentMembership, plan });
 
   if (els.membershipSummaryText) {
     const submittedAt = membership?.createdAt || null;
     els.membershipSummaryText.textContent = submittedAt
-      ? `Tu solicitud fue registrada el ${fmtDate(submittedAt)}. La fecha de vencimiento se mostrará cuando la membresía sea aprobada.`
-      : "Tu solicitud fue recibida. La fecha de vencimiento se mostrará cuando la membresía sea aprobada.";
+      ? `Tu solicitud fue registrada el ${fmtDate(submittedAt)}. La cobertura se mostrará cuando la membresía sea aprobada.`
+      : "Tu solicitud fue recibida. La cobertura se mostrará cuando la membresía sea aprobada.";
   }
 
-  const coverage = getMembershipCoverageDates(membership);
+  const coverage = getMembershipCoverageDates(membership, plan);
 
   if (!coverage.startDate) {
     setText(els.membershipStart, "Se asignará al aprobarse");
@@ -234,9 +236,10 @@ function setPendingUI({ membership, currentMembership }) {
   }
 }
 
-function setActiveUI({ membership, currentMembership }) {
+function setActiveUI({ membership, currentMembership, plan }) {
   document.body.dataset.status = "active";
-  const coverage = getMembershipCoverageDates(membership);
+
+  const coverage = getMembershipCoverageDates(membership, plan);
   const endDate = coverage.endDate || null;
   const daysLeft = daysBetweenNowAnd(endDate);
 
@@ -254,31 +257,34 @@ function setActiveUI({ membership, currentMembership }) {
   }
 
   if (els.statusMessage) {
-    els.statusMessage.textContent = endDate
-      ? `Tu pago fue validado correctamente y tu membresía está activa hasta el ${fmtDate(endDate)}.`
-      : "Tu pago fue validado correctamente y tu membresía ya se encuentra activa.";
+    if (endDate && daysLeft !== null && daysLeft >= 0) {
+      els.statusMessage.textContent =
+        daysLeft === 0
+          ? `Tu membresía está activa y vence hoy, ${fmtDate(endDate)}.`
+          : `Tu membresía está activa hasta el ${fmtDate(endDate)}.`;
+    } else if (endDate) {
+      els.statusMessage.textContent = `Tu membresía fue activada y su cobertura llegó hasta el ${fmtDate(endDate)}.`;
+    } else {
+      els.statusMessage.textContent =
+        "Tu pago fue validado correctamente y tu membresía ya se encuentra activa.";
+    }
   }
 
-  fillMembershipFields({ membership, currentMembership });
+  fillMembershipFields({ membership, currentMembership, plan });
 
   if (els.membershipSummaryText) {
-    const submittedAt = membership?.createdAt || null;
-    const coverage = getMembershipCoverageDates(membership);
-
     if (coverage.startDate && coverage.endDate) {
-      els.membershipSummaryText.textContent = submittedAt
-        ? `Tu solicitud fue registrada el ${fmtDate(submittedAt)}. Si se aprueba, esta membresía cubrirá del ${fmtDate(coverage.startDate)} al ${fmtDate(coverage.endDate)}.`
-        : `Si se aprueba, esta membresía cubrirá del ${fmtDate(coverage.startDate)} al ${fmtDate(coverage.endDate)}.`;
+      els.membershipSummaryText.textContent = `Tu membresía cubre del ${fmtDate(coverage.startDate)} al ${fmtDate(coverage.endDate)}.`;
     } else {
-      els.membershipSummaryText.textContent = submittedAt
-        ? `Tu solicitud fue registrada el ${fmtDate(submittedAt)}. La fecha de vencimiento se mostrará cuando la membresía sea aprobada.`
-        : "Tu solicitud fue recibida. La fecha de vencimiento se mostrará cuando la membresía sea aprobada.";
+      els.membershipSummaryText.textContent =
+        "Tu membresía está activa. La cobertura detallada todavía no está disponible.";
     }
   }
 }
 
-function setRejectedUI({ membership, currentMembership }) {
+function setRejectedUI({ membership, currentMembership, plan }) {
   document.body.dataset.status = "rejected";
+
   if (els.statusIcon) {
     els.statusIcon.className = "bi bi-exclamation-triangle-fill";
   }
@@ -297,7 +303,7 @@ function setRejectedUI({ membership, currentMembership }) {
       "No pudimos validar tu solicitud con la información actual. Comunícate con el club para más detalle.";
   }
 
-  fillMembershipFields({ membership, currentMembership });
+  fillMembershipFields({ membership, currentMembership, plan });
 
   if (els.membershipSummaryText) {
     els.membershipSummaryText.textContent =
@@ -305,7 +311,9 @@ function setRejectedUI({ membership, currentMembership }) {
   }
 }
 
-function setFallbackUI({ membership, currentMembership }) {
+function setFallbackUI({ membership, currentMembership, plan }) {
+  document.body.dataset.status = "unknown";
+
   if (els.statusIcon) {
     els.statusIcon.className = "bi bi-person-badge-fill";
   }
@@ -324,7 +332,7 @@ function setFallbackUI({ membership, currentMembership }) {
       "Todavía no pudimos determinar con claridad el estado actual de tu membresía.";
   }
 
-  fillMembershipFields({ membership, currentMembership });
+  fillMembershipFields({ membership, currentMembership, plan });
 
   if (els.membershipSummaryText) {
     els.membershipSummaryText.textContent =
@@ -336,25 +344,35 @@ function resolveStatus(userData, membership) {
   const associationStatus = String(userData?.associationStatus || "").trim().toLowerCase();
   const membershipStatus = String(membership?.status || "").trim().toLowerCase();
 
-  if (membershipStatus === "active" || associationStatus === "associated_active") {
+  if (membershipStatus === "active" || associationStatus === "active") {
     return "active";
   }
 
   if (
     membershipStatus === "pending" ||
-    associationStatus === "payment_validation_pending"
+    membershipStatus === "partial" ||
+    associationStatus === "pending"
   ) {
     return "pending";
   }
 
   if (
     membershipStatus === "rejected" ||
-    associationStatus === "associated_rejected"
+    associationStatus === "rejected"
   ) {
     return "rejected";
   }
 
   return "unknown";
+}
+
+async function loadPlan(planId) {
+  if (!planId) return null;
+
+  const planSnap = await getDoc(doc(db, "subscription_plans", planId));
+  if (!planSnap.exists()) return null;
+
+  return { id: planSnap.id, ...planSnap.data() };
 }
 
 async function loadMemberStatus(uid) {
@@ -375,7 +393,7 @@ async function loadMemberStatus(uid) {
 
   if (!currentMembership?.membershipId) {
     clearMembershipFields();
-    setFallbackUI({ membership: null, currentMembership });
+    setFallbackUI({ membership: null, currentMembership, plan: null });
 
     showAlert(
       "Todavía no encontramos una membresía asociada a esta cuenta. Si acabas de registrarte, vuelve a intentarlo en unos segundos.",
@@ -387,31 +405,32 @@ async function loadMemberStatus(uid) {
   const membershipSnap = await getDoc(doc(db, "memberships", currentMembership.membershipId));
   if (!membershipSnap.exists()) {
     clearMembershipFields();
-    setFallbackUI({ membership: null, currentMembership });
+    setFallbackUI({ membership: null, currentMembership, plan: null });
 
     showAlert("No se encontró el detalle de la membresía asociada a tu cuenta.", "warning");
     return;
   }
 
   const membership = { id: membershipSnap.id, ...membershipSnap.data() };
+  const plan = await loadPlan(membership?.planId || currentMembership?.planId || null);
   const resolvedStatus = resolveStatus(userData, membership);
 
   if (resolvedStatus === "active") {
-    setActiveUI({ membership, currentMembership });
+    setActiveUI({ membership, currentMembership, plan });
     return;
   }
 
   if (resolvedStatus === "pending") {
-    setPendingUI({ membership, currentMembership });
+    setPendingUI({ membership, currentMembership, plan });
     return;
   }
 
   if (resolvedStatus === "rejected") {
-    setRejectedUI({ membership, currentMembership });
+    setRejectedUI({ membership, currentMembership, plan });
     return;
   }
 
-  setFallbackUI({ membership, currentMembership });
+  setFallbackUI({ membership, currentMembership, plan });
   showAlert(
     "El estado actual de tu membresía todavía no está completamente definido en el sistema.",
     "warning"
