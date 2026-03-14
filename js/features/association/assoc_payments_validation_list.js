@@ -225,6 +225,11 @@ function tsToDate(ts) {
       const d = ts.toDate();
       return Number.isNaN(d?.getTime?.()) ? null : d;
     }
+    if (typeof ts === "string" && /^\d{4}-\d{2}-\d{2}$/.test(ts)) {
+      const [y, m, d] = ts.split("-").map(Number);
+      const dt = new Date(y, m - 1, d);
+      return Number.isNaN(dt.getTime()) ? null : dt;
+    }
     const d = new Date(ts);
     return Number.isNaN(d.getTime()) ? null : d;
   } catch {
@@ -811,7 +816,9 @@ async function applyDecision(sub, decision /* "validated" | "rejected" */) {
     };
 
     if (decision === "validated") {
-      const alreadyHasCoverage = !!membership?.coverageStartDate && !!membership?.coverageEndDate;
+      const alreadyHasCoverage =
+        !!membership?.coverageStartDate &&
+        !!membership?.coverageEndDate;
 
       if (!alreadyHasCoverage) {
         const coverage = computeCoverageDates({
