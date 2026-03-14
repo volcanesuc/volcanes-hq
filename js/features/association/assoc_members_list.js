@@ -2,8 +2,8 @@
 import { db } from "/js/auth/firebase.js";
 import { watchAuth, logout } from "/js/auth/auth.js";
 import { showLoader, hideLoader } from "/js/ui/loader.js";
+import { openModal } from "/js/ui/modal_host.js";
 import { APP_CONFIG } from "/js/config/config.js";
-import { loadPartialOnce } from "/js/ui/loadPartial.js";
 import {
   collection,
   getDocs,
@@ -468,10 +468,6 @@ export async function mount(container, cfg) {
   $.btnNewAssociate?.addEventListener("click", () => {
     // deshabilitado por ahora
   });
-
-  document.addEventListener("assoc-member:saved", loadAssociates);
-
-  await loadPartialOnce("/partials/assoc_member_modal.html", "modalMount");
 
   watchAuth(async (user) => {
     if (!user) return;

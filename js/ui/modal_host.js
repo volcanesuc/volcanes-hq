@@ -1,55 +1,120 @@
 // js/ui/modal_host.js
-let host, frame;
+let host = null;
+let frame = null;
+let initialized = false;
+let lastFocusedElement = null;
 
-export function initModalHost(){
+function ensureElements() {
   host = document.getElementById("modalHost");
   frame = document.getElementById("modalFrame");
-  if (!host || !frame) return;
-
-  host.addEventListener("click", (e) => {
-    if (e.target === host) closeModal();
-  });
-
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !host.classList.contains("d-none")) closeModal();
-  });
-
-  window.addEventListener("message", (event) => {
-    if (event.origin !== window.location.origin) return;
-    const msg = event.data || {};
-
-    if (msg.type === "modal:close") closeModal();
-
-    // ✅ AJUSTAR ALTO DEL IFRAME A CONTENIDO
-    if (msg.type === "modal:resize" && typeof msg.height === "number") {
-      const max = Math.floor(window.innerHeight * 0.90); // 90vh
-      const h = Math.min(Math.max(msg.height, 240), max);
-      frame.style.height = `${h}px`;
-    }
-
-    if (msg.type === "user:saved"){
-      closeModal();
-      window.dispatchEvent(new CustomEvent("uer:saved", { detail: msg.detail || {} }));
-    }
-  });
+  return !!(host && frame);
 }
 
-export function openModal(url){
-  if (!host || !frame) initModalHost();
+function isOpen() {
+  return !!host && !host.classList.contains("d-none");
+}
 
-  frame.style.height = `min(85vh, 900px)`; // fallback inicial
+function setFrameHeight(px) {
+  if (!frame) return;
+  const max = Math.floor(window.innerHeight * 0.9);
+  const min = 240;
+  const safe = Math.min(Math.max(Number(px) || min, min), max);
+  frame.style.height = `${safe}px`;
+}
+
+function handleMessage(event) {
+  if (event.origin !== window.location.origin) return;
+
+  const msg = event?.data;
+  if (!msg || typeof msg !== "object") return;
+
+  if (msg.type === "modal:close") {
+    closeModal();
+    return;
+  }
+
+  if (msg.type === "modal:resize" && typeof msg.height === "number") {
+    setFrameHeight(msg.height);
+    return;
+  }
+
+  if (msg.type === "user:saved") {
+    closeModal();
+    window.dispatchEvent(
+      new CustomEvent("user:saved", { detail: msg.detail || {} })
+    );
+  }
+}
+
+function handleBackdropClick(e) {
+  if (e.target === host) closeModal();
+}
+
+function handleKeydown(e) {
+  if (e.key === "Escape" && isOpen()) {
+    closeModal();
+  }
+}
+
+function handleWindowResize() {
+  if (!isOpen() || !frame) return;
+
+  const current = parseInt(frame.style.height || "0", 10);
+  if (current > 0) setFrameHeight(current);
+}
+
+export function initModalHost() {
+  if (initialized) return;
+  if (!ensureElements()) return;
+
+  host.addEventListener("click", handleBackdropClick);
+  document.addEventListener("keydown", handleKeydown);
+  window.addEventListener("message", handleMessage);
+  window.addEventListener("resize", handleWindowResize);
+
+  initialized = true;
+}
+
+export function openModal(url) {
+  if (!initialized) initModalHost();
+  if (!ensureElements()) return;
+
+  lastFocusedElement = document.activeElement instanceof HTMLElement
+    ? document.activeElement
+    : null;
+
+  frame.src = "about:blank";
+  frame.style.width = "100%";
+  setFrameHeight(Math.min(720, Math.floor(window.innerHeight * 0.85)));
   frame.src = url;
 
   host.classList.remove("d-none");
   host.setAttribute("aria-hidden", "false");
   document.body.style.overflow = "hidden";
+
+  // foco básico al iframe para accesibilidad
+  try {
+    frame.focus();
+  } catch (_) {}
 }
 
-export function closeModal(){
-  if (!host || !frame) return;
+export function closeModal() {
+  if (!ensureElements()) return;
+
   host.classList.add("d-none");
   host.setAttribute("aria-hidden", "true");
+
   frame.src = "about:blank";
-  frame.style.height = `min(85vh, 900px)`;
+  frame.style.height = "";
+  frame.style.width = "";
+
   document.body.style.overflow = "";
+
+  if (lastFocusedElement && typeof lastFocusedElement.focus === "function") {
+    try {
+      lastFocusedElement.focus();
+    } catch (_) {}
+  }
+
+  lastFocusedElement = null;
 }
