@@ -140,7 +140,11 @@ function fmtShortDate(v) {
   if (typeof v?.toDate === "function") {
     const d = v.toDate();
     if (!Number.isNaN(d.getTime())) {
-      return new Intl.DateTimeFormat("es-CR", { dateStyle: "medium" }).format(d);
+      return new Intl.DateTimeFormat("es-CR", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }).format(d);
     }
     return null;
   }
@@ -149,13 +153,21 @@ function fmtShortDate(v) {
     const [y, m, d] = v.split("-").map(Number);
     const dt = new Date(y, m - 1, d);
     if (!Number.isNaN(dt.getTime())) {
-      return new Intl.DateTimeFormat("es-CR", { dateStyle: "medium" }).format(dt);
+      return new Intl.DateTimeFormat("es-CR", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }).format(dt);
     }
   }
 
   const d = new Date(v);
   if (Number.isNaN(d.getTime())) return null;
-  return new Intl.DateTimeFormat("es-CR", { dateStyle: "medium" }).format(d);
+  return new Intl.DateTimeFormat("es-CR", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(d);
 }
 
 function getCoverageRange(m) {
@@ -591,11 +603,7 @@ async function loadPlans() {
 }
 
 function getPlanForMembership(m) {
-  const directPlanId =
-    m.planId ||
-    m.currentMembership?.planId ||
-    null;
-
+  const directPlanId = m.planId || m.currentMembership?.planId || null;
   return plansById.get(directPlanId) || m.planSnapshot || null;
 }
 
@@ -690,6 +698,8 @@ function render() {
         p.name,
         m.userId,
         m.associateId,
+        m.coverageStartDate,
+        m.coverageEndDate,
         coverage,
       ].map(norm).join(" ");
 
@@ -726,6 +736,12 @@ function render() {
         ${(p.allowPartial ? STR.plan.installments : STR.plan.singlePay)} • ${
           p.requiresValidation ? STR.plan.validation : STR.plan.noValidation
         }
+      </div>
+      <div class="small text-muted tight">
+        Inicio: ${fmtShortDate(m.coverageStartDate) || "—"}
+      </div>
+      <div class="small text-muted tight">
+        Fin: ${fmtShortDate(m.coverageEndDate) || "—"}
       </div>
       <div class="small text-muted tight">
         Cobertura: ${coverageText}
