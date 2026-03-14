@@ -318,11 +318,6 @@ function computeCoverageDates({ membership: m, submission: sub, plan: p }) {
   };
 }
 
-function isValidatedSubmissionStatus(st) {
-  const s = norm(st);
-  return s === "validated" || s === "approved";
-}
-
 /* =========================
    Sync user
 ========================= */
@@ -426,6 +421,7 @@ async function loadMembership() {
 async function loadPlan() {
   plan = null;
   const pid = membership?.planId || membership?.planSnapshot?.id || null;
+
   if (!pid) {
     plan = membership?.planSnapshot || null;
     return;
@@ -826,6 +822,7 @@ async function refreshAll() {
     await loadMembership();
     await loadPlan();
     await reconcileMembershipStatus();
+    await syncUserMembershipStatus();
 
     render();
     hideAlert();
