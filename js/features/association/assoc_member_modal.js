@@ -2,6 +2,7 @@
 import { db } from "../../auth/firebase.js";
 import { watchAuth } from "../../auth/auth.js";
 import { showLoader, hideLoader } from "../../ui/loader.js";
+import { APP_CONFIG } from "../../config/config.js";
 
 import {
   doc,
@@ -10,7 +11,7 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-const COL = "users";
+const COL = APP_CONFIG.collections?.users;
 
 /* =========================
    PARAMS
@@ -70,12 +71,15 @@ function scheduleSize() {
 
 function splitFullName(value = "") {
   const parts = clean(value).split(/\s+/).filter(Boolean);
+
   if (!parts.length) {
     return { firstName: "", lastName: "" };
   }
+
   if (parts.length === 1) {
     return { firstName: parts[0], lastName: "" };
   }
+
   return {
     firstName: parts.slice(0, -1).join(" "),
     lastName: parts.slice(-1).join(" "),
@@ -86,7 +90,14 @@ function buildFullName(profile = {}, fallbackDisplayName = "", fallbackEmail = "
   const fn = clean(profile.firstName);
   const ln = clean(profile.lastName);
   const fromParts = `${fn} ${ln}`.trim();
-  return fromParts || clean(profile.fullName) || clean(fallbackDisplayName) || clean(fallbackEmail) || "";
+
+  return (
+    fromParts ||
+    clean(profile.fullName) ||
+    clean(fallbackDisplayName) ||
+    clean(fallbackEmail) ||
+    ""
+  );
 }
 
 function buildPayload(existing = {}) {
@@ -120,6 +131,26 @@ function buildPayload(existing = {}) {
   };
 }
 
+function disableCreateMode() {
+  currentDoc = null;
+
+  if (modalTitle) modalTitle.textContent = "Editar miembro";
+  if (userId) userId.value = "";
+
+  if (fullName) fullName.value = "";
+  if (profileType) profileType.value = "other";
+  if (email) email.value = "";
+  if (phone) phone.value = "";
+  if (idNumber) idNumber.value = "";
+  if (active) active.checked = true;
+  if (notes) notes.value = "";
+
+  if (btnSave) btnSave.disabled = true;
+
+  alert("Crear miembros manualmente desde este modal está deshabilitado por ahora.");
+  close();
+}
+
 /* =========================
    EVENTS
 ========================= */
@@ -147,33 +178,22 @@ let currentDoc = null;
 
 watchAuth(async (user) => {
   if (!user) return;
-  if (uid) await loadUser(uid);
-  else prepareCreateMode();
+
+  if (!uid) {
+    disableCreateMode();
+    return;
+  }
+
+  await loadUser(uid);
   scheduleSize();
 });
-
-function prepareCreateMode() {
-  currentDoc = null;
-
-  if (modalTitle) modalTitle.textContent = "Nuevo miembro";
-  if (userId) userId.value = "";
-
-  if (fullName) fullName.value = "";
-  if (profileType) profileType.value = "other";
-  if (email) email.value = "";
-  if (phone) phone.value = "";
-  if (idNumber) idNumber.value = "";
-  if (active) active.checked = true;
-  if (notes) notes.value = "";
-
-  scheduleSize();
-}
 
 async function loadUser(id) {
   showLoader?.("Cargando usuario…");
 
   try {
     const snap = await getDoc(doc(db, COL, id));
+
     if (!snap.exists()) {
       alert("No se encontró el usuario.");
       return close();
@@ -181,6 +201,7 @@ async function loadUser(id) {
 
     const u = snap.data() || {};
     const profile = u.profile || {};
+
     currentDoc = { id: snap.id, ...u };
 
     if (userId) userId.value = snap.id;
@@ -194,11 +215,10 @@ async function loadUser(id) {
     if (email) email.value = u.email || "";
     if (phone) phone.value = profile.phone || "";
     if (idNumber) idNumber.value = profile.idNumber || "";
-    if (active) {
-      active.checked =
-        u.isPlayerActive === true;
-    }
+    if (active) active.checked = u.isPlayerActive === true;
     if (notes) notes.value = u.notes || "";
+
+    if (btnSave) btnSave.disabled = false;
 
     scheduleSize();
   } catch (e) {
@@ -215,15 +235,22 @@ async function loadUser(id) {
    SAVE
 ========================= */
 btnSave?.addEventListener("click", async () => {
+  if (!uid) {
+    alert("Crear miembros manualmente desde este modal está deshabilitado por ahora.");
+    return;
+  }
+
   const nameVal = clean(fullName?.value);
   const mail = clean(email?.value);
 
   if (!nameVal && !mail) {
-    return alert("Completa al menos nombre o correo.");
+    alert("Completa al menos nombre o correo.");
+    return;
   }
 
   if (mail && !validateEmail(mail)) {
-    return alert("Email inválido.");
+    alert("Email inválido.");
+    return;
   }
 
   showLoader?.("Guardando…");
@@ -233,13 +260,16 @@ btnSave?.addEventListener("click", async () => {
     const existing = currentDoc || {};
     const payload = buildPayload(existing);
 
-    if (!uid) {
-      alert("Crear usuarios manualmente desde este modal no está habilitado todavía.");
-      return;
-    }
-
     await updateDoc(doc(db, COL, uid), payload);
-    post("user:saved", { detail: { id: uid, mode: "update" } });
+
+    post("user:saved", {
+      detail: {
+        id: uid,
+        mode: "update",
+        payload
+      }
+    });
+
     close();
   } catch (e) {
     console.error(e);
