@@ -103,8 +103,8 @@ function toStartCase(value) {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function splitName(fullName) {
-  const clean = String(fullName || "").trim().replace(/\s+/g, " ");
+function splitName(name) {
+  const clean = String(name || "").trim().replace(/\s+/g, " ");
   if (!clean) return { firstName: "", lastName: "" };
 
   const parts = clean.split(" ");
@@ -120,6 +120,7 @@ function splitName(fullName) {
     lastName: parts.slice(-1).join("")
   };
 }
+
 
 function getConfigRoles() {
   return Array.isArray(APP_CONFIG?.playerRoles) ? APP_CONFIG.playerRoles : [];
@@ -173,7 +174,6 @@ function getUserProfile(userData = {}) {
   return {
     firstName: safeUser.firstName ?? profile.firstName ?? "",
     lastName: safeUser.lastName ?? profile.lastName ?? "",
-    fullName: safeUser.fullName ?? profile.fullName ?? "",
     displayName: safeUser.displayName ?? profile.displayName ?? "",
     name: safeUser.name ?? profile.name ?? "",
     email: safeUser.email ?? profile.email ?? "",
@@ -186,6 +186,7 @@ function getUserProfile(userData = {}) {
   };
 }
 
+
 function getUserDisplayName(userData = {}) {
   const u = getUserProfile(userData);
 
@@ -195,14 +196,14 @@ function getUserDisplayName(userData = {}) {
     .trim();
 
   return (
-    u.fullName ||
-    u.displayName ||
     joinedName ||
+    u.displayName ||
     u.name ||
     u.email ||
     "—"
   );
 }
+
 
 function getClubPlayerUserId(cp = {}) {
   const safeCp = cp && typeof cp === "object" ? cp : {};
@@ -219,10 +220,20 @@ function normalizeClubPlayerActive(cp = {}) {
 
 function getClubPlayerName(cp = {}, user = null) {
   const safeCp = cp && typeof cp === "object" ? cp : {};
+
+  const joinedName = [
+    safeCp.firstName || "",
+    safeCp.lastName || "",
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
   return (
-    safeCp.fullName ||
+    joinedName ||
     safeCp.displayName ||
     safeCp.name ||
+    safeCp.fullName || // legacy temporal
     getUserDisplayName(user || {}) ||
     "—"
   );
@@ -260,8 +271,10 @@ function buildPlayerRecord(docSnap) {
   const linkedUser = userId ? usersById.get(userId) || null : null;
   const userProfile = getUserProfile(linkedUser || {});
 
-  const fullName = getClubPlayerName(cp, linkedUser);
-  const split = fullName && fullName !== "—" ? fullName.split(" ") : [];
+  const resolvedDisplayName = getClubPlayerName(cp, linkedUser);
+  const split = resolvedDisplayName && resolvedDisplayName !== "—"
+    ? resolvedDisplayName.split(" ")
+    : [];
 
   const firstName =
     cp.firstName ??
@@ -271,7 +284,14 @@ function buildPlayerRecord(docSnap) {
   const lastName =
     cp.lastName ??
     userProfile.lastName ??
-    (split.length > 1 ? split.slice(-1).join("") : "");
+    (split.length > 1 ? split.slice(-1).join(" ") : "");
+
+  const displayName =
+    [firstName, lastName].filter(Boolean).join(" ").trim() ||
+    cp.displayName ||
+    userProfile.displayName ||
+    resolvedDisplayName ||
+    "—";
 
   const role = getClubPlayerRole(cp, linkedUser);
 
@@ -283,8 +303,7 @@ function buildPlayerRecord(docSnap) {
 
     firstName,
     lastName,
-    fullName,
-    displayName: cp.displayName ?? userProfile.displayName ?? fullName,
+    displayName,
 
     idNumber: cp.idNumber ?? userProfile.idNumber ?? null,
     number: getClubPlayerNumber(cp, linkedUser),
@@ -300,8 +319,9 @@ function buildPlayerRecord(docSnap) {
   };
 }
 
-function getPlayerFullName(player) {
-  return String(player?.fullName || "").trim() || "—";
+
+function getPlayerDisplayName(player) {
+  return String(player?.displayName || "").trim() || "—";
 }
 
 function getPlayerFirstName(player) {
@@ -326,7 +346,7 @@ function getPlayerInitials(player) {
   const initials = `${firstInitial}${lastInitial}`.trim();
   if (initials) return initials;
 
-  const full = getPlayerFullName(player);
+  const full = getPlayerDisplayName(player);
   return full !== "—" ? full.charAt(0).toUpperCase() : "—";
 }
 
@@ -369,7 +389,7 @@ function setModalCopy(isEdit = false, player = null) {
 
   if (modalSubtitle) {
     if (isEdit && player) {
-      modalSubtitle.textContent = player.fullName || "Actualizar información del jugador";
+      modalSubtitle.textContent = player.displayName || "Actualizar información del jugador";
     } else {
       modalSubtitle.textContent = "Registrar jugador en el roster";
     }
@@ -515,7 +535,7 @@ function getFilteredPlayers() {
   const role = normalizeRoleId(filters.role?.value || "");
 
   return players.filter(p => {
-    const fullName = normalizeText(getPlayerFullName(p));
+    const fullName = normalizeText(getPlayerDisplayName(p));
     const matchesName = !term || fullName.includes(term);
     const matchesGender = !gender || (p.gender || "") === gender;
     const matchesRole = !role || normalizeRoleId(p.role) === role;
@@ -541,8 +561,8 @@ function applySort() {
 
     switch (currentSort.key) {
       case "name":
-        valA = normalizeText(getPlayerFullName(a));
-        valB = normalizeText(getPlayerFullName(b));
+        valA = normalizeText(getPlayerDisplayName(a));
+        valB = normalizeText(getPlayerDisplayName(b));
         break;
 
       case "number":
@@ -600,7 +620,7 @@ function render() {
                   ${escapeHtml(getPlayerInitials(p))}
                 </div>
                 <div class="player-cell-text">
-                  <div class="player-cell-name fw-semibold">${escapeHtml(getPlayerFullName(p))}</div>
+                  <div class="player-cell-name fw-semibold">${escapeHtml(getPlayerDisplayName(p))}</div>
                 </div>
               </div>
             </td>
@@ -644,7 +664,7 @@ function renderMobileCards(list = players) {
             </div>
 
             <div class="flex-grow-1 min-w-0">
-              <div class="player-name">${escapeHtml(getPlayerFullName(p))}</div>
+              <div class="player-name">${escapeHtml(getPlayerDisplayName(p))}</div>
               <div class="player-extra mt-2">
                 <span class="player-chip role-chip">${escapeHtml(p.roleLabel || "—")}</span>
                 <span class="player-chip gender-chip">${escapeHtml(getGenderLabel(p.gender))}</span>
@@ -805,14 +825,13 @@ async function savePlayerFromForm() {
 
   const firstName = fields.firstName.value.trim();
   const lastName = fields.lastName.value.trim();
-  const fullName = `${firstName} ${lastName}`.trim();
+  const displayName = [firstName, lastName].filter(Boolean).join(" ").trim();
   const role = normalizeRoleId(fields.role.value || getDefaultRoleId());
 
   const payload = {
     firstName,
     lastName,
-    fullName,
-    displayName: fullName,
+    displayName,
 
     idNumber: (fields.idNumber.value || "").trim() || null,
     number: fields.number.value === "" ? null : Number(fields.number.value),
@@ -831,7 +850,7 @@ async function savePlayerFromForm() {
     if (fields.id.value) {
       await updateDoc(doc(db, CLUB_PLAYERS_COL, fields.id.value), payload);
     } else {
-      const nameParts = splitName(fullName);
+      const nameParts = splitName(displayName);
       await setDoc(doc(collection(db, CLUB_PLAYERS_COL)), {
         ...payload,
         firstName: firstName || nameParts.firstName || "",
@@ -848,6 +867,7 @@ async function savePlayerFromForm() {
     hideLoader();
   }
 }
+
 
 /*************************************************
  * MODAL

@@ -201,7 +201,6 @@ function getPlayerFullName(player) {
   const profile = getUserProfile(user);
 
   const fromUser =
-    profile.fullName ||
     `${profile.firstName || ""} ${profile.lastName || ""}`.trim() ||
     user?.displayName ||
     "";
@@ -292,7 +291,6 @@ async function loadPlayers() {
         systemRole: user?.role || "",
         linkedUserEmail: user?.email || "",
         linkedUserName:
-          profile.fullName ||
           `${profile.firstName || ""} ${profile.lastName || ""}`.trim() ||
           user?.displayName ||
           "",

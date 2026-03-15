@@ -18,8 +18,8 @@ function getDefaultRole() {
   return APP_CONFIG?.playerRoles?.[0]?.id || "player";
 }
 
-function splitName(fullName) {
-  const clean = String(fullName || "").trim().replace(/\s+/g, " ");
+function splitName(name) {
+  const clean = String(name || "").trim().replace(/\s+/g, " ");
   if (!clean) return { firstName: "", lastName: "" };
 
   const parts = clean.split(" ");
@@ -55,7 +55,7 @@ async function savePlayer() {
   const roleInput = document.getElementById("playerRole");
   const genderInput = document.getElementById("playerGender");
 
-  const fullName = nameInput?.value?.trim() || "";
+  const rawName = nameInput?.value?.trim() || "";
   const numberRaw = numberInput?.value?.trim() || "";
   const birthday = birthdayInput?.value?.trim() || null;
   const role = (roleInput?.value || getDefaultRole()).trim();
@@ -63,19 +63,19 @@ async function savePlayer() {
 
   const number = numberRaw === "" ? null : Number(numberRaw);
 
-  if (!fullName || number == null || Number.isNaN(number)) {
+  if (!rawName || number == null || Number.isNaN(number)) {
     showMessage("❌ Nombre y número son obligatorios", "danger");
     return;
   }
 
-  const { firstName, lastName } = splitName(fullName);
+  const { firstName, lastName } = splitName(rawName);
+  const displayName = [firstName, lastName].filter(Boolean).join(" ").trim() || rawName;
 
   const player = {
-    fullName,
-    displayName: fullName,
+    displayName,
     firstName,
     lastName,
-    normalized: normalize(fullName),
+    normalized: normalize(displayName),
 
     number,
     birthday,
@@ -85,7 +85,7 @@ async function savePlayer() {
     active: true,
     isActive: true,
 
-    userId: null, // se llena después si se linkea a un user
+    userId: null,
     linkedUserId: null,
 
     createdAt: serverTimestamp(),

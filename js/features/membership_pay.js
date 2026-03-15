@@ -124,6 +124,23 @@ function safe(s) {
   return (s || "").toString().trim();
 }
 
+function buildDisplayName(firstName, lastName) {
+  return [safe(firstName), safe(lastName)].filter(Boolean).join(" ").trim();
+}
+
+function getSnapshotDisplayName(snapshot = {}) {
+  const firstName = snapshot?.firstName ?? snapshot?.profile?.firstName ?? "";
+  const lastName = snapshot?.lastName ?? snapshot?.profile?.lastName ?? "";
+  const joined = buildDisplayName(firstName, lastName);
+
+  return (
+    joined ||
+    safe(snapshot?.displayName) ||
+    safe(snapshot?.name) ||
+    "—"
+  );
+}
+
 function setProgress(pct, text) {
   progressWrap?.classList.remove("d-none");
   progressText?.classList.remove("d-none");
@@ -307,7 +324,7 @@ function fillSummaryOnly() {
   const p = membership?.planSnapshot || {};
   const cur = inferCurrency();
 
-  if (assocName) assocName.textContent = a.fullName || "—";
+  if (assocName) assocName.textContent = getSnapshotDisplayName(a);
   if (assocContact) assocContact.textContent = [a.email || null, a.phone || null].filter(Boolean).join(" • ") || "—";
 
   if (planName) planName.textContent = p.name || "—";
@@ -322,7 +339,7 @@ function fillUI() {
   fillSummaryOnly();
 
   const a = getMemberSnapshot();
-  if (payerName) payerName.value = a.fullName || "";
+  if (payerName) payerName.value = getSnapshotDisplayName(a) === "—" ? "" : getSnapshotDisplayName(a);
   if (email) email.value = a.email || "";
   if (phone) phone.value = a.phone || "";
 

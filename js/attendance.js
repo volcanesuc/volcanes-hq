@@ -53,7 +53,6 @@ let permissions = null;
  *       id,
  *       clubPlayerId,
  *       userId,
- *       fullName,
  *       active,
  *       email,
  *       photoURL,
@@ -106,7 +105,6 @@ function getUserProfile(userData = {}) {
   return {
     firstName: safeUser.firstName ?? profile.firstName ?? "",
     lastName: safeUser.lastName ?? profile.lastName ?? "",
-    fullName: safeUser.fullName ?? profile.fullName ?? "",
     displayName: safeUser.displayName ?? profile.displayName ?? "",
     name: safeUser.name ?? profile.name ?? "",
     email: safeUser.email ?? profile.email ?? "",
@@ -118,6 +116,7 @@ function getUserProfile(userData = {}) {
   };
 }
 
+
 function getUserDisplayName(userData = {}) {
   const u = getUserProfile(userData);
 
@@ -127,9 +126,8 @@ function getUserDisplayName(userData = {}) {
     .trim();
 
   return (
-    u.fullName ||
-    u.displayName ||
     joinedName ||
+    u.displayName ||
     u.name ||
     u.email ||
     "—"
@@ -155,14 +153,24 @@ function getClubPlayerUserId(cp = {}) {
 
 function getClubPlayerName(cp = {}, user = null) {
   const safeCp = cp && typeof cp === "object" ? cp : {};
+
+  const clubPlayerJoinedName = [
+    safeCp.firstName || "",
+    safeCp.lastName || "",
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
   return (
-    safeCp.fullName ||
+    clubPlayerJoinedName ||
     safeCp.displayName ||
     safeCp.name ||
     getUserDisplayName(user || {}) ||
     "—"
   );
 }
+
 
 function getClubPlayerEmail(cp = {}, user = null) {
   const safeCp = cp && typeof cp === "object" ? cp : {};
@@ -279,7 +287,7 @@ async function loadAttendance() {
     const userId = getClubPlayerUserId(cp);
     const user = userId ? usersById[userId] || null : null;
 
-    const fullName = getClubPlayerName(cp, user);
+    const displayName = getClubPlayerName(cp, user);
     const active = normalizeClubPlayerActive(cp);
 
     allPlayers[clubPlayerId] = {
@@ -287,7 +295,7 @@ async function loadAttendance() {
         id: clubPlayerId,
         clubPlayerId,
         userId,
-        fullName,
+        displayName,
         active,
         email: getClubPlayerEmail(cp, user),
         photoURL: getClubPlayerPhoto(cp, user),
@@ -395,14 +403,14 @@ function applyFilter() {
     }))
     .sort((a, b) => {
       if (b.count !== a.count) return b.count - a.count;
-      return (a.player.fullName || "").localeCompare(b.player.fullName || "");
+      return (a.player.displayName || "").localeCompare(b.player.displayName || "");
     });
 
   // search
   const q = (playerSearch?.value || "").trim().toLowerCase();
   const playersToRender = q
     ? filteredPlayersArr.filter(({ player }) =>
-        (player.fullName || "").toLowerCase().includes(q)
+        (player.displayName || "").toLowerCase().includes(q)
       )
     : filteredPlayersArr;
 
@@ -438,7 +446,7 @@ async function generatePdf() {
     const activePlayers = Object.values(allPlayers)
       .map((p) => p.player)
       .filter((pl) => pl && pl.active !== false)
-      .sort((a, b) => (a.fullName || "").localeCompare(b.fullName || ""));
+      .sort((a, b) => (a.displayName || "").localeCompare(b.displayName || ""));
 
     const rows = activePlayers.map((pl) => {
       let count = 0;
@@ -479,7 +487,7 @@ async function generatePdf() {
 
       const pct = totalTrainings ? Math.round((count / totalTrainings) * 100) : 0;
       return {
-        name: pl.fullName || "—",
+        name: pl.displayName || "—",
         count,
         total: totalTrainings,
         pct,
@@ -582,7 +590,7 @@ function renderPlayers(list) {
 
         return `
           <tr>
-            <td>${player.fullName ?? "—"}</td>
+            <td>${player.displayName ?? "—"}</td>
             <td>${count ?? 0}</td>
             <td>
               <div class="d-flex align-items-center gap-2">
@@ -608,7 +616,7 @@ function renderPlayers(list) {
 
         return `
           <div class="mobile-card">
-            <div class="mobile-card__title">${player.fullName ?? "—"}</div>
+            <div class="mobile-card__title">${player.displayName ?? "—"}</div>
             <div class="mobile-card__sub">${count ?? 0} asistencias</div>
 
             <div class="mobile-card__row">
@@ -649,7 +657,7 @@ function renderTopPlayers(playersArr, totalTrainings) {
         <div class="top3-card">
           <div class="top3-row">
             <div>
-              <div class="top3-name">${medals[i]} ${player.fullName ?? "—"}</div>
+              <div class="top3-name">${medals[i]} ${player.displayName ?? "—"}</div>
               <div class="top3-meta">${count ?? 0} de ${totalTrainings} · ${pct ?? 0}%</div>
             </div>
             <span class="pill pill--good">${count ?? 0}</span>

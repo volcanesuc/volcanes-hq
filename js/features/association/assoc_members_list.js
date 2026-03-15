@@ -40,12 +40,23 @@ function typeLabel(t) {
   return map[t] || "—";
 }
 
+function buildDisplayName(firstName, lastName) {
+  return [firstName, lastName]
+    .map((x) => (x || "").toString().trim())
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+}
+
 function getFullName(user) {
   const profile = user?.profile || {};
-  const first = profile.firstName || "";
-  const last = profile.lastName || "";
-  const full = `${first} ${last}`.trim();
-  return full || profile.fullName || user?.displayName || "—";
+  return (
+    buildDisplayName(profile.firstName, profile.lastName) ||
+    user?.displayName ||
+    profile.displayName ||
+    user?.email ||
+    "—"
+  );
 }
 
 function getUserType(user) {
@@ -450,7 +461,6 @@ function render() {
       );
     });
   });
-  
 }
 
 /* =========================

@@ -506,12 +506,10 @@ function buildUserProfile({
   residence,
   emergencyContact,
 }) {
-  const fullName = `${firstName} ${lastName}`.trim();
 
   return {
     firstName: firstName || null,
     lastName: lastName || null,
-    fullName: fullName || null,
     birthDate: birthDate || null,
     idType: idType || null,
     idNumber: idNumber || null,
@@ -535,12 +533,12 @@ async function saveUserProfileAndConsents({
   consents,
 }) {
   const user = auth.currentUser;
-  const fullName = `${firstName} ${lastName}`.trim();
+  const displayName = `${firstName} ${lastName}`.trim();
 
   const payload = {
     uid,
     email: email || user?.email || null,
-    displayName: user?.displayName || fullName || null,
+    displayName: user?.displayName || displayName || null,
     photoURL: user?.photoURL || null,
 
     profile: buildUserProfile({
@@ -574,7 +572,7 @@ async function saveUserProfileAndConsents({
 
   return {
     uid,
-    fullName,
+    displayName,
     email,
     phone: phone || null,
     emergencyContact: emergencyContact || null,
@@ -1141,12 +1139,14 @@ function applyPrefillFromSession() {
       $.email.readOnly = true;
     }
 
-    if ($.firstName && $.lastName && p.fullName) {
-      const parts = String(p.fullName).trim().split(/\s+/);
-      if (!$.firstName.value) $.firstName.value = parts.shift() || "";
-      if (!$.lastName.value) $.lastName.value = parts.join(" ");
+    if ($.firstName && !$.firstName.value && p.firstName) {
+      $.firstName.value = p.firstName;
     }
 
+    if ($.lastName && !$.lastName.value && p.lastName) {
+      $.lastName.value = p.lastName;
+    }
+    
     if ($.phone && p.phone && !$.phone.value) {
       $.phone.value = p.phone;
     }
@@ -1383,11 +1383,12 @@ $.form?.addEventListener("submit", async (ev) => {
 
     await step("Mark onboarding complete (users/{uid})", async () => {
       const uref = doc(db, COL_USERS, uid);
+      const derivedDisplayName = `${firstName} ${lastName}`.trim();
 
       const payload = {
         email: email || auth.currentUser?.email || null,
-        displayName:
-          auth.currentUser?.displayName || `${firstName} ${lastName}`.trim() || null,
+        
+        displayName: auth.currentUser?.displayName || derivedDisplayName || null,
         photoURL: auth.currentUser?.photoURL || null,
         phone: phone || null,
         emergencyContact,

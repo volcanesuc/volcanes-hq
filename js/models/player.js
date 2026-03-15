@@ -36,7 +36,6 @@ export class Player {
     this.firstName = data.firstName ?? "";
     this.lastName = data.lastName ?? "";
     this.displayName = data.displayName ?? "";
-    this.fullNameField = data.fullName ?? "";
 
     this.idNumber = data?.idNumber ?? null;
     this.number = data.number ?? null;
@@ -52,7 +51,7 @@ export class Player {
 
   get fullName() {
     const joined = `${this.firstName} ${this.lastName}`.trim();
-    return this.fullNameField || this.displayName || joined || "—";
+    return this.displayName || joined || "—";
   }
 
   get shortName() {
@@ -60,7 +59,7 @@ export class Player {
       return `${this.firstName} ${this.lastName[0]}.`.trim();
     }
 
-    return this.firstName || this.displayName || this.fullNameField || "—";
+    return this.firstName || this.displayName || "—";
   }
 
   get roleLabel() {
@@ -75,8 +74,7 @@ export class Player {
     return {
       firstName: this.firstName,
       lastName: this.lastName,
-      fullName: this.fullNameField || this.fullName,
-      displayName: this.displayName || this.fullName,
+      displayName: this.displayName,
       idNumber: this.idNumber,
       number: this.number,
       gender: this.gender,

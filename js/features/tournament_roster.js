@@ -235,6 +235,14 @@ async function fetchTournament(id) {
   return { id: snap.id, ...snap.data() };
 }
 
+function buildDisplayName(firstName, lastName) {
+  return [firstName, lastName]
+    .map((x) => String(x || "").trim())
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+}
+
 function getUserProfile(userData = {}) {
   const safeUser = userData && typeof userData === "object" ? userData : {};
   const profile = safeUser.profile && typeof safeUser.profile === "object"
@@ -244,7 +252,6 @@ function getUserProfile(userData = {}) {
   return {
     firstName: safeUser.firstName ?? profile.firstName ?? "",
     lastName: safeUser.lastName ?? profile.lastName ?? "",
-    fullName: safeUser.fullName ?? profile.fullName ?? "",
     displayName: safeUser.displayName ?? profile.displayName ?? "",
     name: safeUser.name ?? profile.name ?? "",
     email: safeUser.email ?? profile.email ?? "",
@@ -261,15 +268,11 @@ function getUserProfile(userData = {}) {
 function getUserDisplayName(userData = {}) {
   const u = getUserProfile(userData);
 
-  const joinedName = [u.firstName, u.lastName]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
+  const joinedName = buildDisplayName(u.firstName, u.lastName);
 
   return (
-    u.fullName ||
-    u.displayName ||
     joinedName ||
+    u.displayName ||
     u.name ||
     u.email ||
     "—"
@@ -291,8 +294,11 @@ function getClubPlayerUserId(cp = {}) {
 
 function getClubPlayerName(cp = {}, user = null) {
   const safeCp = cp && typeof cp === "object" ? cp : {};
+
+  const joinedName = buildDisplayName(safeCp.firstName, safeCp.lastName);
+
   return (
-    safeCp.fullName ||
+    joinedName ||
     safeCp.displayName ||
     safeCp.name ||
     getUserDisplayName(user || {}) ||
@@ -428,13 +434,14 @@ async function loadPlayers() {
       const id = d.id;
       const userId = getClubPlayerUserId(cp);
       const user = userId ? usersById[userId] || null : null;
-      const fullName = getClubPlayerName(cp, user);
+      const displayName = getClubPlayerName(cp, user);
 
       return {
         id,
         clubPlayerId: id,
         userId,
-        name: fullName,
+        name: displayName,
+        displayName,
         nickname: getClubPlayerNickname(cp, user),
         role: getClubPlayerRole(cp, user),
         number: getClubPlayerNumber(cp, user),

@@ -465,7 +465,7 @@ function render() {
   const a = getMemberSnapshot(membership);
   const cur = getCurrency();
 
-  assocName.textContent = a.fullName || a.displayName || "—";
+  assocName.textContent = a.displayName || "—";
   assocContact.textContent = [a.email || null, a.phone || null].filter(Boolean).join(" • ") || "—";
 
   planName.textContent = plan?.name || "—";

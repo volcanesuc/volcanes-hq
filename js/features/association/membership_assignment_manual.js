@@ -171,12 +171,20 @@ function getUserProfile(u) {
   return u?.profile || {};
 }
 
-function getUserFullName(u) {
+function buildDisplayName(firstName, lastName) {
+  return [firstName, lastName]
+    .map((x) => (x || "").toString().trim())
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+}
+
+function getUserDisplayName(u) {
   const p = getUserProfile(u);
   return (
-    p.fullName ||
-    [p.firstName || "", p.lastName || ""].join(" ").trim() ||
+    buildDisplayName(p.firstName, p.lastName) ||
     u?.displayName ||
+    p.displayName ||
     u?.email ||
     "—"
   );
@@ -194,7 +202,7 @@ function getUserEmail(u) {
 function getUserSearchBlob(u) {
   const p = getUserProfile(u);
   return [
-    getUserFullName(u),
+    getUserDisplayName(u),
     getUserEmail(u),
     getUserPhone(u),
     p.idNumber,
@@ -203,9 +211,13 @@ function getUserSearchBlob(u) {
 }
 
 function buildUserSnapshot(u) {
+  const p = getUserProfile(u);
+
   return {
     uid: u.uid || u.id,
-    fullName: getUserFullName(u),
+    firstName: p.firstName || null,
+    lastName: p.lastName || null,
+    displayName: getUserDisplayName(u),
     email: getUserEmail(u),
     phone: getUserPhone(u),
   };
@@ -240,10 +252,10 @@ async function loadUsers() {
   users = snap.docs
     .map((d) => ({ id: d.id, ...d.data() }))
     .filter((u) => u.onboardingComplete === true)
-    .filter((u) => !!getUserFullName(u))
+    .filter((u) => !!getUserDisplayName(u))
     .filter((u) => normalizeAssociationStatus(u) !== "rejected")
     .sort((a, b) =>
-      getUserFullName(a).localeCompare(getUserFullName(b), "es", { sensitivity: "base" })
+      getUserDisplayName(a).localeCompare(getUserDisplayName(b), "es", { sensitivity: "base" })
     );
 }
 
@@ -276,7 +288,7 @@ function openMenu(items) {
 
     return `
       <div class="picklist-item" data-id="${u.id}">
-        <div class="fw-bold">${getUserFullName(u)}</div>
+        <div class="fw-bold">${getUserDisplayName(u)}</div>
         <div>${email}${phone}${idn}</div>
       </div>
     `;
@@ -294,8 +306,8 @@ function selectUserById(id) {
   if (!u) return;
 
   selectedUser = u;
-  associateSearch.value = getUserFullName(u);
-  associateSelected.textContent = `Seleccionado: ${getUserFullName(u)}`;
+  associateSearch.value = getUserDisplayName(u);
+  associateSelected.textContent = `Seleccionado: ${getUserDisplayName(u)}`;
   closeMenu();
   renderPreview();
 }
@@ -399,7 +411,7 @@ function wireUI() {
 ========================= */
 function renderPreview() {
   if (selectedUser) {
-    previewAssociate.textContent = getUserFullName(selectedUser);
+    previewAssociate.textContent = getUserDisplayName(selectedUser);
     const parts = [
       getUserEmail(selectedUser) || null,
       getUserPhone(selectedUser) || null,

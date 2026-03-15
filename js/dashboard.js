@@ -76,7 +76,6 @@ function getUserProfile(userData = {}) {
   return {
     firstName: safeUser.firstName ?? profile.firstName ?? "",
     lastName: safeUser.lastName ?? profile.lastName ?? "",
-    fullName: safeUser.fullName ?? profile.fullName ?? "",
     displayName: safeUser.displayName ?? profile.displayName ?? "",
     name: safeUser.name ?? profile.name ?? "",
     email: safeUser.email ?? profile.email ?? "",
@@ -97,9 +96,8 @@ function getUserDisplayName(userData = {}) {
     .trim();
 
   return (
-    u.fullName ||
-    u.displayName ||
     joinedName ||
+    u.displayName ||
     u.name ||
     u.email ||
     "—"
@@ -108,14 +106,24 @@ function getUserDisplayName(userData = {}) {
 
 function getClubPlayerName(cp = {}, user = null) {
   const safeCp = cp && typeof cp === "object" ? cp : {};
+
+  const joinedName = [
+    safeCp.firstName || "",
+    safeCp.lastName || "",
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
   return (
-    safeCp.fullName ||
+    joinedName ||
     safeCp.displayName ||
     safeCp.name ||
     getUserDisplayName(user || {}) ||
     "—"
   );
 }
+
 
 function getClubPlayerNumber(cp = {}, user = null) {
   const safeCp = cp && typeof cp === "object" ? cp : {};
@@ -155,29 +163,41 @@ function buildPlayersFromClubData({ usersDocs = [], clubPlayersDocs = [] }) {
     const user = userId ? usersById[userId] : null;
     const userProfile = getUserProfile(user || {});
 
-    const fullName = getClubPlayerName(cp, user);
-    const split = fullName && fullName !== "—"
-      ? fullName.split(" ")
+    const resolvedDisplayName = getClubPlayerName(cp, user);
+    const split = resolvedDisplayName && resolvedDisplayName !== "—"
+      ? resolvedDisplayName.split(" ")
       : [];
+
+    const firstName =
+      cp.firstName ??
+      userProfile.firstName ??
+      (split.length > 1 ? split.slice(0, -1).join(" ") : split[0] || "");
+
+    const lastName =
+      cp.lastName ??
+      userProfile.lastName ??
+      (split.length > 1 ? split.slice(-1).join(" ") : "");
+
+    const joinedName = [firstName, lastName].filter(Boolean).join(" ").trim();
+
+    const displayName =
+      joinedName ||
+      cp.displayName ||
+      userProfile.displayName ||
+      cp.name ||
+      userProfile.name ||
+      resolvedDisplayName ||
+      "—";
 
     return {
       id,
       clubPlayerId: id,
       userId,
 
-      firstName:
-        cp.firstName ??
-        userProfile.firstName ??
-        (split.length > 1 ? split.slice(0, -1).join(" ") : split[0] || ""),
-
-      lastName:
-        cp.lastName ??
-        userProfile.lastName ??
-        (split.length > 1 ? split.slice(-1).join("") : ""),
-
-      displayName: cp.displayName ?? userProfile.displayName ?? fullName,
-      fullName,
-      shortName: fullName,
+      firstName,
+      lastName,
+      displayName,
+      shortName: displayName,
 
       idNumber: cp.idNumber ?? user?.idNumber ?? userProfile.idNumber ?? null,
       number: getClubPlayerNumber(cp, user),
@@ -194,6 +214,7 @@ function buildPlayersFromClubData({ usersDocs = [], clubPlayersDocs = [] }) {
     };
   });
 }
+
 
 function resolveAttendancePlayerId(attendee, playersById, playersByUserId) {
   if (!attendee) return null;
@@ -495,7 +516,7 @@ function renderBirthdays(players) {
       const isToday = day === today.getDate();
       return `
         <div class="birthday-item ${isToday ? "today" : ""}">
-          <strong>${escapeHtml(player.fullName)}</strong>
+          <strong>${escapeHtml(player.displayName)}</strong>
           <span class="ms-2">${day}</span>
         </div>
       `;
@@ -769,7 +790,7 @@ function calculateAlerts({ players, trainings }) {
   }
 
   const topAbsents = inactive30
-    .map(p => p.fullName || `${p.firstName || ""} ${p.lastName || ""}`.trim())
+    .map(p => `${p.firstName || ""} ${p.lastName || ""}`.trim())
     .filter(Boolean)
     .slice(0, 5);
 

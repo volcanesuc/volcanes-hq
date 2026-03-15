@@ -121,7 +121,7 @@ function getOwnerId(m) {
 
 function getOwnerName(m) {
   const a = getOwnerSnapshot(m);
-  return a.fullName || a.displayName || STR.common.dash;
+  return a.displayName || STR.common.dash;
 }
 
 function getOwnerEmail(m) {
@@ -691,7 +691,6 @@ function render() {
       const blob = [
         m.id,
         m.season,
-        owner.fullName,
         owner.displayName,
         owner.email,
         owner.phone,
