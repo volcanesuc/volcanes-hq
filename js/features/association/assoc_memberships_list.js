@@ -119,10 +119,26 @@ function getOwnerId(m) {
   return m.userId || m.associateId || null;
 }
 
+function buildDisplayName(firstName, lastName) {
+  return [firstName, lastName]
+    .map((x) => (x || "").toString().trim())
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+}
+
 function getOwnerName(m) {
   const a = getOwnerSnapshot(m);
-  return a.displayName || STR.common.dash;
+
+  return (
+    buildDisplayName(a.firstName, a.lastName) ||
+    a.displayName ||
+    a.fullName || // fallback legacy
+    a.email ||
+    STR.common.dash
+  );
 }
+
 
 function getOwnerEmail(m) {
   const a = getOwnerSnapshot(m);
@@ -691,7 +707,9 @@ function render() {
       const blob = [
         m.id,
         m.season,
+        buildDisplayName(owner.firstName, owner.lastName),
         owner.displayName,
+        owner.fullName,
         owner.email,
         owner.phone,
         p.name,
@@ -701,6 +719,7 @@ function render() {
         m.coverageEndDate,
         coverage,
       ].map(norm).join(" ");
+
 
       return blob.includes(qText);
     });
