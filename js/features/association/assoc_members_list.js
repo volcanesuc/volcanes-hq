@@ -40,13 +40,26 @@ function typeLabel(t) {
   return map[t] || "—";
 }
 
+function capitalizeWords(str) {
+  return (str || "")
+    .toLowerCase()
+    .split(" ")
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+
 function buildDisplayName(firstName, lastName) {
-  return [firstName, lastName]
+  const name = [firstName, lastName]
     .map((x) => (x || "").toString().trim())
     .filter(Boolean)
     .join(" ")
     .trim();
+
+  return capitalizeWords(name);
 }
+
 
 function getFullName(user) {
   const profile = user?.profile || {};
