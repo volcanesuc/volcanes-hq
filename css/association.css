@@ -204,7 +204,7 @@ body.loading {
 }
 
 #modalHost.mh-fullscreen .mh-shell,
-.mh-shell-fullscreen {
+#modalHost.mh-fullscreen .mh-frame {
   width: 100vw;
   height: 100vh;
   max-height: none;

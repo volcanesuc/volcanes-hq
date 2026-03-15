@@ -448,9 +448,9 @@ function render() {
         `partials/assoc_member_modal.html?uid=${encodeURIComponent(id)}`,
         { fullscreen: true }
       );
-
     });
   });
+  
 }
 
 /* =========================
