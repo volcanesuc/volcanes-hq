@@ -211,7 +211,7 @@ function renderShell(container) {
       <div class="d-flex gap-2">
         <button
           id="btnNewAssociate"
-          class="btn btn-primary btn-sm"
+          class="btn btn-outline-secondary btn-sm"
           type="button"
           disabled
           title="Crear miembros manualmente está deshabilitado por ahora"
