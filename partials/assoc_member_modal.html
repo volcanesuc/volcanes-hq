@@ -57,6 +57,25 @@
     .assoc-member-modal .tab-content {
       min-height: 260px;
     }
+
+    .assoc-member-modal__header {
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .assoc-member-modal__close {
+      flex: 0 0 auto;
+      margin-top: 0.15rem;
+      margin-left: auto;
+    }
+
+    .assoc-member-modal__check {
+      min-height: 38px;
+      display: flex;
+      align-items: center;
+    }
+
   </style>
 </head>
 
@@ -64,8 +83,8 @@
   <form id="memberForm" class="assoc-member-modal">
     <input type="hidden" id="associateId" />
 
-    <div class="modal-header app-modal__header">
-      <div>
+    <div class="modal-header app-modal__header assoc-member-modal__header">
+      <div class="pe-3">
         <h5 class="modal-title mb-0" id="modalTitle">Editar miembro</h5>
         <small class="app-modal__subtitle">
           Completá la información general del miembro de la asociación
@@ -75,7 +94,7 @@
       <button
         id="btnClose"
         type="button"
-        class="btn-close btn-close-white"
+        class="btn-close btn-close-white assoc-member-modal__close"
         aria-label="Cerrar"
       ></button>
     </div>
@@ -133,7 +152,7 @@
 
                   <div class="col-12 col-md-2">
                     <label class="form-label d-block" for="active">Activo</label>
-                    <div class="form-check mt-2">
+                    <div class="form-check form-switch assoc-member-modal__check mt-2">
                       <input class="form-check-input" type="checkbox" id="active" />
                     </div>
                   </div>
