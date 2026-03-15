@@ -11,7 +11,7 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-const COL = APP_CONFIG.collections?.users;
+const COL = APP_CONFIG.collections?.users || "users";
 
 /* =========================
    PARAMS
@@ -25,12 +25,12 @@ const uid = params.get("uid");
 const modalTitle = document.getElementById("modalTitle");
 const userId = document.getElementById("associateId");
 
-const fullName = document.getElementById("fullName");
+const firstName = document.getElementById("firstName");
+const lastName = document.getElementById("lastName");
 const profileType = document.getElementById("type");
 const email = document.getElementById("email");
 const phone = document.getElementById("phone");
 const idNumber = document.getElementById("idNumber");
-const active = document.getElementById("active");
 const notes = document.getElementById("notes");
 
 const btnClose = document.getElementById("btnClose");
@@ -69,60 +69,24 @@ function scheduleSize() {
   setTimeout(sendSize, 200);
 }
 
-function splitFullName(value = "") {
-  const parts = clean(value).split(/\s+/).filter(Boolean);
-
-  if (!parts.length) {
-    return { firstName: "", lastName: "" };
-  }
-
-  if (parts.length === 1) {
-    return { firstName: parts[0], lastName: "" };
-  }
-
-  return {
-    firstName: parts.slice(0, -1).join(" "),
-    lastName: parts.slice(-1).join(" "),
-  };
-}
-
-function buildFullName(profile = {}, fallbackDisplayName = "", fallbackEmail = "") {
-  const fn = clean(profile.firstName);
-  const ln = clean(profile.lastName);
-  const fromParts = `${fn} ${ln}`.trim();
-
-  return (
-    fromParts ||
-    clean(profile.fullName) ||
-    clean(fallbackDisplayName) ||
-    clean(fallbackEmail) ||
-    ""
-  );
-}
-
 function buildPayload(existing = {}) {
-  const nameVal = clean(fullName?.value);
+  const firstNameVal = clean(firstName?.value) || null;
+  const lastNameVal = clean(lastName?.value) || null;
   const mail = clean(email?.value).toLowerCase() || null;
   const phoneVal = clean(phone?.value) || null;
   const idNumberVal = clean(idNumber?.value) || null;
   const typeVal = clean(profileType?.value) || "other";
   const notesVal = clean(notes?.value) || null;
 
-  const parsed = splitFullName(nameVal);
   const existingProfile = existing.profile || {};
-  const isPlayerActive = !!active?.checked;
 
   return {
     email: mail,
-    displayName: nameVal || mail || existing.displayName || null,
-    isPlayerActive,
-    playerStatus: isPlayerActive ? "active" : "pending",
     notes: notesVal,
     profile: {
       ...existingProfile,
-      firstName: parsed.firstName || existingProfile.firstName || null,
-      lastName: parsed.lastName || existingProfile.lastName || null,
-      fullName: nameVal || null,
+      firstName: firstNameVal,
+      lastName: lastNameVal,
       type: typeVal,
       phone: phoneVal,
       idNumber: idNumberVal,
@@ -137,12 +101,12 @@ function disableCreateMode() {
   if (modalTitle) modalTitle.textContent = "Editar miembro";
   if (userId) userId.value = "";
 
-  if (fullName) fullName.value = "";
+  if (firstName) firstName.value = "";
+  if (lastName) lastName.value = "";
   if (profileType) profileType.value = "other";
   if (email) email.value = "";
   if (phone) phone.value = "";
   if (idNumber) idNumber.value = "";
-  if (active) active.checked = true;
   if (notes) notes.value = "";
 
   if (btnSave) btnSave.disabled = true;
@@ -207,15 +171,12 @@ async function loadUser(id) {
     if (userId) userId.value = snap.id;
     if (modalTitle) modalTitle.textContent = "Editar miembro";
 
-    if (fullName) {
-      fullName.value = buildFullName(profile, u.displayName, u.email);
-    }
-
+    if (firstName) firstName.value = profile.firstName || "";
+    if (lastName) lastName.value = profile.lastName || "";
     if (profileType) profileType.value = profile.type || "other";
     if (email) email.value = u.email || "";
     if (phone) phone.value = profile.phone || "";
     if (idNumber) idNumber.value = profile.idNumber || "";
-    if (active) active.checked = u.isPlayerActive === true;
     if (notes) notes.value = u.notes || "";
 
     if (btnSave) btnSave.disabled = false;
@@ -240,11 +201,12 @@ btnSave?.addEventListener("click", async () => {
     return;
   }
 
-  const nameVal = clean(fullName?.value);
+  const firstNameVal = clean(firstName?.value);
+  const lastNameVal = clean(lastName?.value);
   const mail = clean(email?.value);
 
-  if (!nameVal && !mail) {
-    alert("Completa al menos nombre o correo.");
+  if (!firstNameVal && !lastNameVal && !mail) {
+    alert("Completa al menos nombre, apellido o correo.");
     return;
   }
 
@@ -254,7 +216,7 @@ btnSave?.addEventListener("click", async () => {
   }
 
   showLoader?.("Guardando…");
-  btnSave.disabled = true;
+  if (btnSave) btnSave.disabled = true;
 
   try {
     const existing = currentDoc || {};
@@ -265,8 +227,7 @@ btnSave?.addEventListener("click", async () => {
     post("user:saved", {
       detail: {
         id: uid,
-        mode: "update",
-        payload
+        mode: "update"
       }
     });
 
@@ -276,7 +237,7 @@ btnSave?.addEventListener("click", async () => {
     alert("❌ Error guardando: " + (e?.message || e));
     scheduleSize();
   } finally {
-    btnSave.disabled = false;
+    if (btnSave) btnSave.disabled = false;
     hideLoader?.();
     scheduleSize();
   }
