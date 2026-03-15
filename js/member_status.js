@@ -1,3 +1,4 @@
+//js/member_status.js
 import { db, auth } from "/js/auth/firebase.js";
 import { logout } from "/js/auth/auth.js";
 import { loadHeader } from "/js/components/header.js";
@@ -58,6 +59,11 @@ function fmtMoney(amount, currency = "CRC") {
 function asDate(value) {
   if (!value) return null;
   if (typeof value?.toDate === "function") return value.toDate();
+  if (value?.seconds) return new Date(value.seconds * 1000);
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [y, m, d] = value.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  }
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? null : d;
 }
@@ -81,60 +87,22 @@ function daysBetweenNowAnd(dateValue) {
   return Math.round((target - startOfToday) / 86400000);
 }
 
-function inferCoverageDates(membership, plan) {
-  const durationMonths = Number(plan?.durationMonths || 0);
-  const startPolicy = String(plan?.startPolicy || "").trim().toLowerCase();
-
-  const startRaw = membership?.coverageStartDate || null;
-  const endRaw = membership?.coverageEndDate || null;
-
-  if (!durationMonths || !["jan", "paid_date"].includes(startPolicy)) {
-    return { startDate: null, endDate: null };
-  }
-
-  if (!startRaw || !endRaw) {
-    return { startDate: null, endDate: null };
-  }
-
-  const startDate = new Date(startRaw);
-  const endDate = new Date(endRaw);
-
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-    return { startDate: null, endDate: null };
-  }
-
-  return { startDate, endDate };
+function getCurrentMembership(userData) {
+  return userData?.currentMembership || null;
 }
 
-function getMembershipCoverageDates(membership, plan) {
-  const explicitStart = asDate(
-    membership?.coverageStartDate ||
-      membership?.startDate ||
-      membership?.activatedAt ||
-      null
-  );
+function getCoverageStart(cm) {
+  return cm?.coverageStartDate || cm?.startDate || null;
+}
 
-  const explicitEnd = asDate(
-    membership?.coverageEndDate ||
-      membership?.endDate ||
-      membership?.expiresAt ||
-      null
-  );
+function getCoverageEnd(cm) {
+  return cm?.coverageEndDate || cm?.endDate || null;
+}
 
-  if (explicitStart || explicitEnd) {
-    return {
-      startDate: explicitStart,
-      endDate: explicitEnd,
-      inferred: false,
-    };
-  }
-
-  const inferred = inferCoverageDates(membership, plan);
-
+function getMembershipCoverageDates(currentMembership) {
   return {
-    startDate: inferred.startDate,
-    endDate: inferred.endDate,
-    inferred: !!(inferred.startDate || inferred.endDate),
+    startDate: asDate(getCoverageStart(currentMembership)),
+    endDate: asDate(getCoverageEnd(currentMembership)),
   };
 }
 
@@ -155,7 +123,7 @@ function getPlanAmount(plan) {
 }
 
 function fillMembershipFields({ membership, currentMembership, plan }) {
-  const coverage = getMembershipCoverageDates(membership, plan);
+  const coverage = getMembershipCoverageDates(currentMembership);
 
   setText(
     els.membershipPlan,
@@ -166,8 +134,8 @@ function fillMembershipFields({ membership, currentMembership, plan }) {
 
   setText(
     els.membershipSeason,
-    membership?.season ??
-      currentMembership?.season ??
+    currentMembership?.season ??
+      membership?.season ??
       "—"
   );
 
@@ -225,7 +193,7 @@ function setPendingUI({ membership, currentMembership, plan }) {
       : "Tu solicitud fue recibida. La cobertura se mostrará cuando la membresía sea aprobada.";
   }
 
-  const coverage = getMembershipCoverageDates(membership, plan);
+  const coverage = getMembershipCoverageDates(currentMembership);
 
   if (!coverage.startDate) {
     setText(els.membershipStart, "Se asignará al aprobarse");
@@ -239,7 +207,7 @@ function setPendingUI({ membership, currentMembership, plan }) {
 function setActiveUI({ membership, currentMembership, plan }) {
   document.body.dataset.status = "active";
 
-  const coverage = getMembershipCoverageDates(membership, plan);
+  const coverage = getMembershipCoverageDates(currentMembership);
   const endDate = coverage.endDate || null;
   const daysLeft = daysBetweenNowAnd(endDate);
 
@@ -351,6 +319,8 @@ function resolveStatus(userData, membership) {
   if (
     membershipStatus === "pending" ||
     membershipStatus === "partial" ||
+    membershipStatus === "submitted" ||
+    membershipStatus === "validating" ||
     associationStatus === "pending"
   ) {
     return "pending";
@@ -389,7 +359,7 @@ async function loadMemberStatus(uid) {
     return;
   }
 
-  const currentMembership = userData.currentMembership || null;
+  const currentMembership = getCurrentMembership(userData);
 
   if (!currentMembership?.membershipId) {
     clearMembershipFields();
