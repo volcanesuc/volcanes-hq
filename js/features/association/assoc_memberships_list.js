@@ -535,7 +535,7 @@ export async function mount(container, cfg) {
   cacheDom(container);
 
   $.logoutBtn?.addEventListener("click", logout);
-  $.btnNewMembership?.addEventListener("click", () => openModal("partials/membership_modal.html"));
+  $.btnNewMembership?.addEventListener("click", () => openModal("partials/membership_assignment_manual.html"));
 
   if (!_msgListenerBound) {
     _msgListenerBound = true;
