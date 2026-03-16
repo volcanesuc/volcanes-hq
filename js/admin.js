@@ -192,11 +192,7 @@ function getUserProfile(user) {
 }
 
 function getPlayerUser(player) {
-  const userId = player?.userId || player?.uid || null;onst qy = query(
-  collection(db, COL_USERS),
-  where("onboardingComplete", "==", true),
-  where("isPlayerActive", "==", false)
-);
+  const userId = player?.userId || player?.uid || null;
   return userId ? usersById.get(userId) || null : null;
 }
 
