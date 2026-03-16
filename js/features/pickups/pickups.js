@@ -38,7 +38,7 @@ const COL = APP_CONFIG.collections;
 const COL_PICKUPS = COL.pickups;
 const COL_PICKUP_REGS = COL.pickupRegistrations;
 
-const PAYMENT_ENABLE_THRESHOLD = 15;
+const PAYMENT_ENABLE_THRESHOLD = 0;
 
 let $ = {};
 let cfg = null;
