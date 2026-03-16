@@ -192,7 +192,11 @@ function getUserProfile(user) {
 }
 
 function getPlayerUser(player) {
-  const userId = player?.userId || player?.uid || null;
+  const userId = player?.userId || player?.uid || null;onst qy = query(
+  collection(db, COL_USERS),
+  where("onboardingComplete", "==", true),
+  where("isPlayerActive", "==", false)
+);
   return userId ? usersById.get(userId) || null : null;
 }
 
@@ -233,11 +237,25 @@ async function loadPendingUsers() {
   );
 
   const snap = await getDocs(qy);
+
   pendingUsers = snap.docs
     .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((u) => {
+      const wantsPlayer = u?.registration?.wantsPlayer === true;
+      const playerStatus = String(u?.playerStatus || "").trim().toLowerCase();
+      return wantsPlayer && playerStatus === "pending";
+    })
     .sort((a, b) => {
-      const aName = normalizeText(a.displayName || a.email || a.id);
-      const bName = normalizeText(b.displayName || b.email || b.id);
+      const aName = normalizeText(
+        a?.profile?.firstName && a?.profile?.lastName
+          ? `${a.profile.firstName} ${a.profile.lastName}`
+          : a.displayName || a.email || a.id
+      );
+      const bName = normalizeText(
+        b?.profile?.firstName && b?.profile?.lastName
+          ? `${b.profile.firstName} ${b.profile.lastName}`
+          : b.displayName || b.email || b.id
+      );
       return aName.localeCompare(bName, "es");
     });
 
@@ -247,19 +265,32 @@ async function loadPendingUsers() {
   }
 
   $.pendingUsersTable.innerHTML = pendingUsers
-    .map((u) => `
-      <tr>
-        <td>${esc(u.email || "—")}</td>
-        <td>${esc(u.displayName || "—")}</td>
-        <td>${esc(u.playerId || "—")}</td>
-        <td>${esc(u.role || "viewer")}</td>
-        <td>
-          <button class="btn btn-sm btn-primary" type="button" data-approve-user="${esc(u.id)}">
-            Aprobar
-          </button>
-        </td>
-      </tr>
-    `)
+    .map((u) => {
+      const profile = getUserProfile(u);
+      const name =
+        `${profile.firstName || ""} ${profile.lastName || ""}`.trim() ||
+        u.displayName ||
+        "—";
+
+      return `
+        <tr>
+          <td>${esc(u.email || "—")}</td>
+          <td>${esc(name)}</td>
+          <td>${esc(u.playerId || "—")}</td>
+          <td>${esc(u.role || "viewer")}</td>
+          <td>
+            <div class="d-flex gap-2 flex-wrap">
+              <button class="btn btn-sm btn-primary" type="button" data-approve-user="${esc(u.id)}">
+                Aprobar
+              </button>
+              <button class="btn btn-sm btn-outline-danger" type="button" data-deny-user="${esc(u.id)}">
+                Denegar
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    })
     .join("");
 }
 
@@ -536,6 +567,37 @@ async function approveUserFlow(ev) {
   } catch (err) {
     console.error(err);
     showAlert(err.message || "No se pudo aprobar la cuenta.");
+  } finally {
+    hideLoader();
+  }
+}
+
+async function denyUserFlow(uid) {
+  if (!uid) {
+    showAlert("No se encontró el usuario a denegar.");
+    return;
+  }
+
+  const ok = window.confirm("¿Seguro que deseas denegar el ingreso a la plataforma para este usuario?");
+  if (!ok) return;
+
+  showLoader("Denegando ingreso…");
+  hideAlert();
+
+  try {
+    await updateDoc(doc(db, COL_USERS, uid), {
+      isPlayerActive: false,
+      playerStatus: "rejected",
+      role: "viewer",
+      playerId: null,
+      updatedAt: serverTimestamp(),
+    });
+
+    await loadPendingUsers();
+    showAlert("Ingreso a la plataforma denegado correctamente.", "success");
+  } catch (err) {
+    console.error(err);
+    showAlert(err?.message || "No se pudo denegar el ingreso.");
   } finally {
     hideLoader();
   }
@@ -1515,6 +1577,12 @@ async function boot() {
       const approveBtn = ev.target.closest("[data-approve-user]");
       if (approveBtn) {
         await openApproveModal(approveBtn.getAttribute("data-approve-user"));
+        return;
+      }
+
+      const denyBtn = ev.target.closest("[data-deny-user]");
+      if (denyBtn) {
+        await denyUserFlow(denyBtn.getAttribute("data-deny-user"));
         return;
       }
 
