@@ -287,7 +287,13 @@ async function joinPickup() {
     updatedAt: serverTimestamp(),
   });
 
-  await loadRegs(currentPickup.id);
+  try {
+    await loadRegs(currentPickup.id);
+    } catch (err) {
+    console.warn("Lista pública no disponible:", err);
+    currentRegs = [];
+    renderList();
+  }
   showInfo(registrationStatus === "waitlist" ? "Quedaste en lista de espera." : "Te registraste correctamente.");
 }
 
@@ -357,10 +363,10 @@ async function joinPickup() {
       currentUserDoc = user ? await loadUserDoc(user.uid) : null;
     });
   } catch (err) {
-    console.error(err);
-    showError("Error cargando el pickup.");
-  } finally {
-    hideLoader();
-    document.documentElement.classList.remove("preload");
+        console.error("[pickup_view] init error:", err);
+        showError(err?.message || "Error cargando el pickup.");
+    } finally {
+        hideLoader();
+        document.documentElement.classList.remove("preload");
   }
 })();
