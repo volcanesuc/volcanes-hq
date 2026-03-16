@@ -192,7 +192,7 @@ function normLower(s) {
 function normalizePlayerStatus(data) {
   const explicit = String(data?.playerStatus || "").trim().toLowerCase();
   if (explicit) return explicit;
-  return data?.isActive === true ? "active" : "";
+  return data?.isPlayerActive === true ? "active" : "";
 }
 
 function normalizeAssociationStatus(data) {
@@ -412,7 +412,7 @@ async function getUserAccessState(uid) {
     if (!snap.exists()) {
       return {
         onboardingComplete: false,
-        isActive: false,
+        isPlayerActive: false,
         role: "viewer",
         raw: null,
       };
@@ -421,7 +421,7 @@ async function getUserAccessState(uid) {
     const data = snap.data() || {};
     return {
       onboardingComplete: data.onboardingComplete === true,
-      isActive: data.isActive === true,
+      isPlayerActive: data.isPlayerActive === true,
       role: String(data.role || "viewer").trim().toLowerCase(),
       raw: data,
     };
@@ -429,7 +429,7 @@ async function getUserAccessState(uid) {
     console.warn("getUserAccessState failed:", e);
     return {
       onboardingComplete: false,
-      isActive: false,
+      isPlayerActive: false,
       role: "viewer",
       raw: null,
     };
@@ -448,13 +448,14 @@ async function ensureUserDoc(uid, email, user = auth.currentUser) {
       photoURL: user?.photoURL || null,
 
       onboardingComplete: false,
-      isActive: false,
+      isPlayerActive: false,
       role: "viewer",
 
       playerStatus: null,
       associationStatus: null,
 
       playerId: null,
+      memberId: null,
       profile: {},
       consents: {},
 
@@ -490,8 +491,10 @@ async function ensureUserDoc(uid, email, user = auth.currentUser) {
   if (!Array.isArray(data.membershipIds)) updatePayload.membershipIds = [];
   if (data.currentMembership === undefined) updatePayload.currentMembership = null;
   if (data.playerId === undefined) updatePayload.playerId = null;
+  if (data.memberId === undefined) updatePayload.memberId = null;
   if (data.playerStatus === undefined) updatePayload.playerStatus = null;
   if (data.associationStatus === undefined) updatePayload.associationStatus = null;
+  if (data.isPlayerActive === undefined) updatePayload.isPlayerActive = false;
 
   await setDoc(uref, updatePayload, { merge: true });
 }
@@ -506,7 +509,6 @@ function buildUserProfile({
   residence,
   emergencyContact,
 }) {
-
   return {
     firstName: firstName || null,
     lastName: lastName || null,
@@ -533,12 +535,11 @@ async function saveUserProfileAndConsents({
   consents,
 }) {
   const user = auth.currentUser;
-  const displayName = `${firstName} ${lastName}`.trim();
 
   const payload = {
     uid,
     email: email || user?.email || null,
-    displayName: user?.displayName || displayName || null,
+    displayName: user?.displayName || null,
     photoURL: user?.photoURL || null,
 
     profile: buildUserProfile({
@@ -572,7 +573,6 @@ async function saveUserProfileAndConsents({
 
   return {
     uid,
-    displayName,
     email,
     phone: phone || null,
     emergencyContact: emergencyContact || null,
@@ -1146,7 +1146,7 @@ function applyPrefillFromSession() {
     if ($.lastName && !$.lastName.value && p.lastName) {
       $.lastName.value = p.lastName;
     }
-    
+
     if ($.phone && p.phone && !$.phone.value) {
       $.phone.value = p.phone;
     }
@@ -1229,7 +1229,7 @@ $.form?.addEventListener("submit", async (ev) => {
 
   const file = $.proofFile?.files?.[0] || null;
 
-  const payerName = norm($.payerName?.value) || `${firstName} ${lastName}`.trim();
+  const payerName = norm($.payerName?.value);
   const method = normLower($.payMethod?.value) || "sinpe";
 
   let cfg;
@@ -1383,12 +1383,10 @@ $.form?.addEventListener("submit", async (ev) => {
 
     await step("Mark onboarding complete (users/{uid})", async () => {
       const uref = doc(db, COL_USERS, uid);
-      const derivedDisplayName = `${firstName} ${lastName}`.trim();
 
       const payload = {
         email: email || auth.currentUser?.email || null,
-        
-        displayName: auth.currentUser?.displayName || derivedDisplayName || null,
+        displayName: auth.currentUser?.displayName || null,
         photoURL: auth.currentUser?.photoURL || null,
         phone: phone || null,
         emergencyContact,
@@ -1403,9 +1401,6 @@ $.form?.addEventListener("submit", async (ev) => {
 
         playerStatus: wantsPlayer ? "pending" : null,
         associationStatus: wantsMembershipPayment ? "pending" : null,
-
-        // compat con lógica vieja del dashboard
-        isActive: false,
       };
 
       return setDoc(uref, payload, { merge: true });
