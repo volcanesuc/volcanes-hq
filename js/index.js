@@ -16,8 +16,14 @@ const COL_CLUB_CONFIG = COL.club_config;
 const COL_USERS = COL.users;
 
 const url = new URL(window.location.href);
-const isPendingView = url.searchParams.get("pending") === "1";
+const pageState = url.searchParams.get("state") || "";
+const isPendingView =
+  url.searchParams.get("pending") === "1" ||
+  pageState === "platform_pending";
 
+const associationPendingSection = document.getElementById("associationPendingSection");
+const associationRetryBtn = document.getElementById("associationRetryBtn");
+const associationLogoutBtn = document.getElementById("associationLogoutBtn");
 const pendingSection = document.getElementById("pendingApprovalSection");
 const pendingRetryBtn = document.getElementById("pendingRetryBtn");
 const pendingLogoutBtn = document.getElementById("pendingLogoutBtn");
@@ -26,8 +32,15 @@ const pendingLogoutBtn = document.getElementById("pendingLogoutBtn");
    PENDING MODE
 ========================================================= */
 
-function showPendingState() {
-  pendingSection?.classList.remove("d-none");
+function showPendingState(kind = "player") {
+  pendingSection?.classList.add("d-none");
+  associationPendingSection?.classList.add("d-none");
+
+  if (kind === "association") {
+    associationPendingSection?.classList.remove("d-none");
+  } else {
+    pendingSection?.classList.remove("d-none");
+  }
 
   const sectionsToHide = [
     "eventsSection",
@@ -85,10 +98,27 @@ async function bootPendingMode() {
         return;
       }
 
-      showPendingState();
+      const playerStatus = String(userData.playerStatus || "").trim().toLowerCase();
+      const associationStatus = String(userData.associationStatus || "").trim().toLowerCase();
+
+      if (
+        associationStatus === "pending" ||
+        associationStatus === "active" ||
+        associationStatus === "rejected"
+      ) {
+        showPendingState("association");
+        return;
+      }
+
+      if (playerStatus === "pending") {
+        showPendingState("player");
+        return;
+      }
+
+      showPendingState("player");
     } catch (err) {
       console.error("Error validando pending state:", err);
-      showPendingState();
+      showPendingState("player");
     } finally {
       hideLoader();
     }
@@ -105,21 +135,89 @@ async function bootPendingMode() {
 
       const userData = await readCurrentUserState(user.uid);
 
-      if (userData.isPlayerActive  === true && userData.onboardingComplete === true) {
+      if (userData.isPlayerActive === true && userData.onboardingComplete === true) {
         window.location.replace("/dashboard.html");
         return;
       }
 
-      showPendingState();
+      const playerStatus = String(userData.playerStatus || "").trim().toLowerCase();
+      const associationStatus = String(userData.associationStatus || "").trim().toLowerCase();
+
+      if (
+        associationStatus === "pending" ||
+        associationStatus === "active" ||
+        associationStatus === "rejected"
+      ) {
+        showPendingState("association");
+        return;
+      }
+
+      if (playerStatus === "pending") {
+        showPendingState("player");
+        return;
+      }
+
+      showPendingState("player");
     } catch (err) {
       console.error("Error reintentando validación:", err);
-      showPendingState();
+      showPendingState("player");
+    } finally {
+      hideLoader();
+    }
+  });
+
+  associationRetryBtn?.addEventListener("click", async () => {
+    showLoader("Revisando estado…");
+    try {
+      const user = auth.currentUser;
+      if (!user?.uid) {
+        window.location.replace("/index.html");
+        return;
+      }
+
+      const userData = await readCurrentUserState(user.uid);
+
+      if (userData.isPlayerActive === true && userData.onboardingComplete === true) {
+        window.location.replace("/dashboard.html");
+        return;
+      }
+
+      const playerStatus = String(userData.playerStatus || "").trim().toLowerCase();
+      const associationStatus = String(userData.associationStatus || "").trim().toLowerCase();
+
+      if (
+        associationStatus === "pending" ||
+        associationStatus === "active" ||
+        associationStatus === "rejected"
+      ) {
+        showPendingState("association");
+        return;
+      }
+
+      if (playerStatus === "pending") {
+        showPendingState("player");
+        return;
+      }
+
+      showPendingState("player");
+    } catch (err) {
+      console.error("Error reintentando validación:", err);
+      showPendingState("player");
     } finally {
       hideLoader();
     }
   });
 
   pendingLogoutBtn?.addEventListener("click", async () => {
+    try {
+      showLoader("Cerrando sesión…");
+      await logout({ redirectTo: "/index.html" });
+    } finally {
+      hideLoader();
+    }
+  });
+
+  associationLogoutBtn?.addEventListener("click", async () => {
     try {
       showLoader("Cerrando sesión…");
       await logout({ redirectTo: "/index.html" });
