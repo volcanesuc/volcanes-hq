@@ -100,6 +100,7 @@ const $ = {
 
   wantsPlayer: document.getElementById("wantsPlayer"),
   wantsMembershipPayment: document.getElementById("wantsMembershipPayment"),
+  canUsePickups: document.getElementById("canUsePickups"),
 };
 
 let PUBLIC_CFG = {
@@ -315,6 +316,10 @@ function shouldEnableMembershipPaymentUI() {
   return PUBLIC_CFG.enableMembershipPayment && !!$.wantsMembershipPayment?.checked;
 }
 
+function wantsPickupAccess() {
+  return !!$.canUsePickups?.checked;
+}
+
 function refreshMembershipPaymentUI() {
   const enabled = shouldEnableMembershipPaymentUI();
 
@@ -449,6 +454,7 @@ async function ensureUserDoc(uid, email, user = auth.currentUser) {
 
       onboardingComplete: false,
       isPlayerActive: false,
+      canUsePickups: true,
       role: "viewer",
 
       playerStatus: null,
@@ -495,6 +501,7 @@ async function ensureUserDoc(uid, email, user = auth.currentUser) {
   if (data.playerStatus === undefined) updatePayload.playerStatus = null;
   if (data.associationStatus === undefined) updatePayload.associationStatus = null;
   if (data.isPlayerActive === undefined) updatePayload.isPlayerActive = false;
+  if (data.canUsePickups !== true) updatePayload.canUsePickups = true;
 
   await setDoc(uref, updatePayload, { merge: true });
 }
@@ -776,12 +783,26 @@ onAuthStateChanged(auth, async (user) => {
         $.canton.value = residence.canton;
       }
 
+      if (data.canUsePickups === true && $.canUsePickups) {
+        $.canUsePickups.checked = true;
+      }
+
+      const registration = data.registration || {};
+      if (registration.wantsPlayer === true && $.wantsPlayer) {
+        $.wantsPlayer.checked = true;
+      }
+      if (registration.wantsMembershipPayment === true && $.wantsMembershipPayment) {
+        $.wantsMembershipPayment.checked = true;
+        refreshMembershipPaymentUI();
+      }
+
       updateSubmitState();
       return;
     }
 
     const playerStatus = normalizePlayerStatus(data);
     const associationStatus = normalizeAssociationStatus(data);
+    const canUsePickupsFlag = data.canUsePickups === true;
 
     if (playerStatus === "active") {
       window.location.replace("/dashboard.html");
@@ -795,6 +816,11 @@ onAuthStateChanged(auth, async (user) => {
 
     if (playerStatus === "pending") {
       window.location.replace("/index.html?state=platform_pending");
+      return;
+    }
+
+    if (canUsePickupsFlag) {
+      window.location.replace("/index.html");
       return;
     }
 
@@ -1206,6 +1232,7 @@ $.form?.addEventListener("submit", async (ev) => {
 
   const wantsPlayer = !!$.wantsPlayer?.checked;
   const wantsMembershipPayment = shouldEnableMembershipPaymentUI();
+  const canUsePickups = true; // siempre true en el registro nuevo
 
   const email = user.email
     ? String(user.email).toLowerCase()
@@ -1384,6 +1411,8 @@ $.form?.addEventListener("submit", async (ev) => {
     await step("Mark onboarding complete (users/{uid})", async () => {
       const uref = doc(db, COL_USERS, uid);
 
+      const pickupOnlyChecked = wantsPickupAccess();
+
       const payload = {
         email: email || auth.currentUser?.email || null,
         displayName: auth.currentUser?.displayName || null,
@@ -1391,12 +1420,14 @@ $.form?.addEventListener("submit", async (ev) => {
         phone: phone || null,
         emergencyContact,
         onboardingComplete: true,
+        canUsePickups: canUsePickups,
         updatedAt: serverTimestamp(),
         lastSignInAt: serverTimestamp(),
 
         registration: {
           wantsPlayer: wantsPlayer === true,
           wantsMembershipPayment: wantsMembershipPayment === true,
+          canUsePickups: pickupOnlyChecked === true,
         },
 
         playerStatus: wantsPlayer ? "pending" : null,
@@ -1410,9 +1441,20 @@ $.form?.addEventListener("submit", async (ev) => {
 
     if (wantsPlayer) {
       window.location.replace("/index.html?state=platform_pending");
-    } else {
-      window.location.replace("/member_status.html");
+      return;
     }
+
+    if (wantsMembershipPayment) {
+      window.location.replace("/member_status.html");
+      return;
+    }
+
+    if (canUsePickups) {
+      window.location.replace("/index.html");
+      return;
+    }
+
+    window.location.replace("/index.html");
   } catch (e) {
     console.warn(e);
     const msg = String(e?.message || e || "Ocurrió un error inesperado.");
@@ -1447,6 +1489,7 @@ function wireUpFormCompleteness() {
     $.termsAccepted,
     $.wantsPlayer,
     $.wantsMembershipPayment,
+    $.canUsePickups,
   ].filter(Boolean);
 
   els.forEach((el) => {
