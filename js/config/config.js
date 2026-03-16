@@ -1,5 +1,5 @@
 //js\config\config.js
-// 
+
 export const APP_CONFIG = {
   version: "0.4",
 
@@ -42,6 +42,14 @@ export const APP_CONFIG = {
     club_honors: "honors",
     club_uniforms: "uniforms",
 
+    pickups: "pickups",
+    pickupRegistrations: "pickup_registrations",
+  },
+
+  pickups: {
+    defaultCapacity: 50, // 0 = sin límite
+    allowWaitlistByDefault: true,
+    defaultCancellationHours: 6,
   },
   
   sport: "ultimate",

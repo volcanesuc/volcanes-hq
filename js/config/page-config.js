@@ -9,5 +9,6 @@ export const PAGE_CONFIG = {
   tournaments:{ tabId: "tournaments",href: "tournaments.html" },
   community:{ tabId: "community",href: "community.html" },
   association:{ tabId: "association",href: "association.html" },
+  pickups:{ tabId: "pickups",href: "pickups.html" },
   admin:{ tabId: "admin",href: "admin.html" }
 };

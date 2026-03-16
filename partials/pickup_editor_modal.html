@@ -1,0 +1,116 @@
+<div class="modal fade" id="pickupEditorModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-fullscreen">
+    <div class="modal-content app-modal">
+      <form id="pickupEditorForm" class="h-100 d-flex flex-column">
+        <input type="hidden" id="pickupEditorId" />
+
+        <div class="modal-header app-modal__header">
+          <div>
+            <h5 class="modal-title mb-0" id="pickupEditorTitle">Nuevo pickup</h5>
+            <small class="app-modal__subtitle">Configurá el juego abierto, reglas y costos</small>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+
+        <div class="modal-body app-modal__body">
+          <div class="card app-form-card">
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-12 col-md-8">
+                  <label class="form-label" for="peTitle">Título</label>
+                  <input id="peTitle" class="form-control" maxlength="120" required />
+                </div>
+
+                <div class="col-12 col-md-4">
+                  <label class="form-label" for="peStatus">Estado</label>
+                  <select id="peStatus" class="form-select">
+                    <option value="draft">Draft</option>
+                    <option value="published">Publicado</option>
+                    <option value="closed">Cerrado</option>
+                    <option value="finished">Finalizado</option>
+                    <option value="cancelled">Cancelado</option>
+                  </select>
+                </div>
+
+                <div class="col-12 col-md-6">
+                  <label class="form-label" for="peStartAt">Inicio</label>
+                  <input id="peStartAt" type="datetime-local" class="form-control" required />
+                </div>
+
+                <div class="col-12 col-md-6">
+                  <label class="form-label" for="peEndAt">Fin</label>
+                  <input id="peEndAt" type="datetime-local" class="form-control" />
+                </div>
+
+                <div class="col-12 col-md-6">
+                  <label class="form-label" for="peVenueName">Ubicación</label>
+                  <input id="peVenueName" class="form-control" />
+                </div>
+
+                <div class="col-12 col-md-6">
+                  <label class="form-label" for="peVenueAddress">Dirección</label>
+                  <input id="peVenueAddress" class="form-control" />
+                </div>
+
+                <div class="col-12">
+                  <label class="form-label" for="peMapsUrl">Google Maps / Waze</label>
+                  <input id="peMapsUrl" class="form-control" placeholder="https://..." />
+                </div>
+
+                <div class="col-12 col-md-4">
+                  <label class="form-label" for="peCapacity">Cupo</label>
+                  <input id="peCapacity" type="number" min="0" class="form-control" />
+                  <div class="form-text">0 = sin límite</div>
+                </div>
+
+                <div class="col-12 col-md-4">
+                  <label class="form-label" for="peCancelHours">Horas para salirse sin penalización</label>
+                  <input id="peCancelHours" type="number" min="0" class="form-control" />
+                </div>
+
+                <div class="col-12 col-md-4 d-flex align-items-end">
+                  <div class="form-check form-switch">
+                    <input id="peAllowWaitlist" class="form-check-input" type="checkbox" />
+                    <label for="peAllowWaitlist" class="form-check-label">Permitir lista de espera</label>
+                  </div>
+                </div>
+
+                <div class="col-12 col-md-6">
+                  <div class="form-check form-switch">
+                    <input id="peIsPublic" class="form-check-input" type="checkbox" checked />
+                    <label for="peIsPublic" class="form-check-label">Pickup público</label>
+                  </div>
+                </div>
+
+                <div class="col-12 col-md-6">
+                  <div class="form-check form-switch">
+                    <input id="peRequiresProof" class="form-check-input" type="checkbox" checked />
+                    <label for="peRequiresProof" class="form-check-label">Requiere comprobante</label>
+                  </div>
+                </div>
+
+                <div class="col-12">
+                  <label class="form-label" for="pePricingTiers">Costos</label>
+                  <textarea id="pePricingTiers" class="form-control" rows="5" placeholder="Miembro | 2500&#10;Primera vez | 0&#10;Menor de edad | 2000"></textarea>
+                  <div class="form-text">Un costo por línea, formato: Nombre | Monto</div>
+                </div>
+
+                <div class="col-12">
+                  <label class="form-label" for="peNotes">Notas / reglas</label>
+                  <textarea id="peNotes" class="form-control" rows="6"></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer app-modal__footer">
+          <div class="app-modal__footer-right d-flex gap-2 ms-auto">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button id="savePickupEditorBtn" type="submit" class="btn btn-primary">Guardar pickup</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
