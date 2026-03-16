@@ -1,4 +1,5 @@
 // /js/ui/media_viewer_modal.js
+import { Modal } from "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/+esm";
 
 let modalReady = false;
 
@@ -26,7 +27,7 @@ export function openMediaViewerModal(rawUrl, options = {}) {
   const mediaType = detectMediaType(cleanUrl);
   box.innerHTML = renderMediaContent(mediaType, cleanUrl, title);
 
-  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  const modal = Modal.getOrCreateInstance(modalEl);
   modal.show();
 }
 
