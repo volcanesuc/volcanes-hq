@@ -12,6 +12,8 @@ import {
 const COL = APP_CONFIG.collections;
 const USERS_COL = COL.users;
 
+//HELPERS
+
 function normalizePlayerStatus(data = {}) {
   const explicit = String(data.playerStatus || "").trim().toLowerCase();
   if (explicit) return explicit;
@@ -31,6 +33,33 @@ function normalizeAssociationStatus(data = {}) {
   if (explicit === "associated_rejected") return "rejected";
 
   return explicit || "";
+}
+
+function samePath(pathname) {
+  return window.location.pathname === pathname;
+}
+
+function sameIndexState(state) {
+  const url = new URL(window.location.href);
+  return (
+    (url.pathname === "/" || url.pathname.endsWith("/index.html")) &&
+    url.searchParams.get("state") === state
+  );
+}
+
+function goTo(url) {
+  const target = new URL(url, window.location.origin);
+  const current = new URL(window.location.href);
+
+  if (
+    current.pathname === target.pathname &&
+    current.search === target.search &&
+    current.hash === target.hash
+  ) {
+    return;
+  }
+
+  window.location.replace(target.pathname + target.search + target.hash);
 }
 
 async function ensureUserDoc(firebaseUser) {
@@ -133,7 +162,7 @@ export async function getUserAccess(uid) {
 
 export async function routeAfterGoogleLogin(firebaseUser) {
   if (!firebaseUser?.uid) {
-    window.location.href = "/public/register.html?error=nouser";
+    goTo("/public/register.html?error=nouser");
     return;
   }
 
@@ -148,12 +177,12 @@ export async function routeAfterGoogleLogin(firebaseUser) {
   const isPlayerActive = playerStatus === "active";
 
   if (!onboardingDone) {
-    window.location.href = `/public/register.html?created=${createdFlag}`;
+    goTo(`/public/register.html?created=${createdFlag}`);
     return;
   }
 
   if (isPlayerActive) {
-    window.location.href = "/dashboard.html";
+    goTo("/dashboard.html");
     return;
   }
 
@@ -162,14 +191,18 @@ export async function routeAfterGoogleLogin(firebaseUser) {
     associationStatus === "active" ||
     associationStatus === "rejected"
   ) {
-    window.location.href = "/member_status.html";
+    goTo("/member_status.html");
     return;
   }
 
   if (playerStatus === "pending") {
-    window.location.href = "/index.html?state=platform_pending";
+    if (!sameIndexState("platform_pending")) {
+      goTo("/index.html?state=platform_pending");
+    }
     return;
   }
 
-  window.location.href = "/index.html";
+  if (!samePath("/index.html") && window.location.pathname !== "/") {
+    goTo("/index.html");
+  }
 }
