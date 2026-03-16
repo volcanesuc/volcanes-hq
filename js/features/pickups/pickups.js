@@ -130,20 +130,20 @@ function bindEvents() {
 
     const approveBtn = e.target.closest("[data-approve-payment]");
     if (approveBtn) {
-      await openPaymentDecisionDialog({
-        regId: approveBtn.getAttribute("data-reg-id"),
+    await openPaymentDecisionDialog({
+        regId: approveBtn.getAttribute("data-approve-payment"),
         status: "approved",
-      });
-      return;
+    });
+    return;
     }
 
     const rejectBtn = e.target.closest("[data-reject-payment]");
     if (rejectBtn) {
-      await openPaymentDecisionDialog({
-        regId: rejectBtn.getAttribute("data-reg-id"),
+    await openPaymentDecisionDialog({
+        regId: rejectBtn.getAttribute("data-reject-payment"),
         status: "rejected",
-      });
-      return;
+    });
+    return;
     }
   });
 }
@@ -439,7 +439,8 @@ function renderAdminPickups() {
     const regRows = regs.length
       ? regs.map((r) => {
           const cancelled = isCancelledReg(r);
-          const paymentButtonsVisible = !cancelled && financials.paymentEnabled;
+          const paymentButtonsVisible = !cancelled;
+          const hasProof = !!r?.paymentProof?.downloadURL;
 
           return `
             <div
@@ -474,12 +475,23 @@ function renderAdminPickups() {
                   }
                   ${
                     paymentButtonsVisible
-                      ? `
-                        <button class="btn btn-sm btn-success" data-approve-payment="${escapeHtml(r.id)}">Aprobar</button>
-                        <button class="btn btn-sm btn-outline-danger" data-reject-payment="${escapeHtml(r.id)}">Rechazar</button>
-                      `
-                      : ``
-                  }
+                        ? `
+                        <button
+                            class="btn btn-sm btn-success"
+                            data-approve-payment="${escapeHtml(r.id)}"
+                            ${hasProof ? "" : "disabled title='Debe subir comprobante primero'"}
+                        >
+                            Aprobar
+                        </button>
+                        <button
+                            class="btn btn-sm btn-outline-danger"
+                            data-reject-payment="${escapeHtml(r.id)}"
+                        >
+                            Rechazar
+                        </button>
+                        `
+                        : ``
+                    }
                 </div>
               </div>
             </div>
@@ -837,6 +849,11 @@ async function openPaymentDecisionDialog({ regId, status }) {
 
   if (isCancelledReg(reg)) {
     showAlert("La inscripción está cancelada. No se puede validar pago.", "warning");
+    return;
+  }
+
+  if (status === "approved" && !reg?.paymentProof?.downloadURL) {
+    showAlert("No podés aprobar un pago sin comprobante.", "warning");
     return;
   }
 
