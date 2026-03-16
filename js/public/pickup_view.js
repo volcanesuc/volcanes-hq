@@ -129,7 +129,12 @@ function renderList() {
 }
 
 async function loadPickupBySlug(slug) {
-  const qy = query(collection(db, COL_PICKUPS), where("slug", "==", slug));
+  const qy = query(
+    collection(db, COL_PICKUPS),
+    where("slug", "==", slug),
+    where("isPublic", "==", true)
+  );
+
   const snap = await getDocs(qy);
 
   if (snap.empty) return null;
