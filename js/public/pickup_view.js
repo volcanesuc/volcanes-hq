@@ -89,12 +89,15 @@ function formatNotes(text) {
   return escapeHtml(text).replace(/\n/g, "<br>");
 }
 
-function registrationRow(r) {
+function registrationRow(r, idx) {
   return `
     <div class="list-group-item d-flex justify-content-between align-items-center gap-2">
-      <div>
-        <div class="fw-semibold">${escapeHtml(r.displayName || "—")}</div>
-        <div class="small text-muted">${escapeHtml(r.pricingTierLabel || "—")}</div>
+      <div class="d-flex align-items-start gap-3">
+        <div class="fw-bold text-muted" style="min-width: 1.5rem;">${idx + 1}.</div>
+        <div>
+          <div class="fw-semibold">${escapeHtml(r.displayName || "—")}</div>
+          <div class="small text-muted">${escapeHtml(r.pricingTierLabel || "—")}</div>
+        </div>
       </div>
       <span class="badge text-bg-dark">${escapeHtml(r.registrationStatus || "registered")}</span>
     </div>
@@ -131,7 +134,7 @@ function renderList() {
       return ta - tb;
     });
 
-  pvList.innerHTML = rows.map(registrationRow).join("");
+  pvList.innerHTML = rows.map((r, idx) => registrationRow(r, idx)).join("");
 }
 
 /* =========================
@@ -211,7 +214,7 @@ function ensureJoinDialog() {
       <div style="padding:1rem 1rem 0.75rem;border-bottom:1px solid #e9ecef;display:flex;justify-content:space-between;gap:1rem;align-items:start;">
         <div>
           <div style="font-weight:700;font-size:1.05rem;" id="pickupJoinDialogTitle">Unirme al pickup</div>
-          <div class="text-muted small" id="pickupJoinDialogSubtitle">Elegí tu tarifa y subí tu comprobante si aplica.</div>
+          <div class="text-muted small" id="pickupJoinDialogSubtitle">Elegí tu tarifa. El comprobante es opcional y lo podés subir luego.</div>
         </div>
         <button type="button" id="pickupJoinDialogClose" class="btn btn-sm btn-outline-secondary">Cerrar</button>
       </div>
@@ -224,9 +227,9 @@ function ensureJoinDialog() {
         </div>
 
         <div class="mb-3" id="pickupJoinProofWrap">
-          <label for="pickupJoinProofFile" class="form-label">Comprobante</label>
+          <label for="pickupJoinProofFile" class="form-label">Comprobante (opcional)</label>
           <input id="pickupJoinProofFile" type="file" accept="image/*" class="form-control" />
-          <div id="pickupJoinProofHelp" class="form-text">Subí un screenshot o imagen del pago.</div>
+          <div id="pickupJoinProofHelp" class="form-text">Podés subirlo ahora o después desde tus botones de inscripción.</div>
           <div id="pickupJoinProofStatus" class="small mt-2 text-muted d-none"></div>
         </div>
 
@@ -248,8 +251,74 @@ function ensureJoinDialog() {
   return dlg;
 }
 
+function ensurePayDialog() {
+  let dlg = document.getElementById("pickupPayDialog");
+  if (dlg) return dlg;
+
+  dlg = document.createElement("dialog");
+  dlg.id = "pickupPayDialog";
+  dlg.style.maxWidth = "560px";
+  dlg.style.width = "calc(100% - 2rem)";
+  dlg.style.border = "0";
+  dlg.style.borderRadius = "18px";
+  dlg.style.padding = "0";
+  dlg.style.boxShadow = "0 24px 80px rgba(0,0,0,.35)";
+
+  dlg.innerHTML = `
+    <form method="dialog" id="pickupPayDialogForm" style="margin:0;">
+      <div style="padding:1rem 1rem 0.75rem;border-bottom:1px solid #e9ecef;display:flex;justify-content:space-between;gap:1rem;align-items:start;">
+        <div>
+          <div style="font-weight:700;font-size:1.05rem;">Subir comprobante</div>
+          <div class="text-muted small">Adjuntá tu screenshot de pago para este pickup.</div>
+        </div>
+        <button type="button" id="pickupPayDialogClose" class="btn btn-sm btn-outline-secondary">Cerrar</button>
+      </div>
+
+      <div style="padding:1rem;">
+        <div class="mb-3">
+          <label for="pickupPayProofFile" class="form-label">Comprobante</label>
+          <input id="pickupPayProofFile" type="file" accept="image/*" class="form-control" />
+          <div id="pickupPayProofStatus" class="small mt-2 text-muted d-none"></div>
+        </div>
+      </div>
+
+      <div style="padding:0.75rem 1rem 1rem;border-top:1px solid #e9ecef;display:flex;justify-content:flex-end;gap:.5rem;">
+        <button type="button" id="pickupPayCancelBtn" class="btn btn-outline-secondary">Cancelar</button>
+        <button type="submit" id="pickupPaySubmitBtn" class="btn btn-primary">Subir comprobante</button>
+      </div>
+    </form>
+  `;
+
+  document.body.appendChild(dlg);
+
+  dlg.querySelector("#pickupPayDialogClose")?.addEventListener("click", () => dlg.close());
+  dlg.querySelector("#pickupPayCancelBtn")?.addEventListener("click", () => dlg.close());
+
+  return dlg;
+}
+
 function setJoinProofStatus(message = "", type = "muted") {
   const el = document.getElementById("pickupJoinProofStatus");
+  if (!el) return;
+
+  if (!message) {
+    el.className = "small mt-2 text-muted d-none";
+    el.textContent = "";
+    return;
+  }
+
+  const cls =
+    type === "danger" ? "text-danger" :
+    type === "success" ? "text-success" :
+    type === "warning" ? "text-warning" :
+    "text-muted";
+
+  el.className = `small mt-2 ${cls}`;
+  el.textContent = message;
+}
+
+function setPayProofStatus(message = "", type = "muted") {
+  const el = document.getElementById("pickupPayProofStatus");
   if (!el) return;
 
   if (!message) {
@@ -317,10 +386,9 @@ function updateJoinDialogSummary() {
   if (!summary || !currentPickup) return;
 
   const tier = getSelectedTierFromDialog();
-  const needsProof = currentPickup?.rules?.requiresPaymentProof === true;
 
   summary.textContent = tier
-    ? `Tarifa seleccionada: ${tier.label} · ₡${Number(tier.amount || 0)}${needsProof ? " · Requiere comprobante" : ""}`
+    ? `Tarifa seleccionada: ${tier.label} · ₡${Number(tier.amount || 0)}`
     : "Seleccioná una tarifa para continuar.";
 }
 
@@ -341,8 +409,7 @@ function openJoinDialog() {
   proofInput.value = "";
   setJoinProofStatus("");
 
-  const needsProof = currentPickup?.rules?.requiresPaymentProof === true;
-  proofWrap.style.display = needsProof ? "" : "none";
+  proofWrap.style.display = "";
 
   proofInput.onchange = () => {
     const file = proofInput.files?.[0] || null;
@@ -366,13 +433,7 @@ function openJoinDialog() {
       return;
     }
 
-    const needsProofNow = currentPickup?.rules?.requiresPaymentProof === true;
     const file = proofInput.files?.[0] || null;
-
-    if (needsProofNow && !file) {
-      setJoinProofStatus("Este pickup requiere comprobante.", "danger");
-      return;
-    }
 
     dlg.close();
     await submitPickupJoin({ selectedTier, file });
@@ -381,8 +442,46 @@ function openJoinDialog() {
   dlg.showModal();
 }
 
+function openPayDialog() {
+  if (!currentUserRegistration?.id) {
+    showError("No se encontró tu inscripción.");
+    return;
+  }
+
+  const dlg = ensurePayDialog();
+  const proofInput = dlg.querySelector("#pickupPayProofFile");
+  const form = dlg.querySelector("#pickupPayDialogForm");
+
+  proofInput.value = "";
+  setPayProofStatus("");
+
+  proofInput.onchange = () => {
+    const file = proofInput.files?.[0] || null;
+    if (!file) {
+      setPayProofStatus("");
+      return;
+    }
+    setPayProofStatus(`Archivo listo: ${file.name}`, "muted");
+  };
+
+  form.onsubmit = async (ev) => {
+    ev.preventDefault();
+
+    const file = proofInput.files?.[0] || null;
+    if (!file) {
+      setPayProofStatus("Seleccioná un comprobante.", "danger");
+      return;
+    }
+
+    dlg.close();
+    await submitPaymentProof(file);
+  };
+
+  dlg.showModal();
+}
+
 /* =========================
-   Join / cancel actions
+   Join / pay / cancel actions
 ========================= */
 async function joinPickup() {
   clearMessages();
@@ -422,7 +521,7 @@ async function submitPickupJoin({ selectedTier, file }) {
 
   let paymentProof = null;
 
-  if (currentPickup?.rules?.requiresPaymentProof === true && file) {
+  if (file) {
     showLoader("Subiendo comprobante…");
     try {
       paymentProof = await uploadProof(file, currentPickup.id, currentUser.uid);
@@ -462,7 +561,7 @@ async function submitPickupJoin({ selectedTier, file }) {
     amountDue: Number(selectedTier.amount || 0),
 
     registrationStatus,
-    paymentStatus: currentPickup?.rules?.requiresPaymentProof === true ? "submitted" : "not_required",
+    paymentStatus: paymentProof ? "submitted" : "pending",
 
     paymentProof: paymentProof
       ? {
@@ -492,6 +591,45 @@ async function submitPickupJoin({ selectedTier, file }) {
       ? "Quedaste en lista de espera."
       : "Te registraste correctamente."
   );
+}
+
+async function submitPaymentProof(file) {
+  clearMessages();
+
+  if (!currentPickup || !currentUserRegistration?.id || !currentUser?.uid) {
+    showError("No se pudo preparar la subida del comprobante.");
+    return;
+  }
+
+  showLoader("Subiendo comprobante…");
+  try {
+    const paymentProof = await uploadProof(file, currentPickup.id, currentUser.uid);
+
+    await updateDoc(doc(db, COL_PICKUP_REGS, currentUserRegistration.id), {
+      paymentStatus: "submitted",
+      paymentProof: {
+        storagePath: paymentProof.storagePath,
+        downloadURL: paymentProof.downloadURL,
+        uploadedAt: serverTimestamp(),
+        reviewedAt: null,
+        reviewedBy: null,
+      },
+      updatedAt: serverTimestamp(),
+    });
+
+    try {
+      await loadRegs(currentPickup.id);
+    } catch (err) {
+      console.warn("No se pudo refrescar lista tras subir comprobante:", err);
+    }
+
+    showInfo("Comprobante enviado correctamente.");
+  } catch (err) {
+    console.error(err);
+    showError("No se pudo subir el comprobante.");
+  } finally {
+    hideLoader();
+  }
 }
 
 async function cancelPickupRegistration() {
@@ -562,15 +700,34 @@ function ensureLeaveBtn() {
   return btn;
 }
 
+function ensurePayBtn() {
+  let btn = document.getElementById("pvPayBtn");
+  if (btn) return btn;
+
+  btn = document.createElement("button");
+  btn.id = "pvPayBtn";
+  btn.type = "button";
+  btn.className = "btn btn-outline-primary btn-sm";
+  btn.textContent = "Pagar / subir comprobante";
+
+  const leaveBtn = ensureLeaveBtn();
+  leaveBtn?.insertAdjacentElement("afterend", btn);
+  btn.addEventListener("click", openPayDialog);
+
+  return btn;
+}
+
 function syncActionButtons() {
   const leaveBtn = ensureLeaveBtn();
+  const payBtn = ensurePayBtn();
 
-  if (!pvJoinBtn || !leaveBtn) return;
+  if (!pvJoinBtn || !leaveBtn || !payBtn) return;
 
   if (!currentUser) {
     pvJoinBtn.textContent = "Iniciar sesión para unirme";
     pvJoinBtn.disabled = false;
     leaveBtn.classList.add("d-none");
+    payBtn.classList.add("d-none");
     return;
   }
 
@@ -578,6 +735,7 @@ function syncActionButtons() {
     pvJoinBtn.textContent = "Completar registro";
     pvJoinBtn.disabled = false;
     leaveBtn.classList.add("d-none");
+    payBtn.classList.add("d-none");
     return;
   }
 
@@ -587,12 +745,23 @@ function syncActionButtons() {
       : "Ya estás inscrito";
     pvJoinBtn.disabled = true;
     leaveBtn.classList.remove("d-none");
+
+    const paymentStatus = String(currentUserRegistration.paymentStatus || "").toLowerCase();
+    if (["approved", "submitted"].includes(paymentStatus)) {
+      payBtn.classList.add("d-none");
+    } else {
+      payBtn.classList.remove("d-none");
+      payBtn.textContent = paymentStatus === "rejected"
+        ? "Reenviar comprobante"
+        : "Pagar / subir comprobante";
+    }
     return;
   }
 
   pvJoinBtn.textContent = "Unirme";
   pvJoinBtn.disabled = false;
   leaveBtn.classList.add("d-none");
+  payBtn.classList.add("d-none");
 }
 
 /* =========================
