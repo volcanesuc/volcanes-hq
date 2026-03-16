@@ -39,6 +39,44 @@
         </div>
       </div>
 
+      <div class="row g-3 mb-3 d-none" id="pickupKpisRow">
+        <div class="col-12 col-md-6 col-xl-3">
+            <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="small text-muted">Monto esperado</div>
+                <div class="h4 mb-0" id="kpiExpectedAmount">₡0</div>
+            </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-xl-3">
+            <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="small text-muted">Monto aprobado</div>
+                <div class="h4 mb-0" id="kpiApprovedAmount">₡0</div>
+            </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-xl-3">
+            <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="small text-muted">Pendiente / moroso</div>
+                <div class="h4 mb-0" id="kpiPendingAmount">₡0</div>
+            </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-xl-3">
+            <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="small text-muted">Comprobantes por revisar</div>
+                <div class="h4 mb-0" id="kpiReviewCount">0</div>
+            </div>
+            </div>
+        </div>
+      </div>
+
       <div class="alert d-none" id="alertBox" role="alert"></div>
 
       <div class="card shadow-sm mb-3">
@@ -58,6 +96,11 @@
               <button class="nav-link" id="tabAdminBtn" data-bs-toggle="pill" data-bs-target="#tabAdmin" type="button" role="tab">
                 Admin Pickups
               </button>
+            </li>
+            <li class="nav-item d-none" role="presentation" id="participantsTabWrap">
+                <button class="nav-link" id="tabParticipantsBtn" data-bs-toggle="pill" data-bs-target="#tabParticipants" type="button" role="tab">
+                    Participantes
+                </button>
             </li>
           </ul>
         </div>
@@ -85,6 +128,36 @@
         <section class="tab-pane fade" id="tabAdmin" role="tabpanel">
           <div class="list-group" id="adminPickupsList"></div>
           <div class="text-muted small mt-3 d-none" id="adminPickupsEmpty">No hay pickups creados todavía.</div>
+        </section>
+
+        <section class="tab-pane fade" id="tabParticipants" role="tabpanel">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                    <h2 class="h5 mb-0">Historial de participantes</h2>
+                    <input class="form-control form-control-sm" id="participantsSearch" placeholder="Buscar participante…" style="max-width: 320px;" />
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                    <thead>
+                        <tr>
+                        <th>Participante</th>
+                        <th>Tipo</th>
+                        <th>Pickups</th>
+                        <th>Aprobados</th>
+                        <th>Pendientes</th>
+                        <th>Morosidad</th>
+                        <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="participantsTableBody"></tbody>
+                    </table>
+                </div>
+
+                <div class="text-muted small d-none" id="participantsEmpty">No hay participantes todavía.</div>
+                </div>
+            </div>
         </section>
       </div>
     </main>

@@ -1,6 +1,6 @@
 // /js/features/pickups/pickups.js
 import { db } from "/js/auth/firebase.js";
-import { watchAuth, getCurrentUserAccess } from "/js/auth/auth.js";
+import { watchAuth } from "/js/auth/auth.js";
 import { showLoader, hideLoader } from "/js/ui/loader.js";
 import { guardPage } from "/js/page-guard.js";
 import { loadHeader } from "/js/components/header.js";
@@ -10,14 +10,10 @@ import { APP_CONFIG } from "/js/config/config.js";
 import {
   collection,
   getDocs,
-  getDoc,
   addDoc,
   setDoc,
   updateDoc,
   doc,
-  query,
-  where,
-  orderBy,
   serverTimestamp,
   Timestamp,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -96,12 +92,24 @@ function cacheDom() {
     adminPickupsList: document.getElementById("adminPickupsList"),
     adminPickupsEmpty: document.getElementById("adminPickupsEmpty"),
 
+    participantsTabWrap: document.getElementById("participantsTabWrap"),
+    participantsSearch: document.getElementById("participantsSearch"),
+    participantsTableBody: document.getElementById("participantsTableBody"),
+    participantsEmpty: document.getElementById("participantsEmpty"),
+
+    pickupKpisRow: document.getElementById("pickupKpisRow"),
+    kpiExpectedAmount: document.getElementById("kpiExpectedAmount"),
+    kpiApprovedAmount: document.getElementById("kpiApprovedAmount"),
+    kpiPendingAmount: document.getElementById("kpiPendingAmount"),
+    kpiReviewCount: document.getElementById("kpiReviewCount"),
+
     modalMount: document.getElementById("modalMount"),
   };
 }
 
 function bindEvents() {
   $.pickupSearch?.addEventListener("input", renderUpcomingPickups);
+  $.participantsSearch?.addEventListener("input", renderParticipantsTab);
 
   $.refreshPickupsBtn?.addEventListener("click", async () => {
     showLoader();
@@ -126,19 +134,19 @@ function bindEvents() {
 
     const approveBtn = e.target.closest("[data-approve-payment]");
     if (approveBtn) {
-      await setPaymentState(
-        approveBtn.getAttribute("data-reg-id"),
-        "approved"
-      );
+      await openPaymentDecisionDialog({
+        regId: approveBtn.getAttribute("data-reg-id"),
+        status: "approved",
+      });
       return;
     }
 
     const rejectBtn = e.target.closest("[data-reject-payment]");
     if (rejectBtn) {
-      await setPaymentState(
-        rejectBtn.getAttribute("data-reg-id"),
-        "rejected"
-      );
+      await openPaymentDecisionDialog({
+        regId: rejectBtn.getAttribute("data-reg-id"),
+        status: "rejected",
+      });
       return;
     }
   });
@@ -155,6 +163,19 @@ function clearAlert() {
   $.alertBox?.classList.add("d-none");
 }
 
+function money(value) {
+  const n = Number(value || 0);
+  return new Intl.NumberFormat("es-CR", {
+    style: "currency",
+    currency: "CRC",
+    maximumFractionDigits: 0,
+  }).format(n);
+}
+
+function norm(s) {
+  return String(s || "").trim().toLowerCase();
+}
+
 function setRoleUI() {
   if (canEdit) {
     $.roleBadge.className = "badge text-bg-primary";
@@ -162,6 +183,8 @@ function setRoleUI() {
     $.roleBadge.classList.remove("d-none");
     $.openCreatePickupBtn?.classList.remove("d-none");
     $.adminTabWrap?.classList.remove("d-none");
+    $.participantsTabWrap?.classList.remove("d-none");
+    $.pickupKpisRow?.classList.remove("d-none");
     $.pageSubtitle.textContent = "Administrá pickups y validá pagos";
   } else {
     $.roleBadge.className = "badge text-bg-secondary";
@@ -169,6 +192,8 @@ function setRoleUI() {
     $.roleBadge.classList.remove("d-none");
     $.openCreatePickupBtn?.classList.add("d-none");
     $.adminTabWrap?.classList.add("d-none");
+    $.participantsTabWrap?.classList.add("d-none");
+    $.pickupKpisRow?.classList.add("d-none");
     $.pageSubtitle.textContent = "Juegos abiertos y tus inscripciones";
   }
 }
@@ -189,10 +214,33 @@ async function loadAllData() {
   renderUpcomingPickups();
   renderMyRegistrations();
   renderAdminPickups();
+  renderAdminKpis();
+  renderParticipantsTab();
 }
 
 function getPickupRegs(pickupId) {
   return registrations.filter((r) => r.pickupId === pickupId);
+}
+
+function getRegistrationPickup(reg) {
+  return pickups.find((p) => p.id === reg.pickupId) || null;
+}
+
+function isAttendanceLikeStatus(status) {
+  return ["registered", "waitlist", "attended", "no_show"].includes(norm(status));
+}
+
+function isOutstandingPayment(reg) {
+  if (!isAttendanceLikeStatus(reg?.registrationStatus)) return false;
+  return ["pending", "submitted", "rejected"].includes(norm(reg?.paymentStatus));
+}
+
+function isApprovedPayment(reg) {
+  return norm(reg?.paymentStatus) === "approved";
+}
+
+function isReviewPending(reg) {
+  return norm(reg?.paymentStatus) === "submitted";
 }
 
 function renderUpcomingPickups() {
@@ -360,8 +408,12 @@ function renderAdminPickups() {
               <div>
                 <div class="fw-semibold">${escapeHtml(r.displayName || r.email || "—")}</div>
                 <div class="text-muted small">${escapeHtml(r.email || "—")}</div>
-                <div class="text-muted small">Tier: ${escapeHtml(r.pricingTierLabel || "—")} · Monto: ₡${Number(r.amountDue || 0)}</div>
+                <div class="text-muted small">
+                  Tier: ${escapeHtml(r.pricingTierLabel || "—")}
+                  · Monto: ${money(r.amountDue || 0)}
+                </div>
               </div>
+
               <div class="d-flex gap-2 flex-wrap align-items-center">
                 <span class="badge text-bg-dark">${escapeHtml(r.registrationStatus || "registered")}</span>
                 <span class="badge ${getPaymentBadge(r.paymentStatus)}">${escapeHtml(r.paymentStatus || "pending")}</span>
@@ -399,6 +451,110 @@ function renderAdminPickups() {
     `;
 
     $.adminPickupsList.appendChild(item);
+  });
+}
+
+function renderAdminKpis() {
+  if (!canEdit) return;
+
+  const relevantRegs = registrations.filter((r) => isAttendanceLikeStatus(r.registrationStatus));
+
+  const expectedAmount = relevantRegs.reduce((sum, r) => sum + Number(r.amountDue || 0), 0);
+  const approvedAmount = relevantRegs
+    .filter((r) => isApprovedPayment(r))
+    .reduce((sum, r) => sum + Number(r.amountDue || 0), 0);
+
+  const pendingAmount = relevantRegs
+    .filter((r) => isOutstandingPayment(r))
+    .reduce((sum, r) => sum + Number(r.amountDue || 0), 0);
+
+  const reviewCount = relevantRegs.filter((r) => isReviewPending(r)).length;
+
+  if ($.kpiExpectedAmount) $.kpiExpectedAmount.textContent = money(expectedAmount);
+  if ($.kpiApprovedAmount) $.kpiApprovedAmount.textContent = money(approvedAmount);
+  if ($.kpiPendingAmount) $.kpiPendingAmount.textContent = money(pendingAmount);
+  if ($.kpiReviewCount) $.kpiReviewCount.textContent = String(reviewCount);
+}
+
+function buildParticipantsRows() {
+  const map = new Map();
+
+  registrations.forEach((r) => {
+    const key = r.uid || `${norm(r.email)}::${norm(r.displayName)}`;
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        uid: r.uid || null,
+        displayName: r.displayName || r.email || "—",
+        email: r.email || "",
+        userCategory: r.userCategory || "—",
+        pickupsCount: 0,
+        approvedCount: 0,
+        pendingCount: 0,
+        totalAmount: 0,
+        outstandingAmount: 0,
+      });
+    }
+
+    const row = map.get(key);
+    if (isAttendanceLikeStatus(r.registrationStatus)) {
+      row.pickupsCount += 1;
+      row.totalAmount += Number(r.amountDue || 0);
+    }
+
+    if (isApprovedPayment(r)) {
+      row.approvedCount += 1;
+    }
+
+    if (isOutstandingPayment(r)) {
+      row.pendingCount += 1;
+      row.outstandingAmount += Number(r.amountDue || 0);
+    }
+  });
+
+  return Array.from(map.values()).sort((a, b) => {
+    if (b.pickupsCount !== a.pickupsCount) return b.pickupsCount - a.pickupsCount;
+    return String(a.displayName || "").localeCompare(String(b.displayName || ""), "es", { sensitivity: "base" });
+  });
+}
+
+function renderParticipantsTab() {
+  if (!canEdit || !$.participantsTableBody) return;
+
+  const term = norm($.participantsSearch?.value || "");
+  const rows = buildParticipantsRows().filter((row) => {
+    const hay = [
+      row.displayName,
+      row.email,
+      row.userCategory,
+    ].join(" ").toLowerCase();
+    return hay.includes(term);
+  });
+
+  $.participantsTableBody.innerHTML = "";
+
+  if (!rows.length) {
+    $.participantsEmpty?.classList.remove("d-none");
+    return;
+  }
+
+  $.participantsEmpty?.classList.add("d-none");
+
+  rows.forEach((row) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>
+        <div class="fw-semibold">${escapeHtml(row.displayName || "—")}</div>
+        <div class="small text-muted">${escapeHtml(row.email || "—")}</div>
+      </td>
+      <td>${escapeHtml(row.userCategory || "—")}</td>
+      <td>${row.pickupsCount}</td>
+      <td>${row.approvedCount}</td>
+      <td>${row.pendingCount}</td>
+      <td>${money(row.outstandingAmount)}</td>
+      <td>${money(row.totalAmount)}</td>
+    `;
+    $.participantsTableBody.appendChild(tr);
   });
 }
 
@@ -445,6 +601,45 @@ async function ensurePickupEditorModal() {
   }
 
   return ui;
+}
+
+function ensurePaymentDecisionModal() {
+  let modalEl = document.getElementById("pickupPaymentDecisionModal");
+  if (modalEl) return modalEl;
+
+  modalEl = document.createElement("div");
+  modalEl.className = "modal fade";
+  modalEl.id = "pickupPaymentDecisionModal";
+  modalEl.tabIndex = -1;
+  modalEl.setAttribute("aria-hidden", "true");
+
+  modalEl.innerHTML = `
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <h5 class="modal-title mb-0" id="pickupPaymentDecisionTitle">Confirmar acción</h5>
+            <small class="text-muted" id="pickupPaymentDecisionSubtitle">Revisá el comprobante antes de continuar.</small>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div id="pickupPaymentDecisionBody"></div>
+          <div class="mt-3">
+            <label for="pickupPaymentDecisionNote" class="form-label">Nota admin (opcional)</label>
+            <textarea id="pickupPaymentDecisionNote" class="form-control" rows="3" placeholder="Comentario de validación…"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="pickupPaymentDecisionConfirmBtn">Confirmar</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modalEl);
+  return modalEl;
 }
 
 function toDatetimeLocalValue(value) {
@@ -556,17 +751,79 @@ async function savePickupEditor(ui) {
   showAlert("Pickup actualizado ✅", "success");
 }
 
-async function setPaymentState(regId, status) {
+async function openPaymentDecisionDialog({ regId, status }) {
+  if (!canEdit || !regId) return;
+
+  const reg = registrations.find((r) => r.id === regId);
+  if (!reg) {
+    showAlert("No se encontró el registro.", "warning");
+    return;
+  }
+
+  const pickup = getRegistrationPickup(reg);
+  const modalEl = ensurePaymentDecisionModal();
+  const titleEl = modalEl.querySelector("#pickupPaymentDecisionTitle");
+  const subtitleEl = modalEl.querySelector("#pickupPaymentDecisionSubtitle");
+  const bodyEl = modalEl.querySelector("#pickupPaymentDecisionBody");
+  const noteEl = modalEl.querySelector("#pickupPaymentDecisionNote");
+  const confirmBtn = modalEl.querySelector("#pickupPaymentDecisionConfirmBtn");
+
+  titleEl.textContent = status === "approved" ? "Aprobar pago" : "Rechazar pago";
+  subtitleEl.textContent = status === "approved"
+    ? "Esto marcará el pago como aprobado."
+    : "Esto marcará el pago como rechazado.";
+
+  bodyEl.innerHTML = `
+    <div class="border rounded p-3">
+      <div class="fw-semibold">${escapeHtml(reg.displayName || reg.email || "—")}</div>
+      <div class="small text-muted">${escapeHtml(reg.email || "—")}</div>
+      <div class="small text-muted">Pickup: ${escapeHtml(pickup?.title || "—")}</div>
+      <div class="small text-muted">Tier: ${escapeHtml(reg.pricingTierLabel || "—")} · ${money(reg.amountDue || 0)}</div>
+      <div class="small text-muted">Estado actual: ${escapeHtml(reg.paymentStatus || "pending")}</div>
+      ${
+        reg?.paymentProof?.downloadURL
+          ? `<div class="mt-2"><a class="btn btn-sm btn-outline-secondary" href="${reg.paymentProof.downloadURL}" target="_blank" rel="noopener">Abrir comprobante</a></div>`
+          : `<div class="small text-warning mt-2">No hay comprobante adjunto.</div>`
+      }
+    </div>
+  `;
+
+  noteEl.value = "";
+  confirmBtn.className = status === "approved" ? "btn btn-success" : "btn btn-danger";
+  confirmBtn.textContent = status === "approved" ? "Aprobar pago" : "Rechazar pago";
+
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+  confirmBtn.onclick = async () => {
+    confirmBtn.disabled = true;
+    try {
+      await setPaymentState(regId, status, noteEl.value);
+      modal.hide();
+    } finally {
+      confirmBtn.disabled = false;
+    }
+  };
+
+  modal.show();
+}
+
+async function setPaymentState(regId, status, adminNote = "") {
   if (!canEdit || !regId) return;
 
   showLoader();
   try {
-    await updateDoc(doc(db, COL_PICKUP_REGS, regId), {
+    const payload = {
       paymentStatus: status,
       "paymentProof.reviewedAt": serverTimestamp(),
       "paymentProof.reviewedBy": currentUser?.uid || null,
       updatedAt: serverTimestamp(),
-    });
+    };
+
+    if (adminNote && String(adminNote).trim()) {
+      payload.adminNote = String(adminNote).trim();
+    }
+
+    await updateDoc(doc(db, COL_PICKUP_REGS, regId), payload);
 
     await loadAllData();
     showAlert(status === "approved" ? "Pago aprobado." : "Pago rechazado.", "success");
