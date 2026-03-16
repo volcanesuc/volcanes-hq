@@ -66,7 +66,6 @@
               <span id="idxShowEventsState" class="ms-2 small text-muted"></span>
             </div>
           </div>
-          
 
           <div class="col-md-6">
             <div class="form-check form-switch">
@@ -85,6 +84,17 @@
                 Mostrar uniformes
               </label>
               <span id="idxShowUniformsState" class="ms-2 small text-muted"></span>
+            </div>
+          </div>
+
+          <!-- NUEVO TOGGLE -->
+          <div class="col-md-6">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="idxShowFeaturedActivity" />
+              <label class="form-check-label" for="idxShowFeaturedActivity">
+                Mostrar actividad destacada
+              </label>
+              <span id="idxShowFeaturedActivityState" class="ms-2 small text-muted"></span>
             </div>
           </div>
 
@@ -433,6 +443,75 @@
             </tbody>
           </table>
         </div>
+      </div>
+    </section>
+
+    <!-- NUEVA SECCIÓN: ACTIVIDAD DESTACADA -->
+    <section class="card shadow-sm mt-4">
+      <div class="card-body">
+        <div class="mb-3">
+          <h2 class="h5 mb-1">Actividad destacada</h2>
+          <p class="text-muted mb-0">
+            Usala para rifas activas, clínicas, campamentos o cualquier CTA temporal.
+          </p>
+        </div>
+
+        <form id="featuredActivitySettingsForm" class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Título</label>
+            <input
+              id="featuredActivityTitleInput"
+              class="form-control"
+              type="text"
+              placeholder="Clínica de Ultimate para principiantes"
+            />
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Subtítulo / información</label>
+            <input
+              id="featuredActivitySubtitleInput"
+              class="form-control"
+              type="text"
+              placeholder="Sábado 12 de abril · cupos limitados · abierta a todo público"
+            />
+          </div>
+
+          <div class="col-md-4">
+            <div class="form-check form-switch mt-4 pt-2">
+              <input class="form-check-input" type="checkbox" id="featuredActivityCtaEnabledInput" />
+              <label class="form-check-label" for="featuredActivityCtaEnabledInput">
+                Mostrar botón
+              </label>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Texto del botón</label>
+            <input
+              id="featuredActivityCtaTextInput"
+              class="form-control"
+              type="text"
+              placeholder="Inscribirme"
+            />
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Link del botón</label>
+            <input
+              id="featuredActivityCtaUrlInput"
+              class="form-control"
+              type="url"
+              placeholder="https://..."
+            />
+          </div>
+
+          <div class="col-12">
+            <button class="btn btn-primary" type="submit">
+              Guardar actividad destacada
+            </button>
+          </div>
+        </form>
       </div>
     </section>
 

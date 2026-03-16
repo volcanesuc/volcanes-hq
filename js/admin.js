@@ -105,6 +105,16 @@ const $ = {
   eventCtaTextInput: document.getElementById("eventCtaTextInput"),
   eventCtaUrlInput: document.getElementById("eventCtaUrlInput"),
 
+  idxShowFeaturedActivity: document.getElementById("idxShowFeaturedActivity"),
+  idxShowFeaturedActivityState: document.getElementById("idxShowFeaturedActivityState"),
+
+  featuredActivitySettingsForm: document.getElementById("featuredActivitySettingsForm"),
+  featuredActivityTitleInput: document.getElementById("featuredActivityTitleInput"),
+  featuredActivitySubtitleInput: document.getElementById("featuredActivitySubtitleInput"),
+  featuredActivityCtaEnabledInput: document.getElementById("featuredActivityCtaEnabledInput"),
+  featuredActivityCtaTextInput: document.getElementById("featuredActivityCtaTextInput"),
+  featuredActivityCtaUrlInput: document.getElementById("featuredActivityCtaUrlInput"),
+
   honorsSettingsForm: document.getElementById("honorsSettingsForm"),
   honorsTitle: document.getElementById("honorsTitle"),
   honorForm: document.getElementById("honorForm"),
@@ -611,6 +621,7 @@ async function loadIndexSettingsAdmin() {
     if ($.idxShowTrainings) $.idxShowTrainings.checked = data.show_trainings !== false;
     if ($.idxShowHonors) $.idxShowHonors.checked = data.show_honors !== false;
     if ($.idxShowUniforms) $.idxShowUniforms.checked = data.show_uniforms !== false;
+    if ($.idxShowFeaturedActivity) $.idxShowFeaturedActivity.checked = data.show_featured_activity !== false;
   } catch (err) {
     console.error("loadIndexSettingsAdmin error:", err);
     showAlert("No se pudo cargar la visibilidad del landing.");
@@ -629,6 +640,7 @@ async function saveIndexSettings(ev) {
       show_trainings: availability.trainings.ok ? !!$.idxShowTrainings?.checked : false,
       show_honors: availability.honors.ok ? !!$.idxShowHonors?.checked : false,
       show_uniforms: availability.uniforms.ok ? !!$.idxShowUniforms?.checked : false,
+      show_featured_activity: availability.featuredActivity.ok ? !!$.idxShowFeaturedActivity?.checked : false,
       updatedAt: serverTimestamp(),
     };
 
@@ -1026,6 +1038,47 @@ async function saveSocialLinks(ev) {
 }
 
 // =========================
+// EVENTS (SMALL)
+// =========================
+async function saveFeaturedActivitySettings(ev) {
+  ev.preventDefault();
+  hideAlert();
+
+  try {
+    await setDoc(
+      doc(db, COL_CLUB_CONFIG, "featured_activity"),
+      {
+        title: ($.featuredActivityTitleInput.value || "").trim(),
+        subtitle: ($.featuredActivitySubtitleInput.value || "").trim(),
+        ctaEnabled: !!$.featuredActivityCtaEnabledInput.checked,
+        ctaText: ($.featuredActivityCtaTextInput.value || "").trim(),
+        ctaUrl: safeUrl($.featuredActivityCtaUrlInput.value),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    await refreshIndexToggleAvailability(true);
+    showAlert("Actividad destacada guardada.", "success");
+    await loadFeaturedActivityAdmin();
+  } catch (err) {
+    console.error("saveFeaturedActivitySettings error:", err);
+    showAlert("No se pudo guardar la actividad destacada.");
+  }
+}
+
+async function loadFeaturedActivityAdmin() {
+  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "featured_activity")).catch(() => null);
+  const data = snap?.exists?.() ? (snap.data() || {}) : {};
+
+  $.featuredActivityTitleInput.value = data.title || "";
+  $.featuredActivitySubtitleInput.value = data.subtitle || "";
+  $.featuredActivityCtaEnabledInput.checked = data.ctaEnabled === true;
+  $.featuredActivityCtaTextInput.value = data.ctaText || "";
+  $.featuredActivityCtaUrlInput.value = data.ctaUrl || "";
+}
+
+// =========================
 // HONORS
 // =========================
 async function loadHonorsAdmin() {
@@ -1380,21 +1433,32 @@ function setToggleAvailability(inputEl, stateEl, ok, checked, message) {
 
 async function getLandingSectionAvailability() {
   const [
+    featuredActivitySnap,
     eventsSnap,
     trainingsSnap,
     honorsSnap,
     uniformsSnap,
   ] = await Promise.all([
+    getDoc(doc(db, COL_CLUB_CONFIG, "featured_activity")).catch(() => null),
     getDoc(doc(db, COL_CLUB_CONFIG, "events")).catch(() => null),
     getDoc(doc(db, COL_CLUB_CONFIG, "trainings")).catch(() => null),
     getDoc(doc(db, COL_CLUB_CONFIG, "honors")).catch(() => null),
     getDoc(doc(db, COL_CLUB_CONFIG, "uniforms")).catch(() => null),
   ]);
 
+  const featuredActivityData = featuredActivitySnap?.exists?.() ? (featuredActivitySnap.data() || {}) : {};
   const eventsData = eventsSnap?.exists?.() ? (eventsSnap.data() || {}) : {};
   const trainingsData = trainingsSnap?.exists?.() ? (trainingsSnap.data() || {}) : {};
   const honorsData = honorsSnap?.exists?.() ? (honorsSnap.data() || {}) : {};
   const uniformsData = uniformsSnap?.exists?.() ? (uniformsSnap.data() || {}) : {};
+
+  const featuredActivityMissing = [];
+  if (!(featuredActivityData.title || "").trim()) featuredActivityMissing.push("falta título");
+  if (!(featuredActivityData.subtitle || "").trim()) featuredActivityMissing.push("falta subtítulo");
+  if (featuredActivityData.ctaEnabled === true) {
+    if (!(featuredActivityData.ctaText || "").trim()) featuredActivityMissing.push("falta texto CTA");
+    if (!safeUrl(featuredActivityData.ctaUrl || "")) featuredActivityMissing.push("falta URL CTA");
+  }
 
   const eventImages = Array.isArray(eventsData.images) ? eventsData.images.filter(Boolean) : [];
   const eventsMissing = [];
@@ -1425,6 +1489,10 @@ async function getLandingSectionAvailability() {
   if (!validUniforms.length) uniformsMissing.push("faltan uniformes");
 
   return {
+    featuredActivity: {
+      ok: featuredActivityMissing.length === 0,
+      message: featuredActivityMissing.length ? featuredActivityMissing.join(" · ") : "Listo",
+    },
     events: {
       ok: eventsMissing.length === 0,
       message: eventsMissing.length ? eventsMissing.join(" · ") : "Listo",
@@ -1454,10 +1522,19 @@ async function refreshIndexToggleAvailability(syncToFirestore = true) {
     const settings = settingsSnap?.exists?.() ? (settingsSnap.data() || {}) : {};
     const patch = {};
 
+    const featuredActivityChecked = settings.show_featured_activity !== false;
     const eventsChecked = settings.show_events !== false;
     const trainingsChecked = settings.show_trainings !== false;
     const honorsChecked = settings.show_honors !== false;
     const uniformsChecked = settings.show_uniforms !== false;
+
+    setToggleAvailability(
+      $.idxShowFeaturedActivity,
+      $.idxShowFeaturedActivityState,
+      availability.featuredActivity.ok,
+      featuredActivityChecked,
+      availability.featuredActivity.message
+    );
 
     setToggleAvailability(
       $.idxShowEvents,
@@ -1466,6 +1543,7 @@ async function refreshIndexToggleAvailability(syncToFirestore = true) {
       eventsChecked,
       availability.events.message
     );
+
     setToggleAvailability(
       $.idxShowTrainings,
       $.idxShowTrainingsState,
@@ -1473,6 +1551,7 @@ async function refreshIndexToggleAvailability(syncToFirestore = true) {
       trainingsChecked,
       availability.trainings.message
     );
+
     setToggleAvailability(
       $.idxShowHonors,
       $.idxShowHonorsState,
@@ -1480,6 +1559,7 @@ async function refreshIndexToggleAvailability(syncToFirestore = true) {
       honorsChecked,
       availability.honors.message
     );
+
     setToggleAvailability(
       $.idxShowUniforms,
       $.idxShowUniformsState,
@@ -1488,6 +1568,9 @@ async function refreshIndexToggleAvailability(syncToFirestore = true) {
       availability.uniforms.message
     );
 
+    if (!availability.featuredActivity.ok && settings.show_featured_activity !== false) {
+      patch.show_featured_activity = false;
+    }
     if (!availability.events.ok && settings.show_events !== false) {
       patch.show_events = false;
     }
@@ -1549,6 +1632,7 @@ async function boot() {
     try { await loadUniformsAdmin(); } catch (e) { console.error("loadUniformsAdmin", e); }
     try { await loadTrainingsAdmin(); } catch (e) { console.error("loadTrainingsAdmin", e); }
     try { await loadHeroAdmin(); } catch (e) { console.error("loadHeroAdmin", e); }
+    try { await loadFeaturedActivityAdmin(); } catch (e) { console.error("loadFeaturedActivityAdmin", e); }
     try { await loadEventsAdmin(); } catch (e) { console.error("loadEventsAdmin", e); }
     try { await refreshIndexToggleAvailability(true); } catch (e) { console.error("refreshIndexToggleAvailability", e); }
 
@@ -1561,6 +1645,7 @@ async function boot() {
     $.approveUserForm?.addEventListener("submit", approveUserFlow);
     $.socialLinksForm?.addEventListener("submit", saveSocialLinks);
     $.heroSettingsForm?.addEventListener("submit", saveHeroSettings);
+    $.featuredActivitySettingsForm?.addEventListener("submit", saveFeaturedActivitySettings);
     $.eventsSettingsForm?.addEventListener("submit", saveEventsSettings);
     $.honorsSettingsForm?.addEventListener("submit", saveHonorSettings);
     $.honorForm?.addEventListener("submit", addHonor);
