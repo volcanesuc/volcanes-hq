@@ -45,6 +45,7 @@ async function ensureUserDoc(firebaseUser) {
     const patch = {};
 
     if (data.uid !== uid) patch.uid = uid;
+
     if ((data.email || null) !== (firebaseUser.email || null)) {
       patch.email = firebaseUser.email || null;
     }
@@ -58,19 +59,12 @@ async function ensureUserDoc(firebaseUser) {
     }
 
     if (data.onboardingComplete === undefined) patch.onboardingComplete = false;
-
-    if (data.isPlayerActive === undefined && data.isActive !== undefined) {
-      patch.isPlayerActive = data.isActive === true;
-    } else if (data.isPlayerActive === undefined) {
-      patch.isPlayerActive = false;
-    }
-
+    if (data.isPlayerActive === undefined) patch.isPlayerActive = false;
     if (data.playerStatus === undefined) patch.playerStatus = null;
     if (data.associationStatus === undefined) patch.associationStatus = null;
-
     if (data.role === undefined) patch.role = "viewer";
-
     if (data.playerId === undefined) patch.playerId = null;
+    if (data.memberId === undefined) patch.memberId = null;
     if (data.profile === undefined || data.profile === null) patch.profile = {};
     if (data.consents === undefined || data.consents === null) patch.consents = {};
     if (!Array.isArray(data.membershipIds)) patch.membershipIds = [];
@@ -95,12 +89,12 @@ async function ensureUserDoc(firebaseUser) {
 
     onboardingComplete: false,
     isPlayerActive: false,
-    isActive: false, // compat temporal
     playerStatus: null,
     associationStatus: null,
     role: "viewer",
 
     playerId: null,
+    memberId: null,
     profile: {},
     consents: {},
     membershipIds: [],
