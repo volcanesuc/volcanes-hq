@@ -201,8 +201,11 @@ export async function loadHeader(activeTab, cfgOverride) {
         await routeAfterGoogleLogin(user);
         resolveOnce({ user, reason: "routed" });
       } catch (e) {
-        console.error(e);
+        console.error("routeAfterGoogleLogin failed", e);
         resolveOnce({ user, reason: "route-error" });
+
+        // fallback seguro si algo falla
+        window.location.href = "/public/register.html?error=routing";
       }
       return;
     }
