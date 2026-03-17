@@ -4,13 +4,8 @@ import { db } from "../auth/firebase.js";
 import {
   doc,
   getDoc,
-  getDocs,
   addDoc,
-  setDoc,
-  updateDoc,
   collection,
-  query,
-  where,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
@@ -21,19 +16,11 @@ import {
   getDownloadURL
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
-import {
-  getAuth,
-  signInAnonymously
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { recomputeMembershipRollup } from "./membership_rollup.js";
-
 /* =========================
    Collections
 ========================= */
-const COL_USERS = "users";
-const COL_MEMBERSHIPS = "memberships";
-const COL_INSTALLMENTS = "membership_installments";
-const COL_SUBMISSIONS = "membership_payment_submissions";
+const COL_PUBLIC_LINKS = "membership_payment_links";
+const COL_PUBLIC_SUBMISSIONS = "public_membership_payment_submissions";
 
 /* =========================
    DOM
@@ -85,7 +72,7 @@ const code = params.get("code");
 /* =========================
    State
 ========================= */
-let membership = null;
+let paymentLink = null;
 let installments = [];
 let _wired = false;
 
@@ -129,8 +116,8 @@ function buildDisplayName(firstName, lastName) {
 }
 
 function getSnapshotDisplayName(snapshot = {}) {
-  const firstName = snapshot?.firstName ?? snapshot?.profile?.firstName ?? "";
-  const lastName = snapshot?.lastName ?? snapshot?.profile?.lastName ?? "";
+  const firstName = snapshot?.firstName ?? "";
+  const lastName = snapshot?.lastName ?? "";
   const joined = buildDisplayName(firstName, lastName);
 
   return (
@@ -156,7 +143,7 @@ function clearProgress() {
 }
 
 function inferCurrency() {
-  return membership?.currency || membership?.planSnapshot?.currency || "CRC";
+  return paymentLink?.plan?.currency || "CRC";
 }
 
 function isSettledInstallmentStatus(st) {
@@ -164,36 +151,46 @@ function isSettledInstallmentStatus(st) {
   return s === "validated" || s === "paid";
 }
 
-function getInstallmentById(id) {
-  return installments.find((x) => x.id === id) || null;
+function getInstallmentKey(it, idx = 0) {
+  if (it?.n !== undefined && it?.n !== null) return String(it.n);
+  return String(idx + 1);
+}
+
+function getInstallmentByKey(key) {
+  return installments.find((x, idx) => getInstallmentKey(x, idx) === String(key)) || null;
 }
 
 function getMemberSnapshot() {
-  return membership?.userSnapshot || {};
+  return paymentLink?.member || {};
 }
 
-function getMembershipUserId() {
-  return membership?.userId || membership?.userSnapshot?.uid || null;
+function getSelectedInstallmentKeysFromUI() {
+  const checked = [...document.querySelectorAll('input[name="installmentChk"]:checked')]
+    .map((x) => x.value)
+    .filter(Boolean);
+
+  if (checked.length) return checked;
+
+  const one = installmentSelect?.value || "";
+  return one ? [one] : [];
 }
 
-async function syncUserMembershipStatus(statusOverride = null) {
-  const uid = getMembershipUserId();
-  if (!uid) return;
+function getSelectedInstallmentNsFromUI() {
+  return getSelectedInstallmentKeysFromUI()
+    .map((x) => Number(x))
+    .filter((x) => Number.isFinite(x));
+}
 
-  try {
-    await updateDoc(doc(db, COL_USERS, uid), {
-      currentMembership: {
-        membershipId: membership.id,
-        season: membership.season || null,
-        planId: membership.planId || membership.planSnapshot?.id || null,
-        label: `${membership.planSnapshot?.name || "Membresía"} ${membership.season || ""}`.trim(),
-        status: statusOverride || membership.status || "pending",
-      },
-      updatedAt: serverTimestamp(),
-    });
-  } catch (e) {
-    console.warn("No se pudo sincronizar currentMembership en users", e?.code || e);
+function sumSelectedInstallments(keys) {
+  const cur = inferCurrency();
+  let total = 0;
+
+  for (const key of keys) {
+    const it = getInstallmentByKey(key);
+    if (it) total += Number(it.amount || 0);
   }
+
+  return { total, cur };
 }
 
 function setPayDisabledUI(msg) {
@@ -205,29 +202,6 @@ function setPayDisabledUI(msg) {
   disableForm(true);
 
   if (pagePill) pagePill.textContent = "En revisión";
-}
-
-function sumSelectedInstallments(ids) {
-  const cur = inferCurrency();
-  let total = 0;
-
-  for (const id of ids) {
-    const it = getInstallmentById(id);
-    if (it) total += Number(it.amount || 0);
-  }
-
-  return { total, cur };
-}
-
-function getSelectedInstallmentIdsFromUI() {
-  const checked = [...document.querySelectorAll('input[name="installmentChk"]:checked')]
-    .map((x) => x.value)
-    .filter(Boolean);
-
-  if (checked.length) return checked;
-
-  const one = installmentSelect?.value || "";
-  return one ? [one] : [];
 }
 
 /* =========================
@@ -247,27 +221,12 @@ function getSelectedInstallmentIdsFromUI() {
   disableForm(true);
 
   try {
-    const auth = getAuth();
-    if (!auth.currentUser) {
-      await signInAnonymously(auth);
-    }
-    console.log("auth uid:", auth.currentUser?.uid, "anon:", auth.currentUser?.isAnonymous);
-  } catch (e) {
-    console.warn("Anonymous auth no disponible:", e);
-  }
+    await loadPaymentLink();
 
-  try {
-    await loadMembership();
-    await loadInstallments();
-
-    try {
-      await recomputeMembershipRollup(mid);
-    } catch (_) {}
-
-    if (membership?.payLinkEnabled === false) {
+    if (paymentLink?.enabled === false) {
       fillSummaryOnly();
       const reason =
-        membership?.payLinkDisabledReason ||
+        paymentLink?.disabledReason ||
         "Este link está deshabilitado mientras el admin revisa el comprobante.";
       setPayDisabledUI(reason);
       showAlert(reason, "warning");
@@ -285,8 +244,10 @@ function getSelectedInstallmentIdsFromUI() {
 
     if (String(e?.message || e).includes("invalid_code")) {
       showAlert("Código inválido.", "danger");
+    } else if (String(e?.message || e).includes("link_disabled")) {
+      showAlert("Este link está deshabilitado.", "warning");
     } else {
-      showAlert("No se pudo cargar la membresía. Revisá el link o contactá al club.", "danger");
+      showAlert("No se pudo cargar la página de pago. Revisá el link o contactá al club.", "danger");
     }
   }
 })();
@@ -294,24 +255,23 @@ function getSelectedInstallmentIdsFromUI() {
 /* =========================
    Load data
 ========================= */
-async function loadMembership() {
-  const snap = await getDoc(doc(db, COL_MEMBERSHIPS, mid));
-  if (!snap.exists()) throw new Error("membership_not_found");
+async function loadPaymentLink() {
+  const snap = await getDoc(doc(db, COL_PUBLIC_LINKS, mid));
+  if (!snap.exists()) throw new Error("payment_link_not_found");
 
-  membership = { id: snap.id, ...snap.data() };
+  paymentLink = { id: snap.id, ...snap.data() };
 
-  if ((membership.payCode || "") !== code) {
+  if ((paymentLink.code || "") !== code) {
     throw new Error("invalid_code");
   }
-}
 
-async function loadInstallments() {
-  const q = query(collection(db, COL_INSTALLMENTS), where("membershipId", "==", mid));
-  const snap = await getDocs(q);
+  if (paymentLink.enabled === false) {
+    throw new Error("link_disabled");
+  }
 
-  installments = snap.docs
-    .map((d) => ({ id: d.id, ...d.data() }))
-    .sort((a, b) => (a.n || 0) - (b.n || 0));
+  installments = Array.isArray(paymentLink.installments)
+    ? paymentLink.installments.slice().sort((a, b) => (a.n || 0) - (b.n || 0))
+    : [];
 }
 
 /* =========================
@@ -321,7 +281,7 @@ function fillSummaryOnly() {
   hideAlert();
 
   const a = getMemberSnapshot();
-  const p = membership?.planSnapshot || {};
+  const p = paymentLink?.plan || {};
   const cur = inferCurrency();
 
   if (assocName) assocName.textContent = getSnapshotDisplayName(a);
@@ -329,7 +289,7 @@ function fillSummaryOnly() {
 
   if (planName) planName.textContent = p.name || "—";
 
-  const totalTxt = p.allowCustomAmount ? "Monto editable" : fmtMoney(membership.totalAmount ?? p.totalAmount, cur);
+  const totalTxt = p.allowCustomAmount ? "Monto editable" : fmtMoney(p.totalAmount, cur);
   if (planMeta) {
     planMeta.textContent = `${totalTxt} • ${p.allowPartial ? "Permite cuotas" : "Pago único"} • ${p.requiresValidation ? "Validación admin" : "Sin validación"}`;
   }
@@ -339,12 +299,12 @@ function fillUI() {
   fillSummaryOnly();
 
   const a = getMemberSnapshot();
+  const p = paymentLink?.plan || {};
+  const cur = inferCurrency();
+
   if (payerName) payerName.value = getSnapshotDisplayName(a) === "—" ? "" : getSnapshotDisplayName(a);
   if (email) email.value = a.email || "";
   if (phone) phone.value = a.phone || "";
-
-  const cur = inferCurrency();
-  const p = membership.planSnapshot || {};
 
   if (amountHint) {
     amountHint.textContent = p.allowCustomAmount
@@ -362,12 +322,14 @@ function fillUI() {
       installmentsBox.innerHTML = `<div class="text-muted">No hay cuotas pendientes.</div>`;
       if (installmentsBoxHint) installmentsBoxHint.textContent = "Si necesitás adjuntar otro comprobante, enviá un pago general.";
     } else {
-      installmentsBox.innerHTML = pending.map((it) => {
-        const due = it.dueDate || (it.dueMonthDay ? `${membership.season}-${it.dueMonthDay}` : "—");
-        const label = `Cuota #${it.n} • vence ${due} • ${fmtMoney(it.amount, cur)}`;
+      installmentsBox.innerHTML = pending.map((it, idx) => {
+        const due = it.dueDate || (it.dueMonthDay ? `${paymentLink.season}-${it.dueMonthDay}` : "—");
+        const key = getInstallmentKey(it, idx);
+        const label = `Cuota #${it.n ?? key} • vence ${due} • ${fmtMoney(it.amount, cur)}`;
+
         return `
           <label class="d-flex align-items-start gap-2 p-2 border rounded mb-2" style="cursor:pointer;">
-            <input class="form-check-input mt-1" type="checkbox" name="installmentChk" value="${it.id}">
+            <input class="form-check-input mt-1" type="checkbox" name="installmentChk" value="${key}">
             <span>
               <div class="fw-bold">${label}</div>
               <div class="small text-muted">Estado: ${it.status || "pending"}</div>
@@ -383,10 +345,11 @@ function fillUI() {
   }
 
   if (installmentSelect && installmentHint) {
-    const options = pending.map((x) => {
-      const due = x.dueDate || (x.dueMonthDay ? `${membership.season}-${x.dueMonthDay}` : "—");
-      const label = `Cuota #${x.n} • vence ${due} • ${fmtMoney(x.amount, cur)} • ${x.status || "pending"}`;
-      return `<option value="${x.id}">${label}</option>`;
+    const options = pending.map((x, idx) => {
+      const due = x.dueDate || (x.dueMonthDay ? `${paymentLink.season}-${x.dueMonthDay}` : "—");
+      const key = getInstallmentKey(x, idx);
+      const label = `Cuota #${x.n ?? key} • vence ${due} • ${fmtMoney(x.amount, cur)} • ${x.status || "pending"}`;
+      return `<option value="${key}">${label}</option>`;
     }).join("");
 
     installmentSelect.innerHTML =
@@ -400,13 +363,12 @@ function fillUI() {
 
   const syncAmountFromSelection = (opts = {}) => {
     const { force = false } = opts;
-    const p = membership?.planSnapshot || {};
 
     if (p.allowPartial && installments.length) {
-      const selectedIds = getSelectedInstallmentIdsFromUI();
+      const selectedKeys = getSelectedInstallmentKeysFromUI();
 
-      if (selectedIds.length) {
-        const { total } = sumSelectedInstallments(selectedIds);
+      if (selectedKeys.length) {
+        const { total } = sumSelectedInstallments(selectedKeys);
         if (force || amount.value === "" || payForm?._autoAmount === true) {
           amount.value = String(total || "");
           payForm._autoAmount = true;
@@ -414,26 +376,20 @@ function fillUI() {
         return;
       }
 
-      const pending = installments
-        .filter((x) => !isSettledInstallmentStatus(x.status))
+      const first = pending
         .slice()
-        .sort((a, b) => (a.n || 0) - (b.n || 0));
+        .sort((a, b) => (a.n || 0) - (b.n || 0))[0] || null;
 
-      const first = pending[0] || null;
       if (first) {
         if (force || amount.value === "" || payForm?._autoAmount === true) {
           amount.value = String(Number(first.amount || 0) || "");
           payForm._autoAmount = true;
         }
+        return;
       }
-      return;
     }
 
-    const totalOneShot =
-      (membership?.totalAmount ?? null) ??
-      (p.totalAmount ?? null) ??
-      null;
-
+    const totalOneShot = p.totalAmount ?? null;
     if (totalOneShot !== null && totalOneShot !== undefined) {
       if (force || amount.value === "" || payForm?._autoAmount === true) {
         amount.value = String(Number(totalOneShot) || "");
@@ -466,9 +422,9 @@ function wireOnce() {
 
   if (installmentSelect) {
     installmentSelect.onchange = () => {
-      const iid = installmentSelect.value || "";
-      if (!iid) return;
-      const it = getInstallmentById(iid);
+      const key = installmentSelect.value || "";
+      if (!key) return;
+      const it = getInstallmentByKey(key);
       if (it && it.amount !== undefined && it.amount !== null && amount.value === "") {
         amount.value = String(it.amount);
       }
@@ -477,7 +433,7 @@ function wireOnce() {
 
   if (btnReset) {
     btnReset.onclick = () => {
-      if (membership?.payLinkEnabled === false) return;
+      if (paymentLink?.enabled === false) return;
 
       document.querySelectorAll('input[name="installmentChk"]').forEach((x) => {
         x.checked = false;
@@ -504,9 +460,9 @@ async function onSubmit(e) {
   e.preventDefault();
   hideAlert();
 
-  if (membership?.payLinkEnabled === false) {
+  if (paymentLink?.enabled === false) {
     const reason =
-      membership?.payLinkDisabledReason ||
+      paymentLink?.disabledReason ||
       "Este link está deshabilitado mientras el admin revisa el comprobante.";
     setPayDisabledUI(reason);
     showAlert(reason, "warning");
@@ -514,7 +470,7 @@ async function onSubmit(e) {
   }
 
   const cur = inferCurrency();
-  const p = membership.planSnapshot || {};
+  const p = paymentLink?.plan || {};
 
   const payer = safe(payerName.value);
   if (!payer) return showAlert("Falta el nombre.", "warning");
@@ -540,57 +496,12 @@ async function onSubmit(e) {
   clearProgress();
   setProgress(5, "Preparando subida…");
 
-  let sid = null;
-  let path = null;
-
   try {
-    const selectedInstallmentIds = getSelectedInstallmentIdsFromUI();
-    const installmentIdCompat = selectedInstallmentIds.length === 1 ? selectedInstallmentIds[0] : null;
-
-    const auth = getAuth();
-    const senderUid = auth.currentUser?.uid;
-    const membershipUserId = getMembershipUserId();
-
-    if (!senderUid) {
-      throw Object.assign(new Error("not_authenticated"), { code: "auth/not-authenticated" });
-    }
-
-    const submissionDoc = await addDoc(collection(db, COL_SUBMISSIONS), {
-      membershipId: mid,
-      userId: membershipUserId || null,
-      submittedByUid: senderUid,
-
-      installmentId: installmentIdCompat,
-      selectedInstallmentIds: selectedInstallmentIds.length ? selectedInstallmentIds : [],
-
-      season: membership.season || null,
-      planId: membership.planId || (p.id || null),
-
-      payerName: payer,
-      email: safe(email.value) || null,
-      phone: safe(phone.value) || null,
-      amountReported: amt,
-      currency: cur,
-
-      method: method.value || "other",
-      note: safe(note.value) || null,
-
-      status: "pending",
-      adminNote: null,
-
-      fileUrl: null,
-      filePath: null,
-      fileType: f.type || null,
-
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
-
-    sid = submissionDoc.id;
+    const selectedInstallmentNs = getSelectedInstallmentNsFromUI();
 
     const storage = getStorage();
     const safeName = (f.name || "comprobante").replace(/[^\w.\-()]+/g, "_");
-    path = `membership_submissions/${mid}/${sid}/${Date.now()}_${safeName}`;
+    const path = `membership_public_uploads/${mid}/${Date.now()}_${safeName}`;
     const fileRef = sRef(storage, path);
 
     const task = uploadBytesResumable(fileRef, f, { contentType: f.type || undefined });
@@ -611,43 +522,31 @@ async function onSubmit(e) {
 
     const url = await getDownloadURL(fileRef);
 
-    await setDoc(doc(db, COL_SUBMISSIONS, sid), {
+    await addDoc(collection(db, COL_PUBLIC_SUBMISSIONS), {
+      membershipId: mid,
+      code: code,
+
+      season: paymentLink?.season || null,
+      planId: p.id || null,
+
+      payerName: payer,
+      email: safe(email.value) || null,
+      phone: safe(phone.value) || null,
+      amountReported: amt,
+      currency: cur,
+
+      method: method.value || "other",
+      note: safe(note.value) || null,
+      selectedInstallmentNs: selectedInstallmentNs.length ? selectedInstallmentNs : [],
+
       fileUrl: url,
       filePath: path,
+      fileType: f.type || null,
+
+      status: "pending",
+      createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
-    }, { merge: true });
-
-    try {
-      const currStatus = (membership?.status || "pending").toLowerCase();
-      const nextStatus =
-        (currStatus === "pending" || currStatus === "partial") ? "submitted" : currStatus;
-
-      await updateDoc(doc(db, COL_MEMBERSHIPS, mid), {
-        status: nextStatus,
-        payLinkEnabled: false,
-        payLinkDisabledReason: "Comprobante enviado. En revisión por el admin.",
-        lastPaymentSubmissionId: sid,
-        lastPaymentAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
-
-      try {
-        await recomputeMembershipRollup(mid);
-      } catch (_) {}
-
-      membership.status = nextStatus;
-      membership.payLinkEnabled = false;
-      membership.payLinkDisabledReason = "Comprobante enviado. En revisión por el admin.";
-
-      await syncUserMembershipStatus(nextStatus);
-
-      setProgress(100, "✅ Enviado");
-      showAlert("✅ Comprobante enviado. Un admin lo revisará pronto.", "success");
-      setPayDisabledUI(membership.payLinkDisabledReason);
-      return;
-    } catch (e) {
-      console.warn("No se pudo bloquear el link automáticamente (rules).", e?.code || e);
-    }
+    });
 
     setProgress(100, "✅ Enviado");
     showAlert("✅ Comprobante enviado. Un admin lo revisará pronto.", "success");
@@ -662,43 +561,24 @@ async function onSubmit(e) {
   } catch (err) {
     console.error(err);
 
-    const code = err?.code || "";
+    const errCode = err?.code || "";
     const msg =
-      code === "auth/not-authenticated"
-        ? "❌ No se pudo autenticar (sesión anónima). Recargá el link e intentá de nuevo."
-        : code === "permission-denied"
-          ? "❌ Permisos insuficientes (Firestore Rules)."
-          : code === "storage/unauthorized"
-            ? "❌ No tenés permiso para subir el archivo. (Revisá Storage Rules y Auth anónimo)."
-            : code === "storage/retry-limit-exceeded"
-              ? "❌ Falló la subida (reintentos agotados). Probá con otra red o un archivo más liviano."
-              : code === "storage/canceled"
-                ? "❌ Subida cancelada."
-                : code === "storage/invalid-checksum"
-                  ? "❌ El archivo se corrompió al subir. Intentá otra vez."
-                  : "❌ Ocurrió un error subiendo el comprobante. Intentá de nuevo o contactá al club.";
+      errCode === "permission-denied"
+        ? "❌ Permisos insuficientes (Firestore Rules)."
+        : errCode === "storage/unauthorized"
+          ? "❌ No tenés permiso para subir el archivo. Revisá las Storage Rules."
+          : errCode === "storage/retry-limit-exceeded"
+            ? "❌ Falló la subida. Probá con otra red o un archivo más liviano."
+            : errCode === "storage/canceled"
+              ? "❌ Subida cancelada."
+              : errCode === "storage/invalid-checksum"
+                ? "❌ El archivo se corrompió al subir. Intentá otra vez."
+                : "❌ Ocurrió un error subiendo el comprobante. Intentá de nuevo o contactá al club.";
 
     showAlert(msg, "danger");
     clearProgress();
-
-    if (sid) {
-      try {
-        await setDoc(doc(db, COL_SUBMISSIONS, sid), {
-          status: "error",
-          adminNote: `Upload error: ${code || (err?.message || "unknown")}`,
-          updatedAt: serverTimestamp()
-        }, { merge: true });
-      } catch (e) {
-        console.warn("No se pudo marcar submission como error:", e);
-      }
-    }
   } finally {
-    if (membership?.payLinkEnabled === false) {
-      btnSubmit.disabled = true;
-      disableForm(true);
-    } else {
-      btnSubmit.disabled = false;
-      disableForm(false);
-    }
+    btnSubmit.disabled = false;
+    disableForm(false);
   }
 }
