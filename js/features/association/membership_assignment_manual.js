@@ -113,10 +113,16 @@ function normalizeSeasonYear(value) {
   return n;
 }
 
+function normalizeSeasonString(value) {
+  const n = normalizeSeasonYear(value);
+  return n ? String(n) : null;
+}
+
 function mmddToIsoDate(season, mmdd) {
-  if (!Number.isInteger(Number(season))) return null;
+  const year = Number(season);
+  if (!Number.isInteger(year)) return null;
   if (!mmdd || !/^\d{2}-\d{2}$/.test(mmdd)) return null;
-  return `${season}-${mmdd}`;
+  return `${year}-${mmdd}`;
 }
 
 function planDisplay(p) {
@@ -151,10 +157,10 @@ function durationHint(p) {
   if (!dm) return "";
 
   const dur =
-    dm === 12 ? "12 meses" :
-    dm === 6 ? "6 meses" :
-    dm === 1 ? "1 mes" :
-    `${dm} meses`;
+    dm === 12 ? "12 meses"
+    : dm === 6 ? "6 meses"
+    : dm === 1 ? "1 mes"
+    : `${dm} meses`;
 
   const start = sp === "jan" ? "enero" : "fecha de pago";
 
@@ -207,6 +213,7 @@ function getUserSearchBlob(u) {
     getUserPhone(u),
     p.idNumber,
     u?.uid,
+    u?.id,
   ].map(norm).join(" ");
 }
 
@@ -438,7 +445,7 @@ function renderPreview() {
     planHint.textContent = "";
   }
 
-  const season = normalizeSeasonYear(seasonEl.value);
+  const season = normalizeSeasonString(seasonEl.value);
 
   if (!selectedPlan) {
     previewTotal.textContent = "—";
@@ -534,7 +541,7 @@ async function findExistingMembership({ userId, season }) {
 async function createMembership() {
   if (_creating) return;
 
-  const season = normalizeSeasonYear(seasonEl.value);
+  const season = normalizeSeasonString(seasonEl.value);
 
   if (!season) {
     return alert("Temporada inválida. Usá un año válido, por ejemplo 2026.");
@@ -548,6 +555,7 @@ async function createMembership() {
 
   try {
     const userId = selectedUser.uid || selectedUser.id;
+    const userDocId = selectedUser.id || selectedUser.uid;
 
     const existing = await findExistingMembership({ userId, season });
 
@@ -595,15 +603,12 @@ async function createMembership() {
 
     const payCode = randomCode(7);
 
-    const membershipDoc = await addDoc(collection(db, COL_MEMBERSHIPS), {
+    const membershipPayload = {
       userId,
       userSnapshot: userSnap,
 
-      associateId: null,
-      associateSnapshot: null,
-
-      season,
       planId: selectedPlan.id,
+      season,
 
       status: "pending",
       payCode,
@@ -618,12 +623,15 @@ async function createMembership() {
 
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-    });
+    };
 
+    const membershipDoc = await addDoc(collection(db, COL_MEMBERSHIPS), membershipPayload);
     const mid = membershipDoc.id;
 
     if (selectedPlan.allowPartial && installmentsTemplate.length) {
-      const sorted = installmentsTemplate.slice().sort((a, b) => (a.n || 0) - (b.n || 0));
+      const sorted = installmentsTemplate
+        .slice()
+        .sort((a, b) => (a.n || 0) - (b.n || 0));
 
       for (const it of sorted) {
         const dueIso = mmddToIsoDate(season, it.dueMonthDay);
@@ -652,7 +660,7 @@ async function createMembership() {
     }
 
     try {
-      await updateDoc(doc(db, COL_USERS, userId), {
+      await updateDoc(doc(db, COL_USERS, userDocId), {
         membershipIds: arrayUnion(mid),
         currentMembership: {
           membershipId: mid,
