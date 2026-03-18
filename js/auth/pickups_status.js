@@ -147,10 +147,11 @@ async function loadActivePickups() {
     const items = snap.docs
       .map((d) => ({ id: d.id, ...d.data() }))
       .filter((p) => p.status === "published");
-
+    console.log("Pickups encontrados:", items.length, items);
     renderPickups(items);
     return;
   } catch (e) {
+    console.log("Pickups fallback:", items.length, items);
     console.warn("Primary pickups query failed, trying fallback:", e);
   }
 
