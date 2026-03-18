@@ -53,7 +53,6 @@ const COL_MEMBERSHIPS = COL.memberships;
 const COL_INSTALLMENTS = COL.membershipInstallments;
 const COL_SUBMISSIONS = COL.membershipPaymentSubmissions;
 
-// Config doc
 const CFG_DOC = doc(db, "club_config", "public_registration");
 
 /* =========================
@@ -156,6 +155,10 @@ function isAsovoca() {
   return getSelectedRegisterType() === "asovoca";
 }
 
+function requiresVolcanesExtraFields() {
+  return isVolcanes() || isAsovoca();
+}
+
 function computeFormComplete() {
   const registerType = getSelectedRegisterType();
   if (!registerType) return false;
@@ -167,7 +170,7 @@ function computeFormComplete() {
     $.emergencyContactName,
   ];
 
-  if (isVolcanes()) {
+  if (requiresVolcanesExtraFields()) {
     requiredEls.push($.email, $.idType, $.idNumber, $.province, $.canton);
   }
 
@@ -356,10 +359,11 @@ function refreshRegisterTypeUI() {
   }
 
   $.commonSection?.classList.remove("d-none");
-  $.volcanesSection?.classList.toggle("d-none", type !== "volcanes");
+  $.volcanesSection?.classList.toggle("d-none", !requiresVolcanesExtraFields());
   $.asovocaSection?.classList.toggle("d-none", type !== "asovoca");
 
   refreshMembershipPaymentUI();
+  refreshCommitteeUI();
   updateSubmitState();
 }
 
@@ -1224,7 +1228,7 @@ $.form?.addEventListener("submit", async (ev) => {
   const idType = normLower($.idType?.value);
   const idNumber = cleanIdNum($.idNumber?.value);
 
-  const residence = isVolcanes()
+  const residence = requiresVolcanesExtraFields()
     ? {
         province: norm($.province?.value),
         canton: norm($.canton?.value),
@@ -1243,7 +1247,7 @@ $.form?.addEventListener("submit", async (ev) => {
 
   const wantsPlayer = isVolcanes();
   const wantsMembershipPayment = isAsovoca() && PUBLIC_CFG.enableMembershipPayment;
-  const canUsePickups = isPickups() || isVolcanes() || isAsovoca();
+  const canUsePickups = true;
 
   const planId = norm($.planId?.value);
   const plan = plansById.get(planId);
@@ -1263,14 +1267,14 @@ $.form?.addEventListener("submit", async (ev) => {
     return;
   }
 
-  if (isVolcanes()) {
+  if (requiresVolcanesExtraFields()) {
     if (!email || !idType || !idNumber) {
-      showAlert("Para jugador de Volcanes debes completar correo, tipo de documento y número de documento.");
+      showAlert("Debes completar correo, tipo de documento y número de documento.");
       return;
     }
 
     if (!residence?.province || !residence?.canton) {
-      showAlert("Para jugador de Volcanes debes seleccionar provincia y cantón.");
+      showAlert("Debes seleccionar provincia y cantón.");
       return;
     }
   }
@@ -1313,11 +1317,11 @@ $.form?.addEventListener("submit", async (ev) => {
     const userSnapshot = await step("Save user profile + consents", () =>
       saveUserProfileAndConsents({
         uid,
-        email: isVolcanes() ? email : (user.email || null),
+        email: requiresVolcanesExtraFields() ? email : (user.email || null),
         firstName,
         lastName,
-        idType: isVolcanes() ? idType : null,
-        idNumber: isVolcanes() ? idNumber : null,
+        idType: requiresVolcanesExtraFields() ? idType : null,
+        idNumber: requiresVolcanesExtraFields() ? idNumber : null,
         phone,
         residence,
         emergencyContact,
@@ -1362,7 +1366,7 @@ $.form?.addEventListener("submit", async (ev) => {
           amountReported: planAmount(plan),
           currency: plan.currency || "CRC",
 
-          email: user.email || null,
+          email: email || user.email || null,
           payerName: `${firstName} ${lastName}`.trim() || null,
           phone: phone || null,
           method: "sinpe",
@@ -1401,7 +1405,7 @@ $.form?.addEventListener("submit", async (ev) => {
       const uref = doc(db, COL_USERS, uid);
 
       const payload = {
-        email: user.email || null,
+        email: email || user.email || null,
         displayName: auth.currentUser?.displayName || null,
         photoURL: auth.currentUser?.photoURL || null,
         phone: phone || null,
@@ -1415,7 +1419,7 @@ $.form?.addEventListener("submit", async (ev) => {
           type: registerType,
           wantsPlayer: wantsPlayer === true,
           wantsMembershipPayment: wantsMembershipPayment === true,
-          canUsePickups: canUsePickups === true,
+          canUsePickups: true,
           committeeInterest: committeeInterest === true,
         },
 
@@ -1435,11 +1439,6 @@ $.form?.addEventListener("submit", async (ev) => {
 
     if (wantsMembershipPayment) {
       window.location.replace("/member_status.html");
-      return;
-    }
-
-    if (canUsePickups) {
-      window.location.replace("/index.html");
       return;
     }
 
