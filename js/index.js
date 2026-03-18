@@ -260,8 +260,6 @@ async function bootPendingMode() {
       hideLoader();
     }
   });
-}
-
   pendingLogoutBtn?.addEventListener("click", async () => {
     try {
       showLoader("Cerrando sesión…");
