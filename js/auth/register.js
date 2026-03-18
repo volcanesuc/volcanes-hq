@@ -817,7 +817,7 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     if (canUsePickupsFlag) {
-      window.location.replace("/index.html");
+      window.location.replace("/pickups_status.html");
       return;
     }
 
@@ -1135,6 +1135,23 @@ async function uploadProofFile({ uid, file }) {
   };
 }
 
+function applyModeFromQuery() {
+  const params = new URLSearchParams(window.location.search);
+  const mode = params.get("mode");
+
+  if (mode === "upgrade_player" && $.registerTypeVolcanes) {
+    $.registerTypeVolcanes.checked = true;
+  }
+
+  if (mode === "upgrade_member" && $.registerTypeAsovoca) {
+    $.registerTypeAsovoca.checked = true;
+  }
+
+  refreshRegisterTypeUI();
+  refreshCommitteeUI();
+  updateSubmitState();
+}
+
 /* =========================
    Prefill from session
 ========================= */
@@ -1175,12 +1192,12 @@ async function init() {
   showLoader("Procesando registro…");
   setSubmittingState(true, "Enviando...");
   clearProofStatus();
+
   try {
     fillProvinceCanton();
     await loadPlans();
     await loadPublicRegConfig();
-    refreshRegisterTypeUI();
-    refreshCommitteeUI();
+    applyModeFromQuery();
   } catch (e) {
     console.warn(e);
     showAlert("No se pudo cargar la configuración. Refresca la página.");
