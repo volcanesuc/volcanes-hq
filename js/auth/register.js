@@ -1459,6 +1459,11 @@ $.form?.addEventListener("submit", async (ev) => {
       return;
     }
 
+    if (canUsePickups) {
+      window.location.replace("/pickups_status.html");
+      return;
+    }
+
     window.location.replace("/index.html");
   } catch (e) {
     console.warn(e);
