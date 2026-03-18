@@ -73,6 +73,20 @@ function showPendingState(kind = "player") {
   hideLoader();
 }
 
+function normalizeAssociationStatus(data) {
+  const explicit = String(data?.associationStatus || "").trim().toLowerCase();
+  if (explicit === "associated_active") return "active";
+  if (explicit === "associated_rejected") return "rejected";
+  if (explicit === "payment_validation_pending") return "pending";
+  return explicit;
+}
+
+function normalizePlayerStatus(data) {
+  const explicit = String(data?.playerStatus || "").trim().toLowerCase();
+  if (explicit) return explicit;
+  return data?.isPlayerActive === true ? "active" : "";
+}
+
 async function readCurrentUserState(uid) {
   if (!uid) return {};
 
@@ -93,13 +107,15 @@ async function bootPendingMode() {
 
       const userData = await readCurrentUserState(user.uid);
 
-      if (userData.isPlayerActive === true && userData.onboardingComplete === true) {
+      const onboardingComplete = userData.onboardingComplete === true;
+      const canUsePickups = userData.canUsePickups === true;
+      const playerStatus = normalizePlayerStatus(userData);
+      const associationStatus = normalizeAssociationStatus(userData);
+
+      if (playerStatus === "active" && onboardingComplete) {
         window.location.replace("/dashboard.html");
         return;
       }
-
-      const playerStatus = String(userData.playerStatus || "").trim().toLowerCase();
-      const associationStatus = String(userData.associationStatus || "").trim().toLowerCase();
 
       if (
         associationStatus === "pending" ||
@@ -115,7 +131,12 @@ async function bootPendingMode() {
         return;
       }
 
-      showPendingState("player");
+      if (canUsePickups && onboardingComplete) {
+        window.location.replace("/pickups_status.html");
+        return;
+      }
+
+      window.location.replace("/index.html");
     } catch (err) {
       console.error("Error validando pending state:", err);
       showPendingState("player");
@@ -135,13 +156,15 @@ async function bootPendingMode() {
 
       const userData = await readCurrentUserState(user.uid);
 
-      if (userData.isPlayerActive === true && userData.onboardingComplete === true) {
+      const onboardingComplete = userData.onboardingComplete === true;
+      const canUsePickups = userData.canUsePickups === true;
+      const playerStatus = normalizePlayerStatus(userData);
+      const associationStatus = normalizeAssociationStatus(userData);
+
+      if (playerStatus === "active" && onboardingComplete) {
         window.location.replace("/dashboard.html");
         return;
       }
-
-      const playerStatus = String(userData.playerStatus || "").trim().toLowerCase();
-      const associationStatus = String(userData.associationStatus || "").trim().toLowerCase();
 
       if (
         associationStatus === "pending" ||
@@ -157,7 +180,12 @@ async function bootPendingMode() {
         return;
       }
 
-      showPendingState("player");
+      if (canUsePickups && onboardingComplete) {
+        window.location.replace("/pickups_status.html");
+        return;
+      }
+
+      window.location.replace("/index.html");
     } catch (err) {
       console.error("Error reintentando validación:", err);
       showPendingState("player");
@@ -177,13 +205,15 @@ async function bootPendingMode() {
 
       const userData = await readCurrentUserState(user.uid);
 
-      if (userData.isPlayerActive === true && userData.onboardingComplete === true) {
+      const onboardingComplete = userData.onboardingComplete === true;
+      const canUsePickups = userData.canUsePickups === true;
+      const playerStatus = normalizePlayerStatus(userData);
+      const associationStatus = normalizeAssociationStatus(userData);
+
+      if (playerStatus === "active" && onboardingComplete) {
         window.location.replace("/dashboard.html");
         return;
       }
-
-      const playerStatus = String(userData.playerStatus || "").trim().toLowerCase();
-      const associationStatus = String(userData.associationStatus || "").trim().toLowerCase();
 
       if (
         associationStatus === "pending" ||
@@ -199,7 +229,12 @@ async function bootPendingMode() {
         return;
       }
 
-      showPendingState("player");
+      if (canUsePickups && onboardingComplete) {
+        window.location.replace("/pickups_status.html");
+        return;
+      }
+
+      window.location.replace("/index.html");
     } catch (err) {
       console.error("Error reintentando validación:", err);
       showPendingState("player");
@@ -207,6 +242,25 @@ async function bootPendingMode() {
       hideLoader();
     }
   });
+
+  pendingLogoutBtn?.addEventListener("click", async () => {
+    try {
+      showLoader("Cerrando sesión…");
+      await logout({ redirectTo: "/index.html" });
+    } finally {
+      hideLoader();
+    }
+  });
+
+  associationLogoutBtn?.addEventListener("click", async () => {
+    try {
+      showLoader("Cerrando sesión…");
+      await logout({ redirectTo: "/index.html" });
+    } finally {
+      hideLoader();
+    }
+  });
+}
 
   pendingLogoutBtn?.addEventListener("click", async () => {
     try {
@@ -679,24 +733,91 @@ function renderFooter() {
 
 async function bootNormalLanding() {
   await init();
-  await loadIndexSettings();
 
-  const [socials, heroData, eventsData, honorsData, uniformsData, trainingsData] = await Promise.all([
-    loadSocialLinks(),
-    loadHeroData(),
-    loadEventsData(),
-    loadHonorsData(),
-    loadUniformsData(),
-    loadTrainingsData(),
-  ]);
+  await new Promise((resolve) => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      try {
+        if (!user?.uid) {
+          await loadIndexSettings();
 
-  renderHero(heroData);
-  renderSocials(socials);
-  renderTrainings(trainingsData, socials);
-  renderEvents(eventsData);
-  renderHonors(honorsData);
-  renderUniforms(uniformsData);
-  renderFooter();
+          const [socials, heroData, eventsData, honorsData, uniformsData, trainingsData] = await Promise.all([
+            loadSocialLinks(),
+            loadHeroData(),
+            loadEventsData(),
+            loadHonorsData(),
+            loadUniformsData(),
+            loadTrainingsData(),
+          ]);
+
+          renderHero(heroData);
+          renderSocials(socials);
+          renderTrainings(trainingsData, socials);
+          renderEvents(eventsData);
+          renderHonors(honorsData);
+          renderUniforms(uniformsData);
+          renderFooter();
+          resolve();
+          return;
+        }
+
+        const userData = await readCurrentUserState(user.uid);
+
+        const onboardingComplete = userData.onboardingComplete === true;
+        const canUsePickups = userData.canUsePickups === true;
+        const playerStatus = normalizePlayerStatus(userData);
+        const associationStatus = normalizeAssociationStatus(userData);
+
+        if (playerStatus === "active" && onboardingComplete) {
+          window.location.replace("/dashboard.html");
+          return;
+        }
+
+        if (
+          associationStatus === "pending" ||
+          associationStatus === "active" ||
+          associationStatus === "rejected"
+        ) {
+          window.location.replace("/member_status.html");
+          return;
+        }
+
+        if (playerStatus === "pending") {
+          window.location.replace("/index.html?state=platform_pending");
+          return;
+        }
+
+        if (canUsePickups && onboardingComplete) {
+          window.location.replace("/pickups_status.html");
+          return;
+        }
+
+        await loadIndexSettings();
+
+        const [socials, heroData, eventsData, honorsData, uniformsData, trainingsData] = await Promise.all([
+          loadSocialLinks(),
+          loadHeroData(),
+          loadEventsData(),
+          loadHonorsData(),
+          loadUniformsData(),
+          loadTrainingsData(),
+        ]);
+
+        renderHero(heroData);
+        renderSocials(socials);
+        renderTrainings(trainingsData, socials);
+        renderEvents(eventsData);
+        renderHonors(honorsData);
+        renderUniforms(uniformsData);
+        renderFooter();
+        resolve();
+      } catch (err) {
+        console.error("Error en bootNormalLanding:", err);
+        resolve();
+      } finally {
+        unsub();
+      }
+    });
+  });
 }
 
 // start screen
