@@ -95,25 +95,39 @@ function renderPickups(items = []) {
   }
 
   $.pickupsList.innerHTML = items.map((p) => {
-    const title = p.name || p.title || "Pickup";
-    const location = p.location || p.place || "Ubicación por confirmar";
-    const when = fmtDate(p.startAt || p.date || p.startsAt);
-    const description = p.description || p.notes || "";
-    const link = p.publicUrl || p.link || "";
+    const title = p.title || p.name || "Pickup";
+    const when = fmtDate(p.startAt);
+    const endWhen = fmtDate(p.endAt);
+    const venueName = p.venueName || "Ubicación por confirmar";
+    const venueAddress = p.venueAddress || "";
+    const description = p.notes || p.description || "";
+    const mapsUrl = p.mapsUrl || "";
     const capacity = Number(p.capacity || 0);
+
+    const pricing = Array.isArray(p.pricingTiers)
+      ? p.pricingTiers
+          .filter((tier) => tier?.active === true)
+          .map((tier) => `${tier.label}: ₡${Number(tier.amount || 0).toLocaleString("es-CR")}`)
+          .join(" · ")
+      : "";
 
     return `
       <div class="col-md-6">
         <div class="pickup-card">
           <div class="fw-bold mb-2">${title}</div>
-          <div class="pickup-meta mb-1"><strong>Fecha:</strong> ${when}</div>
-          <div class="pickup-meta mb-1"><strong>Lugar:</strong> ${location}</div>
-          ${capacity > 0 ? `<div class="pickup-meta mb-2"><strong>Cupo:</strong> ${capacity}</div>` : ""}
+
+          <div class="pickup-meta mb-1"><strong>Inicio:</strong> ${when}</div>
+          <div class="pickup-meta mb-1"><strong>Fin:</strong> ${endWhen}</div>
+          <div class="pickup-meta mb-1"><strong>Lugar:</strong> ${venueName}</div>
+          ${venueAddress ? `<div class="muted-help mb-2">${venueAddress}</div>` : ""}
+          ${capacity > 0 ? `<div class="pickup-meta mb-1"><strong>Cupo:</strong> ${capacity}</div>` : ""}
+          ${pricing ? `<div class="pickup-meta mb-2"><strong>Tarifas:</strong> ${pricing}</div>` : ""}
           ${description ? `<div class="muted-help mb-3">${description}</div>` : ""}
+
           ${
-            link
-              ? `<a class="btn btn-sm btn-outline-primary" href="${link}" target="_blank" rel="noopener">Ver pickup</a>`
-              : `<button class="btn btn-sm btn-secondary" type="button" disabled>Próximamente</button>`
+            mapsUrl
+              ? `<a class="btn btn-sm btn-outline-primary" href="${mapsUrl}" target="_blank" rel="noopener">Ver ubicación</a>`
+              : `<button class="btn btn-sm btn-secondary" type="button" disabled>Sin enlace</button>`
           }
         </div>
       </div>
@@ -125,12 +139,15 @@ async function loadActivePickups() {
   try {
     const qy = query(
       collection(db, COL_PICKUPS),
-      where("isActive", "==", true),
+      where("active", "==", true),
       orderBy("startAt", "asc")
     );
 
     const snap = await getDocs(qy);
-    const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const items = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .filter((p) => p.status === "published");
+
     renderPickups(items);
     return;
   } catch (e) {
@@ -141,15 +158,21 @@ async function loadActivePickups() {
     const snap = await getDocs(collection(db, COL_PICKUPS));
     const items = snap.docs
       .map((d) => ({ id: d.id, ...d.data() }))
-      .filter((p) => p.isActive === true)
+      .filter((p) => p.active === true && p.status === "published")
       .sort((a, b) => {
-        const da = new Date(
-          typeof a?.startAt?.toDate === "function" ? a.startAt.toDate() : (a.startAt || a.date || a.startsAt || 0)
+        const da = (
+          typeof a?.startAt?.toDate === "function"
+            ? a.startAt.toDate()
+            : new Date(a.startAt || 0)
         ).getTime();
-        const dbb = new Date(
-          typeof b?.startAt?.toDate === "function" ? b.startAt.toDate() : (b.startAt || b.date || b.startsAt || 0)
+
+        const db = (
+          typeof b?.startAt?.toDate === "function"
+            ? b.startAt.toDate()
+            : new Date(b.startAt || 0)
         ).getTime();
-        return da - dbb;
+
+        return da - db;
       });
 
     renderPickups(items);
