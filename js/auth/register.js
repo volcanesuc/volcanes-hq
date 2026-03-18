@@ -65,30 +65,40 @@ const $ = {
   submitBtn: document.getElementById("submitBtn"),
   logoutBtn: document.getElementById("logoutBtn"),
 
+  registerTypeRadios: document.querySelectorAll('input[name="registerType"]'),
+  registerTypePickups: document.getElementById("registerTypePickups"),
+  registerTypeVolcanes: document.getElementById("registerTypeVolcanes"),
+  registerTypeAsovoca: document.getElementById("registerTypeAsovoca"),
+
+  cardPickups: document.getElementById("card-pickups"),
+  cardVolcanes: document.getElementById("card-volcanes"),
+  cardAsovoca: document.getElementById("card-asovoca"),
+
+  commonSection: document.getElementById("commonSection"),
+  volcanesSection: document.getElementById("volcanesSection"),
+  asovocaSection: document.getElementById("asovocaSection"),
+  committeeFields: document.getElementById("committeeFields"),
+
   firstName: document.getElementById("firstName"),
   lastName: document.getElementById("lastName"),
-  birthDate: document.getElementById("birthDate"),
+  email: document.getElementById("email"),
   idType: document.getElementById("idType"),
   idNumber: document.getElementById("idNumber"),
-  email: document.getElementById("email"),
-
   phone: document.getElementById("phone"),
 
   emergencyContactName: document.getElementById("emergencyContactName"),
-  emergencyContactRelation: document.getElementById("emergencyContactRelation"),
-  emergencyContactPhone: document.getElementById("emergencyContactPhone"),
-
-  payerName: document.getElementById("payerName"),
-  payMethod: document.getElementById("payMethod"),
 
   province: document.getElementById("province"),
   canton: document.getElementById("canton"),
 
   paymentSection: document.getElementById("paymentSection"),
-
   planId: document.getElementById("planId"),
   planMeta: document.getElementById("planMeta"),
   proofFile: document.getElementById("proofFile"),
+
+  committeeInterest: document.getElementById("committeeInterest"),
+  profession: document.getElementById("profession"),
+  skills: document.getElementById("skills"),
 
   declarationWrap: document.getElementById("declarationWrap"),
   infoDeclaration: document.getElementById("infoDeclaration"),
@@ -97,16 +107,13 @@ const $ = {
   termsWrap: document.getElementById("termsWrap"),
   termsAccepted: document.getElementById("termsAccepted"),
   termsLink: document.getElementById("termsLink"),
-
-  wantsPlayer: document.getElementById("wantsPlayer"),
-  wantsMembershipPayment: document.getElementById("wantsMembershipPayment"),
-  canUsePickups: document.getElementById("canUsePickups"),
 };
 
 let PUBLIC_CFG = {
   enableMembershipPayment: true,
   requireTerms: false,
   requireInfoDeclaration: false,
+  termsUrl: null,
 };
 
 function isVisible(el) {
@@ -132,28 +139,44 @@ function setSubmitEnabled(enabled) {
   $.submitBtn.classList.add(enabled ? "btn-success" : "btn-secondary");
 }
 
+function getSelectedRegisterType() {
+  const checked = [...$.registerTypeRadios].find((r) => r.checked);
+  return checked?.value || "";
+}
+
+function isPickups() {
+  return getSelectedRegisterType() === "pickups";
+}
+
+function isVolcanes() {
+  return getSelectedRegisterType() === "volcanes";
+}
+
+function isAsovoca() {
+  return getSelectedRegisterType() === "asovoca";
+}
+
 function computeFormComplete() {
+  const registerType = getSelectedRegisterType();
+  if (!registerType) return false;
+
   const requiredEls = [
     $.firstName,
     $.lastName,
-    $.birthDate,
-    $.idType,
-    $.idNumber,
-    $.email,
     $.phone,
     $.emergencyContactName,
-    $.emergencyContactRelation,
-    $.emergencyContactPhone,
-    $.province,
-    $.canton,
   ];
+
+  if (isVolcanes()) {
+    requiredEls.push($.email, $.idType, $.idNumber, $.province, $.canton);
+  }
+
+  if (isAsovoca() && PUBLIC_CFG.enableMembershipPayment) {
+    requiredEls.push($.planId, $.proofFile);
+  }
 
   if (PUBLIC_CFG.requireInfoDeclaration) requiredEls.push($.infoDeclaration);
   if (PUBLIC_CFG.requireTerms) requiredEls.push($.termsAccepted);
-
-  if (shouldEnableMembershipPaymentUI()) {
-    requiredEls.push($.planId, $.proofFile);
-  }
 
   return requiredEls
     .filter((el) => isVisible(el))
@@ -313,11 +336,36 @@ function toYmd(tsLike) {
 }
 
 function shouldEnableMembershipPaymentUI() {
-  return PUBLIC_CFG.enableMembershipPayment && !!$.wantsMembershipPayment?.checked;
+  return PUBLIC_CFG.enableMembershipPayment && isAsovoca();
 }
 
-function wantsPickupAccess() {
-  return !!$.canUsePickups?.checked;
+function refreshRegisterTypeUI() {
+  const type = getSelectedRegisterType();
+
+  $.cardPickups?.classList.toggle("active", type === "pickups");
+  $.cardVolcanes?.classList.toggle("active", type === "volcanes");
+  $.cardAsovoca?.classList.toggle("active", type === "asovoca");
+
+  if (!type) {
+    $.commonSection?.classList.add("d-none");
+    $.volcanesSection?.classList.add("d-none");
+    $.asovocaSection?.classList.add("d-none");
+    clearProofStatus();
+    updateSubmitState();
+    return;
+  }
+
+  $.commonSection?.classList.remove("d-none");
+  $.volcanesSection?.classList.toggle("d-none", type !== "volcanes");
+  $.asovocaSection?.classList.toggle("d-none", type !== "asovoca");
+
+  refreshMembershipPaymentUI();
+  updateSubmitState();
+}
+
+function refreshCommitteeUI() {
+  const show = isAsovoca() && !!$.committeeInterest?.checked;
+  $.committeeFields?.classList.toggle("d-none", !show);
 }
 
 function refreshMembershipPaymentUI() {
@@ -509,22 +557,28 @@ async function ensureUserDoc(uid, email, user = auth.currentUser) {
 function buildUserProfile({
   firstName,
   lastName,
-  birthDate,
   idType,
   idNumber,
   phone,
   residence,
   emergencyContact,
+  registerType,
+  committeeInterest,
+  profession,
+  skills,
 }) {
   return {
     firstName: firstName || null,
     lastName: lastName || null,
-    birthDate: birthDate || null,
     idType: idType || null,
     idNumber: idNumber || null,
     phone: phone || null,
     residence: residence || null,
     emergencyContact: emergencyContact || null,
+    registerType: registerType || null,
+    committeeInterest: committeeInterest === true,
+    profession: profession || null,
+    skills: skills || null,
   };
 }
 
@@ -533,12 +587,15 @@ async function saveUserProfileAndConsents({
   email,
   firstName,
   lastName,
-  birthDate,
   idType,
   idNumber,
   phone,
   residence,
   emergencyContact,
+  registerType,
+  committeeInterest,
+  profession,
+  skills,
   consents,
 }) {
   const user = auth.currentUser;
@@ -552,12 +609,15 @@ async function saveUserProfileAndConsents({
     profile: buildUserProfile({
       firstName,
       lastName,
-      birthDate,
       idType,
       idNumber,
       phone,
       residence,
       emergencyContact,
+      registerType,
+      committeeInterest,
+      profession,
+      skills,
     }),
 
     phone: phone || null,
@@ -591,100 +651,34 @@ async function saveUserProfileAndConsents({
 ========================= */
 const CR = {
   "San José": [
-    "San José",
-    "Escazú",
-    "Desamparados",
-    "Puriscal",
-    "Tarrazú",
-    "Aserrí",
-    "Mora",
-    "Goicoechea",
-    "Santa Ana",
-    "Alajuelita",
-    "Vásquez de Coronado",
-    "Acosta",
-    "Tibás",
-    "Moravia",
-    "Montes de Oca",
-    "Turrubares",
-    "Dota",
-    "Curridabat",
-    "Pérez Zeledón",
-    "León Cortés Castro",
+    "San José", "Escazú", "Desamparados", "Puriscal", "Tarrazú", "Aserrí", "Mora",
+    "Goicoechea", "Santa Ana", "Alajuelita", "Vásquez de Coronado", "Acosta",
+    "Tibás", "Moravia", "Montes de Oca", "Turrubares", "Dota", "Curridabat",
+    "Pérez Zeledón", "León Cortés Castro",
   ],
   "Alajuela": [
-    "Alajuela",
-    "San Ramón",
-    "Grecia",
-    "San Mateo",
-    "Atenas",
-    "Naranjo",
-    "Palmares",
-    "Poás",
-    "Orotina",
-    "San Carlos",
-    "Zarcero",
-    "Sarchí",
-    "Upala",
-    "Los Chiles",
-    "Guatuso",
-    "Río Cuarto",
+    "Alajuela", "San Ramón", "Grecia", "San Mateo", "Atenas", "Naranjo",
+    "Palmares", "Poás", "Orotina", "San Carlos", "Zarcero", "Sarchí", "Upala",
+    "Los Chiles", "Guatuso", "Río Cuarto",
   ],
   "Cartago": [
-    "Cartago",
-    "Paraíso",
-    "La Unión",
-    "Jiménez",
-    "Turrialba",
-    "Alvarado",
-    "Oreamuno",
-    "El Guarco",
+    "Cartago", "Paraíso", "La Unión", "Jiménez", "Turrialba", "Alvarado",
+    "Oreamuno", "El Guarco",
   ],
   "Heredia": [
-    "Heredia",
-    "Barva",
-    "Santo Domingo",
-    "Santa Bárbara",
-    "San Rafael",
-    "San Isidro",
-    "Belén",
-    "Flores",
-    "San Pablo",
-    "Sarapiquí",
+    "Heredia", "Barva", "Santo Domingo", "Santa Bárbara", "San Rafael",
+    "San Isidro", "Belén", "Flores", "San Pablo", "Sarapiquí",
   ],
   "Guanacaste": [
-    "Liberia",
-    "Nicoya",
-    "Santa Cruz",
-    "Bagaces",
-    "Carrillo",
-    "Cañas",
-    "Abangares",
-    "Tilarán",
-    "Nandayure",
-    "La Cruz",
-    "Hojancha",
+    "Liberia", "Nicoya", "Santa Cruz", "Bagaces", "Carrillo", "Cañas",
+    "Abangares", "Tilarán", "Nandayure", "La Cruz", "Hojancha",
   ],
   "Puntarenas": [
-    "Puntarenas",
-    "Esparza",
-    "Buenos Aires",
-    "Montes de Oro",
-    "Osa",
-    "Quepos",
-    "Golfito",
-    "Coto Brus",
-    "Parrita",
-    "Corredores",
-    "Garabito",
+    "Puntarenas", "Esparza", "Buenos Aires", "Montes de Oro", "Osa", "Quepos",
+    "Golfito", "Coto Brus", "Parrita", "Corredores", "Garabito",
   ],
   "Limón": [
-    "Limón",
-    "Pococí",
-    "Siquirres",
-    "Talamanca",
-    "Matina",
-    "Guácimo",
+    "Limón", "Pococí", "Siquirres", "Talamanca", "Matina", "Guácimo",
   ],
 };
 
@@ -753,28 +747,28 @@ onAuthStateChanged(auth, async (user) => {
       const profile = data.profile || {};
       const residence = profile.residence || {};
       const emergencyContact = profile.emergencyContact || data.emergencyContact || {};
+      const registration = data.registration || {};
+      const savedType = profile.registerType || registration.type || "";
 
       if ($.firstName && !$.firstName.value && profile.firstName) $.firstName.value = profile.firstName;
       if ($.lastName && !$.lastName.value && profile.lastName) $.lastName.value = profile.lastName;
-      if ($.birthDate && !$.birthDate.value && profile.birthDate) $.birthDate.value = toYmd(profile.birthDate) || "";
       if ($.idType && !$.idType.value && profile.idType) $.idType.value = profile.idType;
       if ($.idNumber && !$.idNumber.value && profile.idNumber) $.idNumber.value = profile.idNumber;
       if ($.phone && !$.phone.value && (profile.phone || data.phone)) $.phone.value = profile.phone || data.phone;
 
-      if ($.emergencyContactName && !$.emergencyContactName.value && emergencyContact.name) {
-        $.emergencyContactName.value = emergencyContact.name;
-      }
-      if ($.emergencyContactRelation && !$.emergencyContactRelation.value && emergencyContact.relation) {
-        $.emergencyContactRelation.value = emergencyContact.relation;
-      }
-      if ($.emergencyContactPhone && !$.emergencyContactPhone.value && emergencyContact.phone) {
-        $.emergencyContactPhone.value = emergencyContact.phone;
+      if ($.emergencyContactName && !$.emergencyContactName.value) {
+        if (typeof emergencyContact === "string") {
+          $.emergencyContactName.value = emergencyContact;
+        } else if (emergencyContact.name) {
+          $.emergencyContactName.value = emergencyContact.name;
+        }
       }
 
       if ($.province && !$.province.value && residence.province) {
         $.province.value = residence.province;
         $.province.dispatchEvent(new Event("change"));
       }
+
       if ($.canton && !$.canton.value && residence.canton) {
         if (!$.province.value && residence.province) {
           $.province.value = residence.province;
@@ -783,19 +777,18 @@ onAuthStateChanged(auth, async (user) => {
         $.canton.value = residence.canton;
       }
 
-      if (data.canUsePickups === true && $.canUsePickups) {
-        $.canUsePickups.checked = true;
+      if ($.committeeInterest && profile.committeeInterest === true) {
+        $.committeeInterest.checked = true;
       }
+      if ($.profession && profile.profession) $.profession.value = profile.profession;
+      if ($.skills && profile.skills) $.skills.value = profile.skills;
 
-      const registration = data.registration || {};
-      if (registration.wantsPlayer === true && $.wantsPlayer) {
-        $.wantsPlayer.checked = true;
-      }
-      if (registration.wantsMembershipPayment === true && $.wantsMembershipPayment) {
-        $.wantsMembershipPayment.checked = true;
-        refreshMembershipPaymentUI();
-      }
+      if (savedType === "pickups" && $.registerTypePickups) $.registerTypePickups.checked = true;
+      if (savedType === "volcanes" && $.registerTypeVolcanes) $.registerTypeVolcanes.checked = true;
+      if (savedType === "asovoca" && $.registerTypeAsovoca) $.registerTypeAsovoca.checked = true;
 
+      refreshRegisterTypeUI();
+      refreshCommitteeUI();
       updateSubmitState();
       return;
     }
@@ -846,20 +839,7 @@ async function loadPublicRegConfig() {
   const requireTerms = cfg.requireTerms === true;
   const termsUrl = cfg.termsUrl || null;
 
-  PUBLIC_CFG = { enableMembershipPayment, requireTerms, requireInfoDeclaration };
-
-  if (!enableMembershipPayment) {
-    if ($.wantsMembershipPayment) {
-      $.wantsMembershipPayment.checked = false;
-      $.wantsMembershipPayment.disabled = true;
-    }
-  } else {
-    if ($.wantsMembershipPayment) {
-      $.wantsMembershipPayment.disabled = false;
-    }
-  }
-
-  refreshMembershipPaymentUI();
+  PUBLIC_CFG = { enableMembershipPayment, requireTerms, requireInfoDeclaration, termsUrl };
 
   if (!requireInfoDeclaration) {
     setEnabled($.infoDeclaration, false);
@@ -898,6 +878,7 @@ async function loadPublicRegConfig() {
     }
   }
 
+  refreshMembershipPaymentUI();
   updateSubmitState();
 
   return { requireInfoDeclaration, requireTerms, termsUrl, enableMembershipPayment };
@@ -1194,6 +1175,8 @@ async function init() {
     fillProvinceCanton();
     await loadPlans();
     await loadPublicRegConfig();
+    refreshRegisterTypeUI();
+    refreshCommitteeUI();
   } catch (e) {
     console.warn(e);
     showAlert("No se pudo cargar la configuración. Refresca la página.");
@@ -1222,42 +1205,49 @@ $.form?.addEventListener("submit", async (ev) => {
   }
 
   const uid = user.uid;
+  const registerType = getSelectedRegisterType();
+
+  if (!registerType) {
+    showAlert("Selecciona un tipo de registro.");
+    return;
+  }
 
   const firstName = norm($.firstName?.value);
   const lastName = norm($.lastName?.value);
-  const birthDate = norm($.birthDate?.value);
-
-  const idType = normLower($.idType?.value);
-  const idNumber = cleanIdNum($.idNumber?.value);
-
-  const wantsPlayer = !!$.wantsPlayer?.checked;
-  const wantsMembershipPayment = shouldEnableMembershipPaymentUI();
-  const canUsePickups = true; // siempre true en el registro nuevo
+  const phone = norm($.phone?.value);
+  const emergencyContactName = norm($.emergencyContactName?.value);
 
   const email = user.email
     ? String(user.email).toLowerCase()
     : normLower($.email?.value);
 
-  const phone = norm($.phone?.value);
+  const idType = normLower($.idType?.value);
+  const idNumber = cleanIdNum($.idNumber?.value);
+
+  const residence = isVolcanes()
+    ? {
+        province: norm($.province?.value),
+        canton: norm($.canton?.value),
+      }
+    : null;
 
   const emergencyContact = {
-    name: norm($.emergencyContactName?.value),
-    relation: norm($.emergencyContactRelation?.value),
-    phone: norm($.emergencyContactPhone?.value),
+    name: emergencyContactName,
+    relation: null,
+    phone: null,
   };
 
-  const residence = {
-    province: norm($.province?.value),
-    canton: norm($.canton?.value),
-  };
+  const committeeInterest = !!$.committeeInterest?.checked;
+  const profession = norm($.profession?.value);
+  const skills = norm($.skills?.value);
+
+  const wantsPlayer = isVolcanes();
+  const wantsMembershipPayment = isAsovoca() && PUBLIC_CFG.enableMembershipPayment;
+  const canUsePickups = isPickups() || isVolcanes() || isAsovoca();
 
   const planId = norm($.planId?.value);
   const plan = plansById.get(planId);
-
   const file = $.proofFile?.files?.[0] || null;
-
-  const payerName = norm($.payerName?.value);
-  const method = normLower($.payMethod?.value) || "sinpe";
 
   let cfg;
   try {
@@ -1268,28 +1258,24 @@ $.form?.addEventListener("submit", async (ev) => {
     return;
   }
 
-  if (!firstName || !lastName || !birthDate || !idType || !idNumber || !email) {
-    showAlert("Completa todos los campos obligatorios.");
+  if (!firstName || !lastName || !phone || !emergencyContactName) {
+    showAlert("Completa nombre, apellido, teléfono y contacto de emergencia.");
     return;
   }
 
-  if (!phone) {
-    showAlert("Ingresa tu número de teléfono.");
-    return;
+  if (isVolcanes()) {
+    if (!email || !idType || !idNumber) {
+      showAlert("Para jugador de Volcanes debes completar correo, tipo de documento y número de documento.");
+      return;
+    }
+
+    if (!residence?.province || !residence?.canton) {
+      showAlert("Para jugador de Volcanes debes seleccionar provincia y cantón.");
+      return;
+    }
   }
 
-  if (!emergencyContact.name || !emergencyContact.relation || !emergencyContact.phone) {
-    showAlert("Completa el contacto de emergencia: nombre, parentesco o relación, y teléfono.");
-    return;
-  }
-
-  if (!residence.province || !residence.canton) {
-    showAlert("Selecciona provincia y cantón.");
-    return;
-  }
-
-  const paymentsEnabled = !!cfg.enableMembershipPayment && wantsMembershipPayment;
-  if (paymentsEnabled) {
+  if (wantsMembershipPayment) {
     if (!planId || !plan) {
       showAlert("Selecciona un plan de pago válido.");
       return;
@@ -1327,20 +1313,23 @@ $.form?.addEventListener("submit", async (ev) => {
     const userSnapshot = await step("Save user profile + consents", () =>
       saveUserProfileAndConsents({
         uid,
-        email,
+        email: isVolcanes() ? email : (user.email || null),
         firstName,
         lastName,
-        birthDate,
-        idType,
-        idNumber,
+        idType: isVolcanes() ? idType : null,
+        idNumber: isVolcanes() ? idNumber : null,
         phone,
         residence,
         emergencyContact,
+        registerType,
+        committeeInterest,
+        profession: committeeInterest ? profession : null,
+        skills: committeeInterest ? skills : null,
         consents,
       })
     );
 
-    if (paymentsEnabled) {
+    if (wantsMembershipPayment) {
       const proof = await step("Upload proof (Storage)", () =>
         uploadProofFile({ uid, file })
       );
@@ -1373,10 +1362,10 @@ $.form?.addEventListener("submit", async (ev) => {
           amountReported: planAmount(plan),
           currency: plan.currency || "CRC",
 
-          email,
-          payerName: payerName || null,
+          email: user.email || null,
+          payerName: `${firstName} ${lastName}`.trim() || null,
           phone: phone || null,
-          method: method || "sinpe",
+          method: "sinpe",
 
           filePath: proof.filePath,
           fileType: proof.fileType,
@@ -1411,23 +1400,23 @@ $.form?.addEventListener("submit", async (ev) => {
     await step("Mark onboarding complete (users/{uid})", async () => {
       const uref = doc(db, COL_USERS, uid);
 
-      const pickupOnlyChecked = wantsPickupAccess();
-
       const payload = {
-        email: email || auth.currentUser?.email || null,
+        email: user.email || null,
         displayName: auth.currentUser?.displayName || null,
         photoURL: auth.currentUser?.photoURL || null,
         phone: phone || null,
         emergencyContact,
         onboardingComplete: true,
-        canUsePickups: canUsePickups,
+        canUsePickups,
         updatedAt: serverTimestamp(),
         lastSignInAt: serverTimestamp(),
 
         registration: {
+          type: registerType,
           wantsPlayer: wantsPlayer === true,
           wantsMembershipPayment: wantsMembershipPayment === true,
-          canUsePickups: pickupOnlyChecked === true,
+          canUsePickups: canUsePickups === true,
+          committeeInterest: committeeInterest === true,
         },
 
         playerStatus: wantsPlayer ? "pending" : null,
@@ -1471,25 +1460,23 @@ $.form?.addEventListener("submit", async (ev) => {
 
 function wireUpFormCompleteness() {
   const els = [
+    ...$.registerTypeRadios,
     $.firstName,
     $.lastName,
-    $.birthDate,
+    $.phone,
+    $.email,
     $.idType,
     $.idNumber,
-    $.email,
-    $.phone,
     $.emergencyContactName,
-    $.emergencyContactRelation,
-    $.emergencyContactPhone,
     $.province,
     $.canton,
     $.planId,
     $.proofFile,
     $.infoDeclaration,
     $.termsAccepted,
-    $.wantsPlayer,
-    $.wantsMembershipPayment,
-    $.canUsePickups,
+    $.committeeInterest,
+    $.profession,
+    $.skills,
   ].filter(Boolean);
 
   els.forEach((el) => {
@@ -1497,7 +1484,18 @@ function wireUpFormCompleteness() {
     el.addEventListener("change", updateSubmitState);
   });
 
-  $.wantsMembershipPayment?.addEventListener("change", refreshMembershipPaymentUI);
+  $.registerTypeRadios.forEach((radio) => {
+    radio.addEventListener("change", () => {
+      refreshRegisterTypeUI();
+      refreshCommitteeUI();
+      updateSubmitState();
+    });
+  });
+
+  $.committeeInterest?.addEventListener("change", () => {
+    refreshCommitteeUI();
+    updateSubmitState();
+  });
 
   $.province?.addEventListener("change", () => setTimeout(updateSubmitState, 0));
   updateSubmitState();

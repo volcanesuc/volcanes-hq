@@ -60,6 +60,30 @@
     .intro-box p:last-child {
       margin-bottom: 0;
     }
+
+    .option-card {
+      border: 1px solid #dee2e6;
+      border-radius: 1rem;
+      padding: 1rem 1.25rem;
+      height: 100%;
+      transition: .2s ease;
+      cursor: pointer;
+      background: #fff;
+    }
+
+    .option-card:hover {
+      border-color: var(--theme-primary);
+      box-shadow: 0 0 0 2px rgba(0,0,0,.03);
+    }
+
+    .option-card input {
+      margin-top: .2rem;
+    }
+
+    .option-card.active {
+      border-color: var(--theme-primary);
+      box-shadow: 0 0 0 3px rgba(13, 110, 253, .12);
+    }
   </style>
 </head>
 
@@ -75,10 +99,10 @@
               class="page-title mb-1"
               style="font-family: var(--font-title); color: var(--theme-primary); font-weight: 900;"
             >
-              Registro de miembro
+              Registro
             </h1>
             <div class="muted-help">
-              Completa tu información y/o adjunta el comprobante para procesar tu membresía.
+              Primero selecciona el tipo de registro y luego completa únicamente los campos requeridos.
             </div>
           </div>
         </div>
@@ -86,219 +110,228 @@
         <div id="alertBox" class="alert d-none" role="alert"></div>
 
         <form id="registerForm" class="mt-4">
-          <!-- Datos personales -->
+          <!-- Tipo de registro -->
           <div class="row g-3">
             <div class="col-12">
-              <h3 class="mb-2" style="color: var(--theme-primary); font-weight: 900;">Datos personales</h3>
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label" for="firstName">Nombre</label>
-              <input id="firstName" class="form-control" required />
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label" for="lastName">Apellido</label>
-              <input id="lastName" class="form-control" required />
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label" for="birthDate">Fecha de nacimiento</label>
-              <input id="birthDate" type="date" class="form-control" required />
-            </div>
-
-            <div class="col-md-3">
-              <label class="form-label" for="idType">Tipo de documento</label>
-              <select id="idType" class="form-select" required>
-                <option value="">Seleccionar…</option>
-                <option value="cedula">Cédula</option>
-                <option value="pasaporte">Pasaporte</option>
-                <option value="dimex">DIMEX</option>
-                <option value="otro">Otro</option>
-              </select>
-            </div>
-
-            <div class="col-md-3">
-              <label class="form-label" for="idNumber">Número</label>
-              <input id="idNumber" class="form-control" required />
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label" for="email">Correo</label>
-              <input
-                id="email"
-                type="email"
-                class="form-control"
-                placeholder="Se llena si ingresas con Google"
-                required
-              />
-              <div class="muted-help mt-1">
-                Si ingresas con Google, lo precargamos.
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label" for="phone">Teléfono</label>
-              <input
-                id="phone"
-                type="tel"
-                class="form-control"
-                placeholder="Ej: 8888-8888"
-                required
-              />
-            </div>
-          </div>
-
-          <hr class="my-4" />
-
-          <!-- Contacto de emergencia -->
-          <div class="row g-3">
-            <div class="col-12">
-              <h3 class="mb-2" style="color: var(--theme-primary); font-weight: 900;">Contacto de emergencia</h3>
-              <div class="muted-help">
-                Esta información se usaría únicamente en caso de emergencia.
-              </div>
-            </div>
-
-            <div class="col-md-5">
-              <label class="form-label" for="emergencyContactName">Nombre completo</label>
-              <input
-                id="emergencyContactName"
-                class="form-control"
-                placeholder="Nombre de la persona de contacto"
-                required
-              />
+              <h3 class="mb-2" style="color: var(--theme-primary); font-weight: 900;">Tipo de registro</h3>
+              <div class="muted-help">Debes seleccionar solo una opción.</div>
             </div>
 
             <div class="col-md-4">
-              <label class="form-label" for="emergencyContactRelation">Parentesco o relación</label>
-              <input
-                id="emergencyContactRelation"
-                class="form-control"
-                placeholder="Ej: madre, hermano, pareja, amistad"
-                required
-              />
-            </div>
-
-            <div class="col-md-3">
-              <label class="form-label" for="emergencyContactPhone">Teléfono</label>
-              <input
-                id="emergencyContactPhone"
-                type="tel"
-                class="form-control"
-                placeholder="Ej: 8888-8888"
-                required
-              />
-            </div>
-          </div>
-
-          <hr class="my-4" />
-
-          <!-- Residencia -->
-          <div class="row g-3">
-            <div class="col-12">
-              <h3 class="mb-2" style="color: var(--theme-primary); font-weight: 900;">Residencia</h3>
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label" for="province">Provincia</label>
-              <select id="province" class="form-select" required></select>
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label" for="canton">Cantón</label>
-              <select id="canton" class="form-select" required></select>
-            </div>
-          </div>
-
-          <hr class="my-4" />
-
-          <div class="form-check mb-3">
-            <input class="form-check-input" type="checkbox" id="wantsPlayer">
-            <label class="form-check-label" for="wantsPlayer">
-              Quiero ingresar como jugador de Volcanes
-            </label>
-          </div>
-
-          <div class="form-check mb-3">
-            <input class="form-check-input" type="checkbox" id="canUsePickups">
-            <label class="form-check-label" for="canUsePickups">
-              Solo quiero unirme a los pickups
-            </label>
-          </div>
-
-
-          <div class="form-check mb-3">
-            <input class="form-check-input" type="checkbox" id="wantsMembershipPayment">
-            <label class="form-check-label" for="wantsMembershipPayment">
-              Quiero registrar el pago de membresía para asociarme ahora
-            </label>
-          </div>
-
-          <!-- Pago -->
-          <div id="paymentSection" class="row g-3 d-none">
-            <div class="col-12">
-              <div class="intro-box">
-                <p>
-                  La Asociación de Volcanes de Cartago (ASOVOCA), agradece su interés en formar parte de nuestra organización.
-                  Nuestro objetivo principal es promover el desarrollo y la práctica del deporte del Ultimate Frisbee en Cartago
-                  y Costa Rica impulsado en todas las edades.
-                </p>
-
-                <p>
-                  Al completar este formulario afirma su interés y da su consentimiento para afiliarse a ASOVOCA.
-                  Para estar afiliado(a) a la Asociación en el año calendario del 1 de enero al 31 de diciembre 2026:
-                </p>
-
-                <p>
-                  La cuota anual (pago único anual en cualquier momento del año 2026) para adultos establecida para el año 2026.
-                </p>
-
-                <p class="mb-2"><strong>Montos y vigencia:</strong></p>
-
-                <p>
-                  <strong>Año inaugural 2026: ₡10.000</strong><br>
-                  Este monto incluye la anualidad correspondiente al año calendario 2026 y un disco oficial del club VOLCANES
-                  entregado una sola vez por asociado en ese año a las primeras 25 personas. Posterior a eso, la cuota se mantiene
-                  en ₡10.000 (no aplica regalía).
-                </p>
-
-                <p>
-                  Se evaluarán como casos especiales al solicitar exoneración total o parcial de cuotas las personas que enfrenten:
-                  situación económica vulnerable, lesión o condición médica crónica, estudios en el extranjero, incapacidad física
-                  o psicológica. El caso será visto por la Junta Directiva (para casos especiales no aplica regalía).
-                </p>
-              </div>
-            </div>
-
-            <div class="col-12">
-              <h3 class="mb-2" style="color: var(--theme-primary); font-weight: 900;">Pago de membresía</h3>
-              <div class="muted-help">
-                Selecciona un plan activo, realiza el pago por SINPE al 7056-7463 (a nombre de Diego Rivera) y adjunta el comprobante.
-              </div>
-            </div>
-
-            <div class="col-md-8">
-              <label class="form-label" for="planId">Plan de pago</label>
-              <select id="planId" class="form-select" required>
-                <option value="">Cargando planes…</option>
-              </select>
-              <div id="planMeta" class="muted-help mt-2"></div>
+              <label class="option-card w-100" id="card-pickups">
+                <div class="d-flex gap-2 align-items-start">
+                  <input class="form-check-input mt-1" type="radio" name="registerType" id="registerTypePickups" value="pickups" />
+                  <div>
+                    <div class="fw-bold">Pickups</div>
+                    <div class="muted-help">Acceso para participar en pickups.</div>
+                  </div>
+                </div>
+              </label>
             </div>
 
             <div class="col-md-4">
-              <label class="form-label" for="proofFile">Comprobante (imagen o PDF)</label>
-              <input
-                id="proofFile"
-                type="file"
-                class="form-control"
-                accept="image/*,application/pdf"
-                required
-              />
+              <label class="option-card w-100" id="card-volcanes">
+                <div class="d-flex gap-2 align-items-start">
+                  <input class="form-check-input mt-1" type="radio" name="registerType" id="registerTypeVolcanes" value="volcanes" />
+                  <div>
+                    <div class="fw-bold">Jugador de Volcanes</div>
+                    <div class="muted-help">Solicitud para ingresar como jugador del club.</div>
+                  </div>
+                </div>
+              </label>
+            </div>
+
+            <div class="col-md-4">
+              <label class="option-card w-100" id="card-asovoca">
+                <div class="d-flex gap-2 align-items-start">
+                  <input class="form-check-input mt-1" type="radio" name="registerType" id="registerTypeAsovoca" value="asovoca" />
+                  <div>
+                    <div class="fw-bold">Asociado de ASOVOCA</div>
+                    <div class="muted-help">Registro para asociarte y pagar membresía.</div>
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Campos comunes -->
+          <div id="commonSection" class="d-none">
+            <hr class="my-4" />
+
+            <div class="row g-3">
+              <div class="col-12">
+                <h3 class="mb-2" style="color: var(--theme-primary); font-weight: 900;">Datos personales</h3>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label" for="firstName">Nombre</label>
+                <input id="firstName" class="form-control" />
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label" for="lastName">Apellido</label>
+                <input id="lastName" class="form-control" />
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label" for="phone">Teléfono</label>
+                <input
+                  id="phone"
+                  type="tel"
+                  class="form-control"
+                  placeholder="Ej: 8888-8888"
+                />
+              </div>
             </div>
 
             <hr class="my-4" />
+
+            <div class="row g-3">
+              <div class="col-12">
+                <h3 class="mb-2" style="color: var(--theme-primary); font-weight: 900;">Contacto de emergencia</h3>
+              </div>
+
+              <div class="col-md-12">
+                <label class="form-label" for="emergencyContactName">Contacto de emergencia</label>
+                <input
+                  id="emergencyContactName"
+                  class="form-control"
+                  placeholder="Nombre y teléfono de la persona de contacto"
+                />
+              </div>
+            </div>
           </div>
+
+          <!-- Campos extra Volcanes -->
+          <div id="volcanesSection" class="d-none">
+            <hr class="my-4" />
+
+            <div class="row g-3">
+              <div class="col-12">
+                <h3 class="mb-2" style="color: var(--theme-primary); font-weight: 900;">Información adicional para jugador de Volcanes</h3>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label" for="email">Correo</label>
+                <input
+                  id="email"
+                  type="email"
+                  class="form-control"
+                  placeholder="Se llena si ingresas con Google"
+                />
+                <div class="muted-help mt-1">
+                  Si ingresas con Google, lo precargamos.
+                </div>
+              </div>
+
+              <div class="col-md-3">
+                <label class="form-label" for="idType">Tipo de documento</label>
+                <select id="idType" class="form-select">
+                  <option value="">Seleccionar…</option>
+                  <option value="cedula">Cédula</option>
+                  <option value="pasaporte">Pasaporte</option>
+                  <option value="dimex">DIMEX</option>
+                  <option value="otro">Otro</option>
+                </select>
+              </div>
+
+              <div class="col-md-3">
+                <label class="form-label" for="idNumber">Número de documento</label>
+                <input id="idNumber" class="form-control" />
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label" for="province">Provincia</label>
+                <select id="province" class="form-select"></select>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label" for="canton">Cantón</label>
+                <select id="canton" class="form-select"></select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Campos extra ASOVOCA -->
+          <div id="asovocaSection" class="d-none">
+            <hr class="my-4" />
+
+            <div class="intro-box">
+              <h3 class="mb-3" style="color: var(--theme-primary); font-weight: 900;">ASOVOCA</h3>
+              <p>
+                La Asociación de Volcanes de Cartago (ASOVOCA) agradece su interés en formar parte de nuestra organización.
+                Nuestro objetivo principal es promover el desarrollo y la práctica del Ultimate Frisbee en Cartago y Costa Rica,
+                impulsándolo en todas las edades.
+              </p>
+              <p class="mb-2"><strong>Montos y vigencia:</strong></p>
+
+              <p>
+                <strong>Año inaugural 2026: ₡10.000</strong><br>
+                Este monto incluye la anualidad correspondiente al año calendario 2026 y un disco oficial del club VOLCANES
+                entregado una sola vez por asociado en ese año a las primeras 25 personas. Posterior a eso, la cuota se mantiene
+                en ₡10.000 (no aplica regalía).
+              </p>
+              <p>
+                La cuota anual es un pago único anual en cualquier momento del año 2026, establecida para el año 2026.
+              </p>
+              <p class="mb-0">
+                Se evaluarán como casos especiales al solicitar exoneración total o parcial de cuotas las personas que enfrenten:
+                situación económica vulnerable, lesión o condición médica crónica, estudios en el extranjero, incapacidad física
+                o psicológica. El caso será visto por la Junta Directiva.
+              </p>
+            </div>
+
+            <!-- Pago -->
+            <div id="paymentSection" class="row g-3">
+              <div class="col-12">
+                <h3 class="mb-2" style="color: var(--theme-primary); font-weight: 900;">Pago de membresía</h3>
+                <div class="muted-help">
+                  Selecciona un plan activo, realiza el pago por SINPE al 7056-7463 (a nombre de Diego Rivera) y adjunta el comprobante.
+                </div>
+              </div>
+
+              <div class="col-md-8">
+                <label class="form-label" for="planId">Plan de pago</label>
+                <select id="planId" class="form-select">
+                  <option value="">Cargando planes…</option>
+                </select>
+                <div id="planMeta" class="muted-help mt-2"></div>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label" for="proofFile">Comprobante (imagen o PDF)</label>
+                <input
+                  id="proofFile"
+                  type="file"
+                  class="form-control"
+                  accept="image/*,application/pdf"
+                />
+              </div>
+            </div>
+
+            <hr class="my-4" />
+
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" id="committeeInterest">
+              <label class="form-check-label" for="committeeInterest">
+                Me interesa ser contactado/a para formar parte de algún comité de la asociación
+              </label>
+            </div>
+
+            <div id="committeeFields" class="row g-3 d-none">
+              <div class="col-md-6">
+                <label class="form-label" for="profession">Profesión u oficio <span class="muted-help">(opcional)</span></label>
+                <input id="profession" class="form-control" />
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label" for="skills">Competencias / destrezas <span class="muted-help">(opcional)</span></label>
+                <input id="skills" class="form-control" />
+              </div>
+            </div>
+          </div>
+
+          <hr class="my-4" />
 
           <!-- Consentimientos -->
           <div id="declarationWrap" class="form-check mb-3 d-none">
@@ -324,7 +357,7 @@
         </form>
 
         <div class="muted-help mt-4">
-          * Tu registro queda en revisión hasta validar el comprobante.
+          * Si te asocias, tu registro queda en revisión hasta validar el comprobante.
         </div>
       </div>
     </div>
