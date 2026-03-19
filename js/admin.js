@@ -160,6 +160,14 @@ const $ = {
   editAssociationStatus: null,
   editCanUsePickups: null,
   editIsPlayerActive: null,
+  editPlayerMode: null,
+  editExistingPlayerId: null,
+  editExistingPlayerWrap: null,
+  editNewPlayerWrap: null,
+  editNewPlayerFirstName: null,
+  editNewPlayerLastName: null,
+  editNewPlayerBirthday: null,
+  editNewPlayerFieldRole: null,
 };
 
 let approveModal = null;
@@ -183,6 +191,15 @@ function bindDynamicDomRefs() {
   $.editAssociationStatus = document.getElementById("editAssociationStatus");
   $.editCanUsePickups = document.getElementById("editCanUsePickups");
   $.editIsPlayerActive = document.getElementById("editIsPlayerActive");
+
+  $.editPlayerMode = document.getElementById("editPlayerMode");
+  $.editExistingPlayerId = document.getElementById("editExistingPlayerId");
+  $.editExistingPlayerWrap = document.getElementById("editExistingPlayerWrap");
+  $.editNewPlayerWrap = document.getElementById("editNewPlayerWrap");
+  $.editNewPlayerFirstName = document.getElementById("editNewPlayerFirstName");
+  $.editNewPlayerLastName = document.getElementById("editNewPlayerLastName");
+  $.editNewPlayerBirthday = document.getElementById("editNewPlayerBirthday");
+  $.editNewPlayerFieldRole = document.getElementById("editNewPlayerFieldRole");
 }
 
 function showAlert(msg, type = "danger") {
@@ -444,6 +461,12 @@ function fillStaticOptions() {
 
   if ($.newPlayerFieldRole) {
     $.newPlayerFieldRole.innerHTML = APP_CONFIG.playerRoles
+      .map((r) => `<option value="${esc(r.id)}">${esc(r.label)}</option>`)
+      .join("");
+  }
+
+  if ($.editNewPlayerFieldRole) {
+    $.editNewPlayerFieldRole.innerHTML = APP_CONFIG.playerRoles
       .map((r) => `<option value="${esc(r.id)}">${esc(r.label)}</option>`)
       .join("");
   }
@@ -741,6 +764,91 @@ function fillExistingPlayersSelect(currentUid = null, currentEmail = "") {
       .join("");
 }
 
+function fillEditExistingPlayersSelect(currentUid = null, currentEmail = "", currentPlayerId = "") {
+  if (!$.editExistingPlayerId) return;
+
+  const normalizedEmail = normalizeText(currentEmail);
+
+  const availablePlayers = allPlayers.filter((p) => {
+    const linkedUserId = p.userId || null;
+    return !linkedUserId || linkedUserId === currentUid || p.id === currentPlayerId;
+  });
+
+  availablePlayers.sort((a, b) => {
+    const aName = normalizeText(getPlayerFullName(a));
+    const bName = normalizeText(getPlayerFullName(b));
+    const aEmail = normalizeText(a.linkedUserEmail || "");
+    const bEmail = normalizeText(b.linkedUserEmail || "");
+    const aMatch = normalizedEmail && aEmail === normalizedEmail ? 1 : 0;
+    const bMatch = normalizedEmail && bEmail === normalizedEmail ? 1 : 0;
+
+    if (aMatch !== bMatch) return bMatch - aMatch;
+    return aName.localeCompare(bName, "es");
+  });
+
+  $.editExistingPlayerId.innerHTML =
+    `<option value="">Seleccionar…</option>` +
+    availablePlayers
+      .map((p) => {
+        const name = getPlayerFullName(p) || p.id;
+        const suffix = p.linkedUserEmail ? ` · ${p.linkedUserEmail}` : "";
+        return `<option value="${esc(p.id)}">${esc(name + suffix)}</option>`;
+      })
+      .join("");
+}
+
+function syncEditPlayerModeUI() {
+  const mode = $.editPlayerMode?.value || "none";
+
+  if ($.editExistingPlayerWrap) {
+    $.editExistingPlayerWrap.classList.toggle("d-none", mode !== "existing");
+  }
+
+  if ($.editNewPlayerWrap) {
+    $.editNewPlayerWrap.classList.toggle("d-none", mode !== "new");
+  }
+}
+
+async function unlinkUserFromCurrentPlayer(uid, currentPlayerId) {
+  if (!uid || !currentPlayerId) return;
+
+  const playerRef = doc(db, COL_PLAYERS, currentPlayerId);
+  const snap = await getDoc(playerRef);
+  if (!snap.exists()) return;
+
+  const data = snap.data() || {};
+  const linkedUserId = data.userId || data.uid || null;
+
+  if (linkedUserId === uid) {
+    await updateDoc(playerRef, {
+      userId: null,
+      updatedAt: serverTimestamp(),
+    });
+  }
+}
+
+function prefillEditNewPlayerFields(user) {
+  const profile = getUserProfile(user);
+
+  if ($.editNewPlayerFirstName) $.editNewPlayerFirstName.value = profile.firstName || "";
+  if ($.editNewPlayerLastName) $.editNewPlayerLastName.value = profile.lastName || "";
+  if ($.editNewPlayerBirthday) $.editNewPlayerBirthday.value = profile.birthDate || "";
+  if ($.editNewPlayerFieldRole) $.editNewPlayerFieldRole.value = "";
+
+  if (!$.editNewPlayerFirstName?.value && !$.editNewPlayerLastName?.value) {
+    const displayName = String(user?.displayName || "").trim();
+    if (displayName) {
+      const parts = displayName.split(/\s+/).filter(Boolean);
+      if (parts.length >= 2) {
+        $.editNewPlayerFirstName.value = parts.slice(0, -1).join(" ");
+        $.editNewPlayerLastName.value = parts.slice(-1).join(" ");
+      } else if ($.editNewPlayerFirstName) {
+        $.editNewPlayerFirstName.value = displayName;
+      }
+    }
+  }
+}
+
 function syncApproveModeUI() {
   if (!$.approveLinkMode) return;
 
@@ -822,6 +930,18 @@ function openEditUserModal(uid) {
   if ($.editCanUsePickups) $.editCanUsePickups.checked = user.canUsePickups === true;
   if ($.editIsPlayerActive) $.editIsPlayerActive.checked = user.isPlayerActive === true;
 
+  fillEditExistingPlayersSelect(user.id, user.email || "", user.playerId || "");
+  prefillEditNewPlayerFields(user);
+
+  if ($.editPlayerMode) {
+    $.editPlayerMode.value = user.playerId ? "existing" : "none";
+  }
+
+  if ($.editExistingPlayerId) {
+    $.editExistingPlayerId.value = user.playerId || "";
+  }
+
+  syncEditPlayerModeUI();
   editUserModal.show();
 }
 
@@ -838,11 +958,67 @@ async function saveUserEditFlow(ev) {
   showLoader("Guardando usuario…");
 
   try {
+    const user = allUsers.find((u) => u.id === uid) || null;
+    const currentPlayerId = user?.playerId || null;
+    const playerMode = $.editPlayerMode?.value || "none";
+
+    let finalPlayerId = null;
+
+    if (playerMode === "none") {
+      await unlinkUserFromCurrentPlayer(uid, currentPlayerId);
+      finalPlayerId = null;
+    }
+
+    if (playerMode === "existing") {
+      const selectedPlayerId = $.editExistingPlayerId?.value || null;
+      if (!selectedPlayerId) {
+        throw new Error("Selecciona un jugador existente.");
+      }
+
+      await assertPlayerCanBeLinked(selectedPlayerId, uid);
+
+      if (currentPlayerId && currentPlayerId !== selectedPlayerId) {
+        await unlinkUserFromCurrentPlayer(uid, currentPlayerId);
+      }
+
+      await linkExistingPlayer({ playerId: selectedPlayerId, uid });
+      finalPlayerId = selectedPlayerId;
+    }
+
+    if (playerMode === "new") {
+      const firstName = ($.editNewPlayerFirstName?.value || "").trim();
+      const lastName = ($.editNewPlayerLastName?.value || "").trim();
+      const birthDate = ($.editNewPlayerBirthday?.value || "").trim();
+      const fieldRole = ($.editNewPlayerFieldRole?.value || "").trim() || null;
+
+      if (!firstName || !lastName) {
+        throw new Error("Completa nombre y apellido para crear el jugador.");
+      }
+
+      if (currentPlayerId) {
+        await unlinkUserFromCurrentPlayer(uid, currentPlayerId);
+      }
+
+      const newPlayerRef = await addDoc(collection(db, COL_PLAYERS), {
+        active: true,
+        userId: uid,
+        firstName,
+        lastName,
+        birthDate: birthDate || null,
+        fieldRole,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      finalPlayerId = newPlayerRef.id;
+    }
+
     await updateDoc(doc(db, COL_USERS, uid), {
       role: $.editSystemRole?.value || "viewer",
       associationStatus: ($.editAssociationStatus?.value || "").trim() || null,
       canUsePickups: !!$.editCanUsePickups?.checked,
       isPlayerActive: !!$.editIsPlayerActive?.checked,
+      playerId: finalPlayerId || null,
       updatedAt: serverTimestamp(),
     });
 
@@ -2075,9 +2251,11 @@ async function boot() {
     $.eventsSettingsForm?.addEventListener("submit", saveEventsSettings);
     $.uniformSettingsForm?.addEventListener("submit", saveUniformSettings);
     $.uniformForm?.addEventListener("submit", addUniform);
-
+    
     $.approveLinkMode?.addEventListener("change", syncApproveModeUI);
     $.approveUserForm?.addEventListener("submit", approveUserFlow);
+
+    $.editPlayerMode?.addEventListener("change", syncEditPlayerModeUI);
     $.editUserForm?.addEventListener("submit", saveUserEditFlow);
 
     $.registerSettingsForm?.addEventListener("submit", saveRegisterSettings);

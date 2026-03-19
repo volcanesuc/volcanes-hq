@@ -14,7 +14,7 @@ export async function loadAdminEditUserModal() {
           <div class="modal-header">
             <div class="d-flex flex-column">
               <h5 class="modal-title mb-0">Editar usuario</h5>
-              <small class="text-muted">Actualiza rol y permisos base del usuario</small>
+              <small class="text-muted">Actualiza rol, permisos base y vínculo con player</small>
             </div>
 
             <button
@@ -97,10 +97,93 @@ export async function loadAdminEditUserModal() {
                           </div>
                         </div>
 
+                        <div class="col-12 mt-2">
+                          <hr />
+                        </div>
+
+                        <div class="col-12">
+                          <h6 class="text-uppercase text-muted small mb-0">
+                            Vincular con player
+                          </h6>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                          <label for="editPlayerMode" class="form-label">Modo</label>
+                          <select id="editPlayerMode" class="form-select">
+                            <option value="none">Sin player</option>
+                            <option value="existing">Ligar a player existente</option>
+                            <option value="new">Crear player nuevo</option>
+                          </select>
+                        </div>
+
+                        <div class="col-12 d-none" id="editExistingPlayerWrap">
+                          <label for="editExistingPlayerId" class="form-label">
+                            Player existente
+                          </label>
+                          <select id="editExistingPlayerId" class="form-select">
+                            <option value="">Seleccionar…</option>
+                          </select>
+                        </div>
+
+                        <div class="col-12 d-none" id="editNewPlayerWrap">
+                          <div class="card border bg-white">
+                            <div class="card-body">
+                              <div class="row g-3">
+                                <div class="col-12">
+                                  <h6 class="mb-1">Nuevo player</h6>
+                                  <p class="text-muted small mb-0">
+                                    Se crea un registro nuevo en club_players y se liga a este usuario.
+                                  </p>
+                                </div>
+
+                                <div class="col-12 col-md-6">
+                                  <label for="editNewPlayerFirstName" class="form-label">
+                                    Nombre
+                                  </label>
+                                  <input
+                                    type="text"
+                                    id="editNewPlayerFirstName"
+                                    class="form-control"
+                                  />
+                                </div>
+
+                                <div class="col-12 col-md-6">
+                                  <label for="editNewPlayerLastName" class="form-label">
+                                    Apellido
+                                  </label>
+                                  <input
+                                    type="text"
+                                    id="editNewPlayerLastName"
+                                    class="form-control"
+                                  />
+                                </div>
+
+                                <div class="col-12 col-md-6">
+                                  <label for="editNewPlayerBirthday" class="form-label">
+                                    Fecha de nacimiento
+                                  </label>
+                                  <input
+                                    type="date"
+                                    id="editNewPlayerBirthday"
+                                    class="form-control"
+                                  />
+                                </div>
+
+                                <div class="col-12 col-md-6">
+                                  <label for="editNewPlayerFieldRole" class="form-label">
+                                    Posición / rol de cancha
+                                  </label>
+                                  <select id="editNewPlayerFieldRole" class="form-select"></select>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
                         <div class="col-12">
                           <div class="alert alert-secondary mb-0">
-                            <strong>Nota:</strong> este modal actualiza el documento del usuario.
-                            Más adelante podemos extenderlo para edición avanzada, auditoría y permisos por sección.
+                            <strong>Nota:</strong> si cambias el vínculo, este modal actualiza tanto
+                            <code>users/{uid}</code> como <code>club_players/{playerId}</code>.
                           </div>
                         </div>
                       </div>
