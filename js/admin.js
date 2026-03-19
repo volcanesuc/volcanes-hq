@@ -2,6 +2,7 @@ import { db, storage } from "./auth/firebase.js";
 import { APP_CONFIG } from "./config/config.js";
 import { guardPage } from "./page-guard.js";
 import { loadHeader } from "./components/header.js";
+import { loadAdminEditUserModal } from "./components/admin-edit-user-modal.js";
 import { showLoader, hideLoader } from "./ui/loader.js";
 
 import {
@@ -27,6 +28,7 @@ const COL = APP_CONFIG.collections;
 const COL_USERS = COL.users;
 const COL_PLAYERS = COL.club_players;
 const COL_CLUB_CONFIG = COL.club_config;
+const COL_SYSTEM_CONFIG = COL.system_config || "system_config";
 
 const $ = {
   alertBox: document.getElementById("alertBox"),
@@ -136,7 +138,7 @@ const $ = {
   associationDetailsFeeParagraph2: document.getElementById("associationDetailsFeeParagraph2"),
   associationDetailsExceptionsText: document.getElementById("associationDetailsExceptionsText"),
 
-  // modal
+  // approve modal
   approveUserForm: document.getElementById("approveUserForm"),
   approveUid: document.getElementById("approveUid"),
   approveEmail: document.getElementById("approveEmail"),
@@ -149,9 +151,20 @@ const $ = {
   newPlayerLastName: document.getElementById("newPlayerLastName"),
   newPlayerBirthday: document.getElementById("newPlayerBirthday"),
   newPlayerFieldRole: document.getElementById("newPlayerFieldRole"),
+
+  // dynamic modal refs
+  editUserForm: null,
+  editUid: null,
+  editEmail: null,
+  editSystemRole: null,
+  editAssociationStatus: null,
+  editCanUsePickups: null,
+  editIsPlayerActive: null,
 };
 
 let approveModal = null;
+let editUserModal = null;
+
 let allUsers = [];
 let allPlayers = [];
 let pendingUsers = [];
@@ -160,6 +173,17 @@ let usersById = new Map();
 let trainingsBlocks = [];
 let honorsItems = [];
 let uniformsItems = [];
+let availableRoles = [];
+
+function bindDynamicDomRefs() {
+  $.editUserForm = document.getElementById("editUserForm");
+  $.editUid = document.getElementById("editUid");
+  $.editEmail = document.getElementById("editEmail");
+  $.editSystemRole = document.getElementById("editSystemRole");
+  $.editAssociationStatus = document.getElementById("editAssociationStatus");
+  $.editCanUsePickups = document.getElementById("editCanUsePickups");
+  $.editIsPlayerActive = document.getElementById("editIsPlayerActive");
+}
 
 function showAlert(msg, type = "danger") {
   if (!$.alertBox) return;
@@ -233,6 +257,77 @@ function renderStatusBadge(value, tone = "neutral") {
   return `<span class="admin-badge admin-badge--${esc(tone)}">${esc(value || "—")}</span>`;
 }
 
+function getRoleTone(role) {
+  switch (String(role || "").trim().toLowerCase()) {
+    case "admin":
+      return "danger";
+    case "coach":
+      return "success";
+    case "staff":
+      return "info";
+    case "viewer":
+      return "neutral";
+    case "accountability":
+      return "warning";
+    case "content_editor":
+      return "primary";
+    default:
+      return "neutral";
+  }
+}
+
+function getRoleRowClass(role) {
+  switch (String(role || "").trim().toLowerCase()) {
+    case "admin":
+      return "admin-users-row admin-users-row--admin";
+    case "coach":
+      return "admin-users-row admin-users-row--coach";
+    case "staff":
+      return "admin-users-row admin-users-row--staff";
+    case "viewer":
+      return "admin-users-row admin-users-row--viewer";
+    case "accountability":
+      return "admin-users-row admin-users-row--accountability";
+    case "content_editor":
+      return "admin-users-row admin-users-row--content-editor";
+    default:
+      return "";
+  }
+}
+
+function ensureUsersRoleStyles() {
+  if (document.getElementById("adminUsersRoleStyles")) return;
+
+  const style = document.createElement("style");
+  style.id = "adminUsersRoleStyles";
+  style.textContent = `
+    .admin-users-row--admin > td {
+      background: rgba(220, 53, 69, 0.06);
+    }
+
+    .admin-users-row--coach > td {
+      background: rgba(25, 135, 84, 0.06);
+    }
+
+    .admin-users-row--staff > td {
+      background: rgba(13, 202, 240, 0.06);
+    }
+
+    .admin-users-row--viewer > td {
+      background: rgba(108, 117, 125, 0.04);
+    }
+
+    .admin-users-row--accountability > td {
+      background: rgba(255, 193, 7, 0.08);
+    }
+
+    .admin-users-row--content-editor > td {
+      background: rgba(13, 110, 253, 0.06);
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 function getFullUserName(user) {
   const profile = getUserProfile(user);
 
@@ -279,9 +374,70 @@ function isPendingUser(user) {
   return wantsPlayer && playerStatus === "pending";
 }
 
+function mergeRolesWithFallback(firebaseRoles = [], fallbackRoles = []) {
+  const byId = new Map();
+
+  for (const role of fallbackRoles) {
+    if (!role?.id) continue;
+    byId.set(String(role.id), {
+      id: String(role.id),
+      label: role.label || role.id,
+    });
+  }
+
+  for (const role of firebaseRoles) {
+    if (!role?.id) continue;
+    byId.set(String(role.id), {
+      id: String(role.id),
+      label: role.label || role.id,
+    });
+  }
+
+  return Array.from(byId.values());
+}
+
+async function loadRolesCatalog() {
+  try {
+    const snap = await getDoc(doc(db, COL_SYSTEM_CONFIG, "roles"));
+    const data = snap.exists() ? (snap.data() || {}) : {};
+    const firebaseRoles = Array.isArray(data.roles) ? data.roles : [];
+    const fallbackRoles = Array.isArray(APP_CONFIG.userRoles) ? APP_CONFIG.userRoles : [];
+
+    availableRoles = mergeRolesWithFallback(firebaseRoles, fallbackRoles);
+  } catch (err) {
+    console.error("loadRolesCatalog error:", err);
+    availableRoles = Array.isArray(APP_CONFIG.userRoles) ? [...APP_CONFIG.userRoles] : [];
+  }
+
+  if (!availableRoles.length) {
+    availableRoles = [
+      { id: "admin", label: "Admin" },
+      { id: "coach", label: "Coach" },
+      { id: "staff", label: "Staff" },
+      { id: "viewer", label: "Viewer" },
+    ];
+  }
+}
+
+function getRolesForSelect() {
+  return Array.isArray(availableRoles) && availableRoles.length
+    ? availableRoles
+    : Array.isArray(APP_CONFIG.userRoles)
+    ? APP_CONFIG.userRoles
+    : [];
+}
+
 function fillStaticOptions() {
+  const roles = getRolesForSelect();
+
   if ($.approveSystemRole) {
-    $.approveSystemRole.innerHTML = APP_CONFIG.userRoles
+    $.approveSystemRole.innerHTML = roles
+      .map((r) => `<option value="${esc(r.id)}">${esc(r.label)}</option>`)
+      .join("");
+  }
+
+  if ($.editSystemRole) {
+    $.editSystemRole.innerHTML = roles
       .map((r) => `<option value="${esc(r.id)}">${esc(r.label)}</option>`)
       .join("");
   }
@@ -295,7 +451,7 @@ function fillStaticOptions() {
   if ($.usersRoleFilter) {
     $.usersRoleFilter.innerHTML =
       `<option value="">Todos</option>` +
-      APP_CONFIG.userRoles
+      roles
         .map((r) => `<option value="${esc(r.id)}">${esc(r.label)}</option>`)
         .join("");
   }
@@ -430,9 +586,10 @@ function renderUsersAdminTable() {
       const membershipLabel = u.membership?.label || "—";
       const membershipStatus = u.membership?.status || "—";
       const pending = isPendingUser(u);
+      const rowClass = getRoleRowClass(u.role);
 
       return `
-        <tr>
+        <tr class="${esc(rowClass)}">
           <td>
             <div class="d-flex flex-column">
               <strong>${esc(fullName)}</strong>
@@ -441,7 +598,7 @@ function renderUsersAdminTable() {
             </div>
           </td>
 
-          <td>${renderStatusBadge(u.role || "viewer", "primary")}</td>
+          <td>${renderStatusBadge(u.role || "viewer", getRoleTone(u.role))}</td>
 
           <td>
             ${
@@ -492,9 +649,9 @@ function renderUsersAdminTable() {
               <button
                 class="btn btn-sm btn-outline-primary"
                 type="button"
-                data-view-user="${esc(u.id)}"
+                data-edit-user="${esc(u.id)}"
               >
-                Ver
+                Editar
               </button>
 
               ${
@@ -644,6 +801,60 @@ async function openApproveModal(uid) {
 
   syncApproveModeUI();
   approveModal.show();
+}
+
+function openEditUserModal(uid) {
+  if (!editUserModal) {
+    showAlert("El modal de edición no está disponible.");
+    return;
+  }
+
+  const user = allUsers.find((u) => u.id === uid);
+  if (!user) {
+    showAlert("No se encontró el usuario.");
+    return;
+  }
+
+  if ($.editUid) $.editUid.value = user.id || "";
+  if ($.editEmail) $.editEmail.value = user.email || "";
+  if ($.editSystemRole) $.editSystemRole.value = user.role || "viewer";
+  if ($.editAssociationStatus) $.editAssociationStatus.value = user.associationStatus || "";
+  if ($.editCanUsePickups) $.editCanUsePickups.checked = user.canUsePickups === true;
+  if ($.editIsPlayerActive) $.editIsPlayerActive.checked = user.isPlayerActive === true;
+
+  editUserModal.show();
+}
+
+async function saveUserEditFlow(ev) {
+  ev.preventDefault();
+  hideAlert();
+
+  const uid = $.editUid?.value;
+  if (!uid) {
+    showAlert("No se encontró el usuario a editar.");
+    return;
+  }
+
+  showLoader("Guardando usuario…");
+
+  try {
+    await updateDoc(doc(db, COL_USERS, uid), {
+      role: $.editSystemRole?.value || "viewer",
+      associationStatus: ($.editAssociationStatus?.value || "").trim() || null,
+      canUsePickups: !!$.editCanUsePickups?.checked,
+      isPlayerActive: !!$.editIsPlayerActive?.checked,
+      updatedAt: serverTimestamp(),
+    });
+
+    editUserModal?.hide();
+    await loadUsersAdminTable();
+    showAlert("Usuario actualizado correctamente.", "success");
+  } catch (err) {
+    console.error("saveUserEditFlow error:", err);
+    showAlert(err?.message || "No se pudo actualizar el usuario.");
+  } finally {
+    hideLoader();
+  }
 }
 
 async function assertPlayerCanBeLinked(playerId, uid) {
@@ -1540,7 +1751,7 @@ async function loadRegisterSettingsAdmin() {
     }
 
     if ($.regAssocTermsUrl) {
-      $.regAssocTermsUrl.value = data.associationTermsUrl || "";
+      $.regAssocTermsUrl.value = data.assocTermsUrl || "";
     }
 
     if ($.regInfoDeclarationText) {
@@ -1824,13 +2035,20 @@ async function boot() {
       return;
     }
 
+    ensureUsersRoleStyles();
+
     await loadHeader("admin", cfg);
+    await loadAdminEditUserModal();
+    bindDynamicDomRefs();
+    await loadRolesCatalog();
+    fillStaticOptions();
+    syncApproveModeUI();
 
     const approveModalEl = document.getElementById("approveUserModal");
     approveModal = approveModalEl ? new bootstrap.Modal(approveModalEl) : null;
 
-    fillStaticOptions();
-    syncApproveModeUI();
+    const editUserModalEl = document.getElementById("editUserModal");
+    editUserModal = editUserModalEl ? new bootstrap.Modal(editUserModalEl) : null;
 
     await Promise.all([
       loadUsersAdminTable(),
@@ -1860,6 +2078,7 @@ async function boot() {
 
     $.approveLinkMode?.addEventListener("change", syncApproveModeUI);
     $.approveUserForm?.addEventListener("submit", approveUserFlow);
+    $.editUserForm?.addEventListener("submit", saveUserEditFlow);
 
     $.registerSettingsForm?.addEventListener("submit", saveRegisterSettings);
     $.associationDetailsForm?.addEventListener("submit", saveAssociationDetails);
@@ -1871,14 +2090,9 @@ async function boot() {
     $.usersPickupsFilter?.addEventListener("change", renderUsersAdminTable);
 
     document.addEventListener("click", async (ev) => {
-      const viewUserBtn = ev.target.closest("[data-view-user]");
-      if (viewUserBtn) {
-        const uid = viewUserBtn.getAttribute("data-view-user");
-        const user = allUsers.find((u) => u.id === uid);
-        if (user) {
-          console.log("Detalle usuario:", user);
-          showAlert(`Detalle no implementado todavía para: ${getFullUserName(user)}`, "warning");
-        }
+      const editUserBtn = ev.target.closest("[data-edit-user]");
+      if (editUserBtn) {
+        openEditUserModal(editUserBtn.getAttribute("data-edit-user"));
         return;
       }
 

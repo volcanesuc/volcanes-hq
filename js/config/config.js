@@ -59,6 +59,8 @@ export const APP_CONFIG = {
     { id: "staff", label: "Staff" },
     { id: "coach", label: "Coach" },
     { id: "admin", label: "Admin" },
+    { id: "accountability", label: "Accountability" },
+    { id: "content_editor", label: "Content Editor" },
   ],
 
   playerRoles: [
