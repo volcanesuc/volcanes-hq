@@ -30,634 +30,407 @@
   <main class="container py-4 admin-page">
     <div class="mb-4">
       <h1 class="h3 mb-1">Administración</h1>
-      <p class="text-muted mb-0">Configuración general de la plataforma y aprobación de usuarios (vínculo con jugadores).</p>
+      <p class="text-muted mb-0">
+        Configuración general de la plataforma, usuarios y registro público.
+      </p>
     </div>
 
     <div id="alertBox" class="alert d-none" role="alert"></div>
 
-    <!-- TOGGLES PARA SECCIONES DEL INDEX -->
-    <section class="card shadow-sm mt-4">
+    <!-- ADMIN TABS -->
+    <section class="card shadow-sm admin-tabs-card">
       <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-          <div>
-            <h2 class="h5 mb-1">Visibilidad del landing</h2>
-            <p class="text-muted mb-0">Mostrá u ocultá secciones públicas de la pantalla principal.</p>
-          </div>
-        </div>
-
-        <form id="indexSettingsForm" class="row g-3">
-
-          <div class="col-md-6">
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" id="idxShowTrainings" />
-              <label class="form-check-label" for="idxShowTrainings">
-                Mostrar entrenamientos y juegos
-              </label>
-              <span id="idxShowTrainingsState" class="ms-2 small text-muted"></span>
-            </div>
-          </div>
-
-          <div class="col-md-6">
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" id="idxShowEvents" />
-              <label class="form-check-label" for="idxShowEvents">
-                Mostrar torneos / eventos
-              </label>
-              <span id="idxShowEventsState" class="ms-2 small text-muted"></span>
-            </div>
-          </div>
-
-          <div class="col-md-6">
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" id="idxShowHonors" />
-              <label class="form-check-label" for="idxShowHonors">
-                Mostrar palmarés
-              </label>
-              <span id="idxShowHonorsState" class="ms-2 small text-muted"></span>
-            </div>
-          </div>
-
-          <div class="col-md-6">
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" id="idxShowUniforms" />
-              <label class="form-check-label" for="idxShowUniforms">
-                Mostrar uniformes
-              </label>
-              <span id="idxShowUniformsState" class="ms-2 small text-muted"></span>
-            </div>
-          </div>
-
-          <!-- NUEVO TOGGLE -->
-          <div class="col-md-6">
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" id="idxShowFeaturedActivity" />
-              <label class="form-check-label" for="idxShowFeaturedActivity">
-                Mostrar actividad destacada
-              </label>
-              <span id="idxShowFeaturedActivityState" class="ms-2 small text-muted"></span>
-            </div>
-          </div>
-
-          <div class="col-12">
-            <button class="btn btn-primary" type="submit">
-              <i class="bi bi-save me-1"></i>Guardar visibilidad
+        <ul class="nav nav-pills admin-main-tabs mb-4" id="adminMainTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button
+              class="nav-link active"
+              id="landing-tab"
+              data-bs-toggle="pill"
+              data-bs-target="#landing-pane"
+              type="button"
+              role="tab"
+              aria-controls="landing-pane"
+              aria-selected="true"
+            >
+              Landing settings
             </button>
-          </div>
-        </form>
-      </div>
-    </section>
+          </li>
 
-    <!-- CUENTAS -->
-    <section class="card shadow-sm mt-4 mb-4">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-          <div>
-            <h2 class="h5 mb-1">Cuentas pendientes</h2>
-            <p class="text-muted mb-0">Usuarios con onboarding completo pero aún sin activar.</p>
-          </div>
-          <button id="refreshPendingBtn" class="btn btn-outline-secondary btn-sm" type="button">
-            <i class="bi bi-arrow-clockwise me-1"></i>Actualizar
-          </button>
-        </div>
+          <li class="nav-item" role="presentation">
+            <button
+              class="nav-link"
+              id="users-tab"
+              data-bs-toggle="pill"
+              data-bs-target="#users-pane"
+              type="button"
+              role="tab"
+              aria-controls="users-pane"
+              aria-selected="false"
+            >
+              Users
+            </button>
+          </li>
 
-        <div class="table-responsive">
-          <table class="table align-middle mb-0" id="pendingUsersTable">
-            <thead>
-              <tr>
-                <th>Email</th>
-                <th>Nombre</th>
-                <th>Player ligado</th>
-                <th>Rol</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td colspan="5" class="text-muted">Cargando…</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
+          <li class="nav-item" role="presentation">
+            <button
+              class="nav-link"
+              id="register-tab"
+              data-bs-toggle="pill"
+              data-bs-target="#register-pane"
+              type="button"
+              role="tab"
+              aria-controls="register-pane"
+              aria-selected="false"
+            >
+              Register settings
+            </button>
+          </li>
+        </ul>
 
-    <!-- JUGADORES EXISTENTES -->
-    <section class="card shadow-sm">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-          <div>
-            <h2 class="h5 mb-1">Jugadores existentes</h2>
-            <p class="text-muted mb-0">Buscar jugadores, revisar vínculo y rol del sistema.</p>
-          </div>
+        <div class="tab-content" id="adminMainTabsContent">
 
-          <button
-            id="playersCollapseToggle"
-            class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2"
-            type="button"
-            data-bs-toggle="collapse"
-            data-bs-target="#playersSectionCollapse"
-            aria-expanded="false"
-            aria-controls="playersSectionCollapse"
+          <!-- LANDING TAB -->
+          <div
+            class="tab-pane fade show active"
+            id="landing-pane"
+            role="tabpanel"
+            aria-labelledby="landing-tab"
+            tabindex="0"
           >
-            <span>Mostrar / ocultar</span>
-            <span data-caret-for="playersSectionCollapse">▾</span>
-          </button>
-        </div>
-
-        <div id="playersSectionCollapse" class="collapse">
-          <div class="row g-2 mb-3">
-            <div class="col-md-5">
-              <input
-                id="playerSearchInput"
-                class="form-control"
-                type="search"
-                placeholder="Buscar jugador por nombre o email"
-              />
+            <div class="admin-tab-intro mb-4">
+              <h2 class="h5 mb-1">Landing settings</h2>
+              <p class="text-muted mb-0">
+                Configuración de visibilidad y contenido público del landing.
+              </p>
             </div>
 
-            <div class="col-md-3">
-              <select id="playerRoleFilter" class="form-select">
-                <option value="">Todos los roles</option>
-              </select>
+            <!-- PEGÁ AQUÍ TODO LO QUE YA TENÉS DE LANDING -->
+            <!-- 1. Visibilidad -->
+            <!-- 2. Hero -->
+            <!-- 3. Trainings -->
+            <!-- 4. Social -->
+            <!-- 5. Honors -->
+            <!-- 6. Featured activity -->
+            <!-- 7. Events -->
+            <!-- 8. Uniforms -->
+          </div>
+
+          <!-- USERS TAB -->
+          <div
+            class="tab-pane fade"
+            id="users-pane"
+            role="tabpanel"
+            aria-labelledby="users-tab"
+            tabindex="0"
+          >
+            <div class="admin-tab-intro mb-4">
+              <h2 class="h5 mb-1">Users</h2>
+              <p class="text-muted mb-0">
+                Gestión de usuarios, jugadores, vínculos y accesos de plataforma.
+              </p>
             </div>
 
-            <div class="col-md-4">
-              <button id="refreshPlayersBtn" class="btn btn-outline-secondary w-100" type="button">
-                <i class="bi bi-arrow-clockwise me-1"></i>Actualizar lista
-              </button>
+            <section class="card shadow-sm border-0 admin-inner-card mb-4">
+              <div class="card-body">
+                <div class="row g-3 align-items-end">
+                  <div class="col-lg-4">
+                    <label class="form-label">Buscar</label>
+                    <input
+                      id="usersSearchInput"
+                      class="form-control"
+                      type="search"
+                      placeholder="Nombre, email, UID..."
+                    />
+                  </div>
+
+                  <div class="col-md-4 col-lg-2">
+                    <label class="form-label">Rol</label>
+                    <select id="usersRoleFilter" class="form-select">
+                      <option value="">Todos</option>
+                    </select>
+                  </div>
+
+                  <div class="col-md-4 col-lg-2">
+                    <label class="form-label">Asociación</label>
+                    <select id="usersAssociationFilter" class="form-select">
+                      <option value="">Todos</option>
+                      <option value="active">Activa</option>
+                      <option value="inactive">Inactiva</option>
+                      <option value="none">Sin dato</option>
+                    </select>
+                  </div>
+
+                  <div class="col-md-4 col-lg-2">
+                    <label class="form-label">Pickups</label>
+                    <select id="usersPickupsFilter" class="form-select">
+                      <option value="">Todos</option>
+                      <option value="true">Con acceso</option>
+                      <option value="false">Sin acceso</option>
+                    </select>
+                  </div>
+
+                  <div class="col-lg-2">
+                    <button id="refreshUsersBtn" class="btn btn-outline-secondary w-100" type="button">
+                      <i class="bi bi-arrow-clockwise me-1"></i>Actualizar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="card shadow-sm border-0 admin-inner-card mb-4">
+              <div class="card-body">
+                <div class="row g-3 admin-kpis">
+                  <div class="col-md-6 col-xl-3">
+                    <div class="admin-kpi-box">
+                      <span class="admin-kpi-label">Total users</span>
+                      <strong id="usersKpiTotal" class="admin-kpi-value">—</strong>
+                    </div>
+                  </div>
+
+                  <div class="col-md-6 col-xl-3">
+                    <div class="admin-kpi-box">
+                      <span class="admin-kpi-label">Pendientes</span>
+                      <strong id="usersKpiPending" class="admin-kpi-value">—</strong>
+                    </div>
+                  </div>
+
+                  <div class="col-md-6 col-xl-3">
+                    <div class="admin-kpi-box">
+                      <span class="admin-kpi-label">Sin player</span>
+                      <strong id="usersKpiNoPlayer" class="admin-kpi-value">—</strong>
+                    </div>
+                  </div>
+
+                  <div class="col-md-6 col-xl-3">
+                    <div class="admin-kpi-box">
+                      <span class="admin-kpi-label">Con pickups</span>
+                      <strong id="usersKpiPickups" class="admin-kpi-value">—</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="card shadow-sm border-0 admin-inner-card mb-4">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                  <div>
+                    <h3 class="h6 mb-1">Tabla de usuarios</h3>
+                    <p class="text-muted mb-0">Vista consolidada de users + players + estados clave.</p>
+                  </div>
+                </div>
+
+                <div class="table-responsive">
+                  <table class="table align-middle mb-0" id="usersAdminTable">
+                    <thead>
+                      <tr>
+                        <th>Usuario</th>
+                        <th>Rol</th>
+                        <th>Acceso</th>
+                        <th>Player</th>
+                        <th>Asociación</th>
+                        <th>Membresía</th>
+                        <th>Pickups</th>
+                        <th>Último login</th>
+                        <th>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td colspan="9" class="text-muted">Cargando…</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+
+            <!-- PODÉS MOVER AQUÍ LAS SECCIONES EXISTENTES -->
+            <!-- Cuentas pendientes -->
+            <!-- Jugadores existentes -->
+          </div>
+
+          <!-- REGISTER SETTINGS TAB -->
+          <div
+            class="tab-pane fade"
+            id="register-pane"
+            role="tabpanel"
+            aria-labelledby="register-tab"
+            tabindex="0"
+          >
+            <div class="admin-tab-intro mb-4">
+              <h2 class="h5 mb-1">Register settings</h2>
+              <p class="text-muted mb-0">
+                Configuración del registro público, textos legales y bloque de asociación.
+              </p>
             </div>
+
+            <section class="card shadow-sm border-0 admin-inner-card mb-4">
+              <div class="card-body">
+                <div class="mb-3">
+                  <h3 class="h6 mb-1">Configuración funcional</h3>
+                  <p class="text-muted mb-0">Controla qué requisitos aparecen en el flujo de registro.</p>
+                </div>
+
+                <form id="registerSettingsForm" class="row g-3">
+                  <div class="col-md-6">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="regEnableMembershipPayment" />
+                      <label class="form-check-label" for="regEnableMembershipPayment">
+                        Habilitar pago de membresía
+                      </label>
+                    </div>
+                  </div>
+
+                  <div class="col-md-6">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="regRequireInfoDeclaration" />
+                      <label class="form-check-label" for="regRequireInfoDeclaration">
+                        Requerir declaración informativa
+                      </label>
+                    </div>
+                  </div>
+
+                  <div class="col-md-6">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="regRequireAssociationTerms" />
+                      <label class="form-check-label" for="regRequireAssociationTerms">
+                        Requerir términos de asociación
+                      </label>
+                    </div>
+                  </div>
+
+                  <div class="col-md-6">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="regRequireTerms" />
+                      <label class="form-check-label" for="regRequireTerms">
+                        Requerir términos generales
+                      </label>
+                    </div>
+                  </div>
+
+                  <div class="col-12">
+                    <label class="form-label">URL de términos</label>
+                    <input
+                      id="regTermsUrl"
+                      class="form-control"
+                      type="url"
+                      placeholder="https://..."
+                    />
+                  </div>
+
+                  <div class="col-12">
+                    <label class="form-label">Texto de declaración informativa</label>
+                    <textarea
+                      id="regInfoDeclarationText"
+                      class="form-control"
+                      rows="4"
+                      placeholder="Texto mostrado al usuario antes de aceptar..."
+                    ></textarea>
+                  </div>
+
+                  <div class="col-12">
+                    <button class="btn btn-primary" type="submit">
+                      <i class="bi bi-save me-1"></i>Guardar register settings
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </section>
+
+            <section class="card shadow-sm border-0 admin-inner-card">
+              <div class="card-body">
+                <div class="mb-3">
+                  <h3 class="h6 mb-1">Association details</h3>
+                  <p class="text-muted mb-0">
+                    Contenido editable del bloque institucional/association mostrado en registro.
+                  </p>
+                </div>
+
+                <form id="associationDetailsForm" class="row g-3">
+                  <div class="col-md-6">
+                    <div class="form-check form-switch mt-2">
+                      <input class="form-check-input" type="checkbox" id="associationDetailsEnabled" />
+                      <label class="form-check-label" for="associationDetailsEnabled">
+                        Mostrar bloque de association details
+                      </label>
+                    </div>
+                  </div>
+
+                  <div class="col-md-6">
+                    <label class="form-label">Título</label>
+                    <input
+                      id="associationDetailsTitle"
+                      class="form-control"
+                      type="text"
+                      placeholder="ASOVOCA"
+                    />
+                  </div>
+
+                  <div class="col-12">
+                    <label class="form-label">Intro HTML</label>
+                    <textarea
+                      id="associationDetailsIntroHtml"
+                      class="form-control"
+                      rows="6"
+                      placeholder="<p>Texto introductorio...</p>"
+                    ></textarea>
+                  </div>
+
+                  <div class="col-12">
+                    <label class="form-label">Título de montos / vigencia</label>
+                    <input
+                      id="associationDetailsFeesTitle"
+                      class="form-control"
+                      type="text"
+                      placeholder="Montos y vigencia:"
+                    />
+                  </div>
+
+                  <div class="col-12">
+                    <label class="form-label">Párrafo 1</label>
+                    <textarea
+                      id="associationDetailsFeeParagraph1"
+                      class="form-control"
+                      rows="5"
+                      placeholder="Texto del primer bloque de cuotas..."
+                    ></textarea>
+                  </div>
+
+                  <div class="col-12">
+                    <label class="form-label">Párrafo 2</label>
+                    <textarea
+                      id="associationDetailsFeeParagraph2"
+                      class="form-control"
+                      rows="4"
+                      placeholder="Texto del segundo bloque..."
+                    ></textarea>
+                  </div>
+
+                  <div class="col-12">
+                    <label class="form-label">Texto de excepciones</label>
+                    <textarea
+                      id="associationDetailsExceptionsText"
+                      class="form-control"
+                      rows="4"
+                      placeholder="Casos especiales, exoneraciones, etc."
+                    ></textarea>
+                  </div>
+
+                  <div class="col-12">
+                    <button class="btn btn-primary" type="submit">
+                      <i class="bi bi-save me-1"></i>Guardar association details
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </section>
           </div>
 
-          <div class="table-responsive">
-            <table class="table align-middle mb-0" id="playersTable">
-              <thead>
-                <tr>
-                  <th>Nombre</th>
-                  <th>Email</th>
-                  <th>Rol del Sistema</th>
-                  <th>UID</th>
-                  <th>Player ID</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td colspan="5" class="text-muted">Cargando…</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
         </div>
       </div>
     </section>
-
-    <!-- HERO SECTION -->
-    <section class="card shadow-sm mt-4">
-      <div class="card-body">
-        <div class="mb-3">
-          <h2 class="h5 mb-1">Hero del landing</h2>
-          <p class="text-muted mb-0">Título, descripción e imagen principal.</p>
-        </div>
-
-        <form id="heroSettingsForm" class="row g-3">
-          <div class="col-12">
-            <label class="form-label">Título</label>
-            <input id="heroTitleInput" class="form-control" type="text" />
-          </div>
-
-          <div class="col-12">
-            <label class="form-label">Descripción</label>
-            <textarea id="heroDescriptionInput" class="form-control" rows="4"></textarea>
-          </div>
-
-          <div class="col-md-8">
-            <label class="form-label">Image URL</label>
-            <input id="heroImageUrlInput" class="form-control" type="url" placeholder="https://..." />
-          </div>
-
-          <div class="col-md-4">
-            <label class="form-label">Subir imagen</label>
-            <input id="heroImageFileInput" class="form-control" type="file" accept="image/*" />
-          </div>
-
-          <div class="col-12">
-            <img id="heroImagePreview" class="img-fluid rounded border d-none" style="max-height:220px; object-fit:cover;" />
-          </div>
-
-          <div class="col-12">
-            <button class="btn btn-primary" type="submit">
-              Guardar hero
-            </button>
-          </div>
-        </form>
-      </div>
-    </section>
-
-    <!-- ENTRENAMIENTOS -->
-    <section class="card shadow-sm mt-4">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-          <div>
-            <h2 class="h5 mb-1">Entrenamientos y Juegos</h2>
-            <p class="text-muted mb-0">Contenido editable de la sección del landing.</p>
-          </div>
-        </div>
-
-        <form id="trainingsSettingsForm" class="row g-3 mb-4">
-          <div class="col-md-8">
-            <label class="form-label">Título de la sección</label>
-            <input id="trainingsTitle" class="form-control" type="text" placeholder="Entrenamientos y Juegos" />
-          </div>
-          <div class="col-md-4 d-flex align-items-end">
-            <button class="btn btn-outline-primary w-100" type="submit">
-              Guardar título
-            </button>
-          </div>
-        </form>
-
-        <form id="trainingBlockForm" class="row g-3 mb-3">
-          <div class="col-md-3">
-            <label class="form-label">Bloque</label>
-            <select id="trainingBlockId" class="form-select">
-              <option value="trainings">Entrenamientos</option>
-              <option value="games">Juegos y Torneos</option>
-            </select>
-          </div>
-
-          <div class="col-md-3">
-            <label class="form-label">Nombre visible</label>
-            <input id="trainingBlockName" class="form-control" type="text" placeholder="Entrenamientos" />
-          </div>
-
-          <div class="col-md-3">
-            <label class="form-label">Día</label>
-            <input id="trainingDay" class="form-control" type="text" placeholder="Domingos" />
-          </div>
-
-          <div class="col-md-2">
-            <label class="form-label">Hora</label>
-            <input id="trainingTime" class="form-control" type="text" placeholder="8:00 am – 10:30 am" />
-          </div>
-
-          <div class="col-md-1 d-flex align-items-end">
-            <button class="btn btn-primary w-100" type="submit">
-              <i class="bi bi-plus-lg"></i>
-            </button>
-          </div>
-        </form>
-
-        <div class="table-responsive">
-          <table class="table align-middle mb-0">
-            <thead>
-              <tr>
-                <th>Bloque</th>
-                <th>Nombre</th>
-                <th>Día</th>
-                <th>Hora</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="trainingsTableBody">
-              <tr>
-                <td colspan="5" class="text-muted">Cargando…</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- REDES SOCIALES -->
-    <section class="card shadow-sm mt-4">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-          <div>
-            <h2 class="h5 mb-1">Redes sociales</h2>
-            <p class="text-muted mb-0">Links que se mostrarán en el landing si tienen valor.</p>
-          </div>
-        </div>
-
-        <form id="socialLinksForm" class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label">Instagram</label>
-            <input id="socialInstagram" class="form-control" type="url" placeholder="https://instagram.com/..." />
-          </div>
-
-          <div class="col-md-6">
-            <label class="form-label">Facebook</label>
-            <input id="socialFacebook" class="form-control" type="url" placeholder="https://facebook.com/..." />
-          </div>
-
-          <div class="col-md-6">
-            <label class="form-label">TikTok</label>
-            <input id="socialTiktok" class="form-control" type="url" placeholder="https://tiktok.com/@..." />
-          </div>
-
-          <div class="col-md-6">
-            <label class="form-label">YouTube</label>
-            <input id="socialYoutube" class="form-control" type="url" placeholder="https://youtube.com/..." />
-          </div>
-
-          <div class="col-md-6">
-            <label class="form-label">X / Twitter</label>
-            <input id="socialX" class="form-control" type="url" placeholder="https://x.com/..." />
-          </div>
-
-          <div class="col-md-6">
-            <label class="form-label">WhatsApp / Canal</label>
-            <input id="socialWhatsapp" class="form-control" type="url" placeholder="https://wa.me/... o link del canal" />
-          </div>
-
-          <div class="col-md-6">
-            <label class="form-label">Texto del botón WhatsApp</label>
-            <input id="socialWhatsappLabel" class="form-control" type="text" placeholder="WhatsApp" />
-          </div>
-
-          <div class="col-12">
-            <button class="btn btn-primary" type="submit">
-              <i class="bi bi-save me-1"></i>Guardar redes
-            </button>
-          </div>
-        </form>
-      </div>
-    </section>
-
-    <!-- HONORS / LOGROS -->
-    <section class="card shadow-sm mt-4">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-          <div>
-            <h2 class="h5 mb-1">Palmarés</h2>
-            <p class="text-muted mb-0">Estos logros se cargarán desde Firebase en el index.</p>
-          </div>
-        </div>
-
-        <form id="honorsSettingsForm" class="row g-3 mb-4">
-          <div class="col-md-8">
-            <label class="form-label">Título de la sección</label>
-            <input id="honorsTitle" class="form-control" type="text" placeholder="Palmarés" />
-          </div>
-          <div class="col-md-4 d-flex align-items-end">
-            <button class="btn btn-outline-primary w-100" type="submit">
-              Guardar título
-            </button>
-          </div>
-        </form>
-
-        <form id="honorForm" class="row g-3 mb-3">
-          <div class="col-md-4">
-            <label class="form-label">Posición</label>
-            <input id="honorPosition" class="form-control" type="text" placeholder="Primer Lugar" />
-          </div>
-
-          <div class="col-md-4">
-            <label class="form-label">Torneo</label>
-            <input id="honorTournament" class="form-control" type="text" placeholder="Copa Invierno" />
-          </div>
-
-          <div class="col-md-2">
-            <label class="form-label">Año</label>
-            <input id="honorYear" class="form-control" type="number" min="1900" max="2100" placeholder="2025" />
-          </div>
-
-          <div class="col-md-2 d-flex align-items-end">
-            <button class="btn btn-primary w-100" type="submit">
-              <i class="bi bi-plus-lg me-1"></i>Agregar
-            </button>
-          </div>
-        </form>
-
-        <div class="table-responsive">
-          <table class="table align-middle mb-0">
-            <thead>
-              <tr>
-                <th>Posición</th>
-                <th>Torneo</th>
-                <th>Año</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="honorsTableBody">
-              <tr>
-                <td colspan="4" class="text-muted">Cargando…</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- NUEVA SECCIÓN: ACTIVIDAD DESTACADA -->
-    <section class="card shadow-sm mt-4">
-      <div class="card-body">
-        <div class="mb-3">
-          <h2 class="h5 mb-1">Actividad destacada</h2>
-          <p class="text-muted mb-0">
-            Usala para rifas activas, clínicas, campamentos o cualquier CTA temporal.
-          </p>
-        </div>
-
-        <form id="featuredActivitySettingsForm" class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label">Título</label>
-            <input
-              id="featuredActivityTitleInput"
-              class="form-control"
-              type="text"
-              placeholder="Clínica de Ultimate para principiantes"
-            />
-          </div>
-
-          <div class="col-md-6">
-            <label class="form-label">Subtítulo / información</label>
-            <input
-              id="featuredActivitySubtitleInput"
-              class="form-control"
-              type="text"
-              placeholder="Sábado 12 de abril · cupos limitados · abierta a todo público"
-            />
-          </div>
-
-          <div class="col-md-4">
-            <div class="form-check form-switch mt-4 pt-2">
-              <input class="form-check-input" type="checkbox" id="featuredActivityCtaEnabledInput" />
-              <label class="form-check-label" for="featuredActivityCtaEnabledInput">
-                Mostrar botón
-              </label>
-            </div>
-          </div>
-
-          <div class="col-md-4">
-            <label class="form-label">Texto del botón</label>
-            <input
-              id="featuredActivityCtaTextInput"
-              class="form-control"
-              type="text"
-              placeholder="Inscribirme"
-            />
-          </div>
-
-          <div class="col-md-4">
-            <label class="form-label">Link del botón</label>
-            <input
-              id="featuredActivityCtaUrlInput"
-              class="form-control"
-              type="url"
-              placeholder="https://..."
-            />
-          </div>
-
-          <div class="col-12">
-            <button class="btn btn-primary" type="submit">
-              Guardar actividad destacada
-            </button>
-          </div>
-        </form>
-      </div>
-    </section>
-
-    <!-- EVENTOS -->
-    <section class="card shadow-sm mt-4">
-      <div class="card-body">
-        <div class="mb-3">
-          <h2 class="h5 mb-1">Torneo / Evento principal</h2>
-          <p class="text-muted mb-0">Contenido editable de la sección pública.</p>
-        </div>
-
-        <form id="eventsSettingsForm" class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label">Título</label>
-            <input id="eventTitleInput" class="form-control" type="text" />
-          </div>
-
-          <div class="col-md-6">
-            <label class="form-label">Subtítulo</label>
-            <input id="eventSubtitleInput" class="form-control" type="text" />
-          </div>
-
-          <div class="col-md-4">
-            <label class="form-label">Imagen 1</label>
-            <input id="eventImage1Input" class="form-control" type="url" />
-          </div>
-
-          <div class="col-md-4">
-            <label class="form-label">Imagen 2</label>
-            <input id="eventImage2Input" class="form-control" type="url" />
-          </div>
-
-          <div class="col-md-4">
-            <label class="form-label">Imagen 3</label>
-            <input id="eventImage3Input" class="form-control" type="url" />
-          </div>
-
-          <div class="col-md-4">
-            <div class="form-check form-switch mt-4 pt-2">
-              <input class="form-check-input" type="checkbox" id="eventCtaEnabledInput" />
-              <label class="form-check-label" for="eventCtaEnabledInput">
-                Mostrar botón
-              </label>
-            </div>
-          </div>
-
-          <div class="col-md-4">
-            <label class="form-label">Texto del botón</label>
-            <input id="eventCtaTextInput" class="form-control" type="text" placeholder="Registro abierto" />
-          </div>
-
-          <div class="col-md-4">
-            <label class="form-label">Link del botón</label>
-            <input id="eventCtaUrlInput" class="form-control" type="url" placeholder="https://..." />
-          </div>
-
-          <div class="col-12">
-            <button class="btn btn-primary" type="submit">
-              Guardar torneo
-            </button>
-          </div>
-        </form>
-      </div>
-    </section>
-
-    <!-- UNIFORMES -->
-    <section class="card shadow-sm mt-4">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-          <div>
-            <h2 class="h5 mb-1">Uniformes</h2>
-            <p class="text-muted mb-0">Sección y productos del landing cargados desde Firebase.</p>
-          </div>
-        </div>
-
-        <form id="uniformSettingsForm" class="row g-3 mb-4">
-          <div class="col-md-4">
-            <label class="form-label">Título</label>
-            <input id="uniformsTitle" class="form-control" type="text" placeholder="Uniformes del Equipo" />
-          </div>
-
-          <div class="col-md-4">
-            <label class="form-label">Subtítulo</label>
-            <input id="uniformsSubtitle" class="form-control" type="text" placeholder="Compra tu indumentaria oficial del club" />
-          </div>
-
-          <div class="col-md-2">
-            <label class="form-label">Texto botón</label>
-            <input id="uniformsCtaLabel" class="form-control" type="text" placeholder="Comprar" />
-          </div>
-
-          <div class="col-md-2">
-            <label class="form-label">Order URL</label>
-            <input id="uniformsOrderUrl" class="form-control" type="url" placeholder="https://..." />
-          </div>
-
-          <div class="col-12">
-            <button class="btn btn-outline-primary" type="submit">
-              Guardar configuración
-            </button>
-          </div>
-        </form>
-
-        <form id="uniformForm" class="row g-3 mb-3">
-          <div class="col-md-4">
-            <label class="form-label">Nombre</label>
-            <input id="uniformName" class="form-control" type="text" placeholder="Camisa Oficial" />
-          </div>
-
-          <div class="col-md-3">
-            <label class="form-label">Categoría</label>
-            <input id="uniformCategory" class="form-control" type="text" placeholder="camisa" />
-          </div>
-
-          <div class="col-md-4">
-            <label class="form-label">Imagen URL</label>
-            <input id="uniformImage" class="form-control" type="url" placeholder="/img/camisas/classic.PNG o https://..." />
-          </div>
-
-          <div class="col-md-1 d-flex align-items-end">
-            <button class="btn btn-primary w-100" type="submit">
-              <i class="bi bi-plus-lg"></i>
-            </button>
-          </div>
-        </form>
-
-        <div class="table-responsive">
-          <table class="table align-middle mb-0">
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Categoría</th>
-                <th>Imagen</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="uniformsTableBody">
-              <tr>
-                <td colspan="4" class="text-muted">Cargando…</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
   </main>
 
   <div class="modal fade" id="approveUserModal" tabindex="-1" aria-hidden="true">
