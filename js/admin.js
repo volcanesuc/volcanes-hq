@@ -124,6 +124,7 @@ const $ = {
   regRequireAssociationTerms: document.getElementById("regRequireAssociationTerms"),
   regRequireTerms: document.getElementById("regRequireTerms"),
   regTermsUrl: document.getElementById("regTermsUrl"),
+  regAssocTermsUrl: document.getElementById("regAssocTermsUrl"),
   regInfoDeclarationText: document.getElementById("regInfoDeclarationText"),
 
   associationDetailsForm: document.getElementById("associationDetailsForm"),
@@ -1538,6 +1539,10 @@ async function loadRegisterSettingsAdmin() {
       $.regTermsUrl.value = data.termsUrl || "";
     }
 
+    if ($.regAssocTermsUrl) {
+      $.regAssocTermsUrl.value = data.associationTermsUrl || "";
+    }
+
     if ($.regInfoDeclarationText) {
       $.regInfoDeclarationText.value = data.infoDeclarationText || "";
     }
@@ -1588,6 +1593,7 @@ async function saveRegisterSettings(ev) {
         requireAssociationTerms: !!$.regRequireAssociationTerms?.checked,
         requireTerms: !!$.regRequireTerms?.checked,
         termsUrl: safeUrl($.regTermsUrl?.value || ""),
+        assocTermsUrl: safeUrl($.regAssocTermsUrl?.value || ""),
         infoDeclarationText: ($.regInfoDeclarationText?.value || "").trim(),
         updatedAt: serverTimestamp(),
       },
