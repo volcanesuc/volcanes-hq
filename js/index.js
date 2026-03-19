@@ -43,6 +43,7 @@ function showPendingState(kind = "player") {
   }
 
   const sectionsToHide = [
+    "featuredActivitySection",
     "eventsSection",
     "entrenamientos",
     "honorsSection",
@@ -308,14 +309,16 @@ function setSectionVisible(sectionId, visible) {
 
 function applyIndexSettings(indexSettings = {}) {
   const defaults = {
-    show_events: true,
-    show_trainings: true,
-    show_honors: true,
-    show_uniforms: true,
+    show_featured_activity: false,
+    show_events: false,
+    show_trainings: false,
+    show_honors: false,
+    show_uniforms: false,
   };
 
   const s = { ...defaults, ...indexSettings };
 
+  setSectionVisible("featuredActivitySection", s.show_featured_activity);
   setSectionVisible("eventsSection", s.show_events);
   setSectionVisible("entrenamientos", s.show_trainings);
   setSectionVisible("honorsSection", s.show_honors);
@@ -477,6 +480,64 @@ function renderEvents(eventsData = {}) {
   }
 }
 
+/* =========================================================
+   FEATURED ACTIVITY
+========================================================= */
+async function loadFeaturedActivityData() {
+  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "featured_activity")).catch(() => null);
+  const data = snap?.exists?.() ? (snap.data() || {}) : {};
+
+  return {
+    title: data.title || "",
+    subtitle: data.subtitle || "",
+    ctaEnabled: data.ctaEnabled === true,
+    ctaText: data.ctaText || "",
+    ctaUrl: data.ctaUrl || "",
+  };
+}
+
+function renderFeaturedActivity(featuredData = {}) {
+  const section = document.getElementById("featuredActivitySection");
+  if (!section) return;
+
+  const titleEl = section.querySelector("h2");
+  const subtitleEl = section.querySelector("p");
+  const ctaEl = document.getElementById("featuredActivityCta");
+
+  const hasTitle = !!String(featuredData.title || "").trim();
+  const hasSubtitle = !!String(featuredData.subtitle || "").trim();
+  const hasContent = hasTitle || hasSubtitle;
+
+  if (!hasContent) {
+    section.style.display = "none";
+    return;
+  }
+
+  section.style.display = "";
+
+  if (titleEl) {
+    titleEl.textContent = featuredData.title || "";
+  }
+
+  if (subtitleEl) {
+    subtitleEl.textContent = featuredData.subtitle || "";
+  }
+
+  if (ctaEl) {
+    const ctaUrl = safeUrl(featuredData.ctaUrl || "");
+    const showCta = featuredData.ctaEnabled === true && !!ctaUrl;
+
+    if (showCta) {
+      ctaEl.classList.remove("d-none");
+      ctaEl.href = ctaUrl;
+      ctaEl.textContent = featuredData.ctaText || "Ver más";
+    } else {
+      ctaEl.classList.add("d-none");
+      ctaEl.removeAttribute("href");
+      ctaEl.textContent = "";
+    }
+  }
+}
 /* =========================================================
    TRAININGS & GAMES
 ========================================================= */
@@ -738,9 +799,18 @@ async function bootNormalLanding() {
         if (!user?.uid) {
           await loadIndexSettings();
 
-          const [socials, heroData, eventsData, honorsData, uniformsData, trainingsData] = await Promise.all([
+          const [
+            socials,
+            heroData,
+            featuredActivityData,
+            eventsData,
+            honorsData,
+            uniformsData,
+            trainingsData
+          ] = await Promise.all([
             loadSocialLinks(),
             loadHeroData(),
+            loadFeaturedActivityData(),
             loadEventsData(),
             loadHonorsData(),
             loadUniformsData(),
@@ -749,6 +819,7 @@ async function bootNormalLanding() {
 
           renderHero(heroData);
           renderSocials(socials);
+          renderFeaturedActivity(featuredActivityData);
           renderTrainings(trainingsData, socials);
           renderEvents(eventsData);
           renderHonors(honorsData);
@@ -791,9 +862,18 @@ async function bootNormalLanding() {
 
         await loadIndexSettings();
 
-        const [socials, heroData, eventsData, honorsData, uniformsData, trainingsData] = await Promise.all([
+        const [
+          socials,
+          heroData,
+          featuredActivityData,
+          eventsData,
+          honorsData,
+          uniformsData,
+          trainingsData
+        ] = await Promise.all([
           loadSocialLinks(),
           loadHeroData(),
+          loadFeaturedActivityData(),
           loadEventsData(),
           loadHonorsData(),
           loadUniformsData(),
@@ -802,6 +882,7 @@ async function bootNormalLanding() {
 
         renderHero(heroData);
         renderSocials(socials);
+        renderFeaturedActivity(featuredActivityData);
         renderTrainings(trainingsData, socials);
         renderEvents(eventsData);
         renderHonors(honorsData);
