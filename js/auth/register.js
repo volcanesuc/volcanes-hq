@@ -1,4 +1,3 @@
-// /js/auth/register.js
 import { db, auth, storage } from "./firebase.js";
 import { logout } from "./auth.js";
 import { loadHeader } from "../components/header.js";
@@ -6,7 +5,6 @@ import { APP_CONFIG } from "../config/config.js";
 import { showLoader, hideLoader } from "/js/ui/loader.js";
 
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
 import {
   collection,
   doc,
@@ -18,13 +16,15 @@ import {
   serverTimestamp,
   arrayUnion,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
 import {
   ref as sRef,
   uploadBytesResumable,
   getDownloadURL,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
+/* =========================
+   UI boot safety
+========================= */
 function releaseUI() {
   document.documentElement.classList.remove("preload");
   document.body.classList.remove("loading");
@@ -34,10 +34,7 @@ releaseUI();
 
 const url = new URL(location.href);
 const created = url.searchParams.get("created");
-
-if (created === "0" || created === "1") {
-  releaseUI();
-}
+if (created === "0" || created === "1") releaseUI();
 
 setTimeout(releaseUI, 2000);
 window.addEventListener("error", releaseUI);
@@ -66,16 +63,17 @@ const $ = {
 
   registerTypeRadios: document.querySelectorAll('input[name="registerType"]'),
   registerTypePickups: document.getElementById("registerTypePickups"),
-  registerTypeVolcanes: document.getElementById("registerTypeVolcanes"),
-  registerTypeAsovoca: document.getElementById("registerTypeAsovoca"),
+  registerTypeClubPlayer: document.getElementById("registerTypeClubPlayer"),
+  registerTypeAssociationMember: document.getElementById("registerTypeAssociationMember"),
 
   cardPickups: document.getElementById("card-pickups"),
-  cardVolcanes: document.getElementById("card-volcanes"),
-  cardAsovoca: document.getElementById("card-asovoca"),
+  cardClubPlayer: document.getElementById("card-club-player"),
+  cardAssociationMember: document.getElementById("card-association-member"),
 
   commonSection: document.getElementById("commonSection"),
-  volcanesSection: document.getElementById("volcanesSection"),
-  asovocaSection: document.getElementById("asovocaSection"),
+  identitySection: document.getElementById("identitySection"),
+  associationSection: document.getElementById("associationSection"),
+  associationDetailsSection: document.getElementById("associationDetailsSection"),
   committeeFields: document.getElementById("committeeFields"),
 
   firstName: document.getElementById("firstName"),
@@ -84,7 +82,6 @@ const $ = {
   idType: document.getElementById("idType"),
   idNumber: document.getElementById("idNumber"),
   phone: document.getElementById("phone"),
-
   emergencyContactName: document.getElementById("emergencyContactName"),
 
   province: document.getElementById("province"),
@@ -106,6 +103,10 @@ const $ = {
   termsWrap: document.getElementById("termsWrap"),
   termsAccepted: document.getElementById("termsAccepted"),
   termsLink: document.getElementById("termsLink"),
+
+  associationTermsWrap: document.getElementById("associationTermsWrap"),
+  associationTermsAccepted: document.getElementById("associationTermsAccepted"),
+  associationTermsLink: document.getElementById("associationTermsLink"),
 };
 
 let PUBLIC_CFG = {
@@ -113,86 +114,25 @@ let PUBLIC_CFG = {
   requireTerms: false,
   requireInfoDeclaration: false,
   termsUrl: null,
+  requireAssociationTerms: false,
+  associationTermsUrl: null,
+  associationDetails: {},
 };
 
-function isVisible(el) {
-  if (!el) return false;
-  if (el.classList?.contains("d-none")) return false;
-  if (el.hidden) return false;
-  return !!(el.offsetParent || el.getClientRects().length);
-}
-
-function hasValue(el) {
-  if (!el) return false;
-  if (el.type === "checkbox") return !!el.checked;
-  if (el.type === "file") return (el.files?.length || 0) > 0;
-  return String(el.value || "").trim().length > 0;
-}
-
-function setSubmitEnabled(enabled) {
-  if (!$.submitBtn) return;
-
-  $.submitBtn.disabled = !enabled;
-  $.submitBtn.classList.toggle("disabled", !enabled);
-  $.submitBtn.classList.remove("btn-primary", "btn-success", "btn-secondary");
-  $.submitBtn.classList.add(enabled ? "btn-success" : "btn-secondary");
-}
-
-function getSelectedRegisterType() {
-  const checked = [...$.registerTypeRadios].find((r) => r.checked);
-  return checked?.value || "";
-}
-
-function isPickups() {
-  return getSelectedRegisterType() === "pickups";
-}
-
-function isVolcanes() {
-  return getSelectedRegisterType() === "volcanes";
-}
-
-function isAsovoca() {
-  return getSelectedRegisterType() === "asovoca";
-}
-
-function requiresVolcanesExtraFields() {
-  return isVolcanes() || isAsovoca();
-}
-
-function computeFormComplete() {
-  const registerType = getSelectedRegisterType();
-  if (!registerType) return false;
-
-  const requiredEls = [
-    $.firstName,
-    $.lastName,
-    $.phone,
-    $.emergencyContactName,
-  ];
-
-  if (requiresVolcanesExtraFields()) {
-    requiredEls.push($.email, $.idType, $.idNumber, $.province, $.canton);
-  }
-
-  if (isAsovoca() && PUBLIC_CFG.enableMembershipPayment) {
-    requiredEls.push($.planId, $.proofFile);
-  }
-
-  if (PUBLIC_CFG.requireInfoDeclaration) requiredEls.push($.infoDeclaration);
-  if (PUBLIC_CFG.requireTerms) requiredEls.push($.termsAccepted);
-
-  return requiredEls
-    .filter((el) => isVisible(el))
-    .every((el) => hasValue(el));
-}
-
-function updateSubmitState() {
-  setSubmitEnabled(computeFormComplete());
-}
+let plansById = new Map();
 
 /* =========================
    Helpers
 ========================= */
+function esc(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 function showAlert(msg, type = "danger") {
   if (!$.alertBox) return;
   $.alertBox.className = `alert alert-${type}`;
@@ -208,12 +148,50 @@ function norm(s) {
   return (s || "").toString().trim();
 }
 
+function normLower(s) {
+  return norm(s).toLowerCase();
+}
+
 function cleanIdNum(s) {
   return norm(s).replace(/\s+/g, "");
 }
 
-function normLower(s) {
-  return norm(s).toLowerCase();
+function isVisible(el) {
+  if (!el) return false;
+  if (el.classList?.contains("d-none")) return false;
+  if (el.hidden) return false;
+  return !!(el.offsetParent || el.getClientRects().length);
+}
+
+function hasValue(el) {
+  if (!el) return false;
+  if (el.type === "checkbox") return !!el.checked;
+  if (el.type === "file") return (el.files?.length || 0) > 0;
+  return String(el.value || "").trim().length > 0;
+}
+
+function setRequired(el, required) {
+  if (!el) return;
+  if (required) el.setAttribute("required", "required");
+  else el.removeAttribute("required");
+}
+
+function setEnabled(el, enabled) {
+  if (!el) return;
+  el.disabled = !enabled;
+}
+
+function fmtMoney(n, cur = "CRC") {
+  const v = Number(n);
+  if (Number.isNaN(v)) return "—";
+  return new Intl.NumberFormat("es-CR", {
+    style: "currency",
+    currency: cur,
+  }).format(v);
+}
+
+function safeSeasonFromToday() {
+  return String(new Date().getFullYear());
 }
 
 function normalizePlayerStatus(data) {
@@ -231,15 +209,107 @@ function normalizeAssociationStatus(data) {
   return "";
 }
 
-function fmtMoney(n, cur = "CRC") {
-  const v = Number(n);
-  if (Number.isNaN(v)) return "—";
-  return new Intl.NumberFormat("es-CR", {
-    style: "currency",
-    currency: cur,
-  }).format(v);
+function setSubmitEnabled(enabled) {
+  if (!$.submitBtn) return;
+  $.submitBtn.disabled = !enabled;
+  $.submitBtn.classList.toggle("disabled", !enabled);
+  $.submitBtn.classList.remove("btn-primary", "btn-success", "btn-secondary");
+  $.submitBtn.classList.add(enabled ? "btn-success" : "btn-secondary");
 }
 
+function setSubmittingState(isSubmitting, label = "Enviar registro") {
+  if (!$.submitBtn) return;
+
+  $.submitBtn.disabled = isSubmitting;
+
+  if (isSubmitting) {
+    $.submitBtn.dataset.originalHtml ||= $.submitBtn.innerHTML;
+    $.submitBtn.innerHTML = `
+      <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+      ${esc(label)}
+    `;
+  } else if ($.submitBtn.dataset.originalHtml) {
+    $.submitBtn.innerHTML = $.submitBtn.dataset.originalHtml;
+  }
+
+  if (!isSubmitting) updateSubmitState();
+}
+
+function getSelectedRegisterType() {
+  const checked = [...$.registerTypeRadios].find((r) => r.checked);
+  return checked?.value || "";
+}
+
+function isPickups() {
+  return getSelectedRegisterType() === "pickups";
+}
+
+function isClubPlayer() {
+  return getSelectedRegisterType() === "club_player";
+}
+
+function isAssociationMember() {
+  return getSelectedRegisterType() === "association_member";
+}
+
+function needsIdentityFields() {
+  return isClubPlayer() || isAssociationMember();
+}
+
+function shouldEnableMembershipPaymentUI() {
+  return PUBLIC_CFG.enableMembershipPayment && isAssociationMember();
+}
+
+function computeFormComplete() {
+  const registerType = getSelectedRegisterType();
+  if (!registerType) return false;
+
+  const requiredEls = [
+    $.firstName,
+    $.lastName,
+    $.phone,
+    $.emergencyContactName,
+  ];
+
+  if (needsIdentityFields()) {
+    requiredEls.push($.email, $.idType, $.idNumber, $.province, $.canton);
+  }
+
+  if (shouldEnableMembershipPaymentUI()) {
+    requiredEls.push($.planId, $.proofFile);
+  }
+
+  if (PUBLIC_CFG.requireInfoDeclaration) {
+    requiredEls.push($.infoDeclaration);
+  }
+
+  if (PUBLIC_CFG.requireTerms) {
+    requiredEls.push($.termsAccepted);
+  }
+
+  if (isAssociationMember() && PUBLIC_CFG.requireAssociationTerms) {
+    requiredEls.push($.associationTermsAccepted);
+  }
+
+  return requiredEls
+    .filter((el) => isVisible(el))
+    .every((el) => hasValue(el));
+}
+
+function updateSubmitState() {
+  setSubmitEnabled(computeFormComplete());
+}
+
+function makePayCode(len = 7) {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let out = "";
+  for (let i = 0; i < len; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  return out;
+}
+
+/* =========================
+   Proof status
+========================= */
 function ensureProofStatusBox() {
   let el = document.getElementById("proofUploadStatus");
   if (el) return el;
@@ -247,7 +317,6 @@ function ensureProofStatusBox() {
   el = document.createElement("div");
   el.id = "proofUploadStatus";
   el.className = "small mt-2 d-none";
-
   $.proofFile?.insertAdjacentElement("afterend", el);
   return el;
 }
@@ -260,19 +329,18 @@ function setProofStatus(message, type = "muted", withSpinner = false) {
     type === "danger"
       ? "text-danger"
       : type === "success"
-      ? "text-success"
-      : type === "warning"
-      ? "text-warning"
-      : "text-muted";
+        ? "text-success"
+        : type === "warning"
+          ? "text-warning"
+          : "text-muted";
 
   el.className = `small mt-2 ${cls}`;
-
   el.innerHTML = withSpinner
     ? `
       <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-      <span>${message}</span>
+      <span>${esc(message)}</span>
     `
-    : `<span>${message}</span>`;
+    : `<span>${esc(message)}</span>`;
 
   el.classList.remove("d-none");
 }
@@ -284,121 +352,8 @@ function clearProofStatus() {
   el.classList.add("d-none");
 }
 
-function setSubmittingState(isSubmitting, label = "Enviar registro") {
-  if (!$.submitBtn) return;
-
-  $.submitBtn.disabled = isSubmitting;
-
-  if (isSubmitting) {
-    $.submitBtn.dataset.originalHtml ||= $.submitBtn.innerHTML;
-    $.submitBtn.innerHTML = `
-      <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-      ${label}
-    `;
-  } else if ($.submitBtn.dataset.originalHtml) {
-    $.submitBtn.innerHTML = $.submitBtn.dataset.originalHtml;
-  }
-
-  if (!isSubmitting) {
-    updateSubmitState();
-  }
-}
-
-function makePayCode(len = 7) {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let out = "";
-  for (let i = 0; i < len; i++) out += chars[Math.floor(Math.random() * chars.length)];
-  return out;
-}
-
-function safeSeasonFromToday() {
-  return String(new Date().getFullYear());
-}
-
-function setRequired(el, required) {
-  if (!el) return;
-  if (required) el.setAttribute("required", "required");
-  else el.removeAttribute("required");
-}
-
-function setEnabled(el, enabled) {
-  if (!el) return;
-  el.disabled = !enabled;
-}
-
-function toYmd(tsLike) {
-  try {
-    if (!tsLike) return null;
-    if (typeof tsLike === "string" && /^\d{4}-\d{2}-\d{2}$/.test(tsLike)) return tsLike;
-    const d = typeof tsLike?.toDate === "function" ? tsLike.toDate() : new Date(tsLike);
-    if (Number.isNaN(d.getTime())) return null;
-    return d.toISOString().slice(0, 10);
-  } catch {
-    return null;
-  }
-}
-
-function shouldEnableMembershipPaymentUI() {
-  return PUBLIC_CFG.enableMembershipPayment && isAsovoca();
-}
-
-function refreshRegisterTypeUI() {
-  const type = getSelectedRegisterType();
-
-  $.cardPickups?.classList.toggle("active", type === "pickups");
-  $.cardVolcanes?.classList.toggle("active", type === "volcanes");
-  $.cardAsovoca?.classList.toggle("active", type === "asovoca");
-
-  if (!type) {
-    $.commonSection?.classList.add("d-none");
-    $.volcanesSection?.classList.add("d-none");
-    $.asovocaSection?.classList.add("d-none");
-    clearProofStatus();
-    updateSubmitState();
-    return;
-  }
-
-  $.commonSection?.classList.remove("d-none");
-  $.volcanesSection?.classList.toggle("d-none", !requiresVolcanesExtraFields());
-  $.asovocaSection?.classList.toggle("d-none", type !== "asovoca");
-
-  refreshMembershipPaymentUI();
-  refreshCommitteeUI();
-  updateSubmitState();
-}
-
-function refreshCommitteeUI() {
-  const show = isAsovoca() && !!$.committeeInterest?.checked;
-  $.committeeFields?.classList.toggle("d-none", !show);
-}
-
-function refreshMembershipPaymentUI() {
-  const enabled = shouldEnableMembershipPaymentUI();
-
-  if (!enabled) {
-    $.paymentSection?.classList.add("d-none");
-    setEnabled($.planId, false);
-    setEnabled($.proofFile, false);
-    setRequired($.planId, false);
-    setRequired($.proofFile, false);
-
-    if ($.planId) $.planId.value = "";
-    if ($.proofFile) $.proofFile.value = "";
-    if ($.planMeta) $.planMeta.textContent = "";
-    clearProofStatus();
-  } else {
-    $.paymentSection?.classList.remove("d-none");
-    setEnabled($.planId, true);
-    setEnabled($.proofFile, true);
-    setRequired($.planId, true);
-    setRequired($.proofFile, true);
-  }
-
-  updateSubmitState();
-}
-
 /* =========================
-   Debug helpers
+   Firebase debug helpers
 ========================= */
 function firebaseErrMsg(e) {
   const code = e?.code ? String(e.code) : "";
@@ -407,39 +362,30 @@ function firebaseErrMsg(e) {
   if (code.includes("storage/unauthorized")) {
     return "No tienes permiso para subir el comprobante. Revisa las Storage Rules para membership_submissions/{uid}/...";
   }
-
   if (code.includes("storage/canceled")) {
     return "La subida del comprobante fue cancelada.";
   }
-
   if (code.includes("storage/retry-limit-exceeded")) {
     return "La subida tardó demasiado o falló por conexión. Intenta con una red más estable o un archivo más liviano.";
   }
-
   if (code.includes("storage/invalid-checksum")) {
     return "El archivo subido llegó corrupto. Intenta subirlo otra vez.";
   }
-
   if (code.includes("storage/quota-exceeded")) {
     return "El bucket de Storage superó su cuota.";
   }
-
   if (code.includes("storage/object-not-found")) {
     return "No se encontró el archivo en Storage.";
   }
-
   if (code.includes("permission-denied")) {
     return "Permisos insuficientes (rules).";
   }
-
   if (code.includes("unauthenticated")) {
     return "No hay sesión activa.";
   }
-
   if (code.includes("failed-precondition")) {
     return "Falta un índice o una precondición de Firestore.";
   }
-
   if (code.includes("invalid-argument")) {
     return "Hay un dato inválido en la solicitud.";
   }
@@ -456,6 +402,65 @@ async function step(name, fn) {
     console.error(`❌ ${name}`, e);
     throw new Error(`${name}: ${firebaseErrMsg(e)}`);
   }
+}
+
+/* =========================
+   UI state
+========================= */
+function refreshCommitteeUI() {
+  const show = isAssociationMember() && !!$.committeeInterest?.checked;
+  $.committeeFields?.classList.toggle("d-none", !show);
+}
+
+function refreshMembershipPaymentUI() {
+  const enabled = shouldEnableMembershipPaymentUI();
+
+  if (!enabled) {
+    $.paymentSection?.classList.add("d-none");
+    setEnabled($.planId, false);
+    setEnabled($.proofFile, false);
+    setRequired($.planId, false);
+    setRequired($.proofFile, false);
+
+    if ($.planId) $.planId.value = "";
+    if ($.proofFile) $.proofFile.value = "";
+    if ($.planMeta) $.planMeta.textContent = "";
+
+    clearProofStatus();
+  } else {
+    $.paymentSection?.classList.remove("d-none");
+    setEnabled($.planId, true);
+    setEnabled($.proofFile, true);
+    setRequired($.planId, true);
+    setRequired($.proofFile, true);
+  }
+
+  updateSubmitState();
+}
+
+function refreshRegisterTypeUI() {
+  const type = getSelectedRegisterType();
+
+  $.cardPickups?.classList.toggle("active", type === "pickups");
+  $.cardClubPlayer?.classList.toggle("active", type === "club_player");
+  $.cardAssociationMember?.classList.toggle("active", type === "association_member");
+
+  if (!type) {
+    $.commonSection?.classList.add("d-none");
+    $.identitySection?.classList.add("d-none");
+    $.associationSection?.classList.add("d-none");
+    clearProofStatus();
+    updateSubmitState();
+    return;
+  }
+
+  $.commonSection?.classList.remove("d-none");
+  $.identitySection?.classList.toggle("d-none", !needsIdentityFields());
+  $.associationSection?.classList.toggle("d-none", !isAssociationMember());
+
+  refreshMembershipPaymentUI();
+  refreshCommitteeUI();
+  updateSubmitState();
 }
 
 /* =========================
@@ -503,23 +508,18 @@ async function ensureUserDoc(uid, email, user = auth.currentUser) {
       email: email || user?.email || null,
       displayName: user?.displayName || null,
       photoURL: user?.photoURL || null,
-
       onboardingComplete: false,
       isPlayerActive: false,
       canUsePickups: true,
       role: "viewer",
-
       playerStatus: null,
       associationStatus: null,
-
       playerId: null,
       memberId: null,
       profile: {},
       consents: {},
-
       membershipIds: [],
       currentMembership: null,
-
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       lastSignInAt: serverTimestamp(),
@@ -633,6 +633,11 @@ async function saveUserProfileAndConsents({
       requireTerms: !!consents.requireTerms,
       termsAccepted: consents.termsAccepted === true,
       termsUrl: consents.termsUrl || null,
+
+      requireAssociationTerms: !!consents.requireAssociationTerms,
+      associationTermsAccepted: consents.associationTermsAccepted === true,
+      associationTermsUrl: consents.associationTermsUrl || null,
+
       acceptedAt: serverTimestamp(),
     },
 
@@ -651,35 +656,34 @@ async function saveUserProfileAndConsents({
 }
 
 /* =========================
-   Costa Rica: Provincia/Cantón
+   Costa Rica location data
 ========================= */
 const CR = {
   "San José": [
     "San José", "Escazú", "Desamparados", "Puriscal", "Tarrazú", "Aserrí", "Mora",
-    "Goicoechea", "Santa Ana", "Alajuelita", "Vásquez de Coronado", "Acosta",
-    "Tibás", "Moravia", "Montes de Oca", "Turrubares", "Dota", "Curridabat",
-    "Pérez Zeledón", "León Cortés Castro",
+    "Goicoechea", "Santa Ana", "Alajuelita", "Vásquez de Coronado", "Acosta", "Tibás",
+    "Moravia", "Montes de Oca", "Turrubares", "Dota", "Curridabat", "Pérez Zeledón",
+    "León Cortés Castro",
   ],
   "Alajuela": [
-    "Alajuela", "San Ramón", "Grecia", "San Mateo", "Atenas", "Naranjo",
-    "Palmares", "Poás", "Orotina", "San Carlos", "Zarcero", "Sarchí", "Upala",
-    "Los Chiles", "Guatuso", "Río Cuarto",
+    "Alajuela", "San Ramón", "Grecia", "San Mateo", "Atenas", "Naranjo", "Palmares",
+    "Poás", "Orotina", "San Carlos", "Zarcero", "Sarchí", "Upala", "Los Chiles",
+    "Guatuso", "Río Cuarto",
   ],
   "Cartago": [
-    "Cartago", "Paraíso", "La Unión", "Jiménez", "Turrialba", "Alvarado",
-    "Oreamuno", "El Guarco",
+    "Cartago", "Paraíso", "La Unión", "Jiménez", "Turrialba", "Alvarado", "Oreamuno", "El Guarco",
   ],
   "Heredia": [
-    "Heredia", "Barva", "Santo Domingo", "Santa Bárbara", "San Rafael",
-    "San Isidro", "Belén", "Flores", "San Pablo", "Sarapiquí",
+    "Heredia", "Barva", "Santo Domingo", "Santa Bárbara", "San Rafael", "San Isidro",
+    "Belén", "Flores", "San Pablo", "Sarapiquí",
   ],
   "Guanacaste": [
-    "Liberia", "Nicoya", "Santa Cruz", "Bagaces", "Carrillo", "Cañas",
-    "Abangares", "Tilarán", "Nandayure", "La Cruz", "Hojancha",
+    "Liberia", "Nicoya", "Santa Cruz", "Bagaces", "Carrillo", "Cañas", "Abangares",
+    "Tilarán", "Nandayure", "La Cruz", "Hojancha",
   ],
   "Puntarenas": [
-    "Puntarenas", "Esparza", "Buenos Aires", "Montes de Oro", "Osa", "Quepos",
-    "Golfito", "Coto Brus", "Parrita", "Corredores", "Garabito",
+    "Puntarenas", "Esparza", "Buenos Aires", "Montes de Oro", "Osa", "Quepos", "Golfito",
+    "Coto Brus", "Parrita", "Corredores", "Garabito",
   ],
   "Limón": [
     "Limón", "Pococí", "Siquirres", "Talamanca", "Matina", "Guácimo",
@@ -692,10 +696,12 @@ function fillProvinceCanton() {
   if ($.province) {
     $.province.innerHTML =
       `<option value="">Seleccionar…</option>` +
-      provinces.map((p) => `<option value="${p}">${p}</option>`).join("");
+      provinces.map((p) => `<option value="${esc(p)}">${esc(p)}</option>`).join("");
   }
 
-  if ($.canton) $.canton.innerHTML = `<option value="">Seleccionar…</option>`;
+  if ($.canton) {
+    $.canton.innerHTML = `<option value="">Seleccionar…</option>`;
+  }
 
   $.province?.addEventListener("change", () => {
     const p = $.province.value;
@@ -704,195 +710,125 @@ function fillProvinceCanton() {
     if ($.canton) {
       $.canton.innerHTML =
         `<option value="">Seleccionar…</option>` +
-        cantons.map((c) => `<option value="${c}">${c}</option>`).join("");
+        cantons.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("");
     }
   });
 }
 
 /* =========================
-   Header
+   Public config render
 ========================= */
-loadHeader("home", { enabledTabs: {} });
+function renderAssociationDetails(container, data) {
+  if (!container) return;
 
-/* =========================
-   Auth UI
-========================= */
-$.logoutBtn?.addEventListener("click", async () => {
-  try {
-    showLoader("Cargando…");
-    await logout();
-  } finally {
-    hideLoader();
+  const details = data?.association_details || {};
+  const enabled = details.enabled !== false;
+
+  container.classList.toggle("d-none", !enabled);
+
+  if (!enabled) {
+    container.innerHTML = "";
+    return;
   }
-});
 
-onAuthStateChanged(auth, async (user) => {
-  showLoader("Cargando…");
-  try {
-    if (!user) {
-      $.logoutBtn?.classList.add("d-none");
-      if ($.email) $.email.readOnly = false;
-      return;
-    }
+  container.innerHTML = `
+    <div class="intro-box">
+      <h3 class="mb-3" style="color: var(--theme-primary); font-weight: 900;">
+        ${esc(details.title || "Asociación")}
+      </h3>
 
-    const access = await getUserAccessState(user.uid);
-    const data = access.raw || {};
+      <div class="mb-3">${details.introHtml || ""}</div>
 
-    if (!access.onboardingComplete) {
-      if (user.email && $.email) {
-        $.email.value = user.email;
-        $.email.readOnly = true;
-        $.logoutBtn?.classList.remove("d-none");
-      } else {
-        if ($.email) $.email.readOnly = false;
-        $.logoutBtn?.classList.add("d-none");
+      ${
+        details.feesTitle
+          ? `<p class="mb-2"><strong>${esc(details.feesTitle)}</strong></p>`
+          : ""
       }
 
-      const profile = data.profile || {};
-      const residence = profile.residence || {};
-      const emergencyContact = profile.emergencyContact || data.emergencyContact || {};
-      const registration = data.registration || {};
-      const savedType = profile.registerType || registration.type || "";
+      ${details.feeParagraph1 ? `<p>${details.feeParagraph1}</p>` : ""}
+      ${details.feeParagraph2 ? `<p>${details.feeParagraph2}</p>` : ""}
 
-      if ($.firstName && !$.firstName.value && profile.firstName) $.firstName.value = profile.firstName;
-      if ($.lastName && !$.lastName.value && profile.lastName) $.lastName.value = profile.lastName;
-      if ($.idType && !$.idType.value && profile.idType) $.idType.value = profile.idType;
-      if ($.idNumber && !$.idNumber.value && profile.idNumber) $.idNumber.value = profile.idNumber;
-      if ($.phone && !$.phone.value && (profile.phone || data.phone)) $.phone.value = profile.phone || data.phone;
-
-      if ($.emergencyContactName && !$.emergencyContactName.value) {
-        if (typeof emergencyContact === "string") {
-          $.emergencyContactName.value = emergencyContact;
-        } else if (emergencyContact.name) {
-          $.emergencyContactName.value = emergencyContact.name;
-        }
+      ${
+        details.exceptionsText
+          ? `<p class="mb-0">${esc(details.exceptionsText)}</p>`
+          : ""
       }
+    </div>
+  `;
+}
 
-      if ($.province && !$.province.value && residence.province) {
-        $.province.value = residence.province;
-        $.province.dispatchEvent(new Event("change"));
-      }
-
-      if ($.canton && !$.canton.value && residence.canton) {
-        if (!$.province.value && residence.province) {
-          $.province.value = residence.province;
-          $.province.dispatchEvent(new Event("change"));
-        }
-        $.canton.value = residence.canton;
-      }
-
-      if ($.committeeInterest && profile.committeeInterest === true) {
-        $.committeeInterest.checked = true;
-      }
-      if ($.profession && profile.profession) $.profession.value = profile.profession;
-      if ($.skills && profile.skills) $.skills.value = profile.skills;
-
-      if (savedType === "pickups" && $.registerTypePickups) $.registerTypePickups.checked = true;
-      if (savedType === "volcanes" && $.registerTypeVolcanes) $.registerTypeVolcanes.checked = true;
-      if (savedType === "asovoca" && $.registerTypeAsovoca) $.registerTypeAsovoca.checked = true;
-
-      refreshRegisterTypeUI();
-      refreshCommitteeUI();
-      updateSubmitState();
-      return;
-    }
-
-    const playerStatus = normalizePlayerStatus(data);
-    const associationStatus = normalizeAssociationStatus(data);
-    const canUsePickupsFlag = data.canUsePickups === true;
-
-    if (playerStatus === "active") {
-      window.location.replace("/dashboard.html");
-      return;
-    }
-
-    if (associationStatus === "pending" || associationStatus === "active") {
-      window.location.replace("/member_status.html");
-      return;
-    }
-
-    if (playerStatus === "pending") {
-      window.location.replace("/index.html?state=platform_pending");
-      return;
-    }
-
-    if (canUsePickupsFlag) {
-      window.location.replace("/pickups_status.html");
-      return;
-    }
-
-    window.location.replace("/index.html");
-  } catch (e) {
-    console.warn("onAuthStateChanged handler failed:", e);
-  } finally {
-    hideLoader();
-    releaseUI();
-  }
-});
-
-/* =========================
-   Config
-========================= */
 async function loadPublicRegConfig() {
   const snap = await getDoc(CFG_DOC);
   const cfg = snap.exists() ? snap.data() : {};
 
-  const requireInfoDeclaration = cfg.requireInfoDeclaration === true;
-  const infoDeclarationText = cfg.infoDeclarationText || null;
-  const enableMembershipPayment = cfg.enableMembershipPayment !== false;
-  const requireTerms = cfg.requireTerms === true;
-  const termsUrl = cfg.termsUrl || null;
+  PUBLIC_CFG = {
+    enableMembershipPayment: cfg.enableMembershipPayment !== false,
+    requireTerms: cfg.requireTerms === true,
+    requireInfoDeclaration: cfg.requireInfoDeclaration === true,
+    termsUrl: cfg.termsUrl || null,
+    requireAssociationTerms: cfg.requireAssociationTerms === true,
+    associationTermsUrl: cfg.associationTermsUrl || null,
+    associationDetails: cfg.association_details || {},
+  };
 
-  PUBLIC_CFG = { enableMembershipPayment, requireTerms, requireInfoDeclaration, termsUrl };
+  renderAssociationDetails($.associationDetailsSection, cfg);
 
-  if (!requireInfoDeclaration) {
-    setEnabled($.infoDeclaration, false);
-    setRequired($.infoDeclaration, false);
-  } else {
+  if (PUBLIC_CFG.requireInfoDeclaration) {
+    $.declarationWrap?.classList.remove("d-none");
     setEnabled($.infoDeclaration, true);
     setRequired($.infoDeclaration, true);
+
+    if (cfg.infoDeclarationText && $.infoDeclarationLabel) {
+      $.infoDeclarationLabel.textContent = cfg.infoDeclarationText;
+    }
+  } else {
+    $.declarationWrap?.classList.add("d-none");
+    if ($.infoDeclaration) $.infoDeclaration.checked = false;
+    setEnabled($.infoDeclaration, false);
+    setRequired($.infoDeclaration, false);
   }
 
-  if (!requireTerms) {
-    setEnabled($.termsAccepted, false);
-    setRequired($.termsAccepted, false);
-  } else {
+  if (PUBLIC_CFG.requireTerms) {
+    $.termsWrap?.classList.remove("d-none");
     setEnabled($.termsAccepted, true);
     setRequired($.termsAccepted, true);
+
+    if ($.termsLink) {
+      $.termsLink.href = PUBLIC_CFG.termsUrl || "#";
+      $.termsLink.style.display = PUBLIC_CFG.termsUrl ? "inline" : "none";
+    }
+  } else {
+    $.termsWrap?.classList.add("d-none");
+    if ($.termsAccepted) $.termsAccepted.checked = false;
+    setEnabled($.termsAccepted, false);
+    setRequired($.termsAccepted, false);
   }
 
-  if ($.declarationWrap && $.infoDeclaration && $.infoDeclarationLabel) {
-    if (requireInfoDeclaration) {
-      $.declarationWrap.classList.remove("d-none");
-      if (infoDeclarationText) $.infoDeclarationLabel.textContent = infoDeclarationText;
-    } else {
-      $.declarationWrap.classList.add("d-none");
-      $.infoDeclaration.checked = false;
-    }
-  }
+  if (PUBLIC_CFG.requireAssociationTerms) {
+    $.associationTermsWrap?.classList.remove("d-none");
+    setEnabled($.associationTermsAccepted, true);
+    setRequired($.associationTermsAccepted, true);
 
-  if ($.termsWrap && $.termsAccepted && $.termsLink) {
-    if (requireTerms) {
-      $.termsWrap.classList.remove("d-none");
-      $.termsLink.href = termsUrl || "#";
-      $.termsLink.style.display = termsUrl ? "inline" : "none";
-    } else {
-      $.termsWrap.classList.add("d-none");
-      $.termsAccepted.checked = false;
+    if ($.associationTermsLink) {
+      $.associationTermsLink.href = PUBLIC_CFG.associationTermsUrl || "#";
+      $.associationTermsLink.style.display = PUBLIC_CFG.associationTermsUrl ? "inline" : "none";
     }
+  } else {
+    $.associationTermsWrap?.classList.add("d-none");
+    if ($.associationTermsAccepted) $.associationTermsAccepted.checked = false;
+    setEnabled($.associationTermsAccepted, false);
+    setRequired($.associationTermsAccepted, false);
   }
 
   refreshMembershipPaymentUI();
   updateSubmitState();
 
-  return { requireInfoDeclaration, requireTerms, termsUrl, enableMembershipPayment };
+  return PUBLIC_CFG;
 }
 
 /* =========================
    Plans
 ========================= */
-let plansById = new Map();
-
 function planAmount(plan) {
   const a = plan?.totalAmount ?? plan?.amount ?? null;
   return a === null || a === undefined ? null : Number(a);
@@ -901,8 +837,8 @@ function planAmount(plan) {
 async function loadPlans() {
   const snap = await getDocs(collection(db, COL_PLANS));
   const plans = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-
   const activePlans = plans.filter((p) => p.isActive !== false);
+
   plansById = new Map(activePlans.map((p) => [p.id, p]));
 
   if ($.planId) {
@@ -912,7 +848,7 @@ async function loadPlans() {
         .map((p) => {
           const amt = planAmount(p);
           const label = `${p.name || "Plan"} — ${fmtMoney(amt, p.currency || "CRC")}`;
-          return `<option value="${p.id}">${label}</option>`;
+          return `<option value="${esc(p.id)}">${esc(label)}</option>`;
         })
         .join("");
   }
@@ -922,6 +858,7 @@ async function loadPlans() {
 
 $.planId?.addEventListener("change", () => {
   const p = plansById.get($.planId.value);
+
   if (!p) {
     if ($.planMeta) $.planMeta.textContent = "";
     updateSubmitState();
@@ -967,24 +904,18 @@ async function createMembership({ uid, userSnapshot, plan, season, consents }) {
   const payload = {
     userId: uid,
     userSnapshot,
-
     planId: plan.id,
     season,
-
     status: "pending",
-
     payCode,
     payLinkEnabled: false,
     payLinkDisabledReason: "Pendiente de validación.",
-
     installmentsTotal: 0,
     installmentsPending: 0,
     installmentsSettled: 0,
     nextUnpaidDueDate: null,
     nextUnpaidN: null,
-
     consents: consents || null,
-
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
@@ -999,18 +930,16 @@ async function maybeCreateInstallments({ membershipId, plan, season }) {
 
   const total = planAmount(plan) || 0;
   const amount = Math.round((total / count) * 100) / 100;
-
   const dueDay = Number(plan.dueDay || 10);
   const startMonth = plan.startPolicy === "jan" ? 1 : Number(plan.startMonth || 1);
-
   const nowYear = Number(season);
+
   const ids = [];
 
   for (let i = 0; i < count; i++) {
     const m = startMonth + i;
     const mm = ((m - 1) % 12) + 1;
     const yy = nowYear + Math.floor((m - 1) / 12);
-
     const dueDate = `${yy}-${String(mm).padStart(2, "0")}-${String(dueDay).padStart(2, "0")}`;
     const dueMonthDay = dueDate.slice(5);
 
@@ -1044,12 +973,7 @@ async function maybeCreateInstallments({ membershipId, plan, season }) {
   return { installmentIds: ids };
 }
 
-async function syncUserMembershipSummary({
-  uid,
-  membershipId,
-  plan,
-  season,
-}) {
+async function syncUserMembershipSummary({ uid, membershipId, plan, season }) {
   const label = `${plan?.name || "Membresía"} ${season || ""}`.trim();
 
   await updateDoc(doc(db, COL_USERS, uid), {
@@ -1098,13 +1022,13 @@ async function uploadProofFile({ uid, file }) {
   const ext = (file.name.split(".").pop() || "").toLowerCase();
   const safeExt = ext ? `.${ext}` : "";
   const path = `membership_submissions/${uid || "anonymous"}/${Date.now()}_proof${safeExt}`;
-
   const r = sRef(storage, path);
+
   const task = uploadBytesResumable(r, file, {
     contentType: file.type || "application/octet-stream",
   });
 
-  setProofStatus(`Subiendo comprobante: 0%`, "muted", true);
+  setProofStatus("Subiendo comprobante: 0%", "muted", true);
 
   await new Promise((resolve, reject) => {
     task.on(
@@ -1125,7 +1049,6 @@ async function uploadProofFile({ uid, file }) {
   });
 
   const fileUrl = await getDownloadURL(task.snapshot.ref);
-
   setProofStatus("Comprobante subido correctamente.", "success", false);
 
   return {
@@ -1135,16 +1058,19 @@ async function uploadProofFile({ uid, file }) {
   };
 }
 
+/* =========================
+   Query/session prefills
+========================= */
 function applyModeFromQuery() {
   const params = new URLSearchParams(window.location.search);
   const mode = params.get("mode");
 
-  if (mode === "upgrade_player" && $.registerTypeVolcanes) {
-    $.registerTypeVolcanes.checked = true;
+  if (mode === "upgrade_player" && $.registerTypeClubPlayer) {
+    $.registerTypeClubPlayer.checked = true;
   }
 
-  if (mode === "upgrade_member" && $.registerTypeAsovoca) {
-    $.registerTypeAsovoca.checked = true;
+  if (mode === "upgrade_member" && $.registerTypeAssociationMember) {
+    $.registerTypeAssociationMember.checked = true;
   }
 
   refreshRegisterTypeUI();
@@ -1152,9 +1078,6 @@ function applyModeFromQuery() {
   updateSubmitState();
 }
 
-/* =========================
-   Prefill from session
-========================= */
 function applyPrefillFromSession() {
   try {
     const raw = sessionStorage.getItem("prefill_register");
@@ -1166,15 +1089,12 @@ function applyPrefillFromSession() {
       $.email.value = p.email;
       $.email.readOnly = true;
     }
-
     if ($.firstName && !$.firstName.value && p.firstName) {
       $.firstName.value = p.firstName;
     }
-
     if ($.lastName && !$.lastName.value && p.lastName) {
       $.lastName.value = p.lastName;
     }
-
     if ($.phone && p.phone && !$.phone.value) {
       $.phone.value = p.phone;
     }
@@ -1184,6 +1104,139 @@ function applyPrefillFromSession() {
 }
 
 applyPrefillFromSession();
+
+/* =========================
+   Header
+========================= */
+loadHeader("home", { enabledTabs: {} });
+
+/* =========================
+   Auth UI
+========================= */
+$.logoutBtn?.addEventListener("click", async () => {
+  try {
+    showLoader("Cargando…");
+    await logout();
+  } finally {
+    hideLoader();
+  }
+});
+
+onAuthStateChanged(auth, async (user) => {
+  showLoader("Cargando…");
+
+  try {
+    if (!user) {
+      $.logoutBtn?.classList.add("d-none");
+      if ($.email) $.email.readOnly = false;
+      return;
+    }
+
+    const access = await getUserAccessState(user.uid);
+    const data = access.raw || {};
+
+    if (!access.onboardingComplete) {
+      if (user.email && $.email) {
+        $.email.value = user.email;
+        $.email.readOnly = true;
+        $.logoutBtn?.classList.remove("d-none");
+      } else {
+        if ($.email) $.email.readOnly = false;
+        $.logoutBtn?.classList.add("d-none");
+      }
+
+      const profile = data.profile || {};
+      const residence = profile.residence || {};
+      const emergencyContact = profile.emergencyContact || data.emergencyContact || {};
+      const registration = data.registration || {};
+
+      const savedType = profile.registerType || registration.type || "";
+
+      if ($.firstName && !$.firstName.value && profile.firstName) $.firstName.value = profile.firstName;
+      if ($.lastName && !$.lastName.value && profile.lastName) $.lastName.value = profile.lastName;
+      if ($.idType && !$.idType.value && profile.idType) $.idType.value = profile.idType;
+      if ($.idNumber && !$.idNumber.value && profile.idNumber) $.idNumber.value = profile.idNumber;
+      if ($.phone && !$.phone.value && (profile.phone || data.phone)) $.phone.value = profile.phone || data.phone;
+
+      if ($.emergencyContactName && !$.emergencyContactName.value) {
+        if (typeof emergencyContact === "string") {
+          $.emergencyContactName.value = emergencyContact;
+        } else if (emergencyContact.name) {
+          $.emergencyContactName.value = emergencyContact.name;
+        }
+      }
+
+      if ($.province && !$.province.value && residence.province) {
+        $.province.value = residence.province;
+        $.province.dispatchEvent(new Event("change"));
+      }
+
+      if ($.canton && !$.canton.value && residence.canton) {
+        if (!$.province.value && residence.province) {
+          $.province.value = residence.province;
+          $.province.dispatchEvent(new Event("change"));
+        }
+        $.canton.value = residence.canton;
+      }
+
+      if ($.committeeInterest && profile.committeeInterest === true) {
+        $.committeeInterest.checked = true;
+      }
+      if ($.profession && profile.profession) $.profession.value = profile.profession;
+      if ($.skills && profile.skills) $.skills.value = profile.skills;
+
+      if (savedType === "pickups" && $.registerTypePickups) {
+        $.registerTypePickups.checked = true;
+      } else if (
+        (savedType === "club_player" || savedType === "volcanes") &&
+        $.registerTypeClubPlayer
+      ) {
+        $.registerTypeClubPlayer.checked = true;
+      } else if (
+        (savedType === "association_member" || savedType === "asovoca") &&
+        $.registerTypeAssociationMember
+      ) {
+        $.registerTypeAssociationMember.checked = true;
+      }
+
+      refreshRegisterTypeUI();
+      refreshCommitteeUI();
+      updateSubmitState();
+      return;
+    }
+
+    const playerStatus = normalizePlayerStatus(data);
+    const associationStatus = normalizeAssociationStatus(data);
+    const canUsePickupsFlag = data.canUsePickups === true;
+
+    if (playerStatus === "active") {
+      window.location.replace("/dashboard.html");
+      return;
+    }
+
+    if (associationStatus === "pending" || associationStatus === "active") {
+      window.location.replace("/member_status.html");
+      return;
+    }
+
+    if (playerStatus === "pending") {
+      window.location.replace("/index.html?state=platform_pending");
+      return;
+    }
+
+    if (canUsePickupsFlag) {
+      window.location.replace("/pickups_status.html");
+      return;
+    }
+
+    window.location.replace("/index.html");
+  } catch (e) {
+    console.warn("onAuthStateChanged handler failed:", e);
+  } finally {
+    hideLoader();
+    releaseUI();
+  }
+});
 
 /* =========================
    Init
@@ -1245,7 +1298,7 @@ $.form?.addEventListener("submit", async (ev) => {
   const idType = normLower($.idType?.value);
   const idNumber = cleanIdNum($.idNumber?.value);
 
-  const residence = requiresVolcanesExtraFields()
+  const residence = needsIdentityFields()
     ? {
         province: norm($.province?.value),
         canton: norm($.canton?.value),
@@ -1262,8 +1315,8 @@ $.form?.addEventListener("submit", async (ev) => {
   const profession = norm($.profession?.value);
   const skills = norm($.skills?.value);
 
-  const wantsPlayer = isVolcanes();
-  const wantsMembershipPayment = isAsovoca() && PUBLIC_CFG.enableMembershipPayment;
+  const wantsPlayer = isClubPlayer();
+  const wantsAssociationMembership = isAssociationMember() && PUBLIC_CFG.enableMembershipPayment;
   const canUsePickups = true;
 
   const planId = norm($.planId?.value);
@@ -1284,7 +1337,7 @@ $.form?.addEventListener("submit", async (ev) => {
     return;
   }
 
-  if (requiresVolcanesExtraFields()) {
+  if (needsIdentityFields()) {
     if (!email || !idType || !idNumber) {
       showAlert("Debes completar correo, tipo de documento y número de documento.");
       return;
@@ -1296,11 +1349,12 @@ $.form?.addEventListener("submit", async (ev) => {
     }
   }
 
-  if (wantsMembershipPayment) {
+  if (wantsAssociationMembership) {
     if (!planId || !plan) {
       showAlert("Selecciona un plan de pago válido.");
       return;
     }
+
     if (!file) {
       showAlert("Adjunta el comprobante de pago.");
       return;
@@ -1313,20 +1367,34 @@ $.form?.addEventListener("submit", async (ev) => {
   }
 
   if (cfg.requireTerms && !$.termsAccepted?.checked) {
-    showAlert("Debes aceptar los términos y condiciones.");
+    showAlert("Debes aceptar los términos y condiciones generales.");
+    return;
+  }
+
+  if (isAssociationMember() && cfg.requireAssociationTerms && !$.associationTermsAccepted?.checked) {
+    showAlert("Debes aceptar los términos y condiciones de la asociación.");
     return;
   }
 
   const consents = {
     requireInfoDeclaration: !!cfg.requireInfoDeclaration,
     infoDeclarationAccepted: cfg.requireInfoDeclaration ? true : null,
+
     requireTerms: !!cfg.requireTerms,
     termsAccepted: cfg.requireTerms ? true : null,
     termsUrl: cfg.termsUrl || null,
+
+    requireAssociationTerms: isAssociationMember() ? !!cfg.requireAssociationTerms : false,
+    associationTermsAccepted:
+      isAssociationMember() && cfg.requireAssociationTerms ? true : null,
+    associationTermsUrl:
+      isAssociationMember() ? cfg.associationTermsUrl || null : null,
+
     acceptedAt: serverTimestamp(),
   };
 
   showLoader("Cargando…");
+  setSubmittingState(true, "Enviando...");
 
   try {
     await step("Ensure users/{uid}", () => ensureUserDoc(uid, email));
@@ -1334,11 +1402,11 @@ $.form?.addEventListener("submit", async (ev) => {
     const userSnapshot = await step("Save user profile + consents", () =>
       saveUserProfileAndConsents({
         uid,
-        email: requiresVolcanesExtraFields() ? email : (user.email || null),
+        email: needsIdentityFields() ? email : (user.email || null),
         firstName,
         lastName,
-        idType: requiresVolcanesExtraFields() ? idType : null,
-        idNumber: requiresVolcanesExtraFields() ? idNumber : null,
+        idType: needsIdentityFields() ? idType : null,
+        idNumber: needsIdentityFields() ? idNumber : null,
         phone,
         residence,
         emergencyContact,
@@ -1350,7 +1418,7 @@ $.form?.addEventListener("submit", async (ev) => {
       })
     );
 
-    if (wantsMembershipPayment) {
+    if (wantsAssociationMembership) {
       const proof = await step("Upload proof (Storage)", () =>
         uploadProofFile({ uid, file })
       );
@@ -1379,29 +1447,22 @@ $.form?.addEventListener("submit", async (ev) => {
         addDoc(collection(db, COL_SUBMISSIONS), {
           adminNote: null,
           note: null,
-
           amountReported: planAmount(plan),
           currency: plan.currency || "CRC",
-
           email: email || user.email || null,
           payerName: `${firstName} ${lastName}`.trim() || null,
           phone: phone || null,
           method: "sinpe",
-
           filePath: proof.filePath,
           fileType: proof.fileType,
           fileUrl: proof.fileUrl,
-
           installmentId: null,
           selectedInstallmentIds: [],
-
           membershipId,
           planId,
           season,
-
           userId: uid,
           submittedByUid: uid,
-
           status: "pending",
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -1435,13 +1496,13 @@ $.form?.addEventListener("submit", async (ev) => {
         registration: {
           type: registerType,
           wantsPlayer: wantsPlayer === true,
-          wantsMembershipPayment: wantsMembershipPayment === true,
+          wantsMembershipPayment: wantsAssociationMembership === true,
           canUsePickups: true,
           committeeInterest: committeeInterest === true,
         },
 
         playerStatus: wantsPlayer ? "pending" : null,
-        associationStatus: wantsMembershipPayment ? "pending" : null,
+        associationStatus: wantsAssociationMembership ? "pending" : null,
       };
 
       return setDoc(uref, payload, { merge: true });
@@ -1454,7 +1515,7 @@ $.form?.addEventListener("submit", async (ev) => {
       return;
     }
 
-    if (wantsMembershipPayment) {
+    if (wantsAssociationMembership) {
       window.location.replace("/member_status.html");
       return;
     }
@@ -1479,6 +1540,9 @@ $.form?.addEventListener("submit", async (ev) => {
   }
 });
 
+/* =========================
+   Form listeners
+========================= */
 function wireUpFormCompleteness() {
   const els = [
     ...$.registerTypeRadios,
@@ -1495,6 +1559,7 @@ function wireUpFormCompleteness() {
     $.proofFile,
     $.infoDeclaration,
     $.termsAccepted,
+    $.associationTermsAccepted,
     $.committeeInterest,
     $.profession,
     $.skills,
@@ -1519,6 +1584,7 @@ function wireUpFormCompleteness() {
   });
 
   $.province?.addEventListener("change", () => setTimeout(updateSubmitState, 0));
+
   updateSubmitState();
 }
 
