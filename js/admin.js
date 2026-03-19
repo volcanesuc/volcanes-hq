@@ -199,21 +199,36 @@ function esc(s) {
 }
 
 function fillStaticOptions() {
-  $.approveSystemRole.innerHTML = APP_CONFIG.userRoles
-    .map((r) => `<option value="${esc(r.id)}">${esc(r.label)}</option>`)
-    .join("");
-
-  $.newPlayerFieldRole.innerHTML = APP_CONFIG.playerRoles
-    .map((r) => `<option value="${esc(r.id)}">${esc(r.label)}</option>`)
-    .join("");
-
-  $.playerRoleFilter.innerHTML =
-    `<option value="">Todos los roles</option>` +
-    `<option value="__unassigned__">Sin asignar</option>` +
-    APP_CONFIG.userRoles
-      .filter((r) => r.id)
+  if ($.approveSystemRole) {
+    $.approveSystemRole.innerHTML = APP_CONFIG.userRoles
       .map((r) => `<option value="${esc(r.id)}">${esc(r.label)}</option>`)
       .join("");
+  }
+
+  if ($.newPlayerFieldRole) {
+    $.newPlayerFieldRole.innerHTML = APP_CONFIG.playerRoles
+      .map((r) => `<option value="${esc(r.id)}">${esc(r.label)}</option>`)
+      .join("");
+  }
+
+  if ($.playerRoleFilter) {
+    $.playerRoleFilter.innerHTML =
+      `<option value="">Todos los roles</option>` +
+      `<option value="__unassigned__">Sin asignar</option>` +
+      APP_CONFIG.userRoles
+        .filter((r) => r.id)
+        .map((r) => `<option value="${esc(r.id)}">${esc(r.label)}</option>`)
+        .join("");
+  }
+
+  if ($.usersRoleFilter) {
+    $.usersRoleFilter.innerHTML =
+      `<option value="">Todos</option>` +
+      APP_CONFIG.userRoles
+        .filter((r) => r.id)
+        .map((r) => `<option value="${esc(r.id)}">${esc(r.label)}</option>`)
+        .join("");
+  }
 }
 
 function normalizeText(value) {
@@ -674,42 +689,44 @@ function fillExistingPlayersSelect(currentUid = null, currentEmail = "") {
 }
 
 function syncApproveModeUI() {
+  if (!$.approveLinkMode) return;
+
   const mode = $.approveLinkMode.value;
-  $.existingPlayerWrap.classList.toggle("d-none", mode !== "existing");
-  $.newPlayerWrap.classList.toggle("d-none", mode !== "new");
+
+  if ($.existingPlayerWrap) {
+    $.existingPlayerWrap.classList.toggle("d-none", mode !== "existing");
+  }
+
+  if ($.newPlayerWrap) {
+    $.newPlayerWrap.classList.toggle("d-none", mode !== "new");
+  }
 }
 
 async function openApproveModal(uid) {
+  if (!approveModal) {
+    showAlert("El modal de aprobación no está disponible en esta vista.");
+    return;
+  }
+
   const user = pendingUsers.find((u) => u.id === uid);
   if (!user) return;
 
   const profile = getUserProfile(user);
 
-  $.approveUid.value = user.id;
-  $.approveEmail.value = user.email || "";
-  $.approveSystemRole.value = user.role || "viewer";
-  $.approveLinkMode.value = user.playerId ? "existing" : "none";
+  if ($.approveUid) $.approveUid.value = user.id;
+  if ($.approveEmail) $.approveEmail.value = user.email || "";
+  if ($.approveSystemRole) $.approveSystemRole.value = user.role || "viewer";
+  if ($.approveLinkMode) $.approveLinkMode.value = user.playerId ? "existing" : "none";
 
   fillExistingPlayersSelect(uid, user.email || "");
-  $.approveExistingPlayerId.value = user.playerId || "";
-
-  $.newPlayerFirstName.value = profile.firstName || "";
-  $.newPlayerLastName.value = profile.lastName || "";
-  $.newPlayerBirthday.value = profile.birthDate || "";
-  $.newPlayerFieldRole.value = "";
-
-  if (!$.newPlayerFirstName.value && !$.newPlayerLastName.value) {
-    const displayName = String(user.displayName || "").trim();
-    if (displayName) {
-      const parts = displayName.split(/\s+/).filter(Boolean);
-      if (parts.length >= 2) {
-        $.newPlayerFirstName.value = parts.slice(0, -1).join(" ");
-        $.newPlayerLastName.value = parts.slice(-1).join(" ");
-      } else {
-        $.newPlayerFirstName.value = displayName;
-      }
-    }
+  if ($.approveExistingPlayerId) {
+    $.approveExistingPlayerId.value = user.playerId || "";
   }
+
+  if ($.newPlayerFirstName) $.newPlayerFirstName.value = profile.firstName || "";
+  if ($.newPlayerLastName) $.newPlayerLastName.value = profile.lastName || "";
+  if ($.newPlayerBirthday) $.newPlayerBirthday.value = profile.birthDate || "";
+  if ($.newPlayerFieldRole) $.newPlayerFieldRole.value = "";
 
   syncApproveModeUI();
   approveModal.show();
@@ -2032,7 +2049,8 @@ async function boot() {
 
     await loadHeader("admin", cfg);
 
-    approveModal = new bootstrap.Modal(document.getElementById("approveUserModal"));
+    const approveModalEl = document.getElementById("approveUserModal");
+    approveModal = approveModalEl ? new bootstrap.Modal(approveModalEl) : null;
 
     fillStaticOptions();
     syncApproveModeUI();
