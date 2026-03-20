@@ -117,7 +117,7 @@ const $ = {
   usersKpiNoPlayer: document.getElementById("usersKpiNoPlayer"),
   usersKpiPickups: document.getElementById("usersKpiPickups"),
 
-  // role permissions
+  // permissions
   rolesPermissionsTableBody: document.getElementById("rolesPermissionsTableBody"),
   refreshRolesPermissionsBtn: document.getElementById("refreshRolesPermissionsBtn"),
 
@@ -320,29 +320,12 @@ function ensureUsersRoleStyles() {
   const style = document.createElement("style");
   style.id = "adminUsersRoleStyles";
   style.textContent = `
-    .admin-users-row--admin > td {
-      background: rgba(220, 53, 69, 0.06);
-    }
-
-    .admin-users-row--coach > td {
-      background: rgba(25, 135, 84, 0.06);
-    }
-
-    .admin-users-row--staff > td {
-      background: rgba(13, 202, 240, 0.06);
-    }
-
-    .admin-users-row--viewer > td {
-      background: rgba(108, 117, 125, 0.04);
-    }
-
-    .admin-users-row--accountability > td {
-      background: rgba(255, 193, 7, 0.08);
-    }
-
-    .admin-users-row--content-editor > td {
-      background: rgba(13, 110, 253, 0.06);
-    }
+    .admin-users-row--admin > td { background: rgba(220, 53, 69, 0.06); }
+    .admin-users-row--coach > td { background: rgba(25, 135, 84, 0.06); }
+    .admin-users-row--staff > td { background: rgba(13, 202, 240, 0.06); }
+    .admin-users-row--viewer > td { background: rgba(108, 117, 125, 0.04); }
+    .admin-users-row--accountability > td { background: rgba(255, 193, 7, 0.08); }
+    .admin-users-row--content-editor > td { background: rgba(13, 110, 253, 0.06); }
   `;
   document.head.appendChild(style);
 }
@@ -654,20 +637,24 @@ async function saveRolePermissions(roleId) {
     return;
   }
 
+  const escapedRoleId = typeof CSS !== "undefined" && CSS.escape
+    ? CSS.escape(normalizedRoleId)
+    : normalizedRoleId.replace(/"/g, '\\"');
+
   const base = getDefaultRolePermissions(normalizedRoleId);
 
   const nextRole = normalizeRoleDefinition({
     ...role,
     permissions: mergePermissions(base, {
       tabs: {
-        admin: !!document.querySelector(`[data-role-permission="${CSS.escape(normalizedRoleId)}"][data-permission-path="tabs.admin"]`)?.checked,
-        association: !!document.querySelector(`[data-role-permission="${CSS.escape(normalizedRoleId)}"][data-permission-path="tabs.association"]`)?.checked,
-        accountability: !!document.querySelector(`[data-role-permission="${CSS.escape(normalizedRoleId)}"][data-permission-path="tabs.accountability"]`)?.checked,
+        admin: !!document.querySelector(`[data-role-permission="${escapedRoleId}"][data-permission-path="tabs.admin"]`)?.checked,
+        association: !!document.querySelector(`[data-role-permission="${escapedRoleId}"][data-permission-path="tabs.association"]`)?.checked,
+        accountability: !!document.querySelector(`[data-role-permission="${escapedRoleId}"][data-permission-path="tabs.accountability"]`)?.checked,
       },
       adminSections: {
-        users: !!document.querySelector(`[data-role-permission="${CSS.escape(normalizedRoleId)}"][data-permission-path="adminSections.users"]`)?.checked,
-        landingSections: !!document.querySelector(`[data-role-permission="${CSS.escape(normalizedRoleId)}"][data-permission-path="adminSections.landingSections"]`)?.checked,
-        registerSettings: !!document.querySelector(`[data-role-permission="${CSS.escape(normalizedRoleId)}"][data-permission-path="adminSections.registerSettings"]`)?.checked,
+        users: !!document.querySelector(`[data-role-permission="${escapedRoleId}"][data-permission-path="adminSections.users"]`)?.checked,
+        landingSections: !!document.querySelector(`[data-role-permission="${escapedRoleId}"][data-permission-path="adminSections.landingSections"]`)?.checked,
+        registerSettings: !!document.querySelector(`[data-role-permission="${escapedRoleId}"][data-permission-path="adminSections.registerSettings"]`)?.checked,
       },
     }),
   });
@@ -793,18 +780,9 @@ async function loadCoreUsersPlayers() {
 }
 
 function renderUsersKpis() {
-  if ($.usersKpiTotal) {
-    $.usersKpiTotal.textContent = String(allUsers.length);
-  }
-
-  if ($.usersKpiPending) {
-    $.usersKpiPending.textContent = String(pendingUsers.length);
-  }
-
-  if ($.usersKpiNoPlayer) {
-    $.usersKpiNoPlayer.textContent = String(allUsers.filter((u) => !u.playerId).length);
-  }
-
+  if ($.usersKpiTotal) $.usersKpiTotal.textContent = String(allUsers.length);
+  if ($.usersKpiPending) $.usersKpiPending.textContent = String(pendingUsers.length);
+  if ($.usersKpiNoPlayer) $.usersKpiNoPlayer.textContent = String(allUsers.filter((u) => !u.playerId).length);
   if ($.usersKpiPickups) {
     $.usersKpiPickups.textContent = String(
       allUsers.filter((u) => u.canUsePickups === true).length
@@ -2493,9 +2471,6 @@ async function boot() {
     editUserModal = editUserModalEl ? new bootstrap.Modal(editUserModalEl) : null;
 
     await Promise.all([
-      loadUsersAdminTable(),
-      loadRolesPermissionsAdmin(),
-      loadRegisterSettingsAdmin(),
       loadIndexSettingsAdmin(),
       loadHeroAdmin(),
       loadTrainingsAdmin(),
@@ -2504,6 +2479,9 @@ async function boot() {
       loadFeaturedActivityAdmin(),
       loadEventsAdmin(),
       loadUniformsAdmin(),
+      loadRegisterSettingsAdmin(),
+      loadRolesPermissionsAdmin(),
+      loadUsersAdminTable(),
       refreshIndexToggleAvailability(true),
     ]);
 
