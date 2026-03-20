@@ -721,6 +721,49 @@
               <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                   <div>
+                    <h3 class="h6 mb-1">Permisos por rol</h3>
+                    <p class="text-muted mb-0">
+                      Administrá qué tabs y secciones puede ver cada rol.
+                    </p>
+                  </div>
+
+                  <button
+                    id="refreshRolesPermissionsBtn"
+                    class="btn btn-outline-secondary btn-sm"
+                    type="button"
+                  >
+                    <i class="bi bi-arrow-clockwise me-1"></i>Recargar roles
+                  </button>
+                </div>
+
+                <div class="table-responsive">
+                  <table class="table align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th>Rol</th>
+                        <th class="text-center">Tab Admin</th>
+                        <th class="text-center">Tab Association</th>
+                        <th class="text-center">Tab Accountability</th>
+                        <th class="text-center">Users</th>
+                        <th class="text-center">Landing</th>
+                        <th class="text-center">Register</th>
+                        <th class="text-end">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody id="rolesPermissionsTableBody">
+                      <tr>
+                        <td colspan="8" class="text-muted">Cargando roles…</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+
+            <section class="card shadow-sm border-0 admin-inner-card mb-4">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                  <div>
                     <h3 class="h6 mb-1">Tabla de usuarios</h3>
                     <p class="text-muted mb-0">Vista consolidada de users + players + estados clave.</p>
                   </div>
