@@ -1,22 +1,178 @@
-// js/components/header.js
-import { auth } from "../auth/firebase.js";
+import { auth, db } from "../auth/firebase.js";
 import { loginWithGoogle, logout } from "../auth/auth.js";
 import { routeAfterGoogleLogin } from "../auth/role-routing.js";
 
 import { CLUB_DATA } from "../strings.js";
 import { loadHeaderTabsConfig, filterMenuByConfig } from "../remote-config.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { APP_CONFIG } from "../config/config.js";
 
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const COL = APP_CONFIG.collections;
+const COL_SYSTEM_CONFIG = COL.system_config || "system_config";
 
 /*
   Header único:
   - Tabs filtrados por remote config
+  - Tabs filtrados además por permisos del rol
   - CTA según sesión:
-      * NO logueado: "Ingresar con Google" (solo)
+      * NO logueado: "Ingresar"
       * Logueado: "Salir"
-  - En index: rutea por roles/onboarding
-  - Con redirect login: consume getRedirectResult 1 vez en el boot
 */
+
+function toAbsHref(href) {
+  if (!href) return "#";
+  if (href.startsWith("http://") || href.startsWith("https://")) return href;
+  if (href.startsWith("#") || href.startsWith("?")) return href;
+
+  const base =
+    document.querySelector("base")?.href ||
+    window.location.origin + window.location.pathname.replace(/[^/]*$/, "");
+
+  const u = new URL(href, base);
+  return u.pathname + u.search + u.hash;
+}
+
+function normalizeRole(role) {
+  return String(role || "viewer").trim().toLowerCase();
+}
+
+function getDefaultRolePermissions(roleId = "") {
+  const role = normalizeRole(roleId);
+
+  const defaults = {
+    tabs: {
+      admin: false,
+      association: false,
+      accountability: false,
+    },
+    adminSections: {
+      users: false,
+      landingSections: false,
+      registerSettings: false,
+    },
+  };
+
+  if (role === "admin") {
+    defaults.tabs.admin = true;
+    defaults.tabs.association = true;
+    defaults.tabs.accountability = true;
+    defaults.adminSections.users = true;
+    defaults.adminSections.landingSections = true;
+    defaults.adminSections.registerSettings = true;
+  }
+
+  return defaults;
+}
+
+function mergePermissions(base = {}, incoming = {}) {
+  return {
+    tabs: {
+      ...(base.tabs || {}),
+      ...(incoming.tabs || {}),
+    },
+    adminSections: {
+      ...(base.adminSections || {}),
+      ...(incoming.adminSections || {}),
+    },
+  };
+}
+
+function normalizeRoleDefinition(role = {}) {
+  const base = getDefaultRolePermissions(role?.id);
+  return {
+    id: normalizeRole(role?.id),
+    label: role?.label || role?.id || "",
+    permissions: mergePermissions(base, role?.permissions || {}),
+  };
+}
+
+function mergeRolesWithFallback(firebaseRoles = [], fallbackRoles = []) {
+  const byId = new Map();
+
+  for (const role of fallbackRoles || []) {
+    if (!role?.id) continue;
+    const normalized = normalizeRoleDefinition(role);
+    byId.set(normalized.id, normalized);
+  }
+
+  for (const role of firebaseRoles || []) {
+    if (!role?.id) continue;
+    const prev = byId.get(normalizeRole(role.id)) || normalizeRoleDefinition({ id: role.id, label: role.label });
+    const normalized = normalizeRoleDefinition({
+      ...prev,
+      ...role,
+      permissions: mergePermissions(prev.permissions || {}, role.permissions || {}),
+    });
+    byId.set(normalized.id, normalized);
+  }
+
+  return Array.from(byId.values());
+}
+
+async function loadRolesCatalog() {
+  try {
+    const snap = await getDoc(doc(db, COL_SYSTEM_CONFIG, "roles"));
+    const data = snap.exists() ? (snap.data() || {}) : {};
+    const firebaseRoles = Array.isArray(data.roles) ? data.roles : [];
+    const fallbackRoles = Array.isArray(APP_CONFIG.userRoles) ? APP_CONFIG.userRoles : [];
+    return mergeRolesWithFallback(firebaseRoles, fallbackRoles);
+  } catch (err) {
+    console.warn("loadRolesCatalog failed in header:", err);
+    const fallbackRoles = Array.isArray(APP_CONFIG.userRoles) ? APP_CONFIG.userRoles : [];
+    return mergeRolesWithFallback([], fallbackRoles);
+  }
+}
+
+async function loadUserAccessContext(user) {
+  if (!user?.uid) {
+    return {
+      role: "viewer",
+      permissions: getDefaultRolePermissions("viewer"),
+    };
+  }
+
+  try {
+    const [userSnap, roles] = await Promise.all([
+      getDoc(doc(db, COL.users, user.uid)),
+      loadRolesCatalog(),
+    ]);
+
+    const userData = userSnap.exists() ? (userSnap.data() || {}) : {};
+    const role = normalizeRole(userData.role || "viewer");
+    const roleDef =
+      roles.find((r) => normalizeRole(r.id) === role) ||
+      normalizeRoleDefinition({ id: role });
+
+    return {
+      role,
+      permissions: roleDef.permissions || getDefaultRolePermissions(role),
+      userData,
+    };
+  } catch (err) {
+    console.warn("loadUserAccessContext failed:", err);
+    return {
+      role: "viewer",
+      permissions: getDefaultRolePermissions("viewer"),
+    };
+  }
+}
+
+function canSeeMenuItemByPermissions(item, cfg = {}) {
+  const perms = cfg?.permissions || {};
+  const tabs = perms.tabs || {};
+
+  if (item?.id === "admin") return tabs.admin === true;
+  if (item?.id === "association") return tabs.association === true;
+  if (item?.id === "accountability") return tabs.accountability === true;
+
+  return true;
+}
+
+function filterMenuByRolePermissions(menu, cfg) {
+  return (menu || []).filter((item) => canSeeMenuItemByPermissions(item, cfg));
+}
 
 export async function loadHeader(activeTab, cfgOverride) {
   const header = document.getElementById("app-header");
@@ -25,7 +181,6 @@ export async function loadHeader(activeTab, cfgOverride) {
   const MENU = CLUB_DATA.header.menu || [];
   const HOME_HREF = toAbsHref(CLUB_DATA.header.homeHref || "dashboard.html");
 
-  // cfgOverride > remote config > fallback
   let cfg = cfgOverride;
   if (!cfg) {
     try {
@@ -36,46 +191,50 @@ export async function loadHeader(activeTab, cfgOverride) {
     }
   }
 
- const isOverride = !!cfgOverride;
+  const isOverride = !!cfgOverride;
 
-  let visibleMenu = isOverride
-    ? filterMenuStrict(MENU, cfg)
-    : filterMenuByConfig(MENU, cfg);
+  function getVisibleMenu(currentCfg) {
+    let visibleMenu = isOverride
+      ? filterMenuStrict(MENU, currentCfg)
+      : filterMenuByConfig(MENU, currentCfg);
 
-  visibleMenu = filterMenuByRole(visibleMenu, cfgOverride || cfg);
+    visibleMenu = filterMenuByRolePermissions(visibleMenu, currentCfg);
+    return visibleMenu;
+  }
 
-  const VISIBLE_MENU = visibleMenu;
-
-  function filterMenuStrict(menu, cfg) {
-    const enabled = cfg?.enabledTabs || {};
+  function filterMenuStrict(menu, localCfg) {
+    const enabled = localCfg?.enabledTabs || {};
     return (menu || []).filter((item) => enabled[item.id] === true);
   }
 
-  const renderLinksDesktop = () =>
-    VISIBLE_MENU.map(
-      (item) => `
-        <a href="${toAbsHref(item.href)}" class="top-tab ${
-        activeTab === item.id ? "active" : ""
-      }">
-          ${item.label}
-        </a>
-      `
-    ).join("");
+  function renderNav(menu) {
+    const desktop = (menu || [])
+      .map(
+        (item) => `
+          <a href="${toAbsHref(item.href)}" class="top-tab ${activeTab === item.id ? "active" : ""}">
+            ${item.label}
+          </a>
+        `
+      )
+      .join("");
 
-  const renderLinksMobile = () =>
-    VISIBLE_MENU.map(
-      (item) => `
-        <a href="${toAbsHref(item.href)}" class="mobile-link ${
-        activeTab === item.id ? "active" : ""
-      }">
-          ${item.label}
-        </a>
-      `
-    ).join("");
+    const mobile = (menu || [])
+      .map(
+        (item) => `
+          <a href="${toAbsHref(item.href)}" class="mobile-link ${activeTab === item.id ? "active" : ""}">
+            ${item.label}
+          </a>
+        `
+      )
+      .join("");
 
-  // =====================================================
-  // ✅ READY PROMISE
-  // =====================================================
+    const desktopNav = header.querySelector(".top-tabs");
+    const mobileNav = header.querySelector(".mobile-links");
+
+    if (desktopNav) desktopNav.innerHTML = desktop;
+    if (mobileNav) mobileNav.innerHTML = mobile;
+  }
+
   let resolvedOnce = false;
   let readyResolve;
 
@@ -89,9 +248,6 @@ export async function loadHeader(activeTab, cfgOverride) {
     readyResolve(val);
   };
 
-  // =====================================================
-  // RENDER HEADER BASE
-  // =====================================================
   header.innerHTML = `
     <header class="topbar">
       <div class="left">
@@ -109,9 +265,7 @@ export async function loadHeader(activeTab, cfgOverride) {
         </a>
       </div>
 
-      <nav class="top-tabs">
-        ${renderLinksDesktop()}
-      </nav>
+      <nav class="top-tabs"></nav>
 
       <div class="header-cta d-flex align-items-center gap-2" id="headerCta"></div>
     </header>
@@ -125,9 +279,7 @@ export async function loadHeader(activeTab, cfgOverride) {
       </div>
 
       <div class="offcanvas-body">
-        <div class="mobile-links">
-          ${renderLinksMobile()}
-        </div>
+        <div class="mobile-links"></div>
 
         <hr />
 
@@ -136,7 +288,8 @@ export async function loadHeader(activeTab, cfgOverride) {
     </div>
   `;
 
-  // Spinner inicial mientras Firebase valida
+  renderNav(getVisibleMenu(cfg));
+
   const initialCta = document.getElementById("headerCta");
   const initialMcta = document.getElementById("mobileCta");
   if (initialCta) {
@@ -162,8 +315,13 @@ export async function loadHeader(activeTab, cfgOverride) {
       location.pathname.endsWith("/index.html") ||
       location.pathname.endsWith("/");
 
+    const accessCfg = user
+      ? { ...cfg, ...(await loadUserAccessContext(user)) }
+      : { ...cfg, role: "viewer", permissions: getDefaultRolePermissions("viewer") };
+
+    renderNav(getVisibleMenu(accessCfg));
+
     if (!user) {
-      // NO logueado: solo Google
       cta.innerHTML = `
         <button id="googleLoginBtn" class="btn btn-light btn-sm d-flex align-items-center gap-2">
           <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="16" height="16" alt="Google">
@@ -180,7 +338,6 @@ export async function loadHeader(activeTab, cfgOverride) {
 
       const doLogin = async () => {
         try {
-          // popup flow: abre ventana y vuelve con credencial
           await loginWithGoogle();
         } catch (e) {
           console.error(e);
@@ -195,7 +352,6 @@ export async function loadHeader(activeTab, cfgOverride) {
       return;
     }
 
-    // ✅ si ya está logueado y está en index: ruteo por roles/onboarding
     if (isIndex) {
       try {
         await routeAfterGoogleLogin(user);
@@ -203,14 +359,11 @@ export async function loadHeader(activeTab, cfgOverride) {
       } catch (e) {
         console.error("routeAfterGoogleLogin failed", e);
         resolveOnce({ user, reason: "route-error" });
-
-        // fallback seguro si algo falla
         window.location.href = "/public/register.html?error=routing";
       }
       return;
     }
 
-    // ✅ páginas internas: solo salir
     cta.innerHTML = `
       <button id="logoutBtn" class="logout-btn">${logoutLabel}</button>
     `;
@@ -229,25 +382,4 @@ export async function loadHeader(activeTab, cfgOverride) {
 function bindHeaderEvents() {
   document.getElementById("logoutBtn")?.addEventListener("click", logout);
   document.getElementById("logoutBtnMobile")?.addEventListener("click", logout);
-}
-
-function toAbsHref(href) {
-  if (!href) return "#";
-  if (href.startsWith("http://") || href.startsWith("https://")) return href;
-  if (href.startsWith("#") || href.startsWith("?")) return href;
-
-  const base =
-    document.querySelector("base")?.href ||
-    window.location.origin + window.location.pathname.replace(/[^/]*$/, "");
-
-  const u = new URL(href, base);
-  return u.pathname + u.search + u.hash;
-}
-
-function filterMenuByRole(menu, cfg) {
-  if (!cfg) return menu || [];
-  if (cfg.isAdmin === true) return menu || [];
-
-  const adminOnlyTabs = new Set(["admin", "association"]);
-  return (menu || []).filter((item) => !adminOnlyTabs.has(item.id));
 }

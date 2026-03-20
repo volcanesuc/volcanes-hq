@@ -7,6 +7,7 @@ import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const COL = APP_CONFIG.collections;
+const COL_SYSTEM_CONFIG = COL.system_config || "system_config";
 
 function waitForAuthReady() {
   const auth = getAuth();
@@ -21,9 +22,16 @@ function waitForAuthReady() {
   });
 }
 
+function normalizeRole(role) {
+  return String(role || "viewer").trim().toLowerCase();
+}
+
 function normalizePlayerStatus(data = {}) {
   const explicit = String(data.playerStatus || "").trim().toLowerCase();
-  if (explicit) return explicit;
+
+  if (explicit === "active" || explicit === "approved") return "active";
+  if (["pending", "submitted", "validating"].includes(explicit)) return "pending";
+  if (["rejected", "denied"].includes(explicit)) return "rejected";
 
   if (data.isPlayerActive === true || data.isActive === true) {
     return "active";
@@ -42,6 +50,107 @@ function normalizeAssociationStatus(data = {}) {
   return explicit || "";
 }
 
+function getDefaultRolePermissions(roleId = "") {
+  const role = normalizeRole(roleId);
+
+  const defaults = {
+    tabs: {
+      admin: false,
+      association: false,
+      accountability: false,
+    },
+    adminSections: {
+      users: false,
+      landingSections: false,
+      registerSettings: false,
+    },
+  };
+
+  if (role === "admin") {
+    defaults.tabs.admin = true;
+    defaults.tabs.association = true;
+    defaults.tabs.accountability = true;
+    defaults.adminSections.users = true;
+    defaults.adminSections.landingSections = true;
+    defaults.adminSections.registerSettings = true;
+  }
+
+  return defaults;
+}
+
+function mergePermissions(base = {}, incoming = {}) {
+  return {
+    tabs: {
+      ...(base.tabs || {}),
+      ...(incoming.tabs || {}),
+    },
+    adminSections: {
+      ...(base.adminSections || {}),
+      ...(incoming.adminSections || {}),
+    },
+  };
+}
+
+function normalizeRoleDefinition(role = {}) {
+  const base = getDefaultRolePermissions(role?.id);
+  return {
+    id: normalizeRole(role?.id),
+    label: role?.label || role?.id || "",
+    permissions: mergePermissions(base, role?.permissions || {}),
+  };
+}
+
+function mergeRolesWithFallback(firebaseRoles = [], fallbackRoles = []) {
+  const byId = new Map();
+
+  for (const role of fallbackRoles || []) {
+    if (!role?.id) continue;
+    const normalized = normalizeRoleDefinition(role);
+    byId.set(normalized.id, normalized);
+  }
+
+  for (const role of firebaseRoles || []) {
+    if (!role?.id) continue;
+    const prev = byId.get(normalizeRole(role.id)) || normalizeRoleDefinition({ id: role.id, label: role.label });
+    const normalized = normalizeRoleDefinition({
+      ...prev,
+      ...role,
+      permissions: mergePermissions(prev.permissions || {}, role.permissions || {}),
+    });
+    byId.set(normalized.id, normalized);
+  }
+
+  return Array.from(byId.values());
+}
+
+async function loadRolesCatalog() {
+  try {
+    const snap = await getDoc(doc(db, COL_SYSTEM_CONFIG, "roles"));
+    const data = snap.exists() ? (snap.data() || {}) : {};
+    const firebaseRoles = Array.isArray(data.roles) ? data.roles : [];
+    const fallbackRoles = Array.isArray(APP_CONFIG.userRoles) ? APP_CONFIG.userRoles : [];
+    return mergeRolesWithFallback(firebaseRoles, fallbackRoles);
+  } catch (err) {
+    console.warn("No se pudo cargar system_config/roles:", err);
+    const fallbackRoles = Array.isArray(APP_CONFIG.userRoles) ? APP_CONFIG.userRoles : [];
+    return mergeRolesWithFallback([], fallbackRoles);
+  }
+}
+
+function hasFullPlatformAccess(data = {}, permissions = {}) {
+  const associationStatus = normalizeAssociationStatus(data);
+  const playerStatus = normalizePlayerStatus(data);
+
+  return (
+    associationStatus === "active" ||
+    playerStatus === "active" ||
+    data.isPlayerActive === true ||
+    permissions?.tabs?.admin === true ||
+    permissions?.tabs?.association === true ||
+    permissions?.tabs?.accountability === true
+  );
+}
+
 async function loadUserRoleIntoCfg(cfg) {
   const user = getAuth().currentUser;
 
@@ -54,11 +163,15 @@ async function loadUserRoleIntoCfg(cfg) {
       onboardingComplete: false,
       playerStatus: "",
       associationStatus: "",
+      permissions: getDefaultRolePermissions("viewer"),
     };
   }
 
   try {
-    const snap = await getDoc(doc(db, COL.users, user.uid));
+    const [snap, roles] = await Promise.all([
+      getDoc(doc(db, COL.users, user.uid)),
+      loadRolesCatalog(),
+    ]);
 
     if (!snap.exists()) {
       return {
@@ -69,30 +182,37 @@ async function loadUserRoleIntoCfg(cfg) {
         onboardingComplete: false,
         playerStatus: "",
         associationStatus: "",
+        permissions: getDefaultRolePermissions("viewer"),
       };
     }
 
     const data = snap.data() || {};
-    const role = String(data.role || "viewer").trim().toLowerCase();
+    const role = normalizeRole(data.role || "viewer");
     const onboardingComplete = data.onboardingComplete === true;
 
     const playerStatus = normalizePlayerStatus(data);
     const associationStatus = normalizeAssociationStatus(data);
     const isPlayerActive = playerStatus === "active";
+    const roleDef =
+      roles.find((r) => normalizeRole(r.id) === role) ||
+      normalizeRoleDefinition({ id: role });
 
-    const finalRole = isPlayerActive ? role : "viewer";
+    const permissions = roleDef.permissions || getDefaultRolePermissions(role);
 
     return {
       ...cfg,
-      role: finalRole,
-      isAdmin: finalRole === "admin",
+      userData: data,
+      role,
+      isAdmin: role === "admin",
       isPlayerActive,
       onboardingComplete,
       playerStatus,
       associationStatus,
+      permissions,
+      hasFullPlatformAccess: hasFullPlatformAccess(data, permissions),
     };
   } catch (err) {
-    console.warn("No se pudo cargar rol:", err);
+    console.warn("No se pudo cargar rol/permisos:", err);
     return {
       ...cfg,
       role: "viewer",
@@ -101,8 +221,20 @@ async function loadUserRoleIntoCfg(cfg) {
       onboardingComplete: false,
       playerStatus: "",
       associationStatus: "",
+      permissions: getDefaultRolePermissions("viewer"),
+      hasFullPlatformAccess: false,
     };
   }
+}
+
+function canAccessPageByPermissions(pageKey, cfg) {
+  const tabs = cfg?.permissions?.tabs || {};
+
+  if (pageKey === "admin") return tabs.admin === true;
+  if (pageKey === "association") return tabs.association === true;
+  if (pageKey === "accountability") return tabs.accountability === true;
+
+  return true;
 }
 
 export async function guardPage(pageKey) {
@@ -119,29 +251,29 @@ export async function guardPage(pageKey) {
     return { cfg, redirected: true };
   }
 
-  if (cfg.onboardingComplete !== true) {
+  if (cfg.onboardingComplete !== true && cfg.hasFullPlatformAccess !== true) {
     window.location.href = "/public/register.html";
     return { cfg, redirected: true };
   }
 
-  /* Asociados no jugadores: no deben entrar a páginas del dashboard */
-  if (
-    cfg.associationStatus === "pending" ||
-    cfg.associationStatus === "active" ||
-    cfg.associationStatus === "rejected"
-  ) {
-    window.location.href = "/member_status.html";
-    return { cfg, redirected: true };
-  }
-
-  /* Jugadores no activos aún */
-  if (cfg.isPlayerActive !== true) {
-    if (cfg.playerStatus === "pending") {
-      window.location.href = "/index.html?state=platform_pending";
-    } else {
-      window.location.href = HOME_HREF;
+  if (cfg.hasFullPlatformAccess !== true) {
+    if (
+      cfg.associationStatus === "pending" ||
+      cfg.associationStatus === "active" ||
+      cfg.associationStatus === "rejected"
+    ) {
+      window.location.href = "/member_status.html";
+      return { cfg, redirected: true };
     }
-    return { cfg, redirected: true };
+
+    if (cfg.isPlayerActive !== true) {
+      if (cfg.playerStatus === "pending") {
+        window.location.href = "/index.html?state=platform_pending";
+      } else {
+        window.location.href = HOME_HREF;
+      }
+      return { cfg, redirected: true };
+    }
   }
 
   const page = PAGE_CONFIG[pageKey];
@@ -152,8 +284,7 @@ export async function guardPage(pageKey) {
     return { cfg, redirected: true };
   }
 
-  const adminOnlyPages = new Set(["admin", "association"]);
-  if (adminOnlyPages.has(pageKey) && !cfg.isAdmin) {
+  if (!canAccessPageByPermissions(pageKey, cfg)) {
     window.location.href = HOME_HREF;
     return { cfg, redirected: true };
   }
