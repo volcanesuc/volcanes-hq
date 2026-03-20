@@ -10,8 +10,6 @@ import {
   doc,
   getDocs,
   getDoc,
-  query,
-  where,
   addDoc,
   updateDoc,
   setDoc,
@@ -118,6 +116,10 @@ const $ = {
   usersKpiPending: document.getElementById("usersKpiPending"),
   usersKpiNoPlayer: document.getElementById("usersKpiNoPlayer"),
   usersKpiPickups: document.getElementById("usersKpiPickups"),
+
+  // role permissions
+  rolesPermissionsTableBody: document.getElementById("rolesPermissionsTableBody"),
+  refreshRolesPermissionsBtn: document.getElementById("refreshRolesPermissionsBtn"),
 
   // register settings
   registerSettingsForm: document.getElementById("registerSettingsForm"),
@@ -391,23 +393,82 @@ function isPendingUser(user) {
   return wantsPlayer && playerStatus === "pending";
 }
 
+/* =========================================================
+   ROLES / PERMISSIONS
+========================================================= */
+
+function getDefaultRolePermissions(roleId = "") {
+  const normalized = String(roleId || "").trim().toLowerCase();
+
+  const defaults = {
+    tabs: {
+      admin: false,
+      association: false,
+      accountability: false,
+    },
+    adminSections: {
+      users: false,
+      landingSections: false,
+      registerSettings: false,
+    },
+  };
+
+  if (normalized === "admin") {
+    defaults.tabs.admin = true;
+    defaults.tabs.association = true;
+    defaults.tabs.accountability = true;
+    defaults.adminSections.users = true;
+    defaults.adminSections.landingSections = true;
+    defaults.adminSections.registerSettings = true;
+  }
+
+  return defaults;
+}
+
+function mergePermissions(base = {}, incoming = {}) {
+  return {
+    tabs: {
+      ...(base.tabs || {}),
+      ...(incoming.tabs || {}),
+    },
+    adminSections: {
+      ...(base.adminSections || {}),
+      ...(incoming.adminSections || {}),
+    },
+  };
+}
+
+function normalizeRoleDefinition(role = {}) {
+  const base = getDefaultRolePermissions(role?.id);
+  return {
+    id: String(role?.id || "").trim(),
+    label: role?.label || role?.id || "",
+    permissions: mergePermissions(base, role?.permissions || {}),
+  };
+}
+
 function mergeRolesWithFallback(firebaseRoles = [], fallbackRoles = []) {
   const byId = new Map();
 
   for (const role of fallbackRoles) {
     if (!role?.id) continue;
-    byId.set(String(role.id), {
+    const normalized = normalizeRoleDefinition({
       id: String(role.id),
       label: role.label || role.id,
+      permissions: role.permissions || {},
     });
+    byId.set(String(normalized.id), normalized);
   }
 
   for (const role of firebaseRoles) {
     if (!role?.id) continue;
-    byId.set(String(role.id), {
-      id: String(role.id),
-      label: role.label || role.id,
+    const previous = byId.get(String(role.id)) || { id: role.id, label: role.label || role.id };
+    const normalized = normalizeRoleDefinition({
+      ...previous,
+      ...role,
+      permissions: mergePermissions(previous.permissions || {}, role.permissions || {}),
     });
+    byId.set(String(normalized.id), normalized);
   }
 
   return Array.from(byId.values());
@@ -423,15 +484,16 @@ async function loadRolesCatalog() {
     availableRoles = mergeRolesWithFallback(firebaseRoles, fallbackRoles);
   } catch (err) {
     console.error("loadRolesCatalog error:", err);
-    availableRoles = Array.isArray(APP_CONFIG.userRoles) ? [...APP_CONFIG.userRoles] : [];
+    const fallbackRoles = Array.isArray(APP_CONFIG.userRoles) ? APP_CONFIG.userRoles : [];
+    availableRoles = mergeRolesWithFallback([], fallbackRoles);
   }
 
   if (!availableRoles.length) {
     availableRoles = [
-      { id: "admin", label: "Admin" },
-      { id: "coach", label: "Coach" },
-      { id: "staff", label: "Staff" },
-      { id: "viewer", label: "Viewer" },
+      normalizeRoleDefinition({ id: "admin", label: "Admin" }),
+      normalizeRoleDefinition({ id: "coach", label: "Coach" }),
+      normalizeRoleDefinition({ id: "staff", label: "Staff" }),
+      normalizeRoleDefinition({ id: "viewer", label: "Viewer" }),
     ];
   }
 }
@@ -440,8 +502,202 @@ function getRolesForSelect() {
   return Array.isArray(availableRoles) && availableRoles.length
     ? availableRoles
     : Array.isArray(APP_CONFIG.userRoles)
-    ? APP_CONFIG.userRoles
+    ? mergeRolesWithFallback([], APP_CONFIG.userRoles)
     : [];
+}
+
+function getRolePermission(role, path, fallback = false) {
+  const parts = String(path || "").split(".").filter(Boolean);
+  let cursor = role?.permissions || {};
+
+  for (const part of parts) {
+    if (!cursor || typeof cursor !== "object" || !(part in cursor)) {
+      return fallback;
+    }
+    cursor = cursor[part];
+  }
+
+  return cursor === true;
+}
+
+function renderRolePermissionsTable() {
+  if (!$.rolesPermissionsTableBody) return;
+
+  const roles = getRolesForSelect();
+
+  if (!roles.length) {
+    $.rolesPermissionsTableBody.innerHTML = `
+      <tr>
+        <td colspan="8" class="text-muted">No hay roles configurados.</td>
+      </tr>
+    `;
+    return;
+  }
+
+  $.rolesPermissionsTableBody.innerHTML = roles
+    .map((role) => `
+      <tr data-role-row="${esc(role.id)}">
+        <td>
+          <div class="d-flex flex-column">
+            <strong>${esc(role.label || role.id)}</strong>
+            <span class="small text-muted">${esc(role.id)}</span>
+          </div>
+        </td>
+
+        <td class="text-center">
+          <input
+            type="checkbox"
+            class="form-check-input"
+            data-role-permission="${esc(role.id)}"
+            data-permission-path="tabs.admin"
+            ${getRolePermission(role, "tabs.admin") ? "checked" : ""}
+          />
+        </td>
+
+        <td class="text-center">
+          <input
+            type="checkbox"
+            class="form-check-input"
+            data-role-permission="${esc(role.id)}"
+            data-permission-path="tabs.association"
+            ${getRolePermission(role, "tabs.association") ? "checked" : ""}
+          />
+        </td>
+
+        <td class="text-center">
+          <input
+            type="checkbox"
+            class="form-check-input"
+            data-role-permission="${esc(role.id)}"
+            data-permission-path="tabs.accountability"
+            ${getRolePermission(role, "tabs.accountability") ? "checked" : ""}
+          />
+        </td>
+
+        <td class="text-center">
+          <input
+            type="checkbox"
+            class="form-check-input"
+            data-role-permission="${esc(role.id)}"
+            data-permission-path="adminSections.users"
+            ${getRolePermission(role, "adminSections.users") ? "checked" : ""}
+          />
+        </td>
+
+        <td class="text-center">
+          <input
+            type="checkbox"
+            class="form-check-input"
+            data-role-permission="${esc(role.id)}"
+            data-permission-path="adminSections.landingSections"
+            ${getRolePermission(role, "adminSections.landingSections") ? "checked" : ""}
+          />
+        </td>
+
+        <td class="text-center">
+          <input
+            type="checkbox"
+            class="form-check-input"
+            data-role-permission="${esc(role.id)}"
+            data-permission-path="adminSections.registerSettings"
+            ${getRolePermission(role, "adminSections.registerSettings") ? "checked" : ""}
+          />
+        </td>
+
+        <td class="text-end">
+          <button
+            type="button"
+            class="btn btn-sm btn-primary"
+            data-save-role-permissions="${esc(role.id)}"
+          >
+            Guardar
+          </button>
+        </td>
+      </tr>
+    `)
+    .join("");
+}
+
+async function loadRolesPermissionsAdmin() {
+  if (!$.rolesPermissionsTableBody) return;
+
+  $.rolesPermissionsTableBody.innerHTML = `
+    <tr>
+      <td colspan="8" class="text-muted">Cargando roles…</td>
+    </tr>
+  `;
+
+  try {
+    await loadRolesCatalog();
+    fillStaticOptions();
+    renderRolePermissionsTable();
+  } catch (err) {
+    console.error("loadRolesPermissionsAdmin error:", err);
+    $.rolesPermissionsTableBody.innerHTML = `
+      <tr>
+        <td colspan="8" class="text-danger">No se pudo cargar la matriz de permisos.</td>
+      </tr>
+    `;
+  }
+}
+
+async function saveRolePermissions(roleId) {
+  const normalizedRoleId = String(roleId || "").trim();
+  if (!normalizedRoleId) {
+    showAlert("No se encontró el rol a guardar.");
+    return;
+  }
+
+  const role = getRolesForSelect().find((item) => String(item.id) === normalizedRoleId);
+  if (!role) {
+    showAlert("No se encontró la definición del rol.");
+    return;
+  }
+
+  const base = getDefaultRolePermissions(normalizedRoleId);
+
+  const nextRole = normalizeRoleDefinition({
+    ...role,
+    permissions: mergePermissions(base, {
+      tabs: {
+        admin: !!document.querySelector(`[data-role-permission="${CSS.escape(normalizedRoleId)}"][data-permission-path="tabs.admin"]`)?.checked,
+        association: !!document.querySelector(`[data-role-permission="${CSS.escape(normalizedRoleId)}"][data-permission-path="tabs.association"]`)?.checked,
+        accountability: !!document.querySelector(`[data-role-permission="${CSS.escape(normalizedRoleId)}"][data-permission-path="tabs.accountability"]`)?.checked,
+      },
+      adminSections: {
+        users: !!document.querySelector(`[data-role-permission="${CSS.escape(normalizedRoleId)}"][data-permission-path="adminSections.users"]`)?.checked,
+        landingSections: !!document.querySelector(`[data-role-permission="${CSS.escape(normalizedRoleId)}"][data-permission-path="adminSections.landingSections"]`)?.checked,
+        registerSettings: !!document.querySelector(`[data-role-permission="${CSS.escape(normalizedRoleId)}"][data-permission-path="adminSections.registerSettings"]`)?.checked,
+      },
+    }),
+  });
+
+  showLoader(`Guardando permisos de ${nextRole.label || nextRole.id}…`);
+
+  try {
+    const merged = getRolesForSelect().map((item) =>
+      String(item.id) === normalizedRoleId ? nextRole : normalizeRoleDefinition(item)
+    );
+
+    await setDoc(
+      doc(db, COL_SYSTEM_CONFIG, "roles"),
+      {
+        roles: merged.map((item) => normalizeRoleDefinition(item)),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    availableRoles = merged;
+    fillStaticOptions();
+    renderRolePermissionsTable();
+    showAlert(`Permisos del rol ${nextRole.label || nextRole.id} guardados correctamente.`, "success");
+  } catch (err) {
+    console.error("saveRolePermissions error:", err);
+    showAlert(err?.message || "No se pudieron guardar los permisos del rol.");
+  } finally {
+    hideLoader();
+  }
 }
 
 function fillStaticOptions() {
@@ -1020,8 +1276,6 @@ async function saveUserEditFlow(ev) {
       nextPlayerStatus = "active";
     } else if (finalPlayerId) {
       nextPlayerStatus = "pending";
-    } else {
-      nextPlayerStatus = null;
     }
 
     await updateDoc(doc(db, COL_USERS, uid), {
@@ -2240,6 +2494,7 @@ async function boot() {
 
     await Promise.all([
       loadUsersAdminTable(),
+      loadRolesPermissionsAdmin(),
       loadRegisterSettingsAdmin(),
       loadIndexSettingsAdmin(),
       loadHeroAdmin(),
@@ -2263,7 +2518,7 @@ async function boot() {
     $.eventsSettingsForm?.addEventListener("submit", saveEventsSettings);
     $.uniformSettingsForm?.addEventListener("submit", saveUniformSettings);
     $.uniformForm?.addEventListener("submit", addUniform);
-    
+
     $.approveLinkMode?.addEventListener("change", syncApproveModeUI);
     $.approveUserForm?.addEventListener("submit", approveUserFlow);
 
@@ -2274,6 +2529,8 @@ async function boot() {
     $.associationDetailsForm?.addEventListener("submit", saveAssociationDetails);
 
     $.refreshUsersBtn?.addEventListener("click", loadUsersAdminTable);
+    $.refreshRolesPermissionsBtn?.addEventListener("click", loadRolesPermissionsAdmin);
+
     $.usersSearchInput?.addEventListener("input", renderUsersAdminTable);
     $.usersRoleFilter?.addEventListener("change", renderUsersAdminTable);
     $.usersAssociationFilter?.addEventListener("change", renderUsersAdminTable);
@@ -2295,6 +2552,12 @@ async function boot() {
       const denyBtn = ev.target.closest("[data-deny-user]");
       if (denyBtn) {
         await denyUserFlow(denyBtn.getAttribute("data-deny-user"));
+        return;
+      }
+
+      const saveRoleBtn = ev.target.closest("[data-save-role-permissions]");
+      if (saveRoleBtn) {
+        await saveRolePermissions(saveRoleBtn.getAttribute("data-save-role-permissions"));
         return;
       }
 
