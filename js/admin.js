@@ -1120,7 +1120,7 @@ async function approveUserFlow(ev) {
       isPlayerActive: true,
       role: systemRole,
       playerId: playerId || null,
-      playerStatus: "approved",
+      playerStatus: "active",
       updatedAt: serverTimestamp(),
     });
 

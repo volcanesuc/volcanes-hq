@@ -352,14 +352,13 @@ async function loadMemberStatus(uid) {
   }
 
   const userData = userSnap.data() || {};
-  const wantsPlayer = userData?.registration?.wantsPlayer === true;
+  const associationStatus = String(userData?.associationStatus || "").trim().toLowerCase();
+  const currentMembership = getCurrentMembership(userData);
 
-  if (wantsPlayer) {
+  if (associationStatus !== "active" && !currentMembership?.membershipId) {
     window.location.replace("/index.html");
     return;
   }
-
-  const currentMembership = getCurrentMembership(userData);
 
   if (!currentMembership?.membershipId) {
     clearMembershipFields();

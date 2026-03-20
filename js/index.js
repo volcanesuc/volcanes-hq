@@ -84,8 +84,37 @@ function normalizeAssociationStatus(data) {
 
 function normalizePlayerStatus(data) {
   const explicit = String(data?.playerStatus || "").trim().toLowerCase();
-  if (explicit) return explicit;
+
+  if (explicit === "active" || explicit === "approved") return "active";
+  if (
+    explicit === "pending" ||
+    explicit === "submitted" ||
+    explicit === "validating"
+  ) return "pending";
+  if (explicit === "rejected" || explicit === "denied") return "rejected";
+
   return data?.isPlayerActive === true ? "active" : "";
+}
+
+function normalizeRole(data) {
+  return String(data?.role || "").trim().toLowerCase();
+}
+
+function hasBackofficeAccess(data) {
+  const role = normalizeRole(data);
+  return ["admin", "viewer", "content_editor"].includes(role);
+}
+
+function hasFullPlatformAccess(data) {
+  const associationStatus = normalizeAssociationStatus(data);
+  const playerStatus = normalizePlayerStatus(data);
+
+  return (
+    associationStatus === "active" ||
+    playerStatus === "active" ||
+    data?.isPlayerActive === true ||
+    hasBackofficeAccess(data)
+  );
 }
 
 async function readCurrentUserState(uid) {
@@ -112,8 +141,9 @@ async function bootPendingMode() {
       const canUsePickups = userData.canUsePickups === true;
       const playerStatus = normalizePlayerStatus(userData);
       const associationStatus = normalizeAssociationStatus(userData);
+      const hasPlatformAccess = hasFullPlatformAccess(userData);
 
-      if (playerStatus === "active" && onboardingComplete) {
+      if (hasPlatformAccess) {
         window.location.replace("/dashboard.html");
         return;
       }
@@ -161,8 +191,9 @@ async function bootPendingMode() {
       const canUsePickups = userData.canUsePickups === true;
       const playerStatus = normalizePlayerStatus(userData);
       const associationStatus = normalizeAssociationStatus(userData);
+      const hasPlatformAccess = hasFullPlatformAccess(userData);
 
-      if (playerStatus === "active" && onboardingComplete) {
+      if (hasPlatformAccess) {
         window.location.replace("/dashboard.html");
         return;
       }
@@ -210,8 +241,9 @@ async function bootPendingMode() {
       const canUsePickups = userData.canUsePickups === true;
       const playerStatus = normalizePlayerStatus(userData);
       const associationStatus = normalizeAssociationStatus(userData);
+      const hasPlatformAccess = hasFullPlatformAccess(userData);
 
-      if (playerStatus === "active" && onboardingComplete) {
+      if (hasPlatformAccess) {
         window.location.replace("/dashboard.html");
         return;
       }
@@ -835,8 +867,9 @@ async function bootNormalLanding() {
         const canUsePickups = userData.canUsePickups === true;
         const playerStatus = normalizePlayerStatus(userData);
         const associationStatus = normalizeAssociationStatus(userData);
+        const hasPlatformAccess = hasFullPlatformAccess(userData);
 
-        if (playerStatus === "active" && onboardingComplete) {
+        if (hasPlatformAccess) {
           window.location.replace("/dashboard.html");
           return;
         }
