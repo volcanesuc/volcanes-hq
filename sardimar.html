@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Auto Submit CF7</title>
+</head>
+<body>
+  <h2>Enviando formularios...</h2>
+
+  <button onclick="run()">Enviar 10 submissions</button>
+
+  <script>
+    const url = "https://sardimar.com/wp-json/contact-form-7/v1/contact-forms/5769/feedback";
+
+    async function sendForm(i) {
+      const formData = new FormData();
+
+      // 🔴 CAMPOS INTERNOS (ajustar si cambian)
+      formData.append("_wpcf7", "5769");
+      formData.append("_wpcf7_version", "5.8");
+      formData.append("_wpcf7_locale", "es_ES");
+      formData.append("_wpcf7_unit_tag", "wpcf7-f5769-o1");
+      formData.append("_wpcf7_container_post", "0");
+
+      // 🟢 CAMPOS DEL FORM (AJUSTAR NOMBRES EXACTOS)
+      formData.append("your-name", "Diego Rivera");
+      formData.append("your-phone", `70567463`);
+      formData.append("your-email", `diegorifu22+${i}@gmail.com`);
+      formData.append("your-address", "San Pedro");
+
+      // checkbox (ejemplo típico CF7)
+      formData.append("points-of-sale[]", "Walmart");
+
+      // aceptación términos
+      formData.append("terminos-acceptance", "1");
+      formData.append("reglamento-acceptance", "1");
+
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          body: formData
+        });
+
+        const data = await res.json();
+        console.log("✅ Sent", i, data);
+
+      } catch (err) {
+        console.error("❌ Error", i, err);
+      }
+    }
+
+    async function run() {
+      for (let i = 0; i < 10; i++) {
+        await sendForm(i);
+
+        // pequeño delay para evitar bloqueos
+        await new Promise(r => setTimeout(r, 500));
+      }
+
+      alert("Done 🚀");
+    }
+  </script>
+</body>
+</html>
