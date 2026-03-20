@@ -1013,11 +1013,23 @@ async function saveUserEditFlow(ev) {
       finalPlayerId = newPlayerRef.id;
     }
 
+    const nextIsPlayerActive = !!$.editIsPlayerActive?.checked;
+
+    let nextPlayerStatus = null;
+    if (nextIsPlayerActive) {
+      nextPlayerStatus = "active";
+    } else if (finalPlayerId) {
+      nextPlayerStatus = "pending";
+    } else {
+      nextPlayerStatus = null;
+    }
+
     await updateDoc(doc(db, COL_USERS, uid), {
       role: $.editSystemRole?.value || "viewer",
       associationStatus: ($.editAssociationStatus?.value || "").trim() || null,
       canUsePickups: !!$.editCanUsePickups?.checked,
-      isPlayerActive: !!$.editIsPlayerActive?.checked,
+      isPlayerActive: nextIsPlayerActive,
+      playerStatus: nextPlayerStatus,
       playerId: finalPlayerId || null,
       updatedAt: serverTimestamp(),
     });

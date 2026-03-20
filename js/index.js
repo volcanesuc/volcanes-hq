@@ -1,4 +1,3 @@
-// js/index.js
 import { APP_CONFIG } from "./config/config.js";
 import { CLUB_DATA } from "./strings.js";
 import { loadHeader } from "./components/header.js";
@@ -29,50 +28,8 @@ const pendingRetryBtn = document.getElementById("pendingRetryBtn");
 const pendingLogoutBtn = document.getElementById("pendingLogoutBtn");
 
 /* =========================================================
-   PENDING MODE
+   STATUS / ACCESS HELPERS
 ========================================================= */
-
-function showPendingState(kind = "player") {
-  pendingSection?.classList.add("d-none");
-  associationPendingSection?.classList.add("d-none");
-
-  if (kind === "association") {
-    associationPendingSection?.classList.remove("d-none");
-  } else {
-    pendingSection?.classList.remove("d-none");
-  }
-
-  const sectionsToHide = [
-    "featuredActivitySection",
-    "eventsSection",
-    "entrenamientos",
-    "honorsSection",
-    "uniformsSection",
-  ];
-
-  sectionsToHide.forEach((id) => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = "none";
-  });
-
-  const hero = document.querySelector(".hero");
-  if (hero) hero.style.display = "none";
-
-  const heroSocialsWrap = document.getElementById("heroSocialsWrap");
-  if (heroSocialsWrap) heroSocialsWrap.style.display = "none";
-
-  const footer = document.querySelector(".landing-footer");
-  if (footer) {
-    footer.innerHTML = `
-      <p>${CLUB_DATA.footer.copyright}</p>
-      <p>Fundados en el ${CLUB_DATA.club.foundedYear}</p>
-    `;
-  }
-
-  document.documentElement.classList.remove("preload");
-  document.body.classList.remove("loading");
-  hideLoader();
-}
 
 function normalizeAssociationStatus(data) {
   const explicit = String(data?.associationStatus || "").trim().toLowerCase();
@@ -117,6 +74,31 @@ function hasFullPlatformAccess(data) {
   );
 }
 
+function resolveUserAccess(userData = {}) {
+  const associationStatus = normalizeAssociationStatus(userData);
+  const playerStatus = normalizePlayerStatus(userData);
+  const onboardingComplete = userData.onboardingComplete === true;
+  const canUsePickups = userData.canUsePickups === true;
+
+  if (hasFullPlatformAccess(userData)) {
+    return { kind: "redirect", to: "/dashboard.html" };
+  }
+
+  if (associationStatus === "pending" || associationStatus === "rejected") {
+    return { kind: "association_pending" };
+  }
+
+  if (playerStatus === "pending") {
+    return { kind: "player_pending" };
+  }
+
+  if (canUsePickups && onboardingComplete) {
+    return { kind: "redirect", to: "/pickups_status.html" };
+  }
+
+  return { kind: "landing" };
+}
+
 async function readCurrentUserState(uid) {
   if (!uid) return {};
 
@@ -125,49 +107,101 @@ async function readCurrentUserState(uid) {
   return userSnap?.exists?.() ? (userSnap.data() || {}) : {};
 }
 
+/* =========================================================
+   PENDING UI
+========================================================= */
+
+function showPendingState(kind = "player") {
+  pendingSection?.classList.add("d-none");
+  associationPendingSection?.classList.add("d-none");
+
+  if (kind === "association") {
+    associationPendingSection?.classList.remove("d-none");
+  } else {
+    pendingSection?.classList.remove("d-none");
+  }
+
+  const sectionsToHide = [
+    "featuredActivitySection",
+    "eventsSection",
+    "entrenamientos",
+    "honorsSection",
+    "uniformsSection",
+  ];
+
+  sectionsToHide.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = "none";
+  });
+
+  const hero = document.querySelector(".hero");
+  if (hero) hero.style.display = "none";
+
+  const heroSocialsWrap = document.getElementById("heroSocialsWrap");
+  if (heroSocialsWrap) heroSocialsWrap.style.display = "none";
+
+  const footer = document.querySelector(".landing-footer");
+  if (footer) {
+    footer.innerHTML = `
+      <p>${CLUB_DATA.footer.copyright}</p>
+      <p>Fundados en el ${CLUB_DATA.club.foundedYear}</p>
+    `;
+  }
+
+  document.documentElement.classList.remove("preload");
+  document.body.classList.remove("loading");
+  hideLoader();
+}
+
+function applyPendingAccessResult(result) {
+  if (!result) {
+    window.location.replace("/index.html");
+    return;
+  }
+
+  if (result.kind === "redirect") {
+    window.location.replace(result.to || "/index.html");
+    return;
+  }
+
+  if (result.kind === "association_pending") {
+    showPendingState("association");
+    return;
+  }
+
+  if (result.kind === "player_pending") {
+    showPendingState("player");
+    return;
+  }
+
+  window.location.replace("/index.html");
+}
+
+async function reevaluatePendingAccess() {
+  const user = auth.currentUser;
+  if (!user?.uid) {
+    window.location.replace("/index.html");
+    return;
+  }
+
+  const userData = await readCurrentUserState(user.uid);
+  const result = resolveUserAccess(userData);
+  applyPendingAccessResult(result);
+}
+
 async function bootPendingMode() {
   showLoader("Validando estado…");
 
   onAuthStateChanged(auth, async (user) => {
     try {
-      if (!user) {
+      if (!user?.uid) {
         window.location.replace("/index.html");
         return;
       }
 
       const userData = await readCurrentUserState(user.uid);
-
-      const onboardingComplete = userData.onboardingComplete === true;
-      const canUsePickups = userData.canUsePickups === true;
-      const playerStatus = normalizePlayerStatus(userData);
-      const associationStatus = normalizeAssociationStatus(userData);
-      const hasPlatformAccess = hasFullPlatformAccess(userData);
-
-      if (hasPlatformAccess) {
-        window.location.replace("/dashboard.html");
-        return;
-      }
-
-      if (
-        associationStatus === "pending" ||
-        associationStatus === "active" ||
-        associationStatus === "rejected"
-      ) {
-        showPendingState("association");
-        return;
-      }
-
-      if (playerStatus === "pending") {
-        showPendingState("player");
-        return;
-      }
-
-      if (canUsePickups && onboardingComplete) {
-        window.location.replace("/pickups_status.html");
-        return;
-      }
-
-      window.location.replace("/index.html");
+      const result = resolveUserAccess(userData);
+      applyPendingAccessResult(result);
     } catch (err) {
       console.error("Error validando pending state:", err);
       showPendingState("player");
@@ -179,45 +213,7 @@ async function bootPendingMode() {
   pendingRetryBtn?.addEventListener("click", async () => {
     showLoader("Revisando estado…");
     try {
-      const user = auth.currentUser;
-      if (!user?.uid) {
-        window.location.replace("/index.html");
-        return;
-      }
-
-      const userData = await readCurrentUserState(user.uid);
-
-      const onboardingComplete = userData.onboardingComplete === true;
-      const canUsePickups = userData.canUsePickups === true;
-      const playerStatus = normalizePlayerStatus(userData);
-      const associationStatus = normalizeAssociationStatus(userData);
-      const hasPlatformAccess = hasFullPlatformAccess(userData);
-
-      if (hasPlatformAccess) {
-        window.location.replace("/dashboard.html");
-        return;
-      }
-
-      if (
-        associationStatus === "pending" ||
-        associationStatus === "active" ||
-        associationStatus === "rejected"
-      ) {
-        showPendingState("association");
-        return;
-      }
-
-      if (playerStatus === "pending") {
-        showPendingState("player");
-        return;
-      }
-
-      if (canUsePickups && onboardingComplete) {
-        window.location.replace("/pickups_status.html");
-        return;
-      }
-
-      window.location.replace("/index.html");
+      await reevaluatePendingAccess();
     } catch (err) {
       console.error("Error reintentando validación:", err);
       showPendingState("player");
@@ -229,45 +225,7 @@ async function bootPendingMode() {
   associationRetryBtn?.addEventListener("click", async () => {
     showLoader("Revisando estado…");
     try {
-      const user = auth.currentUser;
-      if (!user?.uid) {
-        window.location.replace("/index.html");
-        return;
-      }
-
-      const userData = await readCurrentUserState(user.uid);
-
-      const onboardingComplete = userData.onboardingComplete === true;
-      const canUsePickups = userData.canUsePickups === true;
-      const playerStatus = normalizePlayerStatus(userData);
-      const associationStatus = normalizeAssociationStatus(userData);
-      const hasPlatformAccess = hasFullPlatformAccess(userData);
-
-      if (hasPlatformAccess) {
-        window.location.replace("/dashboard.html");
-        return;
-      }
-
-      if (
-        associationStatus === "pending" ||
-        associationStatus === "active" ||
-        associationStatus === "rejected"
-      ) {
-        showPendingState("association");
-        return;
-      }
-
-      if (playerStatus === "pending") {
-        showPendingState("player");
-        return;
-      }
-
-      if (canUsePickups && onboardingComplete) {
-        window.location.replace("/pickups_status.html");
-        return;
-      }
-
-      window.location.replace("/index.html");
+      await reevaluatePendingAccess();
     } catch (err) {
       console.error("Error reintentando validación:", err);
       showPendingState("player");
@@ -276,23 +234,6 @@ async function bootPendingMode() {
     }
   });
 
-  pendingLogoutBtn?.addEventListener("click", async () => {
-    try {
-      showLoader("Cerrando sesión…");
-      await logout({ redirectTo: "/index.html" });
-    } finally {
-      hideLoader();
-    }
-  });
-
-  associationLogoutBtn?.addEventListener("click", async () => {
-    try {
-      showLoader("Cerrando sesión…");
-      await logout({ redirectTo: "/index.html" });
-    } finally {
-      hideLoader();
-    }
-  });
   pendingLogoutBtn?.addEventListener("click", async () => {
     try {
       showLoader("Cerrando sesión…");
@@ -330,7 +271,7 @@ async function init() {
 }
 
 /* =========================================================
-   MANAGE SECTIONS TO BE SHOWN OR HIDDEN
+   LANDING VISIBILITY
 ========================================================= */
 
 function setSectionVisible(sectionId, visible) {
@@ -363,8 +304,7 @@ async function loadIndexSettings() {
     const snap = await getDoc(ref);
 
     if (snap.exists()) {
-      const data = snap.data();
-      applyIndexSettings(data);
+      applyIndexSettings(snap.data() || {});
     } else {
       applyIndexSettings();
       console.error(`No existe ${COL_CLUB_CONFIG}/index_settings`);
@@ -410,8 +350,24 @@ function renderHero(heroData = {}) {
 }
 
 /* =========================================================
+   HELPERS
+========================================================= */
+
+function safeUrl(url) {
+  const s = String(url || "").trim();
+  if (!s) return "";
+  if (/^https?:\/\//i.test(s)) return s;
+  return `https://${s}`;
+}
+
+/* =========================================================
    SOCIALS
 ========================================================= */
+
+async function loadSocialLinks() {
+  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "social_links")).catch(() => null);
+  return snap?.exists?.() ? (snap.data() || {}) : {};
+}
 
 function renderSocials(socials = {}) {
   const wrap = document.getElementById("heroSocialsWrap");
@@ -515,6 +471,7 @@ function renderEvents(eventsData = {}) {
 /* =========================================================
    FEATURED ACTIVITY
 ========================================================= */
+
 async function loadFeaturedActivityData() {
   const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "featured_activity")).catch(() => null);
   const data = snap?.exists?.() ? (snap.data() || {}) : {};
@@ -547,13 +504,8 @@ function renderFeaturedActivity(featuredData = {}) {
 
   section.style.display = "";
 
-  if (titleEl) {
-    titleEl.textContent = featuredData.title || "";
-  }
-
-  if (subtitleEl) {
-    subtitleEl.textContent = featuredData.subtitle || "";
-  }
+  if (titleEl) titleEl.textContent = featuredData.title || "";
+  if (subtitleEl) subtitleEl.textContent = featuredData.subtitle || "";
 
   if (ctaEl) {
     const ctaUrl = safeUrl(featuredData.ctaUrl || "");
@@ -570,9 +522,20 @@ function renderFeaturedActivity(featuredData = {}) {
     }
   }
 }
+
 /* =========================================================
    TRAININGS & GAMES
 ========================================================= */
+
+async function loadTrainingsData() {
+  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "trainings")).catch(() => null);
+  const data = snap?.exists?.() ? (snap.data() || {}) : {};
+
+  return {
+    title: data.title || "Entrenamientos y Juegos",
+    blocks: Array.isArray(data.blocks) ? data.blocks : [],
+  };
+}
 
 function renderTrainings(trainingsData = {}, socials = {}) {
   const trainingsSection = document.getElementById("entrenamientos");
@@ -596,7 +559,6 @@ function renderTrainings(trainingsData = {}, socials = {}) {
   blocks.forEach((block) => {
     const card = document.createElement("div");
     card.className = "landing-card";
-
     card.innerHTML = `<h3>${block.name || "—"}</h3>`;
 
     const schedule = Array.isArray(block.schedule) ? block.schedule : [];
@@ -627,6 +589,16 @@ function renderTrainings(trainingsData = {}, socials = {}) {
 /* =========================================================
    HONORS
 ========================================================= */
+
+async function loadHonorsData() {
+  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "honors")).catch(() => null);
+  const data = snap?.exists?.() ? (snap.data() || {}) : {};
+
+  return {
+    title: data.title || "Palmarés",
+    items: Array.isArray(data.items) ? data.items : [],
+  };
+}
 
 function renderHonors(honorsData = {}) {
   const honorsSection = document.getElementById("honorsSection");
@@ -683,6 +655,19 @@ function renderHonors(honorsData = {}) {
 /* =========================================================
    UNIFORMS
 ========================================================= */
+
+async function loadUniformsData() {
+  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "uniforms")).catch(() => null);
+  const data = snap?.exists?.() ? (snap.data() || {}) : {};
+
+  return {
+    title: data.title || "Uniformes del Equipo",
+    subtitle: data.subtitle || "Compra tu indumentaria oficial del club",
+    ctaLabel: data.ctaLabel || "Comprar",
+    orderUrl: data.orderUrl || "",
+    items: Array.isArray(data.items) ? data.items : [],
+  };
+}
 
 function renderUniforms(uniformData = {}) {
   const uniformsSection = document.getElementById("uniformsSection");
@@ -756,55 +741,6 @@ function renderUniforms(uniformData = {}) {
 }
 
 /* =========================================================
-   HELPERS
-========================================================= */
-
-function safeUrl(url) {
-  const s = String(url || "").trim();
-  if (!s) return "";
-  if (/^https?:\/\//i.test(s)) return s;
-  return `https://${s}`;
-}
-
-async function loadSocialLinks() {
-  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "social_links")).catch(() => null);
-  return snap?.exists?.() ? (snap.data() || {}) : {};
-}
-
-async function loadHonorsData() {
-  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "honors")).catch(() => null);
-  const data = snap?.exists?.() ? (snap.data() || {}) : {};
-
-  return {
-    title: data.title || "Palmarés",
-    items: Array.isArray(data.items) ? data.items : [],
-  };
-}
-
-async function loadUniformsData() {
-  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "uniforms")).catch(() => null);
-  const data = snap?.exists?.() ? (snap.data() || {}) : {};
-
-  return {
-    title: data.title || "Uniformes del Equipo",
-    subtitle: data.subtitle || "Compra tu indumentaria oficial del club",
-    ctaLabel: data.ctaLabel || "Comprar",
-    orderUrl: data.orderUrl || "",
-    items: Array.isArray(data.items) ? data.items : [],
-  };
-}
-
-async function loadTrainingsData() {
-  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "trainings")).catch(() => null);
-  const data = snap?.exists?.() ? (snap.data() || {}) : {};
-
-  return {
-    title: data.title || "Entrenamientos y Juegos",
-    blocks: Array.isArray(data.blocks) ? data.blocks : [],
-  };
-}
-
-/* =========================================================
    FOOTER
 ========================================================= */
 
@@ -819,7 +755,42 @@ function renderFooter() {
 }
 
 /* =========================================================
-   BOOT
+   LANDING DATA RENDER
+========================================================= */
+
+async function renderPublicLanding() {
+  await loadIndexSettings();
+
+  const [
+    socials,
+    heroData,
+    featuredActivityData,
+    eventsData,
+    honorsData,
+    uniformsData,
+    trainingsData
+  ] = await Promise.all([
+    loadSocialLinks(),
+    loadHeroData(),
+    loadFeaturedActivityData(),
+    loadEventsData(),
+    loadHonorsData(),
+    loadUniformsData(),
+    loadTrainingsData(),
+  ]);
+
+  renderHero(heroData);
+  renderSocials(socials);
+  renderFeaturedActivity(featuredActivityData);
+  renderTrainings(trainingsData, socials);
+  renderEvents(eventsData);
+  renderHonors(honorsData);
+  renderUniforms(uniformsData);
+  renderFooter();
+}
+
+/* =========================================================
+   NORMAL BOOT
 ========================================================= */
 
 async function bootNormalLanding() {
@@ -829,98 +800,30 @@ async function bootNormalLanding() {
     const unsub = onAuthStateChanged(auth, async (user) => {
       try {
         if (!user?.uid) {
-          await loadIndexSettings();
-
-          const [
-            socials,
-            heroData,
-            featuredActivityData,
-            eventsData,
-            honorsData,
-            uniformsData,
-            trainingsData
-          ] = await Promise.all([
-            loadSocialLinks(),
-            loadHeroData(),
-            loadFeaturedActivityData(),
-            loadEventsData(),
-            loadHonorsData(),
-            loadUniformsData(),
-            loadTrainingsData(),
-          ]);
-
-          renderHero(heroData);
-          renderSocials(socials);
-          renderFeaturedActivity(featuredActivityData);
-          renderTrainings(trainingsData, socials);
-          renderEvents(eventsData);
-          renderHonors(honorsData);
-          renderUniforms(uniformsData);
-          renderFooter();
+          await renderPublicLanding();
           resolve();
           return;
         }
 
         const userData = await readCurrentUserState(user.uid);
+        const access = resolveUserAccess(userData);
 
-        const onboardingComplete = userData.onboardingComplete === true;
-        const canUsePickups = userData.canUsePickups === true;
-        const playerStatus = normalizePlayerStatus(userData);
-        const associationStatus = normalizeAssociationStatus(userData);
-        const hasPlatformAccess = hasFullPlatformAccess(userData);
-
-        if (hasPlatformAccess) {
-          window.location.replace("/dashboard.html");
+        if (access.kind === "redirect") {
+          window.location.replace(access.to || "/index.html");
           return;
         }
 
-        if (
-          associationStatus === "pending" ||
-          associationStatus === "active" ||
-          associationStatus === "rejected"
-        ) {
+        if (access.kind === "association_pending") {
           window.location.replace("/member_status.html");
           return;
         }
 
-        if (playerStatus === "pending") {
+        if (access.kind === "player_pending") {
           window.location.replace("/index.html?state=platform_pending");
           return;
         }
 
-        if (canUsePickups && onboardingComplete) {
-          window.location.replace("/pickups_status.html");
-          return;
-        }
-
-        await loadIndexSettings();
-
-        const [
-          socials,
-          heroData,
-          featuredActivityData,
-          eventsData,
-          honorsData,
-          uniformsData,
-          trainingsData
-        ] = await Promise.all([
-          loadSocialLinks(),
-          loadHeroData(),
-          loadFeaturedActivityData(),
-          loadEventsData(),
-          loadHonorsData(),
-          loadUniformsData(),
-          loadTrainingsData(),
-        ]);
-
-        renderHero(heroData);
-        renderSocials(socials);
-        renderFeaturedActivity(featuredActivityData);
-        renderTrainings(trainingsData, socials);
-        renderEvents(eventsData);
-        renderHonors(honorsData);
-        renderUniforms(uniformsData);
-        renderFooter();
+        await renderPublicLanding();
         resolve();
       } catch (err) {
         console.error("Error en bootNormalLanding:", err);
@@ -932,7 +835,10 @@ async function bootNormalLanding() {
   });
 }
 
-// start screen
+/* =========================================================
+   START
+========================================================= */
+
 if (isPendingView) {
   bootPendingMode();
 } else {
