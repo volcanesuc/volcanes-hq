@@ -16,7 +16,7 @@ import { showLoader, hideLoader } from "../ui/loader.js";
 showLoader();
 
 let loaderHidden = false;
-const RAFFLE_ID = "raffle_march";
+const RAFFLE_ID = "raffle_april";
 const NUMBERS_COL_PATH = `raffles/${RAFFLE_ID}/numbers`;
 const TOTAL_NUMBERS = 100;
 
@@ -26,7 +26,7 @@ const firebaseConfig = {
   projectId: "rifavolcanes",
 };
 
-const ADMIN_PASSWORD = "sub20.";
+const ADMIN_PASSWORD = "sub20!";
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
