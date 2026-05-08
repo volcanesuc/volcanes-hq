@@ -541,7 +541,7 @@ async function onSubmit(e) {
 
       fileUrl: url,
       filePath: path,
-      fileType: f.type || null,
+      fileType: f.type || "application/octet-stream",
 
       status: "pending",
       createdAt: serverTimestamp(),
