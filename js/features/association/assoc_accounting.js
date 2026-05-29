@@ -249,7 +249,9 @@ export async function mount(root, cfg) {
             <div class="col-md-3">
               <label class="form-label">Categoría</label>
               <select id="fxCategory" class="form-select" required>
+                <option value="asociación">Asociación</option>
                 <option value="pickup">Pickups</option>
+                <option value="entrenamiento">Entrenamiento</option>
                 <option value="discos">Discos</option>
                 <option value="dominio">Dominio</option>
                 <option value="federacion">Federación</option>
