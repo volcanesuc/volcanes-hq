@@ -141,7 +141,6 @@ export async function loginWithGoogle(opts = {}) {
 
       if (
         access.associationStatus === "pending" ||
-        access.associationStatus === "active" ||
         access.associationStatus === "rejected"
       ) {
         window.location.href = memberStatus;
@@ -221,7 +220,6 @@ export function watchAuth(onLoggedIn, opts = {}) {
 
       if (
         access.associationStatus === "pending" ||
-        access.associationStatus === "active" ||
         access.associationStatus === "rejected"
       ) {
         window.location.replace(memberStatusPath);
