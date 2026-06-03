@@ -187,6 +187,9 @@ async function loadUserRoleIntoCfg(cfg) {
     }
 
     const data = snap.data() || {};
+
+    console.log("USER DATA", data);
+
     const role = normalizeRole(data.role || "viewer");
     const onboardingComplete = data.onboardingComplete === true;
 
@@ -255,6 +258,16 @@ export async function guardPage(pageKey) {
     window.location.href = "/public/register.html";
     return { cfg, redirected: true };
   }
+
+  console.log("GUARD CFG", {
+    onboardingComplete: cfg.onboardingComplete,
+    associationStatus: cfg.associationStatus,
+    playerStatus: cfg.playerStatus,
+    isPlayerActive: cfg.isPlayerActive,
+    hasFullPlatformAccess: cfg.hasFullPlatformAccess,
+    role: cfg.role,
+    permissions: cfg.permissions
+  });
 
   if (cfg.hasFullPlatformAccess !== true) {
     if (
