@@ -3,317 +3,264 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Roster del Torneo</title>
+  <title data-tx="html_tournament_roster.title">Roster del Torneo</title>
 
-  <!-- Bootstrap -->
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-    rel="stylesheet"
-  />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
 
-  <!-- Bootstrap Icons -->
-  <link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
-  />
-
-  <!-- Estilos globales -->
   <link rel="stylesheet" href="/css/main.css" />
   <link rel="stylesheet" href="/css/dashboard.css" />
-  <!-- Estilos de esta pantalla -->
   <link rel="stylesheet" href="/css/tournament_roster.css" />
 </head>
 
 <body class="loading">
-
-  <!-- HEADER -->
   <div id="app-header"></div>
 
-  <main class="container py-4">
+  <main class="container py-4 tr-page">
 
-    <!-- Top bar -->
-    <div class="mb-3">
-      <h1 class="page-title mb-1" id="pageTitle">—</h1>
-      <div class="text-muted" id="pageSubtitle">—</div>
-    </div>
+    <a class="tr-back small" href="/tournaments.html"><i class="bi bi-arrow-left"></i> <span data-tx="html_tournament_roster.back">Torneos</span></a>
 
-    <!-- Tournament hero -->
-    <section class="roster-hero mb-3">
+    <!-- ===== HERO ===== -->
+    <section class="tr-hero mt-2 mb-3">
       <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
-
-        <!-- Info torneo -->
-        <div>
-          <div class="roster-hero__title d-flex align-items-center gap-2">
-            <span id="tName">—</span>
-            <span class="badge text-bg-light border" id="tDates">—</span>
-          </div>
-
-          <div class="text-muted small" id="tMeta">—</div>
-
-          <div class="d-flex gap-2 flex-wrap mt-2 align-items-center">
-            <span class="pill" id="teamFeePill">Team fee: —</span>
-
-            <button
-              class="btn btn-sm btn-outline-secondary"
-              id="toggleTeamFeeBtn"
-              type="button"
-              title="Cambiar estado del fee del equipo"
-            >
-              <i class="bi bi-cash-coin"></i>
-            </button>
+        <div class="min-w-0">
+          <div class="tr-hero__kicker" id="pageSubtitle">—</div>
+          <h1 class="tr-hero__title" id="tName">—</h1>
+          <div class="tr-hero__meta">
+            <span><i class="bi bi-calendar-event"></i> <span id="tDates">—</span></span>
+            <span><i class="bi bi-geo-alt"></i> <span id="tMeta">—</span></span>
+            <span id="tTypeWrap" class="d-none"><i class="bi bi-tag"></i> <span id="tType"></span></span>
           </div>
         </div>
-
-        <!-- Acciones -->
-        <div class="d-flex gap-2">
-          <a
-            class="btn btn-sm btn-outline-primary"
-            id="editTournamentBtn"
-            href="#"
-          >
-            <i class="bi bi-pencil"></i>
-            Editar
+        <div class="d-flex gap-2 flex-wrap">
+          <a id="tOfficialLink" class="btn btn-sm btn-light d-none" href="#" target="_blank" rel="noopener noreferrer">
+            <i class="bi bi-box-arrow-up-right"></i> <span data-tx="html_tournament_roster.officialSite">Sitio oficial</span>
           </a>
-          <a
-            id="tOfficialLink"
-            class="btn btn-sm btn-outline-secondary d-none"
-            href="#"
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Abrir sitio oficial"
-          >
-            <i class="bi bi-link-45deg"></i>
+          <a class="btn btn-sm btn-light" id="editTournamentBtn" href="#">
+            <i class="bi bi-pencil"></i> <span data-tx="html_tournament_roster.edit">Editar</span>
           </a>
         </div>
       </div>
     </section>
 
-    <!-- Errors -->
     <div class="alert alert-warning d-none" id="errorBox"></div>
 
-    <!-- Context hint -->
-    <section class="mb-3" id="contextHint">
-      <div class="text-muted small d-flex align-items-center gap-2">
-        <i class="bi bi-people"></i>
-        Administra convocados, confirmados y abonos del fee
+    <!-- ===== RESUMEN ===== -->
+    <section class="row g-3 mb-3" id="summaryRow">
+      <div class="col-6 col-lg-3">
+        <div class="tr-stat">
+          <div class="tr-stat__label" data-tx="html_tournament_roster.statRoster">Roster</div>
+          <div class="tr-stat__value" id="statTotal">—</div>
+          <div class="tr-stat__sub"><span id="statConfirmed">—</span> · ♀ <span id="statF">—</span> · ♂ <span id="statM">—</span></div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3" data-money>
+        <div class="tr-stat">
+          <div class="tr-stat__label" data-tx="html_tournament_roster.statCollected">Recaudado</div>
+          <div class="tr-stat__value" id="statCollected">—</div>
+          <div class="progress tr-progress mt-2" role="progressbar" aria-label="progreso">
+            <div class="progress-bar" id="statProgress" style="width: 0%"></div>
+          </div>
+          <div class="tr-stat__sub" id="statExpected">—</div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3" data-money>
+        <div class="tr-stat">
+          <div class="tr-stat__label" data-tx="html_tournament_roster.statPending">Pendiente</div>
+          <div class="tr-stat__value text-warning-emphasis" id="statPending">—</div>
+          <div class="tr-stat__sub" id="statDebtors">—</div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3" data-money>
+        <div class="tr-stat">
+          <div class="tr-stat__label" data-tx="html_tournament_roster.statTeamFee">Team fee</div>
+          <div class="tr-stat__value" id="teamFeeAmount">—</div>
+          <div class="d-flex align-items-center gap-2 flex-wrap mt-1">
+            <span class="tr-chip" id="teamFeePill">—</span>
+            <button class="btn btn-sm btn-link p-0" id="toggleTeamFeeBtn" type="button"></button>
+          </div>
+          <div class="tr-stat__sub mt-1" id="statBecas">—</div>
+        </div>
       </div>
     </section>
 
-    <!-- Layout: 2 columnas -->
+    <!-- ===== CONTENIDO ===== -->
     <section class="row g-3">
-
-      <!-- Roster list -->
-      <div class="col-12 col-xl-7" id="rosterPanelCol">
-        <div class="panel">
-
-          <!-- Header roster -->
-          <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+      <!-- Roster -->
+      <div class="col-12 col-xl-8" id="rosterPanelCol">
+        <div class="tr-panel">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
             <div>
-              <div class="panel__title" id="rosterTitle">—</div>
-
-              <!-- Stats -->
-              <div
-                class="panel__sub d-flex gap-2 flex-wrap align-items-center mt-1"
-                id="rosterStats"
-              >
-                <span class="badge text-bg-light border" title="Total de jugadores">
-                  👥 <strong id="statTotal">—</strong>
-                </span>
-
-                <span class="badge text-bg-light border" title="Femenino / Masculino">
-                  ♀ <strong id="statF">—</strong> · ♂ <strong id="statM">—</strong>
-                </span>
-
-                <div id="roleCounters" class="d-flex gap-2 flex-wrap align-items-center"></div>
-
-              </div>
+              <div class="tr-panel__title" id="rosterTitle">—</div>
+              <div class="small text-muted" id="roleCounters"></div>
             </div>
-
-            <!-- Filtros -->
-            <div class="dropdown">
-              <button
-                class="btn btn-sm btn-outline-secondary dropdown-toggle"
-                type="button"
-                data-bs-toggle="dropdown"
-                data-bs-auto-close="outside"
-                aria-expanded="false"
-                id="filtersDropdownBtn"
-              >
-                <i class="bi bi-funnel"></i>
-                Filtros
-                <span class="ms-1 badge text-bg-light border" id="filtersCount" style="display:none;">0</span>
-              </button>
-
-              <div class="dropdown-menu p-3" style="min-width: 260px;">
-                <div class="fw-semibold mb-2">Mostrar</div>
-
-                <!-- Status -->
-                <div class="mb-2" id="filterBlockStatus">
-                  <div class="text-muted small mb-1">Estado</div>
-
-                  <div class="form-check">
-                    <input class="form-check-input roster-filter-check" type="checkbox" id="f_status_confirmado" data-filter="status:confirmado">
-                    <label class="form-check-label" for="f_status_confirmado">Confirmado</label>
-                  </div>
-
-                  <div class="form-check">
-                    <input class="form-check-input roster-filter-check" type="checkbox" id="f_status_convocado" data-filter="status:convocado">
-                    <label class="form-check-label" for="f_status_convocado">Convocado</label>
-                  </div>
-
-                  <div class="form-check">
-                    <input class="form-check-input roster-filter-check" type="checkbox" id="f_status_tentative" data-filter="status:tentative">
-                    <label class="form-check-label" for="f_status_tentative">Por confirmar</label>
-                  </div>
-                </div>
-
-                <hr class="my-2" id="filterDividerStatus">
-
-                <!-- Fee -->
-                <div class="mb-2" id="filterBlockFee">
-                  <div class="text-muted small mb-1">Fee</div>
-
-                  <div class="form-check">
-                    <input class="form-check-input roster-filter-check" type="checkbox" id="f_fee_pendiente" data-filter="fee:pendiente">
-                    <label class="form-check-label" for="f_fee_pendiente">Pendiente</label>
-                  </div>
-
-                  <div class="form-check">
-                    <input class="form-check-input roster-filter-check" type="checkbox" id="f_fee_pagado" data-filter="fee:pagado">
-                    <label class="form-check-label" for="f_fee_pagado">Pagado</label>
-                  </div>
-                </div>
-
-                <hr class="my-2" id="filterDividerFee">
-
-                <!-- Rol -->
-                <div class="mb-2">
-                  <div class="text-muted small mb-1">Rol</div>
-                  <div id="roleFiltersMount"></div>
-                </div>
-
-                <hr class="my-2">
-
-                <!-- Género -->
-                <div class="mb-2">
-                  <div class="text-muted small mb-1">Género</div>
-
-                  <div class="form-check">
-                    <input class="form-check-input roster-filter-check" type="checkbox" id="f_gender_f" data-filter="gender:f">
-                    <label class="form-check-label" for="f_gender_f">Femenino</label>
-                  </div>
-
-                  <div class="form-check">
-                    <input class="form-check-input roster-filter-check" type="checkbox" id="f_gender_m" data-filter="gender:m">
-                    <label class="form-check-label" for="f_gender_m">Masculino</label>
-                  </div>
-                </div>
-
-                <hr class="my-2">
-
-                <!-- Invitados -->
-                <div class="mb-2">
-                  <div class="form-check">
-                    <input class="form-check-input roster-filter-check" type="checkbox" id="f_guest_true" data-filter="guest:true">
-                    <label class="form-check-label" for="f_guest_true">Solo invitados</label>
-                  </div>
-                </div>
-
-                <div class="d-flex gap-2 mt-3">
-                  <button class="btn btn-sm btn-outline-secondary w-100" id="clearLegendFilters" type="button">
-                    Limpiar
-                  </button>
-                </div>
-
-                <div class="small text-muted mt-2" id="filtersHint">
-                  Tip: puedes combinar filtros.
-                </div>
-              </div>
-            </div>
-
+            <div class="input-group input-group-sm tr-search">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <input class="form-control" id="rosterSearch" placeholder="Buscar en el roster…" data-tx-placeholder="html_tournament_roster.searchRoster" />
             </div>
           </div>
 
-          <!-- Roster content -->
-          <div class="mt-3" id="rosterList"></div>
-          <div class="text-muted p-3 d-none" id="rosterEmpty">—</div>
+          <div class="tr-filters mb-3" id="rosterFilters"></div>
+
+          <div id="rosterList"></div>
+          <div class="text-muted p-3 text-center d-none" id="rosterEmpty">—</div>
         </div>
       </div>
 
-      <!-- Players panel -->
-      <div class="col-12 col-xl-5" id="playersPanelCol">
-        <div class="panel">
-
-          <!-- Header -->
-          <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+      <!-- Agregar jugadores -->
+      <div class="col-12 col-xl-4" id="playersPanelCol">
+        <div class="tr-panel tr-panel--sticky">
+          <div class="d-flex justify-content-between align-items-start gap-2">
             <div>
-              <div class="panel__title" id="playersTitle">Jugadores</div>
-              <div class="panel__sub text-muted" id="playersSubtitle">—</div>
+              <div class="tr-panel__title" id="playersTitle">Agregar jugadores</div>
+              <div class="small text-muted" id="playersSubtitle">—</div>
             </div>
-
-            <span
-              class="badge text-bg-light border"
-              id="addPanelState"
-              title="Disponibles en el panel"
-            >
-              Disponibles: —
-            </span>
-          </div>
-
-          <!-- Acciones -->
-          <div class="mt-3 d-flex gap-2 flex-wrap">
-            <button
-              class="btn btn-sm btn-outline-primary"
-              id="addGuestBtn"
-              type="button"
-            >
-              <i class="bi bi-person-plus"></i>
-              Invitado / Préstamo
+            <button class="btn btn-sm btn-outline-primary" id="addGuestBtn" type="button">
+              <i class="bi bi-person-plus"></i> <span data-tx="html_tournament_roster.guest">Invitado</span>
             </button>
           </div>
 
-          <!-- Search -->
-          <div class="mt-3">
-            <div class="input-group">
-              <span class="input-group-text">
-                <i class="bi bi-search"></i>
-              </span>
-              <input
-                class="form-control"
-                id="playersSearch"
-                placeholder="Buscar jugadores activos..."
-              />
-            </div>
-            <div class="form-text">
-              Jugadores disponibles para agregar al roster
-            </div>
+          <div class="input-group input-group-sm mt-3">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input class="form-control" id="playersSearch" placeholder="Buscar jugadores…" data-tx-placeholder="html_tournament_roster.searchPlayers" />
           </div>
 
-          <!-- Players list -->
-          <div class="mt-3" id="playersList"></div>
-          <div class="text-muted p-3 d-none" id="playersEmpty">
-            No hay jugadores.
-          </div>
+          <div class="tr-picker mt-2" id="playersList"></div>
+          <div class="text-muted small p-3 text-center d-none" id="playersEmpty">—</div>
         </div>
       </div>
-
     </section>
 
-    <!-- Footer meta -->
     <div class="d-flex align-items-center gap-2 mt-4">
       <i class="bi bi-info-circle text-muted"></i>
       <div class="small text-muted" id="appVersion">v—</div>
     </div>
-
   </main>
 
-  <!-- Modal mount -->
+  <!-- ===== MODAL: BECA / MONTO ===== -->
+  <div class="modal fade" id="feeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content tr-modal">
+        <form id="feeForm" novalidate>
+          <div class="modal-header">
+            <div>
+              <h5 class="modal-title mb-0" data-tx="html_tournament_roster.feeTitle">Fee del jugador</h5>
+              <small class="text-muted" id="feeSubtitle">—</small>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="d-grid gap-2" id="feeOptions">
+              <label class="tr-option">
+                <input class="form-check-input" type="radio" name="feeType" value="standard" />
+                <div>
+                  <div class="fw-semibold" data-tx="html_tournament_roster.feeStandard">Fee normal</div>
+                  <div class="small text-muted" id="feeStandardHint">—</div>
+                </div>
+              </label>
+              <label class="tr-option">
+                <input class="form-check-input" type="radio" name="feeType" value="percent" />
+                <div class="flex-grow-1">
+                  <div class="fw-semibold" data-tx="html_tournament_roster.feePercent">Beca parcial (%)</div>
+                  <div class="input-group input-group-sm mt-1" style="max-width: 160px;">
+                    <input class="form-control" type="number" min="1" max="99" step="1" id="feePercentInput" placeholder="50" />
+                    <span class="input-group-text">%</span>
+                  </div>
+                </div>
+              </label>
+              <label class="tr-option">
+                <input class="form-check-input" type="radio" name="feeType" value="full" />
+                <div>
+                  <div class="fw-semibold" data-tx="html_tournament_roster.feeFull">Beca completa</div>
+                  <div class="small text-muted" data-tx="html_tournament_roster.feeFullHint">No paga player fee.</div>
+                </div>
+              </label>
+              <label class="tr-option">
+                <input class="form-check-input" type="radio" name="feeType" value="custom" />
+                <div class="flex-grow-1">
+                  <div class="fw-semibold" data-tx="html_tournament_roster.feeCustom">Monto personalizado</div>
+                  <div class="input-group input-group-sm mt-1" style="max-width: 200px;">
+                    <span class="input-group-text" id="feeCurrencySymbol">₡</span>
+                    <input class="form-control" type="number" min="0" step="1" id="feeCustomInput" />
+                  </div>
+                </div>
+              </label>
+            </div>
+
+            <label class="form-label small mt-3" for="feeNoteInput" data-tx="html_tournament_roster.feeNote">Motivo / nota (solo admins)</label>
+            <input class="form-control form-control-sm" id="feeNoteInput" maxlength="160" placeholder="Ej: beca por rendimiento, apoyo económico…" data-tx-placeholder="html_tournament_roster.feeNotePlaceholder" />
+
+            <div class="tr-fee-preview mt-3" id="feePreview">—</div>
+            <div class="small text-danger mt-2 d-none" id="feeError"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" data-tx="html_tournament_roster.cancel">Cancelar</button>
+            <button type="submit" class="btn btn-primary" data-tx="html_tournament_roster.save">Guardar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: INVITADO ===== -->
+  <div class="modal fade" id="guestModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content tr-modal">
+        <form id="guestForm" novalidate>
+          <div class="modal-header">
+            <div>
+              <h5 class="modal-title mb-0" data-tx="html_tournament_roster.guestTitle">Nuevo invitado / préstamo</h5>
+              <small class="text-muted" data-tx="html_tournament_roster.guestSubtitle">Queda disponible para todos los torneos.</small>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row g-2">
+              <div class="col-12">
+                <label class="form-label small" for="guestName" data-tx="html_tournament_roster.guestName">Nombre</label>
+                <input class="form-control" id="guestName" maxlength="80" required />
+              </div>
+              <div class="col-6">
+                <label class="form-label small" for="guestGender" data-tx="html_tournament_roster.guestGender">Género</label>
+                <select class="form-select" id="guestGender">
+                  <option value="" data-tx="html_tournament_roster.guestGenderNone">—</option>
+                  <option value="f" data-tx="html_tournament_roster.female">Femenino</option>
+                  <option value="m" data-tx="html_tournament_roster.male">Masculino</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <label class="form-label small" for="guestNumber" data-tx="html_tournament_roster.guestNumber">Número</label>
+                <input class="form-control" id="guestNumber" type="number" min="0" max="999" />
+              </div>
+              <div class="col-6">
+                <label class="form-label small" for="guestRole" data-tx="html_tournament_roster.guestRole">Rol</label>
+                <select class="form-select" id="guestRole"></select>
+              </div>
+              <div class="col-6">
+                <label class="form-label small" for="guestLoanFrom" data-tx="html_tournament_roster.guestLoanFrom">Préstamo de (club)</label>
+                <input class="form-control" id="guestLoanFrom" maxlength="80" />
+              </div>
+              <div class="col-12">
+                <div class="form-check mt-1">
+                  <input class="form-check-input" type="checkbox" id="guestAddNow" checked />
+                  <label class="form-check-label small" for="guestAddNow" data-tx="html_tournament_roster.guestAddNow">Agregarlo a este roster</label>
+                </div>
+              </div>
+            </div>
+            <div class="small text-danger mt-2 d-none" id="guestError"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" data-tx="html_tournament_roster.cancel">Cancelar</button>
+            <button type="submit" class="btn btn-primary" data-tx="html_tournament_roster.create">Crear</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <div id="modalMount"></div>
 
-  <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-  <!-- Page JS -->
   <script type="module" src="/js/features/tournament_roster.js"></script>
 </body>
 </html>

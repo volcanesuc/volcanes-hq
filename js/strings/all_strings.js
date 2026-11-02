@@ -89,6 +89,7 @@ export const NAMESPACE_LABELS = {
   html_tournament_editor: "Modal: torneo",
   html_training_plan_editor: "Modal: plan de entrenamiento",
   html_training_session_modal: "Modal: sesión de entrenamiento",
+  html_tournament_roster: "Torneos: roster (página)",
 };
 
 // HTML con data-tx: el editor lee los textos por defecto de acá.
@@ -125,4 +126,5 @@ export const HTML_SOURCES = [
   "/partials/tournament_editor.html",
   "/partials/training_plan_editor.html",
   "/partials/training_session_modal.html",
+  "/pages/admin/tournament_roster.html",
 ];

@@ -1,11 +1,11 @@
 // js/features/tournament_roster.js
+// Roster de un torneo: convocados, estados, player fee (con becas), abonos e invitados.
 import { db } from "../auth/firebase.js";
 import { watchAuth, logout } from "../auth/auth.js";
-import { getCurrentPermissions, applyVisibilityMap } from "../auth/permissions.js";
+import { getCurrentPermissions } from "../auth/permissions.js";
 import { APP_CONFIG } from "../config/config.js";
 import { showLoader, hideLoader } from "../ui/loader.js";
 import { loadHeader } from "../components/header.js";
-import { TOURNAMENT_STRINGS } from "../strings.js";
 import { createTournamentEditor } from "./tournament_editor.js";
 import { loadPartialOnce } from "../ui/loadPartial.js";
 import { createPaymentModal, sumPayments } from "./payment_modal.js";
@@ -20,6 +20,7 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { TX, txf } from "/js/strings/screens/tournament_roster.js";
+import { TOURNAMENT_STRINGS } from "../strings.js";
 
 /* ==========================
    HEADER / AUTH
@@ -27,13 +28,10 @@ import { TX, txf } from "/js/strings/screens/tournament_roster.js";
 await loadHeader("tournaments");
 document.getElementById("logoutBtn")?.addEventListener("click", logout);
 
-const S = TOURNAMENT_STRINGS;
-
 /* ==========================
-   COLLECTIONS FROM CONFIG
+   CONFIG
 ========================== */
 const COL = APP_CONFIG.collections;
-
 const TOURNAMENTS_COL = COL.tournaments;
 const CLUB_PLAYERS_COL = COL.club_players;
 const USERS_COL = COL.users;
@@ -41,62 +39,23 @@ const GUESTS_COL = COL.guests;
 
 const PLAYER_ROLES = Array.isArray(APP_CONFIG?.playerRoles) ? APP_CONFIG.playerRoles : [];
 
+// feeType del jugador en el roster
+const FEE = {
+  STANDARD: "standard", // player fee del torneo
+  PERCENT: "percent",   // beca parcial (%)
+  FULL: "full",         // beca completa
+  CUSTOM: "custom",     // monto personalizado
+};
+
+const STATUS_ORDER = ["convocado", "confirmado", "tentative"];
+
 /* ==========================
    DOM
 ========================== */
-const appVersion = document.getElementById("appVersion");
-
-const pageTitle = document.getElementById("pageTitle");
-const pageSubtitle = document.getElementById("pageSubtitle");
-
-const tName = document.getElementById("tName");
-const tMeta = document.getElementById("tMeta");
-const tDates = document.getElementById("tDates");
-const tOfficialLink = document.getElementById("tOfficialLink");
-
-const errorBox = document.getElementById("errorBox");
-
-const lblSearch = document.getElementById("lblSearch");
-const searchInput = document.getElementById("searchInput");
-const btnAddLabel = document.getElementById("btnAddLabel");
-
-const rosterTitle = document.getElementById("rosterTitle");
-const rosterSubtitle = document.getElementById("rosterSubtitle");
-const rosterList = document.getElementById("rosterList");
-const rosterEmpty = document.getElementById("rosterEmpty");
-
-const playersSearch = document.getElementById("playersSearch");
-const playersList = document.getElementById("playersList");
-const playersEmpty = document.getElementById("playersEmpty");
-
-const playersTitle = document.getElementById("playersTitle");
-const playersSubtitle = document.getElementById("playersSubtitle");
-
-const teamFeePill = document.getElementById("teamFeePill");
-const toggleTeamFeeBtn = document.getElementById("toggleTeamFeeBtn");
-
-const clearLegendFiltersBtn = document.getElementById("clearLegendFilters");
-const filtersHintEl = document.getElementById("filtersHint");
-
-const statTotal = document.getElementById("statTotal");
-const statF = document.getElementById("statF");
-const statM = document.getElementById("statM");
-const roleCounters = document.getElementById("roleCounters");
-
-const addGuestBtn = document.getElementById("addGuestBtn");
-const editTournamentBtn = document.getElementById("editTournamentBtn");
-
-const contextHint = document.getElementById("contextHint");
-const rosterPanelCol = document.getElementById("rosterPanelCol");
-const playersPanelCol = document.getElementById("playersPanelCol");
-
-const filterBlockStatus = document.getElementById("filterBlockStatus");
-const filterDividerStatus = document.getElementById("filterDividerStatus");
-const filterBlockFee = document.getElementById("filterBlockFee");
-const filterDividerFee = document.getElementById("filterDividerFee");
+const $ = (id) => document.getElementById(id);
 
 /* ==========================
-   PARAMS / STATE
+   STATE
 ========================== */
 let permissions = null;
 
@@ -108,80 +67,80 @@ let roster = [];
 let players = [];
 let guests = [];
 
-let activeLegendFilters = new Set();
+let activeFilter = "all";
+let openPayments = new Set();
 
 /* ==========================
-   STRINGS -> UI
-========================== */
-applyStrings();
-
-/* ==========================
-   TOURNAMENT EDITOR (LAZY)
+   LAZY MODALS
 ========================== */
 let tournamentEditor = null;
-
 async function ensureTournamentEditor() {
   await loadPartialOnce("/partials/tournament_editor.html", "modalMount");
   if (!tournamentEditor) tournamentEditor = createTournamentEditor();
   return tournamentEditor;
 }
 
-/* ==========================
-   PAYMENT MODAL (LAZY, REUSABLE)
-========================== */
 let payModal = null;
-
 async function ensurePayModal() {
   await loadPartialOnce("/partials/payment_modal.html", "modalMount");
   if (!payModal) payModal = createPaymentModal();
   return payModal;
 }
 
+const feeModal = new bootstrap.Modal($("feeModal"));
+const guestModal = new bootstrap.Modal($("guestModal"));
+
 /* ==========================
    EVENTS
 ========================== */
-playersSearch?.addEventListener("input", renderPlayers);
-toggleTeamFeeBtn?.addEventListener("click", toggleTeamFeePaid);
+$("playersSearch")?.addEventListener("input", renderPlayers);
+$("rosterSearch")?.addEventListener("input", renderRoster);
+$("toggleTeamFeeBtn")?.addEventListener("click", toggleTeamFeePaid);
+$("addGuestBtn")?.addEventListener("click", openGuestModal);
+$("guestForm")?.addEventListener("submit", submitGuest);
+$("feeForm")?.addEventListener("submit", submitFee);
+$("feeForm")?.addEventListener("input", updateFeePreview);
 
-addGuestBtn?.addEventListener("click", createGuestFlow);
+$("rosterFilters")?.addEventListener("click", (ev) => {
+  const btn = ev.target.closest("[data-filter]");
+  if (!btn) return;
+  activeFilter = btn.getAttribute("data-filter");
+  renderRoster();
+});
 
-editTournamentBtn?.addEventListener("click", async (e) => {
+$("rosterList")?.addEventListener("click", onRosterClick);
+
+$("playersList")?.addEventListener("click", (ev) => {
+  const btn = ev.target.closest("[data-add]");
+  if (btn) addToRoster(btn.getAttribute("data-add"));
+});
+
+$("editTournamentBtn")?.addEventListener("click", async (e) => {
   e.preventDefault();
-  if (!permissions?.canEditTournament) return;
-  if (!tournamentId) return;
-
+  if (!permissions?.canEditTournament || !tournamentId) return;
   const editor = await ensureTournamentEditor();
   editor?.openEditById(tournamentId);
 });
 
-/* ==========================
-   EVENTS: TOURNAMENT EDITOR
-========================== */
 window.addEventListener("tournament:changed", async (e) => {
   const { id, deleted } = e.detail || {};
+  if (id !== tournamentId) return;
 
-  if (deleted && id === tournamentId) {
+  if (deleted) {
     alert(TX.esteTorneoFueEliminado);
-    window.location.href = "tournaments.html";
+    window.location.href = "/tournaments.html";
     return;
   }
 
-  if (id === tournamentId) {
-    showLoader();
-    try {
-      tournament = await fetchTournament(tournamentId);
-      await loadPlayers();
-      await loadGuests();
-      await loadRoster();
-      applyRoleUI();
-      render();
-      renderPlayers();
-    } catch (err) {
-      console.error(err);
-      alert(TX.errorRecargandoElTorneo);
-    } finally {
-      hideLoader();
-    }
+  showLoader();
+  try {
+    tournament = await fetchTournament(tournamentId);
+    await reloadAll();
+  } catch (err) {
+    console.error(err);
+    alert(TX.errorRecargandoElTorneo);
+  } finally {
+    hideLoader();
   }
 });
 
@@ -192,33 +151,15 @@ watchAuth(async () => {
   showLoader();
   try {
     permissions = await getCurrentPermissions();
+    if ($("appVersion")) $("appVersion").textContent = `v${APP_CONFIG.version}`;
 
-    if (appVersion) appVersion.textContent = `v${APP_CONFIG.version}`;
-
-    const logoutBtn = document.getElementById("logoutBtn");
-    if (logoutBtn) logoutBtn.textContent = TX.salir;
-
-    if (!tournamentId) {
-      showError(TX.faltaElParametroDel);
-      return;
-    }
+    if (!tournamentId) return showError(TX.faltaElParametroDel);
 
     tournament = await fetchTournament(tournamentId);
-    if (!tournament) {
-      showError(TX.noSeEncontroEl);
-      return;
-    }
+    if (!tournament) return showError(TX.noSeEncontroEl);
 
-    renderDynamicRoleFilters();
-    initLegendFiltersUX();
-
-    await loadPlayers();
-    await loadGuests();
-    await loadRoster();
-
-    applyRoleUI();
-    render();
-    renderPlayers();
+    fillGuestRoles();
+    await reloadAll();
   } catch (e) {
     console.error(e);
     showError(TX.errorCargandoRosterDel);
@@ -226,6 +167,13 @@ watchAuth(async () => {
     hideLoader();
   }
 });
+
+async function reloadAll() {
+  await Promise.all([loadPlayers(), loadGuests()]);
+  await loadRoster();
+  applyRoleUI();
+  render();
+}
 
 /* ==========================
    DATA
@@ -344,24 +292,64 @@ function getClubPlayerPhoto(cp = {}, user = null) {
   return safeCp.photoURL || safeCp.avatarUrl || u.photoURL || "";
 }
 
+/* ==========================
+   FEES / BECAS
+========================== */
+function basePlayerFee() {
+  return toNumberOrZero(tournament?.playerFee);
+}
+
+// Lo que tiene que pagar este jugador según su tipo de fee.
+// Sin feeType (registros viejos) se respeta el feeTotal guardado.
+function computeFee(r) {
+  const base = basePlayerFee();
+  switch (r.feeType) {
+    case FEE.FULL: return 0;
+    case FEE.PERCENT: return Math.max(0, Math.round(base * (1 - clampPercent(r.feePercent) / 100)));
+    case FEE.CUSTOM: return Math.max(0, toNumberOrZero(r.feeCustom));
+    case FEE.STANDARD: return base;
+    default: return Number.isFinite(Number(r.feeTotal)) ? Number(r.feeTotal) : base;
+  }
+}
+
+function isBeca(r) {
+  return r.feeType === FEE.FULL || r.feeType === FEE.PERCENT || r.feeType === FEE.CUSTOM;
+}
+
+function becaLabel(r) {
+  if (r.feeType === FEE.FULL) return TX.becaFull;
+  if (r.feeType === FEE.PERCENT) return txf(TX.becaPercent, { percent: clampPercent(r.feePercent) });
+  if (r.feeType === FEE.CUSTOM) return TX.becaCustom;
+  return "";
+}
+
+function clampPercent(v) {
+  return Math.min(100, Math.max(0, Math.round(toNumberOrZero(v))));
+}
+
+function currencySymbol() {
+  const c = String(tournament?.feeCurrency || "CRC").toUpperCase();
+  return c === "USD" ? "$" : c === "EUR" ? "€" : "₡";
+}
+
+function money(n) {
+  return `${currencySymbol()}${Math.round(toNumberOrZero(n)).toLocaleString("es-CR")}`;
+}
+
+/* ==========================
+   ROSTER
+========================== */
 async function loadRoster() {
   const snap = await getDocs(collection(db, TOURNAMENTS_COL, tournamentId, "roster"));
   const raw = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
   const playersById = new Map(players.map(p => [p.id, p]));
-  const playersByUserId = new Map(
-    players
-      .filter(p => p.userId)
-      .map(p => [p.userId, p])
-  );
-
+  const playersByUserId = new Map(players.filter(p => p.userId).map(p => [p.userId, p]));
   const guestsById = new Map(guests.map(g => [g.id, g]));
-  const defaultFeeTotal = toNumberOrZero(tournament?.playerFee);
 
   roster = raw
     .map(r => {
       const isGuest = !!r.isGuest;
-
       let source = null;
       let sourceId = "";
 
@@ -372,47 +360,33 @@ async function loadRoster() {
       } else {
         const clubPlayerId = (r.clubPlayerId || r.playerId || r.id || "").trim();
         const userId = (r.userId || "").trim();
-
-        source =
-          playersById.get(clubPlayerId) ||
-          (userId ? playersByUserId.get(userId) : null) ||
-          null;
-
+        source = playersById.get(clubPlayerId) || (userId ? playersByUserId.get(userId) : null) || null;
         sourceId = source?.id || clubPlayerId || userId || "";
       }
 
       const payments = Array.isArray(r.payments) ? r.payments : [];
-      const feeTotal = Number.isFinite(Number(r.feeTotal))
-        ? Number(r.feeTotal)
-        : defaultFeeTotal;
-
+      const feeTotal = computeFee(r);
       const paidTotal = sumPayments(payments);
       const balance = feeTotal - paidTotal;
-      const feeIsPaid = feeTotal > 0 ? balance <= 0 : false;
 
       return {
         ...r,
         sourceId,
         isGuest,
-
         name: source?.name ?? "—",
         number: source?.number ?? null,
         role: source?.role ?? null,
         gender: source?.gender ?? null,
+        photoURL: source?.photoURL || "",
         loanFrom: isGuest ? (source?.loanFrom || r.loanFrom || "") : "",
-
         clubPlayerId: !isGuest ? (source?.id || r.clubPlayerId || r.playerId || null) : null,
-        userId: !isGuest ? (source?.userId || r.userId || null) : null,
-        playerId: !isGuest ? (source?.id || r.playerId || r.clubPlayerId || null) : null,
-
         guestId: isGuest ? (r.guestId || sourceId || null) : null,
-
         payments,
         feeTotal,
         paidTotal,
         balance,
-        feeIsPaid,
-        missingSource: !source
+        feeIsPaid: feeTotal > 0 ? balance <= 0 : true,
+        missingSource: !source,
       };
     })
     .sort((a, b) => (a.name || "").localeCompare(b.name || "", "es"));
@@ -425,844 +399,616 @@ async function loadPlayers() {
   ]);
 
   const usersById = {};
-  usersSnap.forEach(d => {
-    usersById[d.id] = { id: d.id, ...d.data() };
-  });
+  usersSnap.forEach(d => { usersById[d.id] = { id: d.id, ...d.data() }; });
 
   players = clubPlayersSnap.docs
     .map(d => {
       const cp = d.data() || {};
-      const id = d.id;
       const userId = getClubPlayerUserId(cp);
       const user = userId ? usersById[userId] || null : null;
       const displayName = getClubPlayerName(cp, user);
-
       return {
-        id,
-        clubPlayerId: id,
+        id: d.id,
+        clubPlayerId: d.id,
         userId,
         name: displayName,
-        displayName,
         nickname: getClubPlayerNickname(cp, user),
         role: getClubPlayerRole(cp, user),
         number: getClubPlayerNumber(cp, user),
         gender: getClubPlayerGender(cp, user),
         active: normalizeClubPlayerActive(cp),
         isGuest: false,
-        email: getClubPlayerEmail(cp, user),
         photoURL: getClubPlayerPhoto(cp, user),
-        rawClubPlayer: cp,
-        rawUser: user || null
       };
     })
-    .filter(p => p.active === true)
-    .filter(p => (p.name || "").trim().length > 0)
+    .filter(p => p.active === true && (p.name || "").trim().length > 0)
     .sort((a, b) => (a.name || "").localeCompare(b.name || "", "es"));
-
-  if (playersSubtitle && permissions?.canManageRoster) {
-    playersSubtitle.textContent = players.length
-      ? `${players.length} jugador(es) activo(s)`
-      : TX.noHayJugadoresActivos;
-  }
 }
 
 async function loadGuests() {
   const snap = await getDocs(collection(db, GUESTS_COL));
-
   guests = snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
     .map(g => ({
       id: g.id,
       name: (g.name || "").trim(),
-      nickname: g.loanFrom ? txf(TX.prestamo, { loanFrom: g.loanFrom }) : "",
       role: g.role || getDefaultRoleId(),
       number: g.number ?? null,
       gender: g.gender ?? null,
       active: g.active !== false,
       loanFrom: g.loanFrom || "",
-      isGuest: true
+      isGuest: true,
     }))
-    .filter(g => g.active === true)
-    .filter(g => (g.name || "").trim().length > 0)
-    .sort((a, b) => (a.name || "").localeCompare(b.name || "", "es"));
+    .filter(g => g.active === true && g.name.length > 0)
+    .sort((a, b) => a.name.localeCompare(b.name, "es"));
 }
 
 /* ==========================
    PERMISSIONS / UI
 ========================== */
+const canManage = () => !!permissions?.canManageRoster;
+const canPay = () => !!permissions?.canManagePayments;
+
 function applyRoleUI() {
-  const canManageRoster = !!permissions?.canManageRoster;
-  const canManagePayments = !!permissions?.canManagePayments;
-  const isViewerOnly = !canManageRoster;
+  $("editTournamentBtn")?.classList.toggle("d-none", !permissions?.canEditTournament);
+  $("addGuestBtn")?.classList.toggle("d-none", !permissions?.canCreateGuests);
+  $("toggleTeamFeeBtn")?.classList.toggle("d-none", !canPay());
 
-  applyVisibilityMap(permissions, {
-    canEditTournament: editTournamentBtn,
-    canManagePayments: toggleTeamFeeBtn,
-    canCreateGuests: addGuestBtn
-  });
+  // la plata (y las becas) solo la ven quienes manejan pagos
+  document.querySelectorAll("[data-money]").forEach((el) => el.classList.toggle("d-none", !canPay()));
+  $("summaryRow")?.querySelector(".col-lg-3")?.classList.toggle("col-lg-12", !canPay());
 
-  if (playersPanelCol) {
-    playersPanelCol.classList.toggle("d-none", isViewerOnly);
-  }
+  $("playersPanelCol")?.classList.toggle("d-none", !canManage());
+  $("rosterPanelCol")?.classList.toggle("col-xl-8", canManage());
+  $("rosterPanelCol")?.classList.toggle("col-xl-12", !canManage());
 
-  if (rosterPanelCol) {
-    rosterPanelCol.classList.toggle("col-xl-7", !isViewerOnly);
-    rosterPanelCol.classList.toggle("col-xl-12", isViewerOnly);
-  }
-
-  if (contextHint) {
-    contextHint.innerHTML = isViewerOnly
-      ? `
-        <div class="text-muted small d-flex align-items-center gap-2">
-          <i class="bi bi-eye"></i>
-          ${TX.vistaDeSoloLectura}
-        </div>
-      `
-      : `
-        <div class="text-muted small d-flex align-items-center gap-2">
-          <i class="bi bi-people"></i>
-          ${TX.administraConvocadosConfirmadosY}
-        </div>
-      `;
-  }
-
-  if (playersTitle) {
-    playersTitle.textContent = TX.jugadores;
-  }
-
-  if (playersSubtitle) {
-    playersSubtitle.textContent = isViewerOnly ? "" : "—";
-  }
-
-  filterBlockStatus?.classList.toggle("d-none", isViewerOnly);
-  filterDividerStatus?.classList.toggle("d-none", isViewerOnly);
-
-  filterBlockFee?.classList.toggle("d-none", isViewerOnly);
-  filterDividerFee?.classList.toggle("d-none", isViewerOnly);
-
-  if (isViewerOnly) {
-    activeLegendFilters.delete("status:confirmado");
-    activeLegendFilters.delete("status:convocado");
-    activeLegendFilters.delete("status:tentative");
-    activeLegendFilters.delete("fee:pendiente");
-    activeLegendFilters.delete("fee:pagado");
-  }
-
-  syncLegendUI();
+  if ($("pageSubtitle")) $("pageSubtitle").textContent = canManage() ? TX.kickerAdmin : TX.kickerViewer;
+  if ($("rosterTitle")) $("rosterTitle").textContent = TX.rosterDelTorneo;
+  if ($("playersTitle")) $("playersTitle").textContent = TX.agregarJugadores;
 }
 
 /* ==========================
-   RENDER: ROSTER
+   RENDER
 ========================== */
 function render() {
+  renderHero();
+  renderSummary();
+  renderRoster();
+  renderPlayers();
+}
+
+function renderHero() {
   if (!tournament) return;
+  $("tName").textContent = tournament.name || "—";
+  $("tMeta").textContent = (tournament.location || "").trim() || "—";
+  $("tDates").textContent = formatDateRange(tournament.dateStart, tournament.dateEnd);
 
-  if (tName) tName.textContent = tournament.name || "—";
-  if (tMeta) tMeta.textContent = formatTournamentMeta(tournament);
+  const opts = TOURNAMENT_STRINGS.fields || {};
+  const type = [
+    opts.type?.options?.[tournament.type] || tournament.type,
+    opts.age?.options?.[tournament.age] || tournament.age,
+    opts.venue?.options?.[tournament.venue] || tournament.venue,
+  ].filter(Boolean).join(" · ");
+  $("tTypeWrap").classList.toggle("d-none", !type);
+  $("tType").textContent = type;
 
-  if (tDates) {
-    const start = tournament?.dateStart || "—";
-    const end = tournament?.dateEnd || "";
-    tDates.textContent = end ? `${start} → ${end}` : start;
-  }
+  const url = normalizeUrl(tournament?.officialUrl || tournament?.url || "");
+  $("tOfficialLink").classList.toggle("d-none", !url);
+  $("tOfficialLink").href = url || "#";
+  document.title = `${tournament.name || TX.rosterDelTorneo}`;
+}
 
-  if (tOfficialLink) {
-    const url = normalizeUrl(tournament?.officialUrl || tournament?.url || "");
-    if (url) {
-      tOfficialLink.href = url;
-      tOfficialLink.classList.remove("d-none");
-    } else {
-      tOfficialLink.classList.add("d-none");
-      tOfficialLink.href = "#";
-    }
-  }
+function renderSummary() {
+  const total = roster.length;
+  const confirmed = roster.filter(r => norm(r.status) === "confirmado").length;
+  $("statTotal").textContent = String(total);
+  $("statConfirmed").textContent = txf(TX.statConfirmed, { n: confirmed });
+  $("statF").textContent = String(roster.filter(r => isFemale(r.gender)).length);
+  $("statM").textContent = String(roster.filter(r => isMale(r.gender)).length);
+
+  const counts = getRoleCounts(roster);
+  $("roleCounters").textContent = PLAYER_ROLES
+    .map(role => `${role.label || role.id}: ${counts[normalizeRoleId(role.id)] || 0}`)
+    .join(" · ");
+
+  if (!canPay()) return;
+
+  const expected = roster.reduce((s, r) => s + r.feeTotal, 0);
+  const collected = roster.reduce((s, r) => s + r.paidTotal, 0);
+  const pending = roster.reduce((s, r) => s + Math.max(0, r.balance), 0);
+  const debtors = roster.filter(r => r.balance > 0).length;
+  const becas = roster.filter(isBeca);
+  const becaAmount = becas.reduce((s, r) => s + Math.max(0, basePlayerFee() - r.feeTotal), 0);
+
+  $("statCollected").textContent = money(collected);
+  $("statExpected").textContent = txf(TX.statExpected, { expected: money(expected) });
+  $("statProgress").style.width = `${expected > 0 ? Math.min(100, Math.round((collected / expected) * 100)) : 0}%`;
+  $("statPending").textContent = money(pending);
+  $("statDebtors").textContent = debtors ? txf(TX.statDebtors, { n: debtors }) : TX.statAllPaid;
+  $("statBecas").textContent = becas.length
+    ? txf(TX.statBecas, { n: becas.length, amount: money(becaAmount) })
+    : TX.statNoBecas;
 
   renderTeamFee();
-
-  let list = [...roster];
-  if (activeLegendFilters.size > 0) {
-    list = list.filter(matchesLegendFilters);
-  }
-
-  if (rosterList) {
-    if (!list.length) {
-      rosterList.innerHTML = "";
-    } else {
-      const grouped = getGroupedRoster(list);
-      rosterList.innerHTML = grouped.map(rosterGroupSection).join("");
-    }
-  }
-
-  if (rosterEmpty) {
-    rosterEmpty.classList.toggle("d-none", list.length > 0);
-    rosterEmpty.textContent = S.roster?.empty || TX.noHayJugadoresAsignados;
-  }
-
-  renderRosterCounters(list);
-
-  if (!permissions?.canManageRoster && !permissions?.canManagePayments) return;
-
-  rosterList?.querySelectorAll("[data-remove]")?.forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const id = btn.getAttribute("data-remove");
-      await removeFromRoster(id);
-    });
-  });
-
-  rosterList?.querySelectorAll("[data-toggle-status]")?.forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const id = btn.getAttribute("data-toggle-status");
-      await toggleStatus(id);
-    });
-  });
-
-  rosterList?.querySelectorAll("[data-pay]")?.forEach(btn => {
-    btn.addEventListener("click", async () => {
-      if (!permissions?.canManagePayments) return;
-
-      const id = btn.getAttribute("data-pay");
-      const r = roster.find(x => x.id === id);
-      if (!r) return;
-
-      const modal = await ensurePayModal();
-      const suggested = r.balance > 0 ? Math.ceil(r.balance) : "";
-
-      modal.open({
-        collectionPath: `${TOURNAMENTS_COL}/${tournamentId}/roster`,
-        docId: r.id,
-        title: TX.agregarAbono,
-        subtitle: r.name || "—",
-        suggestedAmount: suggested,
-        onSaved: async () => {
-          await loadRoster();
-          render();
-          renderPlayers();
-        }
-      });
-    });
-  });
 }
 
-function renderRosterCounters() {
-  const base = roster;
-
-  const total = base.length;
-  const m = base.filter(r => isMale(r.gender)).length;
-  const f = base.filter(r => isFemale(r.gender)).length;
-
-  if (statTotal) statTotal.textContent = String(total);
-  if (statF) statF.textContent = String(f);
-  if (statM) statM.textContent = String(m);
-
-  renderDynamicRoleCounters(base);
-
-  if (pageSubtitle) {
-    pageSubtitle.textContent = permissions?.canManageRoster
-      ? (S.roster?.subtitle || TX.jugadoresConvocados)
-      : TX.vistaOrdenadaDelRoster;
-  }
-
-  if (rosterSubtitle) {
-    rosterSubtitle.textContent = permissions?.canManageRoster
-      ? (S.roster?.subtitle || TX.jugadoresConvocados)
-      : TX.jugadoresAgrupadosPorPosicion;
-  }
+function renderTeamFee() {
+  const hasFee = tournament?.teamFee != null && tournament.teamFee !== "";
+  const paid = !!tournament?.teamFeePaid;
+  $("teamFeeAmount").textContent = hasFee ? money(tournament.teamFee) : TX.noTeamFee;
+  const pill = $("teamFeePill");
+  pill.textContent = paid ? TX.teamFeePaid : TX.teamFeePending;
+  pill.className = `tr-chip ${paid ? "tr-chip--good" : "tr-chip--warn"}`;
+  pill.classList.toggle("d-none", !hasFee);
+  const btn = $("toggleTeamFeeBtn");
+  btn.textContent = paid ? TX.marcarPendiente : TX.marcarPagado;
+  btn.classList.toggle("d-none", !canPay() || !hasFee);
 }
 
-function renderDynamicRoleCounters(list) {
-  if (!roleCounters) return;
+/* ---------- filtros ---------- */
+const FILTERS = [
+  { id: "all", label: () => TX.filterAll, test: () => true },
+  { id: "confirmado", label: () => TX.filterConfirmed, test: (r) => norm(r.status) === "confirmado" },
+  { id: "convocado", label: () => TX.filterCalled, test: (r) => norm(r.status) === "convocado" || !r.status },
+  { id: "tentative", label: () => TX.filterTentative, test: (r) => norm(r.status) === "tentative" },
+  { id: "owes", label: () => TX.filterOwes, test: (r) => r.balance > 0, money: true },
+  { id: "paid", label: () => TX.filterPaid, test: (r) => r.feeTotal > 0 && r.balance <= 0, money: true },
+  { id: "beca", label: () => TX.filterBeca, test: isBeca, money: true },
+  { id: "guests", label: () => TX.filterGuests, test: (r) => r.isGuest },
+];
 
-  const counts = getRoleCounts(list);
-
-  roleCounters.innerHTML = PLAYER_ROLES.map(role => `
-    <span class="badge text-bg-light border" title="${escapeHtml(role.label || role.id)}">
-      ${escapeHtml(role.label || role.id)} <strong>${counts[normalizeRoleId(role.id)] || 0}</strong>
-    </span>
-  `).join("");
+function renderFilters() {
+  const visible = FILTERS.filter(f => !f.money || canPay());
+  if (!visible.some(f => f.id === activeFilter)) activeFilter = "all";
+  $("rosterFilters").innerHTML = visible
+    .map(f => {
+      const n = roster.filter(f.test).length;
+      if (f.id !== "all" && n === 0 && f.id !== activeFilter) return "";
+      return `<button type="button" class="tr-filter ${f.id === activeFilter ? "is-active" : ""}" data-filter="${f.id}">
+        ${escapeHtml(f.label())}<span class="tr-filter__n">${n}</span></button>`;
+    })
+    .join("");
 }
 
-/* ==========================
-   RENDER: RIGHT PANEL (PICKER)
-========================== */
+function renderRoster() {
+  renderFilters();
+  const filter = FILTERS.find(f => f.id === activeFilter) || FILTERS[0];
+  const q = ($("rosterSearch")?.value || "").trim().toLowerCase();
+
+  const list = roster
+    .filter(filter.test)
+    .filter(r => !q || `${r.name} ${r.number ?? ""} ${getRoleLabel(r.role)} ${r.loanFrom}`.toLowerCase().includes(q));
+
+  $("rosterList").innerHTML = list.length ? getGroupedRoster(list).map(rosterGroupSection).join("") : "";
+  $("rosterEmpty").classList.toggle("d-none", list.length > 0);
+  $("rosterEmpty").textContent = roster.length ? TX.noMatches : TX.noHayJugadoresAsignados;
+}
+
+function rosterGroupSection(group) {
+  return `
+    <section class="tr-group">
+      <div class="tr-group__title">${escapeHtml(group.label)} · ${group.items.length}</div>
+      ${group.items.map(rosterRow).join("")}
+    </section>`;
+}
+
+function statusChip(r) {
+  const s = norm(r.status) || "convocado";
+  const cls = s === "confirmado" ? "tr-chip--good" : s === "tentative" ? "tr-chip--warn" : "tr-chip--info";
+  const label = prettyStatus(s);
+  if (!canManage()) return `<span class="tr-chip ${cls}">${escapeHtml(label)}</span>`;
+  return `<button type="button" class="tr-chip ${cls}" data-toggle-status="${escapeHtml(r.id)}" title="${escapeHtml(TX.cambiarEstado)}">
+    ${escapeHtml(label)} <i class="bi bi-arrow-repeat"></i></button>`;
+}
+
+function feeBlock(r) {
+  if (!canPay()) return "";
+  const total = r.feeTotal;
+  const paid = r.paidTotal;
+  const pct = total > 0 ? Math.min(100, Math.round((paid / total) * 100)) : 100;
+  const done = total <= 0 || r.balance <= 0;
+
+  const beca = isBeca(r)
+    ? `<span class="tr-chip tr-chip--beca" ${r.feeNote ? `title="${escapeHtml(r.feeNote)}"` : ""}><i class="bi bi-mortarboard"></i> ${escapeHtml(becaLabel(r))}</span>`
+    : "";
+
+  const status = total <= 0
+    ? `<span class="tr-chip tr-chip--muted">${escapeHtml(TX.sinFee)}</span>`
+    : done
+      ? `<span class="tr-chip tr-chip--good"><i class="bi bi-check2"></i> ${escapeHtml(TX.feePaid)}</span>`
+      : `<span class="tr-chip tr-chip--warn">${escapeHtml(txf(TX.feeOwes, { balance: money(r.balance) }))}</span>`;
+
+  const nPay = r.payments.length;
+  const open = openPayments.has(r.id);
+
+  // beca completa sin pagos: no hay barra ni montos que mostrar
+  const progress = total <= 0 && !paid
+    ? `<div class="tr-fee__text">${beca || status}</div>`
+    : `
+        <div class="tr-fee__bar ${done ? "is-paid" : ""}"><span style="width:${pct}%"></span></div>
+        <div class="tr-fee__text mt-1">
+          <span>${txf(TX.feeProgress, { paid: `<strong>${escapeHtml(money(paid))}</strong>`, total: escapeHtml(money(total)) })}</span>
+          ${status}
+          ${beca}
+        </div>`;
+
+  return `
+    <div class="tr-fee">
+      <div>${progress}</div>
+      <div class="tr-fee__actions">
+        ${total > 0 && !done ? `<button type="button" class="btn btn-sm btn-primary" data-pay="${escapeHtml(r.id)}"><i class="bi bi-cash-coin"></i> ${escapeHtml(TX.agregarAbono)}</button>` : ""}
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-fee="${escapeHtml(r.id)}"><i class="bi bi-mortarboard"></i> ${escapeHtml(TX.feeButton)}</button>
+        ${nPay ? `<button type="button" class="btn btn-sm btn-outline-secondary ${open ? "active" : ""}" data-payments="${escapeHtml(r.id)}">${escapeHtml(txf(TX.paymentsButton, { n: nPay }))}</button>` : ""}
+      </div>
+    </div>
+    ${open ? paymentsList(r) : ""}`;
+}
+
+function paymentsList(r) {
+  if (!r.payments.length) return `<div class="tr-payments text-muted">${escapeHtml(TX.noPayments)}</div>`;
+  const methods = { sinpe: TX.methodSinpe, cash: TX.methodCash, transfer: TX.methodTransfer };
+  return `
+    <div class="tr-payments">
+      ${r.payments.map((p, i) => `
+        <div class="tr-payments__row">
+          <span>${escapeHtml(p.date || "—")}</span>
+          <span class="text-muted">${escapeHtml(methods[p.method] || p.method || "")}</span>
+          ${p.note ? `<span class="text-muted text-truncate">· ${escapeHtml(p.note)}</span>` : ""}
+          <span class="tr-payments__amount">${escapeHtml(money(p.amount))}</span>
+          <button type="button" class="btn btn-sm btn-link text-danger p-0" data-del-payment="${escapeHtml(r.id)}" data-index="${i}" title="${escapeHtml(TX.deletePayment)}"><i class="bi bi-trash"></i></button>
+        </div>`).join("")}
+    </div>`;
+}
+
+function rosterRow(r) {
+  const role = getRoleLabel(r.role);
+  const meta = [
+    escapeHtml(role),
+    r.isGuest ? `<span class="tr-chip tr-chip--info">${escapeHtml(r.loanFrom ? txf(TX.invitado, { loanFrom: r.loanFrom }) : TX.invitado2)}</span>` : "",
+    r.missingSource ? `<span class="tr-chip tr-chip--muted">${escapeHtml(TX.fuenteNoEncontrada)}</span>` : "",
+  ].filter(Boolean).join(" ");
+
+  return `
+    <div class="tr-row">
+      <div class="tr-row__main">
+        ${avatar(r)}
+        <div class="min-w-0">
+          <div class="tr-row__name">${escapeHtml(r.name || "—")}${r.number != null ? `<span class="tr-num">#${escapeHtml(r.number)}</span>` : ""}</div>
+          <div class="tr-row__meta">${meta}</div>
+        </div>
+        <div class="tr-row__side">
+          ${statusChip(r)}
+          ${canManage() ? `
+            <div class="dropdown">
+              <button class="btn btn-sm btn-light" type="button" data-bs-toggle="dropdown" aria-label="…"><i class="bi bi-three-dots-vertical"></i></button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><button class="dropdown-item text-danger" type="button" data-remove="${escapeHtml(r.id)}"><i class="bi bi-x-lg me-1"></i>${escapeHtml(TX.quitar)}</button></li>
+              </ul>
+            </div>` : ""}
+        </div>
+      </div>
+      ${feeBlock(r)}
+    </div>`;
+}
+
+function avatar(p) {
+  const initials = String(p.name || "?").split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
+  const img = p.photoURL ? `<img src="${escapeHtml(p.photoURL)}" alt="" loading="lazy" />` : escapeHtml(initials || "?");
+  return `<span class="tr-avatar ${p.isGuest ? "tr-avatar--guest" : ""}">${img}</span>`;
+}
+
+function getGroupedRoster(list) {
+  const groups = new Map(PLAYER_ROLES.map(role => [normalizeRoleId(role.id), { label: role.label || role.id, items: [] }]));
+  const others = { label: TX.otros, items: [] };
+  list.forEach(item => (groups.get(normalizeRoleId(item.role)) || others).items.push(item));
+  return [...groups.values(), others].filter(g => g.items.length);
+}
+
+/* ---------- picker ---------- */
 function renderPlayers() {
-  if (!permissions?.canManageRoster) {
-    if (playersList) playersList.innerHTML = "";
-    if (playersEmpty) playersEmpty.classList.add("d-none");
-    if (playersSubtitle) playersSubtitle.textContent = "";
-    const addPanelState = document.getElementById("addPanelState");
-    if (addPanelState) addPanelState.textContent = "";
-    return;
-  }
+  if (!canManage()) return;
 
-  const q = (playersSearch?.value || "").trim().toLowerCase();
+  const q = ($("playersSearch")?.value || "").trim().toLowerCase();
+  const inRoster = new Set(roster.map(r => (r.isGuest ? r.guestId : r.clubPlayerId)).filter(Boolean));
 
-  const rosterIds = new Set(
-    roster
-      .map(r => r.isGuest ? r.guestId : r.clubPlayerId)
-      .filter(Boolean)
-  );
+  const available = [...players, ...guests].filter(p => !inRoster.has(p.id));
+  const list = q
+    ? available.filter(p => `${p.name} ${p.nickname || ""} ${getRoleLabel(p.role)} ${p.loanFrom || ""}`.toLowerCase().includes(q))
+    : available;
 
-  let pool = [...players, ...guests];
-  let list = pool.filter(p => !rosterIds.has(p.id));
+  $("playersSubtitle").textContent = txf(TX.disponibles, { n: available.length });
+  $("playersList").innerHTML = list.map(p => `
+    <div class="tr-pick">
+      ${avatar(p)}
+      <div class="min-w-0">
+        <div class="tr-pick__name text-truncate">${escapeHtml(p.name)}${p.number != null ? ` <span class="text-muted">#${escapeHtml(p.number)}</span>` : ""}</div>
+        <div class="tr-pick__sub">${escapeHtml(p.isGuest ? (p.loanFrom ? txf(TX.invitado, { loanFrom: p.loanFrom }) : TX.invitado2) : getRoleLabel(p.role))}</div>
+      </div>
+      <button class="btn btn-sm btn-outline-primary" data-add="${escapeHtml(p.id)}" title="${escapeHtml(TX.agregar)}"><i class="bi bi-plus-lg"></i></button>
+    </div>`).join("");
 
-  if (q) {
-    list = list.filter(p =>
-      `${p.name || ""} ${p.nickname || ""} ${p.role || ""} ${p.loanFrom || ""}`
-        .toLowerCase()
-        .includes(q)
-    );
-  }
-
-  if (playersList) {
-    playersList.innerHTML = list.length ? list.map(playerPickRow).join("") : "";
-  }
-
-  if (playersEmpty) {
-    playersEmpty.classList.toggle("d-none", list.length > 0);
-    playersEmpty.textContent = q
-      ? TX.noHayCoincidencias
-      : TX.noHayJugadoresDisponibles;
-  }
-
-  if (playersSubtitle) {
-    const gCount = list.filter(x => x.isGuest).length;
-    const pCount = list.length - gCount;
-    playersSubtitle.textContent = txf(TX.disponiblesClubInvitados, { listCount: list.length, pCount, gCount });
-  }
-
-  const addPanelState = document.getElementById("addPanelState");
-  if (addPanelState) addPanelState.textContent = txf(TX.disponibles, { listCount: list.length });
-
-  playersList?.querySelectorAll("[data-add]")?.forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const id = btn.getAttribute("data-add");
-      await addToRoster(id);
-    });
-  });
+  $("playersEmpty").classList.toggle("d-none", list.length > 0);
+  $("playersEmpty").textContent = q ? TX.noHayCoincidencias : TX.noHayJugadoresDisponibles;
 }
 
 /* ==========================
    ACTIONS
 ========================== */
-async function addToRoster(itemId) {
-  if (!permissions?.canManageRoster) return;
+async function onRosterClick(ev) {
+  const t = ev.target.closest("[data-toggle-status],[data-remove],[data-pay],[data-fee],[data-payments],[data-del-payment]");
+  if (!t) return;
 
-  const p = players.find(x => x.id === itemId);
-  const g = guests.find(x => x.id === itemId);
-  const item = p || g;
-  if (!item) return;
+  if (t.hasAttribute("data-toggle-status")) return toggleStatus(t.getAttribute("data-toggle-status"));
+  if (t.hasAttribute("data-remove")) return removeFromRoster(t.getAttribute("data-remove"));
+  if (t.hasAttribute("data-fee")) return openFeeModal(t.getAttribute("data-fee"));
+  if (t.hasAttribute("data-del-payment")) return deletePayment(t.getAttribute("data-del-payment"), Number(t.getAttribute("data-index")));
 
+  if (t.hasAttribute("data-payments")) {
+    const id = t.getAttribute("data-payments");
+    if (openPayments.has(id)) openPayments.delete(id);
+    else openPayments.add(id);
+    return renderRoster();
+  }
+
+  if (t.hasAttribute("data-pay")) {
+    if (!canPay()) return;
+    const r = roster.find(x => x.id === t.getAttribute("data-pay"));
+    if (!r) return;
+    const modal = await ensurePayModal();
+    modal.open({
+      collectionPath: `${TOURNAMENTS_COL}/${tournamentId}/roster`,
+      docId: r.id,
+      title: TX.agregarAbono,
+      subtitle: r.name || "—",
+      suggestedAmount: r.balance > 0 ? Math.ceil(r.balance) : "",
+      onSaved: refreshRoster,
+    });
+  }
+}
+
+async function refreshRoster() {
+  await loadRoster();
+  render();
+}
+
+async function withLoader(fn, errorMsg) {
   showLoader();
   try {
-    const ref = doc(db, TOURNAMENTS_COL, tournamentId, "roster", item.id);
-    const feeTotal = toNumberOrZero(tournament?.playerFee);
+    await fn();
+  } catch (e) {
+    console.error(e);
+    alert(errorMsg);
+  } finally {
+    hideLoader();
+  }
+}
 
-    await setDoc(ref, {
+function addToRoster(itemId) {
+  if (!canManage()) return;
+  const item = players.find(x => x.id === itemId) || guests.find(x => x.id === itemId);
+  if (!item) return;
+
+  return withLoader(async () => {
+    await setDoc(doc(db, TOURNAMENTS_COL, tournamentId, "roster", item.id), {
       clubPlayerId: item.isGuest ? null : item.id,
       userId: item.isGuest ? null : (item.userId || null),
-
-      // legacy compatibility
-      playerId: item.isGuest ? null : item.id,
-
+      playerId: item.isGuest ? null : item.id, // compatibilidad
       isGuest: !!item.isGuest,
       guestId: item.isGuest ? item.id : null,
       loanFrom: item.isGuest ? (item.loanFrom || "") : "",
       status: "convocado",
-      feeTotal,
+      feeType: FEE.STANDARD,
+      feeTotal: basePlayerFee(),
       payments: [],
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     }, { merge: true });
-
-    await loadRoster();
-    render();
-    renderPlayers();
-  } catch (e) {
-    console.error(e);
-    alert(TX.errorAgregandoJugadorAl);
-  } finally {
-    hideLoader();
-  }
+    await refreshRoster();
+  }, TX.errorAgregandoJugadorAl);
 }
 
-async function removeFromRoster(docId) {
-  if (!permissions?.canManageRoster) return;
+function removeFromRoster(docId) {
+  if (!canManage()) return;
+  const r = roster.find(x => x.id === docId);
+  if (!confirm(txf(TX.quitarDelRoster, { name: r?.name || "" }))) return;
 
-  const ok = confirm(TX.quitarDelRoster);
-  if (!ok) return;
-
-  showLoader();
-  try {
+  return withLoader(async () => {
     await deleteDoc(doc(db, TOURNAMENTS_COL, tournamentId, "roster", docId));
-    await loadRoster();
-    render();
-    renderPlayers();
-  } catch (e) {
-    console.error(e);
-    alert(TX.errorQuitandoJugador);
-  } finally {
-    hideLoader();
-  }
+    await refreshRoster();
+  }, TX.errorQuitandoJugador);
 }
 
-async function toggleStatus(docId) {
-  if (!permissions?.canManageRoster) return;
-
+function toggleStatus(docId) {
+  if (!canManage()) return;
   const r = roster.find(x => x.id === docId);
   if (!r) return;
+  const i = STATUS_ORDER.indexOf(norm(r.status));
+  const next = STATUS_ORDER[(i + 1) % STATUS_ORDER.length];
 
-  const next = nextStatus(r.status);
-
-  showLoader();
-  try {
-    await setDoc(doc(db, TOURNAMENTS_COL, tournamentId, "roster", docId), {
-      status: next,
-      updatedAt: serverTimestamp()
-    }, { merge: true });
-
-    await loadRoster();
-    render();
-    renderPlayers();
-  } catch (e) {
-    console.error(e);
-    alert(TX.errorActualizandoEstado);
-  } finally {
-    hideLoader();
-  }
+  return withLoader(async () => {
+    await setDoc(doc(db, TOURNAMENTS_COL, tournamentId, "roster", docId), { status: next, updatedAt: serverTimestamp() }, { merge: true });
+    r.status = next;
+    renderSummary();
+    renderRoster();
+  }, TX.errorActualizandoEstado);
 }
 
-async function toggleTeamFeePaid() {
-  if (!permissions?.canManagePayments) return;
-  if (!tournament) return;
-
+function toggleTeamFeePaid() {
+  if (!canPay() || !tournament) return;
   const next = !tournament.teamFeePaid;
-
-  showLoader();
-  try {
-    await setDoc(doc(db, TOURNAMENTS_COL, tournamentId), {
-      teamFeePaid: next,
-      updatedAt: serverTimestamp()
-    }, { merge: true });
-
+  return withLoader(async () => {
+    await setDoc(doc(db, TOURNAMENTS_COL, tournamentId), { teamFeePaid: next, updatedAt: serverTimestamp() }, { merge: true });
     tournament.teamFeePaid = next;
     renderTeamFee();
-  } catch (e) {
-    console.error(e);
-    alert(TX.errorActualizandoTeamFee);
-  } finally {
-    hideLoader();
+  }, TX.errorActualizandoTeamFee);
+}
+
+function deletePayment(docId, index) {
+  if (!canPay()) return;
+  const r = roster.find(x => x.id === docId);
+  const p = r?.payments?.[index];
+  if (!p || !confirm(txf(TX.deletePaymentConfirm, { amount: money(p.amount) }))) return;
+
+  return withLoader(async () => {
+    const payments = r.payments.filter((_, i) => i !== index);
+    await setDoc(doc(db, TOURNAMENTS_COL, tournamentId, "roster", docId), { payments, updatedAt: serverTimestamp() }, { merge: true });
+    await refreshRoster();
+  }, TX.errorBorrandoPago);
+}
+
+/* ---------- beca / monto ---------- */
+let feeEditingId = null;
+
+function openFeeModal(docId) {
+  if (!canPay()) return;
+  const r = roster.find(x => x.id === docId);
+  if (!r) return;
+  feeEditingId = docId;
+
+  const type = r.feeType && Object.values(FEE).includes(r.feeType)
+    ? r.feeType
+    : (Number(r.feeTotal) === basePlayerFee() || r.feeTotal == null ? FEE.STANDARD : FEE.CUSTOM);
+
+  $("feeSubtitle").textContent = r.name || "—";
+  $("feeStandardHint").textContent = txf(TX.feeStandardHint, { amount: money(basePlayerFee()) });
+  $("feeCurrencySymbol").textContent = currencySymbol();
+  document.querySelectorAll('#feeForm [name="feeType"]').forEach(el => { el.checked = el.value === type; });
+  $("feePercentInput").value = r.feeType === FEE.PERCENT ? clampPercent(r.feePercent) : "";
+  $("feeCustomInput").value = type === FEE.CUSTOM ? (r.feeType === FEE.CUSTOM ? toNumberOrZero(r.feeCustom) : toNumberOrZero(r.feeTotal)) : "";
+  $("feeNoteInput").value = r.feeNote || "";
+  $("feeError").classList.add("d-none");
+  updateFeePreview();
+  feeModal.show();
+}
+
+function readFeeForm() {
+  const type = document.querySelector('#feeForm [name="feeType"]:checked')?.value || FEE.STANDARD;
+  const draft = {
+    feeType: type,
+    feePercent: type === FEE.PERCENT ? Number($("feePercentInput").value) : null,
+    feeCustom: type === FEE.CUSTOM ? Number($("feeCustomInput").value) : null,
+    feeNote: $("feeNoteInput").value.trim(),
+  };
+  let error = "";
+  if (type === FEE.PERCENT && !(draft.feePercent >= 1 && draft.feePercent <= 99)) error = TX.feeErrorPercent;
+  if (type === FEE.CUSTOM && !(Number.isFinite(draft.feeCustom) && draft.feeCustom >= 0) ) error = TX.feeErrorCustom;
+  return { draft, error, amount: error ? null : computeFee(draft) };
+}
+
+function updateFeePreview(ev) {
+  // escribir en un campo selecciona su opción
+  if (ev?.target?.id === "feePercentInput") document.querySelector('#feeForm [value="percent"]').checked = true;
+  if (ev?.target?.id === "feeCustomInput") document.querySelector('#feeForm [value="custom"]').checked = true;
+
+  const { amount } = readFeeForm();
+  const saving = amount == null ? 0 : basePlayerFee() - amount;
+  $("feePreview").innerHTML = amount == null
+    ? "—"
+    : txf(saving > 0 ? TX.feePreviewSaving : TX.feePreview, { amount: escapeHtml(money(amount)), saving: escapeHtml(money(saving)) });
+}
+
+async function submitFee(ev) {
+  ev.preventDefault();
+  const { draft, error, amount } = readFeeForm();
+  if (error) {
+    $("feeError").textContent = error;
+    $("feeError").classList.remove("d-none");
+    return;
   }
+
+  await withLoader(async () => {
+    await setDoc(doc(db, TOURNAMENTS_COL, tournamentId, "roster", feeEditingId), {
+      feeType: draft.feeType,
+      feePercent: draft.feeType === FEE.PERCENT ? clampPercent(draft.feePercent) : null,
+      feeCustom: draft.feeType === FEE.CUSTOM ? Math.round(draft.feeCustom) : null,
+      feeNote: draft.feeNote || null,
+      feeTotal: amount, // compatibilidad con otras pantallas
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    feeModal.hide();
+    await refreshRoster();
+  }, TX.errorGuardandoFee);
 }
 
-function nextStatus(s) {
-  const v = (s || "").toLowerCase();
-  if (v === "convocado") return "confirmado";
-  if (v === "confirmado") return "tentative";
-  return "convocado";
+/* ---------- invitado ---------- */
+function fillGuestRoles() {
+  $("guestRole").innerHTML = PLAYER_ROLES
+    .map(role => `<option value="${escapeHtml(role.id)}">${escapeHtml(role.label || role.id)}</option>`)
+    .join("");
 }
 
-/* ==========================
-   CREATE GUEST (GLOBAL)
-========================== */
-async function createGuestFlow() {
+function openGuestModal() {
   if (!permissions?.canCreateGuests) return;
+  $("guestForm").reset();
+  $("guestRole").value = getDefaultRoleId();
+  $("guestAddNow").checked = true;
+  $("guestError").classList.add("d-none");
+  guestModal.show();
+  setTimeout(() => $("guestName").focus(), 300);
+}
 
-  const name = prompt(TX.nombreDelInvitado);
-  if (!name || !name.trim()) return;
+async function submitGuest(ev) {
+  ev.preventDefault();
+  const name = $("guestName").value.trim();
+  if (!name) {
+    $("guestError").textContent = TX.guestErrorName;
+    $("guestError").classList.remove("d-none");
+    return;
+  }
+  const numberRaw = $("guestNumber").value.trim();
+  const number = numberRaw === "" ? null : Number(numberRaw);
 
-  const gender = (prompt(TX.generoMFOpcional) || "").trim();
-  const role = (prompt(TX.rolOpcional) || getDefaultRoleId()).trim();
-  const loanFrom = (prompt(TX.prestamoDeQueClub) || "").trim();
-  const numberRaw = (prompt(TX.numeroOpcional) || "").trim();
-  const number = numberRaw ? Number(numberRaw) : null;
-
-  showLoader();
-  try {
-    const newRef = doc(collection(db, GUESTS_COL));
-    await setDoc(newRef, {
-      name: name.trim(),
-      gender: gender || null,
-      role: role || getDefaultRoleId(),
-      loanFrom: loanFrom || "",
+  await withLoader(async () => {
+    const ref = doc(collection(db, GUESTS_COL));
+    await setDoc(ref, {
+      name,
+      gender: $("guestGender").value || null,
+      role: $("guestRole").value || getDefaultRoleId(),
+      loanFrom: $("guestLoanFrom").value.trim(),
       number: Number.isFinite(number) ? number : null,
       active: true,
       createdAt: serverTimestamp()
     });
-
+    guestModal.hide();
     await loadGuests();
-    renderPlayers();
-  } catch (e) {
-    console.error(e);
-    alert(TX.errorCreandoInvitado);
-  } finally {
-    hideLoader();
-  }
-}
-
-/* ==========================
-   UI BUILDERS
-========================== */
-function rosterRow(r) {
-  const role = getRoleLabel(r.role);
-
-  const status = prettyStatus(r.status);
-  const statusClass = status === "Confirmado" ? "pill pill--yellow" : "pill";
-
-  const guestBadge = r.isGuest
-    ? `<span class="pill">${escapeHtml(r.loanFrom ? txf(TX.invitado, { loanFrom: r.loanFrom }) : TX.invitado2)}</span>`
-    : "";
-
-  const missingBadge = r.missingSource
-    ? `<span class="pill">${TX.fuenteNoEncontrada}</span>`
-    : "";
-
-  const total = toNumberOrZero(r.feeTotal);
-  const paid = toNumberOrZero(r.paidTotal);
-  const balance = Math.max(0, total - paid);
-
-  let feePill = "";
-
-  if (total <= 0) {
-    feePill = `<span class="pill">${TX.sinFee}</span>`;
-  } else if (balance <= 0) {
-    feePill = `<span class="pill pill--good">${TX.feePagado}</span>`;
-  } else {
-    feePill = `<span class="pill">${txf(TX.pagadoDebe, { paid: paid.toLocaleString("es-CR"), balance: balance.toLocaleString("es-CR") })}</span>`;
-  }
-
-  const actionsHtml = (permissions?.canManageRoster || permissions?.canManagePayments)
-    ? `
-      <div class="roster-row__actions">
-        ${permissions?.canManageRoster ? `
-          <button class="btn btn-sm btn-outline-secondary" title="${TX.cambiarEstado}" data-toggle-status="${escapeHtml(r.id)}">
-            <i class="bi bi-arrow-repeat"></i>
-          </button>
-        ` : ""}
-
-        ${permissions?.canManagePayments && toNumberOrZero(r.feeTotal) > 0 ? `
-          <button class="btn btn-sm btn-outline-success" title="${TX.agregarAbono}" data-pay="${escapeHtml(r.id)}">
-            <i class="bi bi-cash-coin"></i>
-          </button>
-        ` : ""}
-
-        ${permissions?.canManageRoster ? `
-          <button class="btn btn-sm btn-outline-danger" title="${TX.quitar}" data-remove="${escapeHtml(r.id)}">
-            <i class="bi bi-x-lg"></i>
-          </button>
-        ` : ""}
-      </div>
-    `
-    : "";
-
-  return `
-    <div class="roster-row">
-      <div class="roster-row__top">
-        <div>
-          <div class="roster-row__name">${escapeHtml(r.name || "—")}</div>
-          <div class="roster-row__meta">
-            ${escapeHtml(role)}
-            ${r.number != null ? ` · #${escapeHtml(r.number)}` : ""}
-          </div>
-        </div>
-
-        ${actionsHtml}
-      </div>
-
-      <div class="roster-row__badges">
-        <span class="${statusClass}">${escapeHtml(status)}</span>
-        ${feePill}
-        ${guestBadge}
-        ${missingBadge}
-      </div>
-    </div>
-  `;
-}
-
-function playerPickRow(p) {
-  const sub = p.isGuest
-    ? (p.loanFrom ? txf(TX.invitado, { loanFrom: p.loanFrom }) : TX.invitado2)
-    : getRoleLabel(p.role);
-
-  const leftTag = p.isGuest ? `<span class="pill">${TX.invitado2}</span>` : "";
-
-  return `
-    <div class="player-pick">
-      <div>
-        <div class="player-pick__name">
-          ${escapeHtml(p.name || "—")}
-          ${leftTag}
-        </div>
-        <div class="player-pick__sub">${escapeHtml(sub || "")}</div>
-      </div>
-
-      <button class="btn btn-sm btn-primary"
-              data-add="${escapeHtml(p.id)}"
-              title="${TX.agregar}">
-        <i class="bi bi-plus-lg"></i>
-      </button>
-    </div>
-  `;
-}
-
-function getGroupedRoster(list) {
-  const groups = new Map();
-
-  PLAYER_ROLES.forEach(role => {
-    groups.set(normalizeRoleId(role.id), {
-      id: normalizeRoleId(role.id),
-      label: role.label || role.id,
-      items: []
-    });
-  });
-
-  const ungrouped = {
-    id: "otros",
-    label: TX.otros,
-    items: []
-  };
-
-  list.forEach(item => {
-    const rid = normalizeRoleId(item.role);
-    if (groups.has(rid)) groups.get(rid).items.push(item);
-    else ungrouped.items.push(item);
-  });
-
-  const ordered = [];
-
-  PLAYER_ROLES.forEach(role => {
-    const key = normalizeRoleId(role.id);
-    const group = groups.get(key);
-    if (group && group.items.length) {
-      group.items.sort((a, b) => (a.name || "").localeCompare(b.name || "", "es"));
-      ordered.push(group);
-    }
-  });
-
-  if (ungrouped.items.length) {
-    ungrouped.items.sort((a, b) => (a.name || "").localeCompare(b.name || "", "es"));
-    ordered.push(ungrouped);
-  }
-
-  return ordered;
-}
-
-function rosterGroupSection(group) {
-  return `
-    <section class="roster-group mb-3">
-      <div class="roster-group__title fw-semibold mb-2">
-        ${escapeHtml(group.label)} <span class="text-muted">(${group.items.length})</span>
-      </div>
-      <div class="roster-group__list d-flex flex-column gap-2">
-        ${group.items.map(rosterRow).join("")}
-      </div>
-    </section>
-  `;
-}
-
-/* ==========================
-   TEAM FEE UI
-========================== */
-function renderTeamFee() {
-  if (!teamFeePill || !toggleTeamFeeBtn || !tournament) return;
-
-  const amount = tournament.teamFee != null
-    ? `₡${Number(tournament.teamFee).toLocaleString("es-CR")}`
-    : "—";
-
-  const paid = !!tournament.teamFeePaid;
-
-  teamFeePill.textContent = txf(TX.teamFee, { amount, value: paid ? TX.pagado : TX.pendiente });
-  teamFeePill.className = `pill ${paid ? "pill--good" : "pill--warn"}`;
-
-  if (permissions?.canManagePayments) {
-    toggleTeamFeeBtn.innerHTML = paid
-      ? `<i class="bi bi-cash-coin"></i> ${TX.marcarPendiente}`
-      : `<i class="bi bi-cash-coin"></i> ${TX.marcarPagado}`;
-  }
-}
-
-/* ==========================
-   STRINGS
-========================== */
-function applyStrings() {
-  pageTitle && (pageTitle.textContent = S.roster?.title || TX.rosterDelTorneo);
-  pageSubtitle && (pageSubtitle.textContent = S.roster?.subtitle || TX.jugadoresConvocados);
-
-  rosterTitle && (rosterTitle.textContent = S.roster?.title || TX.rosterDelTorneo);
-  rosterSubtitle && (rosterSubtitle.textContent = S.roster?.subtitle || TX.jugadoresConvocados);
-
-  if (lblSearch) lblSearch.classList.add("d-none");
-  if (searchInput) searchInput.classList.add("d-none");
-
-  playersTitle && (playersTitle.textContent = TX.jugadores);
-  btnAddLabel && (btnAddLabel.textContent = TX.agregarJugador);
-}
-
-/* ==========================
-   FILTER UX (legend)
-========================== */
-function renderDynamicRoleFilters() {
-  const mount = document.getElementById("roleFiltersMount");
-  if (!mount) return;
-
-  mount.innerHTML = PLAYER_ROLES.map(role => {
-    const rid = normalizeRoleId(role.id);
-    const inputId = `f_role_${rid}`;
-    return `
-      <div class="form-check">
-        <input
-          class="form-check-input roster-filter-check"
-          type="checkbox"
-          id="${escapeHtml(inputId)}"
-          data-filter="role:${escapeHtml(rid)}"
-        >
-        <label class="form-check-label" for="${escapeHtml(inputId)}">
-          ${escapeHtml(role.label || role.id)}
-        </label>
-      </div>
-    `;
-  }).join("");
-}
-
-function initLegendFiltersUX() {
-  const checks = document.querySelectorAll(".roster-filter-check");
-  const countEl = document.getElementById("filtersCount");
-
-  function refreshUI() {
-    checks.forEach(chk => {
-      const key = chk.dataset?.filter;
-      if (!key) return;
-      chk.checked = activeLegendFilters.has(key);
-    });
-
-    const n = activeLegendFilters.size;
-    if (countEl) {
-      countEl.textContent = String(n);
-      countEl.style.display = n > 0 ? "" : "none";
-    }
-
-    syncLegendUI();
-  }
-
-  if (checks.length) {
-    checks.forEach(chk => {
-      chk.addEventListener("change", () => {
-        const key = chk.dataset?.filter;
-        if (!key) return;
-
-        if (chk.checked) activeLegendFilters.add(key);
-        else activeLegendFilters.delete(key);
-
-        refreshUI();
-        render();
-      });
-    });
-  }
-
-  document.getElementById("clearLegendFilters")?.addEventListener("click", () => {
-    activeLegendFilters.clear();
-    refreshUI();
-    render();
-  });
-
-  refreshUI();
-}
-
-function syncLegendUI() {
-  if (clearLegendFiltersBtn) {
-    clearLegendFiltersBtn.classList.toggle("d-none", activeLegendFilters.size === 0);
-  }
-
-  if (!filtersHintEl) return;
-
-  if (activeLegendFilters.size === 0) {
-    filtersHintEl.innerHTML = permissions?.canManageRoster
-      ? `${TX.tipPuedesCombinarFiltros} <strong>${TX.confirmado}</strong> + <strong>${TX.feePendiente}</strong>).`
-      : TX.tipUsaFiltrosPara;
-    return;
-  }
-
-  const labels = [];
-  for (const f of activeLegendFilters) {
-    const [type, value] = f.split(":");
-
-    if (type === "status") {
-      if (value === "confirmado") labels.push(TX.confirmado);
-      else if (value === "convocado") labels.push(TX.convocado);
-      else if (value === "tentative") labels.push(TX.porConfirmar);
-      else labels.push(value);
-    } else if (type === "fee") {
-      if (value === "pendiente") labels.push(TX.feePendiente);
-      else if (value === "pagado") labels.push(TX.feePagado);
-      else labels.push(value);
-    } else if (type === "role") {
-      labels.push(getRoleLabel(value));
-    } else if (type === "gender") {
-      if (value === "m") labels.push(TX.masculino);
-      else if (value === "f") labels.push(TX.femenino);
-      else labels.push(value);
-    } else if (type === "guest") {
-      if (value === "true") labels.push(TX.soloInvitados);
-      else labels.push(f);
-    } else {
-      labels.push(f);
-    }
-  }
-
-  filtersHintEl.innerHTML = `${TX.mostrando} <strong>${labels.join(" + ")}</strong>`;
+    if ($("guestAddNow").checked) await addToRoster(ref.id);
+    else renderPlayers();
+  }, TX.errorCreandoInvitado);
 }
 
 /* ==========================
    HELPERS
 ========================== */
+function norm(v) {
+  return String(v || "").trim().toLowerCase();
+}
+
 function prettyStatus(s) {
-  const v = (s || "").toLowerCase();
-  if (v === "confirmado") return TX.confirmado;
-  if (v === "tentative") return TX.porConfirmar;
-  if (v === "convocado") return TX.convocado;
-  return s || "—";
+  if (s === "confirmado") return TX.confirmado;
+  if (s === "tentative") return TX.porConfirmar;
+  return TX.convocado;
 }
 
-function formatTournamentMeta(t) {
-  const where = (t.location || "").trim();
-  return where ? `📍 ${where}` : "📍 —";
-}
-
-function matchesLegendFilters(r) {
-  for (const f of activeLegendFilters) {
-    const [type, value] = f.split(":");
-
-    if (type === "status") {
-      if ((r.status || "").toLowerCase() !== value) return false;
-    }
-
-    if (type === "fee") {
-      const paid = !!r.feeIsPaid;
-      if (value === "pagado" && !paid) return false;
-      if (value === "pendiente" && paid) return false;
-    }
-
-    if (type === "role") {
-      if (normalizeRoleId(r.role) !== value) return false;
-    }
-
-    if (type === "gender") {
-      if (value === "m" && !isMale(r.gender)) return false;
-      if (value === "f" && !isFemale(r.gender)) return false;
-    }
-
-    if (type === "guest") {
-      const want = value === "true";
-      if (!!r.isGuest !== want) return false;
-    }
+function formatDateRange(start, end) {
+  const fmt = (v) => {
+    const m = String(v || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+    const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : (v?.toDate?.() || null);
+    return d && !isNaN(d) ? d : null;
+  };
+  const a = fmt(start);
+  const b = fmt(end);
+  if (!a) return "—";
+  const f = (d, opts) => new Intl.DateTimeFormat("es-CR", opts).format(d).replace(".", "");
+  if (!b || b.getTime() === a.getTime()) return f(a, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  if (a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()) {
+    return `${a.getDate()}–${b.getDate()} ${f(a, { month: "short", year: "numeric" })}`;
   }
-  return true;
+  return `${f(a, { day: "numeric", month: "short" })} – ${f(b, { day: "numeric", month: "short", year: "numeric" })}`;
 }
 
 function showError(msg) {
-  if (!errorBox) return;
-  errorBox.textContent = msg;
-  errorBox.classList.remove("d-none");
+  $("errorBox").textContent = msg;
+  $("errorBox").classList.remove("d-none");
 }
 
 function escapeHtml(str) {
@@ -1280,17 +1026,15 @@ function toNumberOrZero(v) {
 }
 
 function isMale(g) {
-  const v = String(g || "").trim().toLowerCase();
-  return ["m", "male", "masculino", "hombre", "man"].includes(v);
+  return ["m", "male", "masculino", "hombre", "man"].includes(norm(g));
 }
 
 function isFemale(g) {
-  const v = String(g || "").trim().toLowerCase();
-  return ["f", "female", "femenino", "mujer", "woman"].includes(v);
+  return ["f", "female", "femenino", "mujer", "woman"].includes(norm(g));
 }
 
 function normalizeRoleId(role) {
-  return String(role || "").trim().toLowerCase();
+  return norm(role);
 }
 
 function getDefaultRoleId() {
@@ -1305,23 +1049,16 @@ function getRoleLabel(roleId) {
 
 function getRoleCounts(list) {
   const counts = {};
-
-  PLAYER_ROLES.forEach(role => {
-    counts[normalizeRoleId(role.id)] = 0;
-  });
-
+  PLAYER_ROLES.forEach(role => { counts[normalizeRoleId(role.id)] = 0; });
   list.forEach(item => {
     const rid = normalizeRoleId(item.role);
-    if (!rid) return;
     if (counts[rid] !== undefined) counts[rid]++;
   });
-
   return counts;
 }
 
 function normalizeUrl(url) {
   const raw = String(url || "").trim();
   if (!raw) return "";
-  if (/^https?:\/\//i.test(raw)) return raw;
-  return `https://${raw}`;
+  return /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
 }
