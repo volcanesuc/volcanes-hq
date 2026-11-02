@@ -58,6 +58,10 @@ Pickups (v2):
   La página convierte sola los pickups e inscripciones anteriores al formato nuevo
   (mueve correo/teléfono/comprobante a /private y agrega la hora límite)
 - Textos: js/strings/pickups_strings.js (default) + Ajustes > Textos (por club)
+- Páginas públicas: /public/pickups.html (qué es + calendario + preguntas) y
+  /public/pickup_policy.html (cancelación y reembolsos). Sus textos largos y el WhatsApp de
+  contacto se editan en Pickups > Ajustes > "Páginas públicas y contacto"
+  (en una tarjeta o pregunta, poner "-" en Textos la oculta)
 
 Textos de toda la app (por club)
 - Admin > Textos (o Pickups > Ajustes): cambiá cualquier texto; se guarda en club_config/texts

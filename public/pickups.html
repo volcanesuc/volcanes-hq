@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pickups</title>
+
+  <script>document.documentElement.classList.add("preload");</script>
+  <style>
+    html.preload, html.preload body { background: #0b0b0c; }
+    html.preload body { visibility: hidden; }
+    html.preload #clubLoadingOverlay { visibility: visible; }
+  </style>
+  <script src="/js/ui/loader.preload.js"></script>
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/img/apple-touch-icon.png">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="/css/dashboard.css" />
+  <link rel="stylesheet" href="/css/pickups.css" />
+</head>
+<body>
+  <div id="app-header"></div>
+
+  <main class="container py-4" style="max-width: 1040px;">
+    <!-- qué es -->
+    <section class="card shadow-sm mb-4 pk-hero">
+      <div class="card-body p-4">
+        <h1 class="page-title mb-3" data-t="calendar.aboutTitle">¿Qué es un pickup?</h1>
+        <div class="pk-rich lead-sm" id="pcAbout"></div>
+        <div class="d-flex flex-wrap gap-2 mt-3">
+          <a class="btn btn-primary" href="#sessions" data-t="calendar.upcomingTitle">Próximos pickups</a>
+          <a class="btn btn-outline-secondary" href="/public/pickup_policy.html" data-t="links.policy">Cancelación y reembolsos</a>
+          <a class="btn btn-outline-success d-none" id="pcContact" href="#" target="_blank" rel="noopener" data-t="links.contact">Contacto</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- cómo funciona -->
+    <section class="mb-4" id="pcHowWrap">
+      <h2 class="h5 mb-3" data-t="calendar.howTitle">Cómo funciona</h2>
+      <div class="row g-3" id="pcHow"></div>
+    </section>
+
+    <!-- próximos -->
+    <section class="card shadow-sm mb-4" id="sessions">
+      <div class="card-body">
+        <h2 class="h5 mb-1" data-t="calendar.upcomingTitle">Próximos pickups</h2>
+        <div class="small text-muted mb-3" data-t="calendar.upcomingHint"></div>
+
+        <div class="row g-4">
+          <div class="col-12 col-lg-6">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <button class="btn btn-sm btn-outline-secondary" id="pcPrev" type="button" data-t-aria-label="calendar.prevMonth">‹</button>
+              <div class="fw-semibold" id="pcMonth">—</div>
+              <button class="btn btn-sm btn-outline-secondary" id="pcNext" type="button" data-t-aria-label="calendar.nextMonth">›</button>
+            </div>
+            <div class="pk-cal" id="pcCal"></div>
+          </div>
+          <div class="col-12 col-lg-6">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <div class="fw-semibold" id="pcListTitle"></div>
+              <button class="btn btn-sm btn-link d-none" id="pcShowAll" type="button" data-t="calendar.showAll">Ver todos</button>
+            </div>
+            <div class="d-grid gap-2" id="pcList"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- preguntas -->
+    <section class="mb-4" id="pcFaqWrap">
+      <h2 class="h5 mb-3" data-t="calendar.faqTitle">Preguntas frecuentes</h2>
+      <div class="d-grid gap-2" id="pcFaq"></div>
+    </section>
+  </main>
+
+  <script type="module" src="/js/public/pickups_calendar.js"></script>
+</body>
+</html>

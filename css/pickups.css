@@ -35,3 +35,53 @@
 .pk-actions { display: flex; flex-wrap: wrap; gap: .25rem; }
 .pk-pickup-item.active { border-left: 4px solid var(--theme-primary, #19473f); }
 .pk-strings-table textarea { min-height: 2.4rem; font-size: .875rem; }
+
+/* ===== páginas públicas: política / calendario ===== */
+.pk-rich p:last-child, .pk-rich ul:last-child { margin-bottom: 0; }
+.pk-rich ul { padding-left: 1.2rem; }
+.pk-rich li { margin-bottom: .35rem; }
+
+.pk-flash { animation: pk-flash 1.6s ease-out; }
+@keyframes pk-flash {
+  0% { box-shadow: 0 0 0 .3rem rgba(25, 135, 84, .45); }
+  100% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0); }
+}
+
+.pk-how__n {
+  width: 2rem; height: 2rem; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--theme-primary, #19473f); color: #fff; font-weight: 700;
+  margin-bottom: .5rem;
+}
+
+.pk-faq summary { cursor: pointer; list-style: none; }
+.pk-faq summary::-webkit-details-marker { display: none; }
+.pk-faq summary::after { content: "+"; float: right; font-weight: 700; }
+.pk-faq[open] summary::after { content: "–"; }
+
+.pk-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: .25rem; }
+.pk-cal__wd { text-align: center; font-size: .75rem; font-weight: 600; color: #6c757d; padding-bottom: .25rem; }
+.pk-cal__day {
+  aspect-ratio: 1 / 1; border: 1px solid rgba(0, 0, 0, .08); border-radius: .5rem;
+  background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: .15rem; padding: 0; font-size: .9rem; color: inherit;
+}
+.pk-cal__day.is-empty { border: 0; background: transparent; }
+.pk-cal__day:disabled { cursor: default; color: #adb5bd; }
+.pk-cal__day.is-past { opacity: .55; }
+.pk-cal__day.has-events { cursor: pointer; font-weight: 700; border-color: var(--theme-primary, #19473f); }
+.pk-cal__day.has-events:hover { background: rgba(25, 71, 63, .08); }
+.pk-cal__day.is-today { outline: 2px solid #ffc107; outline-offset: -2px; }
+.pk-cal__day.is-selected { background: var(--theme-primary, #19473f); color: #fff; }
+.pk-cal__dots { display: flex; gap: 2px; }
+.pk-cal__dots i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; display: block; }
+.pk-cal__day.has-events .pk-cal__dots i { background: var(--theme-primary, #19473f); }
+.pk-cal__day.is-selected .pk-cal__dots i { background: #fff; }
+
+.pk-session { transition: transform .1s ease; }
+.pk-session:hover { transform: translateY(-1px); }
+.pk-session__date {
+  min-width: 3.2rem; padding: .35rem .25rem; border-radius: .5rem;
+  background: rgba(25, 71, 63, .08); color: var(--theme-primary, #19473f);
+}
+.min-w-0 { min-width: 0; }

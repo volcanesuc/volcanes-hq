@@ -41,6 +41,17 @@ function buildSettings(remote = {}) {
       instructions: remote.payment?.instructions || "",
     },
 
+    contact: {
+      whatsapp: remote.contact?.whatsapp || "",
+    },
+
+    // Textos largos de las páginas públicas (vacío = default de pickups_strings)
+    pages: {
+      policyCancellation: remote.pages?.policyCancellation || "",
+      policyRefunds: remote.pages?.policyRefunds || "",
+      aboutPickup: remote.pages?.aboutPickup || "",
+    },
+
     whatsappCountryCode: String(remote.whatsappCountryCode || DEFAULTS.whatsappCountryCode || ""),
     postToFinance: bool(remote.postToFinance, DEFAULTS.postToFinance ?? true),
     financeCategory: remote.financeCategory || DEFAULTS.financeCategory || "pickup",
@@ -108,6 +119,31 @@ export function getDefaultString(key) {
   return PICKUP_STRINGS[key] ?? "";
 }
 
+// Texto largo de una página pública: lo de Ajustes o el default de Textos.
+export function pageText(settingsKey, stringKey, vars = {}) {
+  const custom = settings.pages?.[settingsKey];
+  return custom && custom.trim()
+    ? String(custom).replace(/\{(\w+)\}/g, (m, k) => (vars[k] ?? vars[k] === 0 ? String(vars[k]) : m))
+    : t(stringKey, vars);
+}
+
+// Párrafos (línea en blanco), listas ("- ") y **negrita**. Escapa HTML.
+export function richText(text) {
+  const esc = (v) => String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const inline = (v) => esc(v).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  return String(text || "")
+    .split(/\n\s*\n/)
+    .map((block) => {
+      const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
+      if (!lines.length) return "";
+      if (lines.every((l) => /^[-•]\s+/.test(l))) {
+        return `<ul>${lines.map((l) => `<li>${inline(l.replace(/^[-•]\s+/, ""))}</li>`).join("")}</ul>`;
+      }
+      return `<p>${lines.map(inline).join("<br>")}</p>`;
+    })
+    .join("");
+}
+
 // Aplica textos a elementos con data-t="key" (textContent) y data-t-placeholder="key".
 export function applyStrings(root = document) {
   root.querySelectorAll("[data-t]").forEach((el) => {
@@ -115,6 +151,9 @@ export function applyStrings(root = document) {
   });
   root.querySelectorAll("[data-t-placeholder]").forEach((el) => {
     el.setAttribute("placeholder", t(el.getAttribute("data-t-placeholder")));
+  });
+  root.querySelectorAll("[data-t-aria-label]").forEach((el) => {
+    el.setAttribute("aria-label", t(el.getAttribute("data-t-aria-label")));
   });
 }
 

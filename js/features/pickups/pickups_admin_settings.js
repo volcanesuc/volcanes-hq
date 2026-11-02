@@ -32,6 +32,14 @@ const field = (id, labelKey, input) => `
     ${input}
   </div>`;
 
+// Texto largo de página pública; el placeholder muestra el default.
+const pageField = (id, labelKey, value, defaultKey) => `
+  <div class="col-12">
+    <label class="form-label small" for="${id}">${escapeHtml(t(labelKey))}</label>
+    <textarea id="${id}" class="form-control form-control-sm" rows="5"
+      placeholder="${escapeHtml(t(defaultKey, { hours: "{hours}" }))}">${escapeHtml(value || "")}</textarea>
+  </div>`;
+
 const toggle = (id, labelKey, checked) => `
   <div class="col-12 col-md-6">
     <div class="form-check form-switch">
@@ -97,6 +105,24 @@ export function renderSettings() {
           ${toggle("stPostFinance", "settings.postToFinance", s.postToFinance)}
           ${field("stFinanceCategory", "settings.financeCategory", `<input id="stFinanceCategory" class="form-control form-control-sm" value="${escapeHtml(s.financeCategory)}" />`)}
         </div>
+      </div></div>
+
+      <div class="card shadow-sm mb-3"><div class="card-body">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-1">
+          <h2 class="h6 mb-0">${escapeHtml(t("settings.publicPage"))}</h2>
+          <div class="d-flex gap-2 flex-wrap">
+            <a class="btn btn-sm btn-outline-secondary" href="/public/pickup_policy.html" target="_blank" rel="noopener">${escapeHtml(t("settings.viewPolicy"))}</a>
+            <a class="btn btn-sm btn-outline-secondary" href="/public/pickups.html" target="_blank" rel="noopener">${escapeHtml(t("settings.viewCalendar"))}</a>
+          </div>
+        </div>
+        <div class="small text-muted mb-3">${escapeHtml(t("settings.publicPageHint"))}</div>
+        <div class="row g-3">
+          ${field("stContactWa", "settings.contactWhatsapp", `<input id="stContactWa" class="form-control form-control-sm" type="tel" value="${escapeHtml(s.contact.whatsapp)}" placeholder="${escapeHtml(s.payment.sinpeNumber)}" />`)}
+          ${pageField("stAboutPickup", "settings.aboutPickup", s.pages.aboutPickup, "calendar.aboutBody")}
+          ${pageField("stPolicyCancellation", "settings.policyCancellation", s.pages.policyCancellation, "policy.cancellationBody")}
+          ${pageField("stPolicyRefunds", "settings.policyRefunds", s.pages.policyRefunds, "policy.refundsBody")}
+        </div>
+        <div class="small text-muted mt-2">${escapeHtml(t("settings.moreTexts"))}</div>
       </div></div>
 
       <div class="card shadow-sm mb-3"><div class="card-body">
@@ -184,6 +210,12 @@ async function onSave(ev) {
       instructions: v("stInstructions"),
     },
     whatsappCountryCode: v("stWaCountry"),
+    contact: { whatsapp: v("stContactWa") },
+    pages: {
+      aboutPickup: v("stAboutPickup"),
+      policyCancellation: v("stPolicyCancellation"),
+      policyRefunds: v("stPolicyRefunds"),
+    },
     postToFinance: c("stPostFinance"),
     financeCategory: v("stFinanceCategory") || "pickup",
     pricingTiers: tierEditor.read(),

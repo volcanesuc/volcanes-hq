@@ -250,6 +250,13 @@ function renderInfo() {
   $("pvSinpe").textContent = sinpe;
   $("pvPayInstructions").textContent = state.settings.payment.instructions || "";
 
+  const contact = state.settings.contact?.whatsapp || state.settings.payment.sinpeNumber;
+  const contactLink = $("pvContactLink");
+  contactLink.classList.toggle("d-none", !contact);
+  contactLink.href = contact
+    ? whatsappUrl(contact, t("wa.contactPickup", { title: p.title || "", date: fmtDateTime(p.startAt) }), state.settings.whatsappCountryCode)
+    : "#";
+
   const status = norm(p.status);
   const banner = $("pvBanner");
   if (status === PICKUP_STATUS.CANCELLED) {
@@ -336,6 +343,49 @@ function renderMine() {
   }).join("");
 }
 
+// La inscripción "principal" del que mira: la suya con cuenta, o la del link de invitado.
+function myMainReg() {
+  const uid = state.user?.uid;
+  const active = myRegs().filter((r) => !isCancelledReg(r));
+  return active.find((r) => uid && r.linkedUid === uid) || (isAccountUser() ? null : active[0]) || null;
+}
+
+function renderLeaveHint(reg) {
+  const el = $("pvLeaveHint");
+  const deadline = getCancelDeadline(state.pickup);
+  el.className = "small mt-2";
+  if (!deadline) return el.classList.add("d-none");
+  const date = fmtDateTime(deadline);
+  if (!reg) {
+    el.textContent = canLeaveNow(state.pickup) ? t("join.freeUntil", { date }) : "";
+    el.classList.add("text-muted");
+  } else if (canLeaveNow(state.pickup)) {
+    el.textContent = t(isApproved(reg) ? "joined.freeUntilPaid" : "joined.freeUntil", { date });
+    el.classList.add("text-success-emphasis");
+  } else {
+    el.textContent = t("joined.deadlinePassed", { date });
+    el.classList.add("text-warning-emphasis");
+  }
+  el.classList.toggle("d-none", !el.textContent);
+}
+
+// Ya inscrito: en vez de "Unirme", ver/editar, agregar invitados o salirse.
+function renderJoinedActions(reg) {
+  const s = state.settings;
+  ["pvJoinBtn", "pvLoginBtn", "pvGuestBtn"].forEach((id) => $(id).classList.add("d-none"));
+  $("pvJoinedTitle").classList.remove("d-none");
+  $("pvEditBtn").classList.remove("d-none");
+
+  const account = isAccountUser();
+  const addBtn = $("pvAddGuestsBtn");
+  addBtn.textContent = t(account ? "joined.addGuests" : "joined.addPerson");
+  addBtn.classList.toggle("d-none", account ? !s.allowCompanions : !s.allowGuests);
+
+  $("pvLeaveBtn").classList.toggle("d-none", !canLeaveNow(state.pickup));
+  $("pvLeaveBtn").dataset.regId = reg.id;
+  renderLeaveHint(reg);
+}
+
 function renderActions() {
   const s = state.settings;
   const p = state.pickup;
@@ -347,10 +397,15 @@ function renderActions() {
   hint.textContent = "";
   joinBtn.disabled = false;
   joinBtn.textContent = t("join.button");
+  ["pvJoinedTitle", "pvEditBtn", "pvAddGuestsBtn", "pvLeaveBtn"].forEach((id) => $(id).classList.add("d-none"));
 
   const open = isJoinOpen(p);
   $("pvActionsCard").classList.toggle("d-none", !open);
   if (!open) return;
+
+  const mainReg = myMainReg();
+  if (mainReg) return renderJoinedActions(mainReg);
+  renderLeaveHint(null);
 
   const full = splitSpots(p, state.regs).inList.length >= (getPickupCapacity(p) || Infinity);
   if (full && p.allowWaitlist === false) {
@@ -841,6 +896,21 @@ function bindEvents() {
     clearMessages();
     openGuestDialog();
   });
+
+  $("pvEditBtn").addEventListener("click", () => {
+    const card = $("pvMineCard");
+    card.scrollIntoView({ behavior: "smooth", block: "start" });
+    card.classList.add("pk-flash");
+    setTimeout(() => card.classList.remove("pk-flash"), 1600);
+  });
+
+  $("pvAddGuestsBtn").addEventListener("click", () => {
+    clearMessages();
+    if (isAccountUser()) openJoinDialog();
+    else openGuestDialog();
+  });
+
+  $("pvLeaveBtn").addEventListener("click", () => leave($("pvLeaveBtn").dataset.regId));
 
   $("joinForm").addEventListener("submit", submitJoin);
   $("joinForm").addEventListener("change", updateJoinSummary);
