@@ -1,864 +1,948 @@
 // /js/public/pickup_view.js
-import { db, storage, auth } from "/js/auth/firebase.js";
+// Página pública de un pickup: unirse (con cuenta, acompañantes o sin cuenta),
+// subir comprobante, salirse antes de la hora límite y link privado para invitados.
+import { auth } from "/js/auth/firebase.js";
 import { loginWithGoogle } from "/js/auth/auth.js";
 import { initPublicMinimalHeader } from "/js/components/public-minimal-header.js";
 import { showLoader, hideLoader } from "/js/ui/loader.js";
-import { APP_CONFIG } from "/js/config/config.js";
 
 import {
-  collection,
-  getDocs,
-  getDoc,
-  addDoc,
-  doc,
-  query,
-  where,
-  serverTimestamp,
-  updateDoc,
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+  onAuthStateChanged,
+  signInAnonymously,
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 import {
-  ref as storageRef,
-  uploadBytes,
-  getDownloadURL,
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
-
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-import {
-  canUserUsePickups,
-  countConfirmedRegistrations,
-  escapeHtml,
+  applyStrings,
   fmtDateTime,
+  loadPickupSettings,
+  money,
+  t,
+} from "/js/features/pickups/pickups_settings.js";
+
+import {
+  PAYMENT_STATUS,
+  PICKUP_STATUS,
+  REG_SOURCE,
+  SPOT,
+  buildPickupPublicUrl,
+  canLeaveNow,
+  computeCredits,
+  computeMorosos,
+  escapeHtml,
+  getActiveTiers,
+  getCancelDeadline,
   getPickupCapacity,
-  getStatusBadge,
-  canCancelWithoutPenalty,
+  getSpotMap,
+  isApproved,
+  isCancelledReg,
+  isJoinOpen,
+  norm,
+  paymentBadge,
+  personKeyFromId,
+  personKeyFromUid,
+  profileFromUserDoc,
+  randomToken,
+  regCashDue,
+  regOwnerUid,
+  regTierLabel,
+  safeUrl,
+  splitSpots,
+  spotBadge,
+  suggestTier,
+  whatsappUrl,
 } from "/js/features/pickups/pickups_shared.js";
 
-const COL = APP_CONFIG.collections;
-const COL_USERS = COL.users;
-const COL_PICKUPS = COL.pickups;
-const COL_PICKUP_REGS = COL.pickupRegistrations;
+import {
+  claimRegistration,
+  createRegistrations,
+  leaveRegistration,
+  loadPickup,
+  loadPickupBySlug,
+  loadRegsByPayer,
+  loadRegsByPersonKey,
+  loadRegsForPickup,
+  loadUserDoc,
+  submitProof,
+  uploadProof,
+} from "/js/features/pickups/pickups_services.js";
 
 const $ = (id) => document.getElementById(id);
+const LINKS_STORAGE_KEY = "pickup_links";
 
-const pvTitle = $("pvTitle");
-const pvSubtitle = $("pvSubtitle");
-const pvStatus = $("pvStatus");
-const pvStartAt = $("pvStartAt");
-const pvVenue = $("pvVenue");
-const pvCapacity = $("pvCapacity");
-const pvNotes = $("pvNotes");
-const pvPricing = $("pvPricing");
-const pvList = $("pvList");
-const pvListEmpty = $("pvListEmpty");
-const pvJoinBtn = $("pvJoinBtn");
-const pvShareBtn = $("pvShareBtn");
-const pvError = $("pvError");
-const pvInfo = $("pvInfo");
-
-let currentPickup = null;
-let currentRegs = [];
-let currentUser = null;
-let currentUserDoc = null;
-let currentUserRegistration = null;
+const state = {
+  settings: null,
+  pickup: null,
+  regs: [],
+  spots: new Map(),
+  user: null,          // usuario Firebase (puede ser anónimo)
+  userDoc: null,       // users/{uid} si tiene cuenta
+  payerKey: null,
+  creditBalance: 0,
+  isMoroso: false,
+  isFirstTime: false,
+  linkRegIds: new Set(),
+  proofRegId: null,
+  guestHistory: { personKey: null, credit: 0, moroso: false, firstTime: true },
+};
 
 /* =========================
-   Messages
+   Mensajes
 ========================= */
 function showError(msg) {
-  pvError.textContent = msg;
-  pvError.classList.remove("d-none");
+  $("pvError").textContent = msg;
+  $("pvError").classList.remove("d-none");
+  $("pvInfo").classList.add("d-none");
 }
 
 function showInfo(msg) {
-  pvInfo.textContent = msg;
-  pvInfo.classList.remove("d-none");
+  $("pvInfo").textContent = msg;
+  $("pvInfo").classList.remove("d-none");
+  $("pvError").classList.add("d-none");
 }
 
 function clearMessages() {
-  pvError.classList.add("d-none");
-  pvInfo.classList.add("d-none");
+  $("pvError").classList.add("d-none");
+  $("pvInfo").classList.add("d-none");
 }
 
 /* =========================
-   Render helpers
+   Links privados guardados en este dispositivo
 ========================= */
-function formatNotes(text) {
-  if (!text) return "—";
-  return escapeHtml(text).replace(/\n/g, "<br>");
+function readSavedLinks() {
+  try {
+    return JSON.parse(localStorage.getItem(LINKS_STORAGE_KEY) || "{}") || {};
+  } catch {
+    return {};
+  }
 }
 
-function registrationRow(r, idx) {
-  return `
-    <div class="list-group-item d-flex justify-content-between align-items-center gap-2">
-      <div class="d-flex align-items-start gap-3">
-        <div class="fw-bold text-muted" style="min-width: 1.5rem;">${idx + 1}.</div>
-        <div>
-          <div class="fw-semibold">${escapeHtml(r.displayName || "—")}</div>
-          <div class="small text-muted">${escapeHtml(r.pricingTierLabel || "—")}</div>
-        </div>
-      </div>
-      <span class="badge text-bg-dark">${escapeHtml(r.registrationStatus || "registered")}</span>
-    </div>
+function saveLink(regId, key, pickupId) {
+  try {
+    const links = readSavedLinks();
+    links[regId] = { key, pickupId };
+    localStorage.setItem(LINKS_STORAGE_KEY, JSON.stringify(links));
+  } catch {
+    /* sin storage: el link igual funciona */
+  }
+}
+
+/* =========================
+   Helpers
+========================= */
+const isAccountUser = () => !!state.user && !state.user.isAnonymous;
+
+function tierOptions(tiers, selectedId) {
+  return tiers.map((tier) => `
+    <option value="${escapeHtml(tier.id)}" ${tier.id === selectedId ? "selected" : ""}>
+      ${escapeHtml(tier.label)} · ${escapeHtml(money(tier.amount))}
+    </option>`).join("");
+}
+
+function findTier(id) {
+  return getActiveTiers(state.pickup).find((x) => x.id === id) || null;
+}
+
+function sinpeText() {
+  const p = state.settings.payment;
+  if (!p.sinpeNumber) return "";
+  return t("public.sinpeLine", { number: p.sinpeNumber, name: p.sinpeName });
+}
+
+function myRegs() {
+  const uid = state.user?.uid;
+  return state.regs.filter((r) =>
+    (uid && (regOwnerUid(r) === uid || r.linkedUid === uid)) || state.linkRegIds.has(r.id)
+  );
+}
+
+function myActiveSelfReg() {
+  const uid = state.user?.uid;
+  return state.regs.find((r) => r.linkedUid === uid && !isCancelledReg(r)) || null;
+}
+
+async function ensureSignedIn() {
+  if (auth.currentUser) return auth.currentUser;
+  const cred = await signInAnonymously(auth);
+  state.user = cred.user;
+  return cred.user;
+}
+
+async function reloadRegs() {
+  state.regs = await loadRegsForPickup(state.pickup.id);
+  state.spots = getSpotMap(state.pickup, state.regs);
+}
+
+// Calcula quién entra y quién queda en espera, y cuánto crédito se usa.
+function buildJoinPlan(tiersForEntries, creditAvailable) {
+  const cap = getPickupCapacity(state.pickup);
+  const inCount = splitSpots(state.pickup, state.regs).inList.length;
+  const spotsLeft = cap ? Math.max(0, cap - inCount) : Infinity;
+
+  let creditLeft = creditAvailable;
+  let cashTotal = 0;
+  let creditUsed = 0;
+
+  const items = tiersForEntries.map((tier, i) => {
+    const spot = i < spotsLeft ? SPOT.IN : SPOT.WAITLIST;
+    const amount = Number(tier?.amount || 0);
+    let credit = 0;
+    if (spot === SPOT.IN && amount > 0 && creditLeft > 0) {
+      credit = Math.min(creditLeft, amount);
+      creditLeft -= credit;
+    }
+    if (spot === SPOT.IN) cashTotal += amount - credit;
+    creditUsed += credit;
+    return { tier, spot, amount, credit };
+  });
+
+  const waitlistBlocked = items.some((x) => x.spot === SPOT.WAITLIST) && state.pickup.allowWaitlist === false;
+  return { items, cashTotal, creditUsed, waitlistBlocked, allWaitlist: items.every((x) => x.spot === SPOT.WAITLIST) };
+}
+
+function paymentFieldsFor(item, hasProof) {
+  if (item.amount <= 0) return { paymentStatus: PAYMENT_STATUS.NOT_REQUIRED, paymentMethod: null };
+  if (item.spot === SPOT.WAITLIST) return { paymentStatus: PAYMENT_STATUS.PENDING, paymentMethod: null };
+  if (item.amount - item.credit <= 0) return { paymentStatus: PAYMENT_STATUS.SUBMITTED, paymentMethod: "credit" };
+  if (hasProof) return { paymentStatus: PAYMENT_STATUS.SUBMITTED, paymentMethod: item.credit > 0 ? "credit+sinpe" : "sinpe" };
+  return { paymentStatus: PAYMENT_STATUS.PENDING, paymentMethod: null };
+}
+
+function totalText(plan) {
+  if (plan.cashTotal <= 0 && plan.creditUsed > 0) return t("joinDialog.totalCovered");
+  return t("joinDialog.total", { amount: money(plan.cashTotal) });
+}
+
+/* =========================
+   Render
+========================= */
+function renderInfo() {
+  const p = state.pickup;
+  $("pvTitle").textContent = p.title || t("app.title");
+  document.title = p.title || t("app.title");
+
+  $("pvStartAt").textContent = fmtDateTime(p.startAt);
+
+  const maps = safeUrl(p.mapsUrl);
+  $("pvVenue").innerHTML = `
+    <div class="fw-semibold">${escapeHtml(p.venueName || "—")}</div>
+    ${p.venueAddress ? `<div class="small text-muted">${escapeHtml(p.venueAddress)}</div>` : ""}
+    ${maps ? `<a href="${escapeHtml(maps)}" target="_blank" rel="noopener" class="small">${escapeHtml(t("public.openMap"))}</a>` : ""}
   `;
-}
 
-function renderPricing(pickup) {
-  const tiers = Array.isArray(pickup?.pricingTiers) ? pickup.pricingTiers : [];
-  pvPricing.innerHTML = tiers.length
-    ? tiers.map((t) => `
-        <div class="list-group-item d-flex justify-content-between align-items-center">
-          <span>${escapeHtml(t.label || "—")}</span>
-          <strong>₡${Number(t.amount || 0)}</strong>
-        </div>
-      `).join("")
-    : `<div class="text-muted small">No hay costos definidos todavía.</div>`;
+  const deadline = getCancelDeadline(p);
+  $("pvDeadline").textContent = deadline
+    ? `${fmtDateTime(deadline)}${canLeaveNow(p) ? "" : ` · ${t("public.deadlinePassed")}`}`
+    : "—";
+
+  $("pvNotesWrap").classList.toggle("d-none", !p.notes);
+  $("pvNotes").innerHTML = escapeHtml(p.notes || "").replace(/\n/g, "<br>");
+
+  const tiers = getActiveTiers(p);
+  $("pvPricing").innerHTML = tiers.map((tier) => `
+    <div class="list-group-item d-flex justify-content-between align-items-center">
+      <span>${escapeHtml(tier.label)}</span>
+      <strong>${escapeHtml(money(tier.amount))}</strong>
+    </div>`).join("");
+
+  const sinpe = sinpeText();
+  $("pvPayInfo").classList.toggle("d-none", !sinpe && !state.settings.payment.instructions);
+  $("pvSinpe").textContent = sinpe;
+  $("pvPayInstructions").textContent = state.settings.payment.instructions || "";
+
+  const status = norm(p.status);
+  const banner = $("pvBanner");
+  if (status === PICKUP_STATUS.CANCELLED) {
+    banner.textContent = t("public.cancelledBanner");
+    banner.classList.remove("d-none");
+  } else if (!isJoinOpen(p)) {
+    banner.textContent = t("public.closedBanner");
+    banner.classList.remove("d-none");
+  } else {
+    banner.classList.add("d-none");
+  }
 }
 
 function renderList() {
-  pvList.innerHTML = "";
+  const { inList, waitlist } = splitSpots(state.pickup, state.regs);
+  const cap = getPickupCapacity(state.pickup);
 
-  if (!currentRegs.length) {
-    pvListEmpty.classList.remove("d-none");
+  $("pvCapacity").textContent = cap
+    ? t("public.capacityValue", { taken: inList.length, capacity: cap })
+    : `${inList.length} · ${t("common.unlimited")}`;
+
+  const row = (r) => `
+    <li class="list-group-item d-flex justify-content-between align-items-center gap-2">
+      <span class="me-auto ms-2">${escapeHtml(r.displayName || "—")}</span>
+      <span class="small text-muted">${escapeHtml(regTierLabel(r))}</span>
+    </li>`;
+
+  $("pvList").innerHTML = inList.map(row).join("");
+  $("pvListEmpty").classList.toggle("d-none", inList.length > 0);
+
+  $("pvWaitWrap").classList.toggle("d-none", waitlist.length === 0);
+  $("pvWaitList").innerHTML = waitlist.map(row).join("");
+}
+
+function renderMine() {
+  const mine = myRegs();
+  const card = $("pvMineCard");
+  card.classList.toggle("d-none", mine.length === 0);
+
+  const creditEl = $("pvCredit");
+  creditEl.classList.toggle("d-none", !(state.creditBalance > 0));
+  creditEl.textContent = t("mine.creditBalance", { amount: money(state.creditBalance) });
+
+  const leaveOpen = canLeaveNow(state.pickup);
+
+  $("pvMineList").innerHTML = mine.map((r) => {
+    const spot = state.spots.get(r.id) || SPOT.CANCELLED;
+    const cancelled = spot === SPOT.CANCELLED;
+    const status = norm(r.paymentStatus || PAYMENT_STATUS.PENDING);
+    const cash = regCashDue(r);
+    const canUpload = !cancelled && cash > 0 && [PAYMENT_STATUS.PENDING, PAYMENT_STATUS.REJECTED].includes(status);
+
+    const notices = [];
+    if (status === PAYMENT_STATUS.REJECTED && r.rejectReason) {
+      notices.push(`<div class="small text-danger">${escapeHtml(t("mine.rejectedReason", { reason: r.rejectReason }))}</div>`);
+    }
+    if (spot === SPOT.IN && status === PAYMENT_STATUS.PENDING && cash > 0) {
+      notices.push(`<div class="small text-warning-emphasis">${escapeHtml(t("mine.payNow"))}</div>`);
+    }
+    if (!cancelled && !leaveOpen) {
+      notices.push(`<div class="small text-muted">${escapeHtml(t("mine.leaveBlocked"))}</div>`);
+    }
+
+    return `
+      <div class="list-group-item">
+        <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+          <div>
+            <div class="fw-semibold">${escapeHtml(r.displayName || "—")}</div>
+            <div class="small text-muted">${escapeHtml(regTierLabel(r))} · ${escapeHtml(money(r.amountDue))}</div>
+          </div>
+          <div class="d-flex gap-1 flex-wrap">
+            <span class="badge ${spotBadge(spot)}">${escapeHtml(t(`status.spot.${spot}`))}</span>
+            ${cancelled ? "" : `<span class="badge ${paymentBadge(status)}">${escapeHtml(t(`status.payment.${status}`))}</span>`}
+          </div>
+        </div>
+        ${notices.join("")}
+        ${cancelled ? "" : `
+          <div class="d-flex gap-2 mt-2 flex-wrap">
+            ${canUpload ? `<button type="button" class="btn btn-sm btn-primary" data-upload="${escapeHtml(r.id)}">
+              ${escapeHtml(t(status === PAYMENT_STATUS.REJECTED ? "mine.reuploadProof" : "mine.uploadProof"))}</button>` : ""}
+            ${leaveOpen ? `<button type="button" class="btn btn-sm btn-outline-danger" data-leave="${escapeHtml(r.id)}">${escapeHtml(t("mine.leave"))}</button>` : ""}
+          </div>`}
+      </div>`;
+  }).join("");
+}
+
+function renderActions() {
+  const s = state.settings;
+  const p = state.pickup;
+  const joinBtn = $("pvJoinBtn");
+  const loginBtn = $("pvLoginBtn");
+  const guestBtn = $("pvGuestBtn");
+  const hint = $("pvActionsHint");
+
+  hint.textContent = "";
+  joinBtn.disabled = false;
+  joinBtn.textContent = t("join.button");
+
+  const open = isJoinOpen(p);
+  $("pvActionsCard").classList.toggle("d-none", !open);
+  if (!open) return;
+
+  const full = splitSpots(p, state.regs).inList.length >= (getPickupCapacity(p) || Infinity);
+  if (full && p.allowWaitlist === false) {
+    joinBtn.classList.remove("d-none");
+    joinBtn.disabled = true;
+    loginBtn.classList.add("d-none");
+    guestBtn.classList.add("d-none");
+    hint.textContent = t("public.full");
+    return;
+  }
+  if (full) hint.textContent = t("joinDialog.waitlistSubtitle");
+
+  if (!isAccountUser()) {
+    joinBtn.classList.add("d-none");
+    loginBtn.classList.remove("d-none");
+    guestBtn.classList.toggle("d-none", !s.allowGuests);
     return;
   }
 
-  pvListEmpty.classList.add("d-none");
+  loginBtn.classList.add("d-none");
+  joinBtn.classList.remove("d-none");
 
-  const rows = currentRegs
-    .filter((r) => r.registrationStatus !== "cancelled")
-    .sort((a, b) => {
-      const ta = a.createdAt?.toDate?.() ?? new Date(0);
-      const tb = b.createdAt?.toDate?.() ?? new Date(0);
-      return ta - tb;
-    });
+  if (state.userDoc?.onboardingComplete !== true) {
+    joinBtn.textContent = t("join.completeProfile");
+    guestBtn.classList.toggle("d-none", !s.allowGuests);
+    return;
+  }
+  guestBtn.classList.add("d-none");
 
-  pvList.innerHTML = rows.map((r, idx) => registrationRow(r, idx)).join("");
+  if (s.blockMorosos && state.isMoroso) {
+    joinBtn.disabled = true;
+    hint.textContent = t("join.blockedMoroso");
+    return;
+  }
+
+  if (myActiveSelfReg() && !s.allowCompanions) {
+    joinBtn.disabled = true;
+    joinBtn.textContent = t("join.alreadyIn");
+  }
 }
 
-/* =========================
-   Data load
-========================= */
-async function loadPickupBySlug(slug) {
-  const qy = query(
-    collection(db, COL_PICKUPS),
-    where("slug", "==", slug),
-    where("isPublic", "==", true)
-  );
-
-  const snap = await getDocs(qy);
-
-  if (snap.empty) return null;
-
-  const first = snap.docs[0];
-  return { id: first.id, ...first.data() };
-}
-
-async function loadUserDoc(uid) {
-  if (!uid) return null;
-  const snap = await getDoc(doc(db, COL_USERS, uid));
-  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
-}
-
-async function loadRegs(pickupId) {
-  const qy = query(collection(db, COL_PICKUP_REGS), where("pickupId", "==", pickupId));
-  const snap = await getDocs(qy);
-  currentRegs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  refreshCurrentUserRegistration();
+function renderAll() {
+  renderInfo();
   renderList();
-}
-
-function refreshCurrentUserRegistration() {
-  currentUserRegistration = currentUser?.uid
-    ? currentRegs.find((r) => r.uid === currentUser.uid && r.registrationStatus !== "cancelled") || null
-    : null;
-  syncActionButtons();
+  renderMine();
+  renderActions();
 }
 
 /* =========================
-   Upload proof
+   Historial del usuario (crédito, morosidad, primera vez)
 ========================= */
-async function uploadProof(file, pickupId, uid) {
-  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-  const path = `pickups/${pickupId}/proofs/${uid}_${Date.now()}.${ext}`;
-  const ref = storageRef(storage, path);
+async function loadHistoryFor(payerKey, legacyUid = null) {
+  const history = await loadRegsByPayer(payerKey, legacyUid);
+  const credit = computeCredits(history).get(payerKey)?.balance || 0;
 
-  await uploadBytes(ref, file, {
-    contentType: file.type || "image/jpeg",
-    cacheControl: "no-cache",
-  });
+  let moroso = false;
+  if (state.settings.blockMorosos && history.length) {
+    const ids = [...new Set(history.map((r) => r.pickupId))];
+    const pickups = (await Promise.all(ids.map((id) => loadPickup(id).catch(() => null)))).filter(Boolean);
+    moroso = computeMorosos(pickups, history).has(payerKey);
+  }
 
-  const downloadURL = await getDownloadURL(ref);
-  return { storagePath: path, downloadURL };
+  return { history, credit, moroso };
+}
+
+async function refreshAccountContext() {
+  state.userDoc = null;
+  state.payerKey = null;
+  state.creditBalance = 0;
+  state.isMoroso = false;
+  state.isFirstTime = false;
+
+  if (!state.user) return;
+
+  if (isAccountUser()) {
+    state.userDoc = await loadUserDoc(state.user.uid).catch(() => null);
+    const idKey = await personKeyFromId(state.userDoc?.profile?.idNumber || state.userDoc?.idNumber);
+    state.payerKey = idKey || personKeyFromUid(state.user.uid);
+  } else {
+    state.payerKey = myRegs()[0]?.payerKey || null;
+  }
+
+  if (!state.payerKey) return;
+
+  try {
+    const { history, credit, moroso } = await loadHistoryFor(state.payerKey, state.user.uid);
+    state.creditBalance = credit;
+    state.isMoroso = moroso;
+    state.isFirstTime = !history.some((r) => r.personKey === state.payerKey && r.pickupId !== state.pickup.id);
+  } catch (err) {
+    console.warn("[pickup] historial no disponible:", err);
+  }
 }
 
 /* =========================
-   Join dialog
+   Unirme (con cuenta)
 ========================= */
-function ensureJoinDialog() {
-  let dlg = document.getElementById("pickupJoinDialog");
-  if (dlg) return dlg;
-
-  dlg = document.createElement("dialog");
-  dlg.id = "pickupJoinDialog";
-  dlg.style.maxWidth = "680px";
-  dlg.style.width = "calc(100% - 2rem)";
-  dlg.style.border = "0";
-  dlg.style.borderRadius = "18px";
-  dlg.style.padding = "0";
-  dlg.style.boxShadow = "0 24px 80px rgba(0,0,0,.35)";
-
-  dlg.innerHTML = `
-    <form method="dialog" id="pickupJoinDialogForm" style="margin:0;">
-      <div style="padding:1rem 1rem 0.75rem;border-bottom:1px solid #e9ecef;display:flex;justify-content:space-between;gap:1rem;align-items:start;">
-        <div>
-          <div style="font-weight:700;font-size:1.05rem;" id="pickupJoinDialogTitle">Unirme al pickup</div>
-          <div class="text-muted small" id="pickupJoinDialogSubtitle">Elegí tu tarifa. El comprobante es opcional y lo podés subir luego.</div>
+function companionRowHtml(tiers, defaultTierId) {
+  return `
+    <div class="pk-companion" data-companion>
+      <div class="row g-2">
+        <div class="col-12 col-sm-6">
+          <input class="form-control form-control-sm" data-c-name maxlength="80" placeholder="${escapeHtml(t("joinDialog.companionName"))}" />
         </div>
-        <button type="button" id="pickupJoinDialogClose" class="btn btn-sm btn-outline-secondary">Cerrar</button>
-      </div>
-
-      <div style="padding:1rem;">
-        <div class="mb-3">
-          <div class="small text-muted mb-2">Elegí una tarifa</div>
-          <div id="pickupJoinTierList" class="d-grid gap-2"></div>
-          <div id="pickupJoinTierError" class="small text-danger mt-2 d-none"></div>
+        <div class="col-12 col-sm-6">
+          <input class="form-control form-control-sm" data-c-id maxlength="20" placeholder="${escapeHtml(t("joinDialog.companionId"))}" />
         </div>
-
-        <div class="mb-3" id="pickupJoinProofWrap">
-          <label for="pickupJoinProofFile" class="form-label">Comprobante (opcional)</label>
-          <input id="pickupJoinProofFile" type="file" accept="image/*" class="form-control" />
-          <div id="pickupJoinProofHelp" class="form-text">Podés subirlo ahora o después desde tus botones de inscripción.</div>
-          <div id="pickupJoinProofStatus" class="small mt-2 text-muted d-none"></div>
+        <div class="col-9">
+          <select class="form-select form-select-sm" data-c-tier>${tierOptions(tiers, defaultTierId)}</select>
         </div>
-
-        <div id="pickupJoinSummary" class="small text-muted"></div>
+        <div class="col-3 text-end">
+          <button type="button" class="btn btn-sm btn-outline-danger" data-c-remove>${escapeHtml(t("joinDialog.remove"))}</button>
+        </div>
       </div>
-
-      <div style="padding:0.75rem 1rem 1rem;border-top:1px solid #e9ecef;display:flex;justify-content:flex-end;gap:.5rem;">
-        <button type="button" id="pickupJoinCancelBtn" class="btn btn-outline-secondary">Cancelar</button>
-        <button type="submit" id="pickupJoinSubmitBtn" class="btn btn-primary">Confirmar inscripción</button>
-      </div>
-    </form>
-  `;
-
-  document.body.appendChild(dlg);
-
-  dlg.querySelector("#pickupJoinDialogClose")?.addEventListener("click", () => dlg.close());
-  dlg.querySelector("#pickupJoinCancelBtn")?.addEventListener("click", () => dlg.close());
-
-  return dlg;
+    </div>`;
 }
 
-function ensurePayDialog() {
-  let dlg = document.getElementById("pickupPayDialog");
-  if (dlg) return dlg;
-
-  dlg = document.createElement("dialog");
-  dlg.id = "pickupPayDialog";
-  dlg.style.maxWidth = "560px";
-  dlg.style.width = "calc(100% - 2rem)";
-  dlg.style.border = "0";
-  dlg.style.borderRadius = "18px";
-  dlg.style.padding = "0";
-  dlg.style.boxShadow = "0 24px 80px rgba(0,0,0,.35)";
-
-  dlg.innerHTML = `
-    <form method="dialog" id="pickupPayDialogForm" style="margin:0;">
-      <div style="padding:1rem 1rem 0.75rem;border-bottom:1px solid #e9ecef;display:flex;justify-content:space-between;gap:1rem;align-items:start;">
-        <div>
-          <div style="font-weight:700;font-size:1.05rem;">Subir comprobante</div>
-          <div class="text-muted small">Adjuntá tu screenshot de pago para este pickup.</div>
-        </div>
-        <button type="button" id="pickupPayDialogClose" class="btn btn-sm btn-outline-secondary">Cerrar</button>
-      </div>
-
-      <div style="padding:1rem;">
-        <div class="mb-3">
-          <label for="pickupPayProofFile" class="form-label">Comprobante</label>
-          <input id="pickupPayProofFile" type="file" accept="image/*" class="form-control" />
-          <div id="pickupPayProofStatus" class="small mt-2 text-muted d-none"></div>
-        </div>
-      </div>
-
-      <div style="padding:0.75rem 1rem 1rem;border-top:1px solid #e9ecef;display:flex;justify-content:flex-end;gap:.5rem;">
-        <button type="button" id="pickupPayCancelBtn" class="btn btn-outline-secondary">Cancelar</button>
-        <button type="submit" id="pickupPaySubmitBtn" class="btn btn-primary">Subir comprobante</button>
-      </div>
-    </form>
-  `;
-
-  document.body.appendChild(dlg);
-
-  dlg.querySelector("#pickupPayDialogClose")?.addEventListener("click", () => dlg.close());
-  dlg.querySelector("#pickupPayCancelBtn")?.addEventListener("click", () => dlg.close());
-
-  return dlg;
-}
-
-function setJoinProofStatus(message = "", type = "muted") {
-  const el = document.getElementById("pickupJoinProofStatus");
-  if (!el) return;
-
-  if (!message) {
-    el.className = "small mt-2 text-muted d-none";
-    el.textContent = "";
-    return;
+function readJoinEntries() {
+  const entries = [];
+  if (!$("joinMeWrap").classList.contains("d-none")) {
+    entries.push({ kind: "me", tier: findTier($("joinMeTier").value) });
   }
-
-  const cls =
-    type === "danger" ? "text-danger" :
-    type === "success" ? "text-success" :
-    type === "warning" ? "text-warning" :
-    "text-muted";
-
-  el.className = `small mt-2 ${cls}`;
-  el.textContent = message;
-}
-
-function setPayProofStatus(message = "", type = "muted") {
-  const el = document.getElementById("pickupPayProofStatus");
-  if (!el) return;
-
-  if (!message) {
-    el.className = "small mt-2 text-muted d-none";
-    el.textContent = "";
-    return;
-  }
-
-  const cls =
-    type === "danger" ? "text-danger" :
-    type === "success" ? "text-success" :
-    type === "warning" ? "text-warning" :
-    "text-muted";
-
-  el.className = `small mt-2 ${cls}`;
-  el.textContent = message;
-}
-
-function buildSingleSelectCheckboxes(tiers = []) {
-  return tiers.map((t, idx) => `
-    <label class="border rounded p-3 d-flex justify-content-between align-items-center gap-3" style="cursor:pointer;">
-      <div class="d-flex align-items-center gap-2">
-        <input
-          type="checkbox"
-          class="form-check-input m-0"
-          name="pickupTierCheckbox"
-          value="${escapeHtml(t.id || "")}"
-          data-tier-index="${idx}"
-        />
-        <div>
-          <div class="fw-semibold">${escapeHtml(t.label || "—")}</div>
-          <div class="small text-muted">Monto a pagar</div>
-        </div>
-      </div>
-      <div class="fw-semibold">₡${Number(t.amount || 0)}</div>
-    </label>
-  `).join("");
-}
-
-function bindSingleSelectCheckboxes(container) {
-  const inputs = Array.from(container.querySelectorAll('input[name="pickupTierCheckbox"]'));
-  inputs.forEach((input) => {
-    input.addEventListener("change", () => {
-      if (input.checked) {
-        inputs.forEach((other) => {
-          if (other !== input) other.checked = false;
-        });
-      }
-      updateJoinDialogSummary();
+  document.querySelectorAll("#joinCompanions [data-companion]").forEach((row) => {
+    entries.push({
+      kind: "companion",
+      name: row.querySelector("[data-c-name]").value.trim(),
+      idNumber: row.querySelector("[data-c-id]").value.trim(),
+      tier: findTier(row.querySelector("[data-c-tier]").value),
     });
   });
+  return entries;
 }
 
-function getSelectedTierFromDialog() {
-  const checked = document.querySelector('#pickupJoinTierList input[name="pickupTierCheckbox"]:checked');
-  if (!checked || !currentPickup) return null;
+function updateJoinSummary() {
+  const entries = readJoinEntries();
+  const credit = $("joinUseCredit").checked ? state.creditBalance : 0;
+  const plan = buildJoinPlan(entries.map((e) => e.tier), credit);
 
-  const idx = Number(checked.getAttribute("data-tier-index"));
-  const tiers = Array.isArray(currentPickup.pricingTiers) ? currentPickup.pricingTiers : [];
-  return Number.isInteger(idx) && idx >= 0 && idx < tiers.length ? tiers[idx] : null;
-}
-
-function updateJoinDialogSummary() {
-  const summary = document.getElementById("pickupJoinSummary");
-  if (!summary || !currentPickup) return;
-
-  const tier = getSelectedTierFromDialog();
-
-  summary.textContent = tier
-    ? `Tarifa seleccionada: ${tier.label} · ₡${Number(tier.amount || 0)}`
-    : "Seleccioná una tarifa para continuar.";
+  $("joinSubtitle").textContent = plan.allWaitlist && entries.length
+    ? t("joinDialog.waitlistSubtitle")
+    : t("joinDialog.subtitle");
+  $("joinProofWrap").classList.toggle("d-none", plan.cashTotal <= 0);
+  $("joinTotal").textContent = entries.length ? totalText(plan) : "";
+  return { entries, plan };
 }
 
 function openJoinDialog() {
-  const dlg = ensureJoinDialog();
-  const tierList = dlg.querySelector("#pickupJoinTierList");
-  const proofWrap = dlg.querySelector("#pickupJoinProofWrap");
-  const proofInput = dlg.querySelector("#pickupJoinProofFile");
-  const tierError = dlg.querySelector("#pickupJoinTierError");
+  const tiers = getActiveTiers(state.pickup);
+  const profile = profileFromUserDoc(state.userDoc, { pickup: state.pickup, isFirstTime: state.isFirstTime });
+  const suggested = suggestTier(tiers, profile) || tiers[0];
+  const guestDefault = (suggestTier(tiers, { isGuest: true }) || suggestTier(tiers, {}) || tiers[0])?.id;
 
-  const tiers = Array.isArray(currentPickup?.pricingTiers) ? currentPickup.pricingTiers : [];
-  tierList.innerHTML = buildSingleSelectCheckboxes(tiers);
-  bindSingleSelectCheckboxes(tierList);
+  const alreadyIn = !!myActiveSelfReg();
+  $("joinMeWrap").classList.toggle("d-none", alreadyIn);
+  $("joinMeTier").innerHTML = tierOptions(tiers, suggested?.id);
 
-  tierError.classList.add("d-none");
-  tierError.textContent = "";
-
-  proofInput.value = "";
-  setJoinProofStatus("");
-
-  proofWrap.style.display = "";
-
-  proofInput.onchange = () => {
-    const file = proofInput.files?.[0] || null;
-    if (!file) {
-      setJoinProofStatus("");
-      return;
-    }
-    setJoinProofStatus(`Archivo listo: ${file.name}`, "muted");
+  $("joinCompanionsWrap").classList.toggle("d-none", !state.settings.allowCompanions);
+  $("joinCompanions").innerHTML = alreadyIn ? companionRowHtml(tiers, guestDefault) : "";
+  $("joinAddCompanion").onclick = () => {
+    $("joinCompanions").insertAdjacentHTML("beforeend", companionRowHtml(tiers, guestDefault));
+    updateJoinSummary();
   };
 
-  updateJoinDialogSummary();
+  $("joinCreditWrap").classList.toggle("d-none", !(state.creditBalance > 0));
+  $("joinUseCredit").checked = state.creditBalance > 0;
+  $("joinUseCreditLabel").textContent = t("joinDialog.useCredit", { amount: money(state.creditBalance) });
 
-  const form = dlg.querySelector("#pickupJoinDialogForm");
-  form.onsubmit = async (ev) => {
-    ev.preventDefault();
+  $("joinProof").value = "";
+  $("joinSinpe").textContent = sinpeText();
+  $("joinError").classList.add("d-none");
 
-    const selectedTier = getSelectedTierFromDialog();
-    if (!selectedTier) {
-      tierError.textContent = "Seleccioná una sola tarifa.";
-      tierError.classList.remove("d-none");
-      return;
-    }
-
-    const file = proofInput.files?.[0] || null;
-
-    dlg.close();
-    await submitPickupJoin({ selectedTier, file });
-  };
-
-  dlg.showModal();
+  updateJoinSummary();
+  $("joinDialog").showModal();
 }
 
-function openPayDialog() {
-  if (!currentUserRegistration?.id) {
-    showError("No se encontró tu inscripción.");
-    return;
+async function submitJoin(ev) {
+  ev.preventDefault();
+  const errorEl = $("joinError");
+  const fail = (msg) => { errorEl.textContent = msg; errorEl.classList.remove("d-none"); };
+  errorEl.classList.add("d-none");
+
+  const { entries, plan } = updateJoinSummary();
+  if (!entries.length) return fail(t("joinDialog.errorTier"));
+  if (entries.some((e) => !e.tier)) return fail(t("joinDialog.errorTier"));
+  if (entries.some((e) => e.kind === "companion" && !e.name)) return fail(t("joinDialog.errorName"));
+  if (plan.waitlistBlocked) return fail(t("public.full"));
+
+  const file = $("joinProof").files?.[0] || null;
+  if (plan.cashTotal > 0 && !file) return fail(t("joinDialog.errorProof"));
+
+  showLoader();
+  try {
+    const proof = plan.cashTotal > 0 ? await uploadProof(file, state.pickup.id) : null;
+    const u = state.userDoc || {};
+    const myName = `${u.profile?.firstName || ""} ${u.profile?.lastName || ""}`.trim()
+      || u.displayName || state.user.displayName || state.user.email || "—";
+
+    const built = await Promise.all(entries.map(async (e, i) => {
+      const item = plan.items[i];
+      const pay = paymentFieldsFor(item, !!proof);
+      const isMe = e.kind === "me";
+      const personKey = isMe ? state.payerKey : (await personKeyFromId(e.idNumber)) || `${state.payerKey}:c${Date.now()}${i}`;
+      const suggestedTier = isMe
+        ? suggestTier(getActiveTiers(state.pickup), profileFromUserDoc(u, { pickup: state.pickup, isFirstTime: state.isFirstTime }))
+        : null;
+
+      return {
+        pub: {
+          source: isMe ? REG_SOURCE.USER : REG_SOURCE.COMPANION,
+          displayName: isMe ? myName : e.name,
+          linkedUid: isMe ? state.user.uid : null,
+          companionOfName: isMe ? null : myName,
+          personKey,
+          payerKey: state.payerKey,
+          tierId: e.tier.id,
+          tierLabel: e.tier.label,
+          tierSuggestedId: suggestedTier?.id || null,
+          amountDue: item.amount,
+          creditApplied: item.credit,
+          ...pay,
+        },
+        priv: {
+          phone: isMe ? (u.profile?.phone || u.phone || null) : null,
+          idNumber: isMe ? (u.profile?.idNumber || null) : (e.idNumber || null),
+          email: isMe ? (u.email || state.user.email || null) : null,
+          proof: item.spot === SPOT.IN && pay.paymentStatus === PAYMENT_STATUS.SUBMITTED && proof ? proof : null,
+        },
+      };
+    }));
+
+    await createRegistrations({ pickup: state.pickup, entries: built });
+    $("joinDialog").close();
+
+    await reloadRegs();
+    await refreshAccountContext();
+    renderAll();
+    showInfo(plan.allWaitlist ? t("joinDialog.successWaitlist") : t("joinDialog.success"));
+  } catch (err) {
+    console.error("[pickup] join error:", err);
+    fail(err?.message || t("common.error"));
+  } finally {
+    hideLoader();
   }
-
-  const dlg = ensurePayDialog();
-  const proofInput = dlg.querySelector("#pickupPayProofFile");
-  const form = dlg.querySelector("#pickupPayDialogForm");
-
-  proofInput.value = "";
-  setPayProofStatus("");
-
-  proofInput.onchange = () => {
-    const file = proofInput.files?.[0] || null;
-    if (!file) {
-      setPayProofStatus("");
-      return;
-    }
-    setPayProofStatus(`Archivo listo: ${file.name}`, "muted");
-  };
-
-  form.onsubmit = async (ev) => {
-    ev.preventDefault();
-
-    const file = proofInput.files?.[0] || null;
-    if (!file) {
-      setPayProofStatus("Seleccioná un comprobante.", "danger");
-      return;
-    }
-
-    dlg.close();
-    await submitPaymentProof(file);
-  };
-
-  dlg.showModal();
 }
 
 /* =========================
-   Join / pay / cancel actions
+   Unirme sin cuenta
 ========================= */
-async function joinPickup() {
-  clearMessages();
+async function refreshGuestHistory() {
+  const idNumber = $("guestId").value.trim();
+  const personKey = await personKeyFromId(idNumber);
+  const g = { personKey, credit: 0, moroso: false, firstTime: true };
 
-  if (!currentPickup) return;
-
-  if (!currentUser) {
-    await loginWithGoogle({
-      dashboardPath: "/dashboard.html",
-      registerPath: "/public/register.html?google=1",
-      memberStatusPath: "/member_status.html",
-      landingPath: `/public/pickup.html?slug=${encodeURIComponent(currentPickup?.slug || "")}`,
-    });
-    return;
-  }
-
-  if (!currentUserDoc?.onboardingComplete) {
-    window.location.href = "/public/register.html";
-    return;
-  }
-
-  if (!canUserUsePickups(currentUserDoc)) {
-    showError("Tu cuenta todavía no puede usar Pickups.");
-    return;
-  }
-
-  if (currentUserRegistration) {
-    showInfo("Ya estás inscrito en este pickup.");
-    return;
-  }
-
-  openJoinDialog();
-}
-
-async function submitPickupJoin({ selectedTier, file }) {
-  clearMessages();
-
-  let paymentProof = null;
-
-  if (file) {
-    showLoader("Subiendo comprobante…");
+  if (personKey) {
     try {
-      paymentProof = await uploadProof(file, currentPickup.id, currentUser.uid);
-    } finally {
-      hideLoader();
+      const { history, credit, moroso } = await loadHistoryFor(personKey);
+      g.credit = credit;
+      g.moroso = moroso;
+      g.firstTime = !history.some((r) => r.personKey === personKey);
+    } catch (err) {
+      console.warn("[pickup] historial invitado no disponible:", err);
     }
   }
+  state.guestHistory = g;
 
-  const regsRegistered = countConfirmedRegistrations(currentRegs);
-  const capacity = getPickupCapacity(currentPickup);
+  const tiers = getActiveTiers(state.pickup);
+  const suggested = suggestTier(tiers, { isGuest: true, isFirstTime: g.firstTime }) || tiers[0];
+  if (suggested && !$("guestTier").dataset.touched) $("guestTier").value = suggested.id;
 
-  const registrationStatus =
-    capacity !== 0 && regsRegistered >= capacity && currentPickup.allowWaitlist === true
-      ? "waitlist"
-      : "registered";
+  $("guestCreditWrap").classList.toggle("d-none", !(g.credit > 0));
+  $("guestUseCredit").checked = g.credit > 0;
+  $("guestUseCreditLabel").textContent = t("joinDialog.useCredit", { amount: money(g.credit) });
+  updateGuestSummary();
+}
 
-  await addDoc(collection(db, COL_PICKUP_REGS), {
-    pickupId: currentPickup.id,
-    uid: currentUser.uid,
+function updateGuestSummary() {
+  const tier = findTier($("guestTier").value);
+  const credit = $("guestUseCredit").checked ? state.guestHistory.credit : 0;
+  const plan = buildJoinPlan([tier], credit);
+  $("guestSubtitle").textContent = plan.allWaitlist ? t("joinDialog.waitlistSubtitle") : t("guest.subtitle");
+  $("guestProofWrap").classList.toggle("d-none", plan.cashTotal <= 0);
+  $("guestTotal").textContent = totalText(plan);
+  return { tier, plan };
+}
 
-    displayName:
-      `${currentUserDoc?.profile?.firstName || ""} ${currentUserDoc?.profile?.lastName || ""}`.trim() ||
-      currentUserDoc?.displayName ||
-      currentUser?.displayName ||
-      currentUser?.email ||
-      "Usuario",
+function openGuestDialog() {
+  const tiers = getActiveTiers(state.pickup);
+  const suggested = suggestTier(tiers, { isGuest: true, isFirstTime: true }) || tiers[0];
+  $("guestForm").reset();
+  delete $("guestTier").dataset.touched;
+  $("guestTier").innerHTML = tierOptions(tiers, suggested?.id);
+  $("guestSinpe").textContent = sinpeText();
+  $("guestError").classList.add("d-none");
+  $("guestCreditWrap").classList.add("d-none");
+  state.guestHistory = { personKey: null, credit: 0, moroso: false, firstTime: true };
+  updateGuestSummary();
+  $("guestDialog").showModal();
+}
 
-    email: currentUserDoc?.email || currentUser?.email || "",
-    phone: currentUserDoc?.profile?.phone || currentUserDoc?.phone || "",
+async function submitGuest(ev) {
+  ev.preventDefault();
+  const errorEl = $("guestError");
+  const fail = (msg) => { errorEl.textContent = msg; errorEl.classList.remove("d-none"); };
+  errorEl.classList.add("d-none");
 
-    userCategory: currentUserDoc?.isPlayerActive === true
-      ? "player"
-      : (currentUserDoc?.associationStatus === "active" ? "member" : "pickup_only"),
+  const name = $("guestName").value.trim();
+  const phone = $("guestPhone").value.trim();
+  const idNumber = $("guestId").value.trim();
+  if (!name || !phone || !idNumber) return fail(t("guest.errorFields"));
 
-    pricingTierId: selectedTier.id,
-    pricingTierLabel: selectedTier.label,
-    amountDue: Number(selectedTier.amount || 0),
+  showLoader();
+  try {
+    await refreshGuestHistory();
+    const g = state.guestHistory;
+    if (state.settings.blockMorosos && g.moroso) return fail(t("join.blockedMoroso"));
 
-    registrationStatus,
-    paymentStatus: paymentProof ? "submitted" : "pending",
+    const { tier, plan } = updateGuestSummary();
+    if (!tier) return fail(t("joinDialog.errorTier"));
+    if (plan.waitlistBlocked) return fail(t("public.full"));
 
-    paymentProof: paymentProof
-      ? {
-          storagePath: paymentProof.storagePath,
-          downloadURL: paymentProof.downloadURL,
-          uploadedAt: serverTimestamp(),
-          reviewedAt: null,
-          reviewedBy: null,
-        }
-      : null,
+    const file = $("guestProof").files?.[0] || null;
+    if (plan.cashTotal > 0 && !file) return fail(t("joinDialog.errorProof"));
 
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    await ensureSignedIn();
+    const proof = plan.cashTotal > 0 ? await uploadProof(file, state.pickup.id) : null;
+    const item = plan.items[0];
+    const pay = paymentFieldsFor(item, !!proof);
+    const key = randomToken();
+
+    const [regId] = await createRegistrations({
+      pickup: state.pickup,
+      guestKey: key,
+      entries: [{
+        pub: {
+          source: REG_SOURCE.GUEST,
+          displayName: name,
+          linkedUid: null,
+          companionOfName: null,
+          personKey: g.personKey,
+          payerKey: g.personKey,
+          tierId: tier.id,
+          tierLabel: tier.label,
+          tierSuggestedId: (suggestTier(getActiveTiers(state.pickup), { isGuest: true, isFirstTime: g.firstTime }) || {}).id || null,
+          amountDue: item.amount,
+          creditApplied: item.credit,
+          ...pay,
+        },
+        priv: {
+          phone,
+          idNumber,
+          email: null,
+          proof: pay.paymentStatus === PAYMENT_STATUS.SUBMITTED && proof ? proof : null,
+        },
+      }],
+    });
+
+    saveLink(regId, key, state.pickup.id);
+    state.linkRegIds.add(regId);
+    $("guestDialog").close();
+
+    await reloadRegs();
+    renderAll();
+    showInfo(plan.allWaitlist ? t("joinDialog.successWaitlist") : t("joinDialog.success"));
+    openLinkDialog(regId, key, phone);
+  } catch (err) {
+    console.error("[pickup] guest join error:", err);
+    fail(err?.message || t("common.error"));
+  } finally {
+    hideLoader();
+  }
+}
+
+function openLinkDialog(regId, key, phone) {
+  const url = buildPickupPublicUrl(state.pickup, { regId, key, absolute: true });
+  $("linkInput").value = url;
+  $("linkWaBtn").href = whatsappUrl(
+    phone,
+    t("guest.shareText", { title: state.pickup.title, url }),
+    state.settings.whatsappCountryCode
+  );
+  $("linkDialog").showModal();
+}
+
+/* =========================
+   Comprobante / salirme
+========================= */
+function openProofDialog(regId) {
+  const reg = state.regs.find((r) => r.id === regId);
+  if (!reg) return;
+  state.proofRegId = regId;
+  $("proofForm").reset();
+  $("proofSubtitle").textContent = `${reg.displayName} · ${money(regCashDue(reg))}`;
+  $("proofSinpe").textContent = sinpeText();
+  $("proofError").classList.add("d-none");
+  $("proofDialog").showModal();
+}
+
+async function submitProofForm(ev) {
+  ev.preventDefault();
+  const file = $("proofFile").files?.[0] || null;
+  if (!file) {
+    $("proofError").textContent = t("joinDialog.errorProof");
+    $("proofError").classList.remove("d-none");
+    return;
+  }
+
+  showLoader();
+  try {
+    await ensureSignedIn();
+    const proof = await uploadProof(file, state.pickup.id);
+    await submitProof(state.proofRegId, proof);
+    $("proofDialog").close();
+    await reloadRegs();
+    renderAll();
+    showInfo(t("mine.proofSent"));
+  } catch (err) {
+    console.error("[pickup] proof error:", err);
+    $("proofError").textContent = err?.message || t("common.error");
+    $("proofError").classList.remove("d-none");
+  } finally {
+    hideLoader();
+  }
+}
+
+async function leave(regId) {
+  const reg = state.regs.find((r) => r.id === regId);
+  if (!reg) return;
+  if (!canLeaveNow(state.pickup)) return showError(t("mine.leaveBlocked"));
+
+  const paid = isApproved(reg);
+  if (!window.confirm(paid ? t("mine.leaveConfirmPaid") : t("mine.leaveConfirm"))) return;
+
+  showLoader();
+  try {
+    await leaveRegistration(regId);
+    await reloadRegs();
+    await refreshAccountContext();
+    renderAll();
+    showInfo(paid
+      ? t("mine.leftWithCredit", { amount: money(reg.paidAmount ?? reg.amountDue) })
+      : t("mine.left"));
+  } catch (err) {
+    console.error("[pickup] leave error:", err);
+    showError(t("common.error"));
+  } finally {
+    hideLoader();
+  }
+}
+
+/* =========================
+   Eventos
+========================= */
+function bindEvents() {
+  document.querySelectorAll("dialog [data-close]").forEach((btn) =>
+    btn.addEventListener("click", () => btn.closest("dialog").close())
+  );
+
+  $("pvShareBtn").addEventListener("click", async () => {
+    const url = buildPickupPublicUrl(state.pickup, { absolute: true });
+    try {
+      if (navigator.share) await navigator.share({ title: state.pickup.title, url });
+      else {
+        await navigator.clipboard.writeText(url);
+        showInfo(t("common.linkCopied"));
+      }
+    } catch {
+      /* cancelado */
+    }
   });
 
-  try {
-    await loadRegs(currentPickup.id);
-  } catch (err) {
-    console.warn("Lista pública no disponible:", err);
-    currentRegs = [];
-    refreshCurrentUserRegistration();
-    renderList();
-  }
+  $("pvLoginBtn").addEventListener("click", () => loginWithGoogle({
+    dashboardPath: buildPickupPublicUrl(state.pickup),
+    registerPath: "/public/register.html?google=1",
+    memberStatusPath: buildPickupPublicUrl(state.pickup),
+    landingPath: buildPickupPublicUrl(state.pickup),
+  }));
 
-  showInfo(
-    registrationStatus === "waitlist"
-      ? "Quedaste en lista de espera."
-      : "Te registraste correctamente."
-  );
-}
-
-async function submitPaymentProof(file) {
-  clearMessages();
-
-  if (!currentPickup || !currentUserRegistration?.id || !currentUser?.uid) {
-    showError("No se pudo preparar la subida del comprobante.");
-    return;
-  }
-
-  showLoader("Subiendo comprobante…");
-  try {
-    const paymentProof = await uploadProof(file, currentPickup.id, currentUser.uid);
-
-    await updateDoc(doc(db, COL_PICKUP_REGS, currentUserRegistration.id), {
-      paymentStatus: "submitted",
-      paymentProof: {
-        storagePath: paymentProof.storagePath,
-        downloadURL: paymentProof.downloadURL,
-        uploadedAt: serverTimestamp(),
-        reviewedAt: null,
-        reviewedBy: null,
-      },
-      updatedAt: serverTimestamp(),
-    });
-
-    try {
-      await loadRegs(currentPickup.id);
-    } catch (err) {
-      console.warn("No se pudo refrescar lista tras subir comprobante:", err);
+  $("pvJoinBtn").addEventListener("click", () => {
+    clearMessages();
+    if (state.userDoc?.onboardingComplete !== true) {
+      window.location.href = "/public/register.html";
+      return;
     }
+    openJoinDialog();
+  });
 
-    showInfo("Comprobante enviado correctamente.");
-  } catch (err) {
-    console.error(err);
-    showError("No se pudo subir el comprobante.");
-  } finally {
-    hideLoader();
-  }
-}
+  $("pvGuestBtn").addEventListener("click", () => {
+    clearMessages();
+    openGuestDialog();
+  });
 
-async function cancelPickupRegistration() {
-  clearMessages();
+  $("joinForm").addEventListener("submit", submitJoin);
+  $("joinForm").addEventListener("change", updateJoinSummary);
+  $("joinCompanions").addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-c-remove]");
+    if (!btn) return;
+    btn.closest("[data-companion]").remove();
+    updateJoinSummary();
+  });
 
-  if (!currentUserRegistration?.id) {
-    showError("No se encontró tu inscripción.");
-    return;
-  }
+  $("guestForm").addEventListener("submit", submitGuest);
+  $("guestTier").addEventListener("change", () => {
+    $("guestTier").dataset.touched = "1";
+    updateGuestSummary();
+  });
+  $("guestUseCredit").addEventListener("change", updateGuestSummary);
+  $("guestId").addEventListener("change", refreshGuestHistory);
 
-  const penaltyFree = canCancelWithoutPenalty(currentPickup, new Date());
-  const confirmMsg = penaltyFree
-    ? "¿Seguro que querés salirte de este pickup?"
-    : "Ya pasó la ventana para salirte sin penalización. ¿Igual querés cancelar tu participación?";
+  $("proofForm").addEventListener("submit", submitProofForm);
 
-  const ok = window.confirm(confirmMsg);
-  if (!ok) return;
-
-  showLoader("Saliendo del pickup…");
-  try {
-    await updateDoc(doc(db, COL_PICKUP_REGS, currentUserRegistration.id), {
-      registrationStatus: "cancelled",
-      updatedAt: serverTimestamp(),
-    });
-
+  $("linkCopyBtn").addEventListener("click", async () => {
     try {
-      await loadRegs(currentPickup.id);
-    } catch (err) {
-      console.warn("No se pudo refrescar lista tras cancelar:", err);
-      currentRegs = currentRegs.map((r) =>
-        r.id === currentUserRegistration.id
-          ? { ...r, registrationStatus: "cancelled" }
-          : r
-      );
-      refreshCurrentUserRegistration();
-      renderList();
+      await navigator.clipboard.writeText($("linkInput").value);
+      $("linkCopyBtn").textContent = t("common.linkCopied");
+    } catch {
+      $("linkInput").select();
     }
+  });
 
-    showInfo(
-      penaltyFree
-        ? "Saliste del pickup correctamente."
-        : "Te saliste del pickup. Queda sujeto a reglas de penalización."
-    );
-  } catch (err) {
-    console.error(err);
-    showError("No se pudo cancelar tu inscripción.");
-  } finally {
-    hideLoader();
-  }
+  $("pvMineList").addEventListener("click", (ev) => {
+    const up = ev.target.closest("[data-upload]");
+    if (up) return openProofDialog(up.getAttribute("data-upload"));
+    const lv = ev.target.closest("[data-leave]");
+    if (lv) return leave(lv.getAttribute("data-leave"));
+  });
 }
 
 /* =========================
-   Buttons state
+   Links privados (?reg=...&key=...) y guardados
 ========================= */
-function ensureLeaveBtn() {
-  let btn = document.getElementById("pvLeaveBtn");
-  if (btn) return btn;
+async function claimLinks() {
+  const params = new URLSearchParams(window.location.search);
+  const regId = params.get("reg");
+  const key = params.get("key");
 
-  btn = document.createElement("button");
-  btn.id = "pvLeaveBtn";
-  btn.type = "button";
-  btn.className = "btn btn-outline-danger btn-sm";
-  btn.textContent = "Salirme";
+  const links = readSavedLinks();
+  if (regId && key) links[regId] = { key, pickupId: state.pickup.id };
 
-  pvJoinBtn?.insertAdjacentElement("afterend", btn);
-  btn.addEventListener("click", cancelPickupRegistration);
+  const forThisPickup = Object.entries(links).filter(([, v]) => v?.pickupId === state.pickup.id);
+  if (!forThisPickup.length) return;
 
-  return btn;
-}
-
-function ensurePayBtn() {
-  let btn = document.getElementById("pvPayBtn");
-  if (btn) return btn;
-
-  btn = document.createElement("button");
-  btn.id = "pvPayBtn";
-  btn.type = "button";
-  btn.className = "btn btn-outline-primary btn-sm";
-  btn.textContent = "Pagar / subir comprobante";
-
-  const leaveBtn = ensureLeaveBtn();
-  leaveBtn?.insertAdjacentElement("afterend", btn);
-  btn.addEventListener("click", openPayDialog);
-
-  return btn;
-}
-
-function syncActionButtons() {
-  const leaveBtn = ensureLeaveBtn();
-  const payBtn = ensurePayBtn();
-
-  if (!pvJoinBtn || !leaveBtn || !payBtn) return;
-
-  if (!currentUser) {
-    pvJoinBtn.textContent = "Iniciar sesión para unirme";
-    pvJoinBtn.disabled = false;
-    leaveBtn.classList.add("d-none");
-    payBtn.classList.add("d-none");
-    return;
-  }
-
-  if (!currentUserDoc?.onboardingComplete) {
-    pvJoinBtn.textContent = "Completar registro";
-    pvJoinBtn.disabled = false;
-    leaveBtn.classList.add("d-none");
-    payBtn.classList.add("d-none");
-    return;
-  }
-
-  if (currentUserRegistration) {
-    pvJoinBtn.textContent = currentUserRegistration.registrationStatus === "waitlist"
-      ? "Ya estás en espera"
-      : "Ya estás inscrito";
-    pvJoinBtn.disabled = true;
-    leaveBtn.classList.remove("d-none");
-
-    const paymentStatus = String(currentUserRegistration.paymentStatus || "").toLowerCase();
-    if (["approved", "submitted"].includes(paymentStatus)) {
-      payBtn.classList.add("d-none");
-    } else {
-      payBtn.classList.remove("d-none");
-      payBtn.textContent = paymentStatus === "rejected"
-        ? "Reenviar comprobante"
-        : "Pagar / subir comprobante";
+  await ensureSignedIn();
+  for (const [id, v] of forThisPickup) {
+    const ok = await claimRegistration(id, v.key);
+    if (ok) {
+      state.linkRegIds.add(id);
+      saveLink(id, v.key, state.pickup.id);
     }
-    return;
   }
-
-  pvJoinBtn.textContent = "Unirme";
-  pvJoinBtn.disabled = false;
-  leaveBtn.classList.add("d-none");
-  payBtn.classList.add("d-none");
 }
 
 /* =========================
    Init
 ========================= */
 (async function init() {
-  const params = new URLSearchParams(window.location.search);
-  const slug = String(params.get("slug") || "").trim();
-
-  if (!slug) {
-    showError("Falta el parámetro slug.");
-    return;
-  }
-
+  let waitingForAuth = false;
   showLoader();
-
   try {
-    await initPublicMinimalHeader({
-      activeTab: "home",
-      brandHref: "/index.html",
-    });
+    state.settings = await loadPickupSettings();
+    applyStrings();
+    await initPublicMinimalHeader({ activeTab: "home", brandHref: "/index.html" });
 
-    currentPickup = await loadPickupBySlug(slug);
+    const slug = new URLSearchParams(window.location.search).get("slug")?.trim();
+    if (!slug) return showError(t("public.missingSlug"));
 
-    if (!currentPickup) {
-      showError("No se encontró este pickup.");
-      return;
+    state.pickup = await loadPickupBySlug(slug);
+    if (!state.pickup || norm(state.pickup.status) === PICKUP_STATUS.DRAFT) {
+      $("pvActionsCard").classList.add("d-none");
+      return showError(t("public.notFound"));
     }
 
-    if (currentPickup.isPublic !== true) {
-      showError("Este pickup es privado.");
-      return;
-    }
+    await reloadRegs();
+    bindEvents();
+    renderAll();
 
-    pvTitle.textContent = currentPickup.title || "Pickup";
-    pvSubtitle.textContent = "Juego abierto";
-    pvStatus.innerHTML = `<span class="badge ${getStatusBadge(currentPickup.status)}">${escapeHtml(currentPickup.status || "draft")}</span>`;
-    pvStartAt.textContent = fmtDateTime(currentPickup.startAt);
-    pvVenue.innerHTML = `
-      <div>${escapeHtml(currentPickup.venueName || "—")}</div>
-      <div class="small text-muted">${escapeHtml(currentPickup.venueAddress || "")}</div>
-      ${
-        currentPickup.mapsUrl
-          ? `<a href="${currentPickup.mapsUrl}" target="_blank" rel="noopener">Abrir mapa</a>`
-          : ``
-      }
-    `;
-    pvCapacity.textContent = getPickupCapacity(currentPickup) === 0 ? "Sin límite" : String(getPickupCapacity(currentPickup));
-    pvNotes.innerHTML = formatNotes(currentPickup.notes);
-
-    renderPricing(currentPickup);
-
-    try {
-      await loadRegs(currentPickup.id);
-    } catch (err) {
-      console.warn("Lista pública no disponible:", err);
-      currentRegs = [];
-      refreshCurrentUserRegistration();
-      renderList();
-    }
-
-    pvShareBtn?.addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(window.location.href);
-        const old = pvShareBtn.textContent;
-        pvShareBtn.textContent = "Link copiado ✅";
-        setTimeout(() => (pvShareBtn.textContent = old), 1200);
-      } catch {
-        alert(window.location.href);
-      }
-    });
-
-    pvJoinBtn?.addEventListener("click", joinPickup);
-
+    let first = true;
+    waitingForAuth = true;
     onAuthStateChanged(auth, async (user) => {
-      currentUser = user || null;
-      currentUserDoc = user ? await loadUserDoc(user.uid) : null;
-
-      if (currentUser) {
-        try {
-          await loadRegs(currentPickup.id);
-        } catch (err) {
-          console.warn("No se pudo cargar registros con sesión:", err);
-          currentRegs = [];
-          refreshCurrentUserRegistration();
-          renderList();
-        }
-      } else {
-        currentUserRegistration = null;
-        syncActionButtons();
+      state.user = user || null;
+      if (first) {
+        first = false;
+        await claimLinks().catch((err) => console.warn("[pickup] links:", err));
       }
+      await refreshAccountContext();
+      renderAll();
+      hideLoader();
     });
   } catch (err) {
     console.error("[pickup_view] init error:", err);
-    showError(err?.message || "Error cargando el pickup.");
+    showError(err?.message || t("common.error"));
+    waitingForAuth = false;
   } finally {
-    hideLoader();
+    if (!waitingForAuth) hideLoader();
     document.documentElement.classList.remove("preload");
   }
 })();

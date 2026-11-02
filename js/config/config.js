@@ -44,12 +44,33 @@ export const APP_CONFIG = {
 
     pickups: "pickups",
     pickupRegistrations: "pickup_registrations",
+    pickupRegKeys: "pickup_reg_keys",
+    pickupRegClaims: "pickup_reg_claims",
   },
 
+  // Defaults de Pickups. Cada club los sobreescribe desde Pickups > Ajustes
+  // (documento club_config/pickups). Ver js/features/pickups/pickups_settings.js
   pickups: {
-    defaultCapacity: 50, // 0 = sin límite
-    allowWaitlistByDefault: true,
+    settingsDocId: "pickups",
+    timezone: "America/Costa_Rica",
+    locale: "es-CR",
+    currencyCode: "CRC",
+    currencySymbol: "₡",
+    defaultCapacity: 0, // 0 = sin límite
     defaultCancellationHours: 6,
+    allowWaitlistByDefault: true,
+    noShowMustPayByDefault: true,
+    blockMorosos: false,
+    allowGuests: true,
+    allowCompanions: true,
+    whatsappCountryCode: "506",
+    postToFinance: true,
+    financeCategory: "pickup",
+    pricingTiers: [
+      { id: "minor", label: "Menor de edad", amount: 2000, rule: "minor" },
+      { id: "associate", label: "Asociado", amount: 2500, rule: "associate" },
+      { id: "non_associate", label: "No asociado", amount: 3000, rule: "non_associate" },
+    ],
   },
   
   sport: "ultimate",

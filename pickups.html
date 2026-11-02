@@ -19,6 +19,7 @@
 
   <link rel="stylesheet" href="/css/main.css" />
   <link rel="stylesheet" href="/css/dashboard.css" />
+  <link rel="stylesheet" href="/css/pickups.css" />
 </head>
 <body class="loading">
   <div id="content">
@@ -27,141 +28,159 @@
     <main class="container py-4">
       <div class="d-flex flex-wrap justify-content-between align-items-end mb-4 gap-3">
         <div>
-          <h1 class="page-title mb-1">Pickups</h1>
-          <div class="text-muted" id="pageSubtitle">Juegos abiertos del club</div>
+          <h1 class="page-title mb-1" data-t="app.title">Pickups</h1>
+          <div class="text-muted" data-t="app.subtitle">Juegos abiertos del club</div>
         </div>
-
-        <div class="d-flex align-items-center gap-2">
-          <span class="badge d-none" id="roleBadge">VIEW</span>
-          <button class="btn btn-primary btn-sm d-none" id="openCreatePickupBtn" type="button">
-            + Crear pickup
-          </button>
-        </div>
-      </div>
-
-      <div class="row g-3 mb-3 d-none" id="pickupKpisRow">
-        <div class="col-12 col-md-6 col-xl-3">
-            <div class="card shadow-sm">
-            <div class="card-body">
-                <div class="small text-muted">Monto esperado</div>
-                <div class="h4 mb-0" id="kpiExpectedAmount">₡0</div>
-            </div>
-            </div>
-        </div>
-
-        <div class="col-12 col-md-6 col-xl-3">
-            <div class="card shadow-sm">
-            <div class="card-body">
-                <div class="small text-muted">Monto aprobado</div>
-                <div class="h4 mb-0" id="kpiApprovedAmount">₡0</div>
-            </div>
-            </div>
-        </div>
-
-        <div class="col-12 col-md-6 col-xl-3">
-            <div class="card shadow-sm">
-            <div class="card-body">
-                <div class="small text-muted">Pendiente / moroso</div>
-                <div class="h4 mb-0" id="kpiPendingAmount">₡0</div>
-            </div>
-            </div>
-        </div>
-
-        <div class="col-12 col-md-6 col-xl-3">
-            <div class="card shadow-sm">
-            <div class="card-body">
-                <div class="small text-muted">Comprobantes por revisar</div>
-                <div class="h4 mb-0" id="kpiReviewCount">0</div>
-            </div>
-            </div>
-        </div>
+        <button class="btn btn-primary btn-sm d-none" id="openCreatePickupBtn" type="button" data-t="list.create">+ Crear pickup</button>
       </div>
 
       <div class="alert d-none" id="alertBox" role="alert"></div>
 
-      <div class="card shadow-sm mb-3">
-        <div class="card-body py-3">
-          <ul class="nav nav-pills gap-2" id="pickupTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-              <button class="nav-link active" id="tabUpcomingBtn" data-bs-toggle="pill" data-bs-target="#tabUpcoming" type="button" role="tab">
-                Próximos
-              </button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link" id="tabMineBtn" data-bs-toggle="pill" data-bs-target="#tabMine" type="button" role="tab">
-                Mis Pickups
-              </button>
-            </li>
-            <li class="nav-item d-none" role="presentation" id="adminTabWrap">
-              <button class="nav-link" id="tabAdminBtn" data-bs-toggle="pill" data-bs-target="#tabAdmin" type="button" role="tab">
-                Admin Pickups
-              </button>
-            </li>
-            <li class="nav-item d-none" role="presentation" id="participantsTabWrap">
-                <button class="nav-link" id="tabParticipantsBtn" data-bs-toggle="pill" data-bs-target="#tabParticipants" type="button" role="tab">
-                    Participantes
-                </button>
-            </li>
-          </ul>
-        </div>
-      </div>
+      <ul class="nav nav-pills gap-2 mb-3" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tabUpcoming" type="button" role="tab" data-t="list.tabUpcoming">Próximos</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabMine" type="button" role="tab" data-t="list.tabMine">Mis pickups</button>
+        </li>
+        <li class="nav-item d-none" role="presentation" data-admin-only>
+          <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabManage" type="button" role="tab" data-t="list.tabManage">Gestionar</button>
+        </li>
+        <li class="nav-item d-none" role="presentation" data-admin-only>
+          <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabFinance" type="button" role="tab" data-t="list.tabFinance">Finanzas</button>
+        </li>
+        <li class="nav-item d-none" role="presentation" data-admin-only>
+          <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabSettings" type="button" role="tab" data-t="list.tabSettings">Ajustes</button>
+        </li>
+      </ul>
 
       <div class="tab-content">
+        <!-- ===== Próximos ===== -->
         <section class="tab-pane fade show active" id="tabUpcoming" role="tabpanel">
-          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-            <div class="input-group" style="max-width: 520px;">
-              <span class="input-group-text">🔎</span>
-              <input class="form-control" id="pickupSearch" placeholder="Buscar pickups…" />
-            </div>
-            <button class="btn btn-outline-secondary btn-sm" id="refreshPickupsBtn">Refrescar</button>
-          </div>
-
-          <div class="row g-3" id="upcomingPickupsList"></div>
-          <div class="text-muted small mt-3 d-none" id="upcomingPickupsEmpty">No hay pickups próximos.</div>
+          <div class="row g-3" id="upcomingList"></div>
+          <div class="text-muted small mt-3 d-none" id="upcomingEmpty" data-t="list.upcomingEmpty"></div>
         </section>
 
+        <!-- ===== Mis pickups ===== -->
         <section class="tab-pane fade" id="tabMine" role="tabpanel">
-          <div class="list-group" id="myRegistrationsList"></div>
-          <div class="text-muted small mt-3 d-none" id="myRegistrationsEmpty">No tenés pickups inscritos todavía.</div>
+          <div class="mb-2"><span class="badge text-bg-success d-none" id="mineCredit"></span></div>
+          <div class="list-group" id="mineList"></div>
+          <div class="text-muted small mt-3 d-none" id="mineEmpty" data-t="mine.empty"></div>
         </section>
 
-        <section class="tab-pane fade" id="tabAdmin" role="tabpanel">
-          <div class="list-group" id="adminPickupsList"></div>
-          <div class="text-muted small mt-3 d-none" id="adminPickupsEmpty">No hay pickups creados todavía.</div>
-        </section>
-
-        <section class="tab-pane fade" id="tabParticipants" role="tabpanel">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-                    <h2 class="h5 mb-0">Historial de participantes</h2>
-                    <input class="form-control form-control-sm" id="participantsSearch" placeholder="Buscar participante…" style="max-width: 320px;" />
-                </div>
-
-                <div class="table-responsive">
-                    <table class="table align-middle">
-                    <thead>
-                        <tr>
-                        <th>Participante</th>
-                        <th>Tipo</th>
-                        <th>Pickups</th>
-                        <th>Aprobados</th>
-                        <th>Pendientes</th>
-                        <th>Morosidad</th>
-                        <th>Total</th>
-                        </tr>
-                    </thead>
-                    <tbody id="participantsTableBody"></tbody>
-                    </table>
-                </div>
-
-                <div class="text-muted small d-none" id="participantsEmpty">No hay participantes todavía.</div>
-                </div>
+        <!-- ===== Gestionar ===== -->
+        <section class="tab-pane fade" id="tabManage" role="tabpanel">
+          <div class="row g-3">
+            <div class="col-12 col-lg-4">
+              <input class="form-control form-control-sm mb-2" id="managePickupSearch" data-t-placeholder="common.search" />
+              <div class="list-group" id="managePickupList"></div>
             </div>
+            <div class="col-12 col-lg-8">
+              <div class="text-muted small" id="manageEmpty" data-t="admin.selectPickup"></div>
+              <div id="manageDetail" class="d-none"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== Finanzas ===== -->
+        <section class="tab-pane fade" id="tabFinance" role="tabpanel">
+          <div id="financeRoot"></div>
+        </section>
+
+        <!-- ===== Ajustes ===== -->
+        <section class="tab-pane fade" id="tabSettings" role="tabpanel">
+          <div id="settingsRoot"></div>
         </section>
       </div>
     </main>
   </div>
+
+  <!-- ===== Revisar pago ===== -->
+  <dialog id="reviewDialog" class="pk-dialog">
+    <div class="pk-dialog__head">
+      <div>
+        <div class="fw-bold" id="reviewTitle">—</div>
+        <div class="small text-muted" id="reviewSubtitle"></div>
+      </div>
+      <button type="button" class="btn btn-sm btn-outline-secondary" data-close data-t="common.close">Cerrar</button>
+    </div>
+    <div class="pk-dialog__body">
+      <div id="reviewProof" class="mb-3"></div>
+      <div class="row g-2 mb-3">
+        <div class="col-12 col-sm-6">
+          <label class="form-label small" for="reviewTier" data-t="admin.colTier">Tarifa</label>
+          <select id="reviewTier" class="form-select form-select-sm"></select>
+        </div>
+        <div class="col-12 col-sm-6">
+          <label class="form-label small" for="reviewMethod" data-t="admin.manualMethod">Método</label>
+          <select id="reviewMethod" class="form-select form-select-sm">
+            <option value="sinpe">SINPE</option>
+            <option value="efectivo">Efectivo</option>
+            <option value="transferencia">Transferencia</option>
+            <option value="otro">Otro</option>
+          </select>
+        </div>
+      </div>
+      <label class="form-label small" for="reviewReason" data-t="admin.rejectPrompt">Motivo</label>
+      <input id="reviewReason" class="form-control form-control-sm" maxlength="200" />
+      <div class="small text-danger mt-2 d-none" id="reviewError"></div>
+    </div>
+    <div class="pk-dialog__foot flex-wrap">
+      <button type="button" class="btn btn-outline-danger" id="reviewRejectBtn" data-t="admin.reject">Rechazar</button>
+      <a class="btn btn-outline-success d-none" id="reviewWaBtn" target="_blank" rel="noopener" data-t="common.whatsapp">WhatsApp</a>
+      <button type="button" class="btn btn-success" id="reviewApproveBtn" data-t="admin.approve">Aprobar</button>
+    </div>
+  </dialog>
+
+  <!-- ===== Agregar jugador manual ===== -->
+  <dialog id="manualDialog" class="pk-dialog">
+    <form id="manualForm" novalidate>
+      <div class="pk-dialog__head">
+        <div class="fw-bold" data-t="admin.manualTitle">Agregar jugador</div>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-close data-t="common.close">Cerrar</button>
+      </div>
+      <div class="pk-dialog__body">
+        <div class="row g-2">
+          <div class="col-12">
+            <label class="form-label small" for="manualName" data-t="guest.name">Nombre</label>
+            <input id="manualName" class="form-control" maxlength="80" required />
+          </div>
+          <div class="col-6">
+            <label class="form-label small" for="manualPhone" data-t="guest.phone">Teléfono</label>
+            <input id="manualPhone" class="form-control" type="tel" maxlength="20" />
+          </div>
+          <div class="col-6">
+            <label class="form-label small" for="manualId" data-t="guest.idNumber">Cédula</label>
+            <input id="manualId" class="form-control" maxlength="20" />
+          </div>
+          <div class="col-12">
+            <label class="form-label small" for="manualTier" data-t="admin.colTier">Tarifa</label>
+            <select id="manualTier" class="form-select"></select>
+          </div>
+          <div class="col-6 d-flex align-items-end">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="manualPaid" />
+              <label class="form-check-label" for="manualPaid" data-t="admin.manualPaid">Ya pagó</label>
+            </div>
+          </div>
+          <div class="col-6">
+            <label class="form-label small" for="manualMethod" data-t="admin.manualMethod">Método</label>
+            <select id="manualMethod" class="form-select form-select-sm">
+              <option value="efectivo">Efectivo</option>
+              <option value="sinpe">SINPE</option>
+              <option value="transferencia">Transferencia</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+        </div>
+        <div class="small text-danger mt-2 d-none" id="manualError"></div>
+      </div>
+      <div class="pk-dialog__foot">
+        <button type="button" class="btn btn-outline-secondary" data-close data-t="common.cancel">Cancelar</button>
+        <button type="submit" class="btn btn-primary" data-t="common.save">Guardar</button>
+      </div>
+    </form>
+  </dialog>
 
   <div id="modalMount"></div>
 

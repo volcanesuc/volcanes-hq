@@ -1,0 +1,37 @@
+/* css/pickups.css */
+.pk-dialog {
+  width: calc(100% - 2rem);
+  max-width: 620px;
+  border: 0;
+  border-radius: 18px;
+  padding: 0;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .35);
+}
+.pk-dialog::backdrop { background: rgba(0, 0, 0, .45); }
+.pk-dialog form { margin: 0; }
+.pk-dialog__head,
+.pk-dialog__foot {
+  display: flex;
+  gap: .75rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 1rem;
+}
+.pk-dialog__head { border-bottom: 1px solid var(--border, #e5e7eb); }
+.pk-dialog__foot { border-top: 1px solid var(--border, #e5e7eb); justify-content: flex-end; }
+.pk-dialog__body { padding: 1rem; max-height: 70vh; overflow-y: auto; }
+
+.pk-companion {
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 12px;
+  padding: .75rem;
+}
+
+.pk-kpi .h4 { font-variant-numeric: tabular-nums; }
+.pk-table td, .pk-table th { white-space: nowrap; }
+.pk-table td.pk-wrap { white-space: normal; min-width: 180px; }
+.pk-table select[data-act="tier"] { min-width: 190px; }
+.pk-table select[data-act="attendance"] { min-width: 130px; }
+.pk-actions { display: flex; flex-wrap: wrap; gap: .25rem; }
+.pk-pickup-item.active { border-left: 4px solid var(--theme-primary, #19473f); }
+.pk-strings-table textarea { min-height: 2.4rem; font-size: .875rem; }

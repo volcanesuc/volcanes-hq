@@ -45,3 +45,14 @@ DNS:
 Google Cloud Storage:
 - agregar un auth2.0 con el url del subdominio
 
+
+Pickups (v2):
+
+- Firestore rules: pegar firebase/firestore.pickups.rules dentro de las reglas actuales
+- Storage rules: pegar firebase/storage.pickups.rules dentro de las reglas actuales
+- Authentication: habilitar "Anonymous" (lo usan los invitados sin cuenta)
+- Entrar a Pickups > Ajustes y guardar una vez (crea club_config/pickups):
+  zona horaria, SINPE, tarifas por defecto, canchas, textos
+- Pickups viejos: abrir cada uno en Pickups > Gestionar > Editar y guardar
+  (agrega cancelDeadlineAt, que las reglas usan para la hora límite)
+- Textos: js/strings/pickups_strings.js (default) + Ajustes > Textos (por club)
