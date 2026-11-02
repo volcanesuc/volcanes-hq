@@ -48,11 +48,13 @@ Google Cloud Storage:
 
 Pickups (v2):
 
-- Firestore rules: pegar firebase/firestore.pickups.rules dentro de las reglas actuales
-- Storage rules: pegar firebase/storage.pickups.rules dentro de las reglas actuales
+- Firestore rules: en las reglas actuales BORRAR las secciones "PICKUPS" y
+  "PICKUP REGISTRATIONS" y pegar en su lugar firebase/firestore.pickups.rules
+- Storage rules: reemplazar TODAS las reglas de Storage por firebase/storage.rules
 - Authentication: habilitar "Anonymous" (lo usan los invitados sin cuenta)
 - Entrar a Pickups > Ajustes y guardar una vez (crea club_config/pickups):
   zona horaria, SINPE, tarifas por defecto, canchas, textos
-- Pickups viejos: abrir cada uno en Pickups > Gestionar > Editar y guardar
-  (agrega cancelDeadlineAt, que las reglas usan para la hora límite)
+- Pickups viejos: apenas se publiquen las reglas, entrar a Pickups como admin.
+  La página convierte sola los pickups e inscripciones anteriores al formato nuevo
+  (mueve correo/teléfono/comprobante a /private y agrega la hora límite)
 - Textos: js/strings/pickups_strings.js (default) + Ajustes > Textos (por club)

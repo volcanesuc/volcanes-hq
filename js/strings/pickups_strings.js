@@ -182,6 +182,7 @@ export const PICKUP_STRINGS = {
   "admin.kpiWaitlist": "En espera",
   "admin.kpiToReview": "Por revisar",
   "admin.kpiCollected": "Cobrado",
+  "admin.migrationFailed": "No se pudieron convertir los pickups anteriores al formato nuevo. Revisá que las reglas nuevas de Firestore estén publicadas.",
 
   /* ---------- admin: finanzas ---------- */
   "finance.from": "Desde",

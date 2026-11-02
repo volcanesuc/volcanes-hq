@@ -1,0 +1,122 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    /* =========================
+       HELPERS
+    ========================= */
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // En Storage, leer Firestore requiere el prefijo "firestore."
+    function userDocExists() {
+      return signedIn()
+        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid));
+    }
+
+    function userDoc() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return userDocExists()
+        && userDoc().isPlayerActive == true
+        && userDoc().role == "admin";
+    }
+
+    function isAllowedProofType() {
+      return request.resource.contentType.matches('image/.*|application/pdf');
+    }
+
+    function isAllowedImageType() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function under10Mb() {
+      return request.resource.size < 10 * 1024 * 1024;
+    }
+
+    /* =========================
+       CLUB LANDING
+    ========================= */
+    match /clubs/{clubId}/landing/{fileName} {
+      allow read: if true;
+      allow write: if signedIn();
+    }
+
+    /* =========================
+       PRIVATE MEMBERSHIP SUBMISSIONS (LEGACY / AUTH)
+       path: membership_submissions/{uid}/{fileName}
+    ========================= */
+    match /membership_submissions/{uid}/{fileName} {
+      allow write: if signedIn()
+                   && request.auth.uid == uid
+                   && under10Mb()
+                   && isAllowedProofType();
+
+      allow read: if signedIn()
+                  && (
+                    request.auth.uid == uid
+                    || isAdmin()
+                  );
+    }
+
+    /* =========================
+       PUBLIC MEMBERSHIP PAYMENT UPLOADS
+       path: membership_public_uploads/{mid}/{sid}/{fileName}
+
+       - permite subida sin login o anónima
+       - bloquea lectura pública
+       - lectura solo admin
+    ========================= */
+    match /membership_public_uploads/{mid}/{sid}/{fileName} {
+      allow write: if under10Mb()
+                   && isAllowedProofType();
+
+      allow read: if isAdmin();
+    }
+
+    /* =========================
+       PICKUP PROOFS (v2)
+       path: pickups/{pickupId}/proofs/{uid}/{fileName}
+       - jugadores con cuenta e invitados (sesión anónima) suben solo en su carpeta
+       - no se pueden sobreescribir ni borrar
+    ========================= */
+    match /pickups/{pickupId}/proofs/{uid}/{fileName} {
+      allow create: if signedIn()
+                    && request.auth.uid == uid
+                    && under10Mb()
+                    && isAllowedImageType();
+
+      allow read: if signedIn()
+                  && (
+                    request.auth.uid == uid
+                    || isAdmin()
+                  );
+
+      allow update, delete: if false;
+    }
+
+    /* =========================
+       PICKUP PROOFS (versión anterior, solo lectura)
+       path: pickups/{pickupId}/proofs/{uid}_{timestamp}.ext
+    ========================= */
+    match /pickups/{pickupId}/proofs/{fileName} {
+      allow read: if signedIn()
+                  && (
+                    fileName.matches('^' + request.auth.uid + '_.*$')
+                    || isAdmin()
+                  );
+
+      allow write: if false;
+    }
+
+    /* =========================
+       DEFAULT DENY
+    ========================= */
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,125 +1,121 @@
-// =====================================================================
-// PICKUPS — reglas de Firestore
-// Pegar DENTRO de:  service cloud.firestore { match /databases/{database}/documents { ... } }
-// (si ya tenés una función isAdmin(), usá la tuya y borrá la de abajo)
-// =====================================================================
+    /* =========================================================
+       PICKUPS (v2)
+       Reemplaza las secciones "PICKUPS" y "PICKUP REGISTRATIONS"
+       de firebase/firestore.rules por todo este bloque.
+       Usa los helpers existentes: signedIn(), canEditClub(), canViewClub(), userCanUsePickups()
+    ========================================================= */
+    function pkPickup(pid) {
+      return get(/databases/$(database)/documents/pickups/$(pid)).data;
+    }
 
-function pkSignedIn() {
-  return request.auth != null;
-}
+    function pkReg(regId) {
+      return get(/databases/$(database)/documents/pickup_registrations/$(regId)).data;
+    }
 
-function pkIsAdmin() {
-  return pkSignedIn()
-    && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get("role", "") == "admin";
-}
+    // dueño: quien la creó, el jugador con cuenta, o quien abrió el link privado
+    function pkCanManageReg(regId, data) {
+      return signedIn() && (
+        data.get("ownerUid", data.get("uid", null)) == request.auth.uid
+        || data.get("linkedUid", null) == request.auth.uid
+        || exists(/databases/$(database)/documents/pickup_reg_claims/$(regId + "_" + request.auth.uid))
+      );
+    }
 
-function pkPickup(id) {
-  return get(/databases/$(database)/documents/pickups/$(id)).data;
-}
+    match /pickups/{pickupId} {
+      allow read: if resource.data.isPublic == true || canViewClub() || userCanUsePickups();
+      allow create, update: if canEditClub()
+        && request.resource.data.title is string
+        && request.resource.data.slug is string
+        && request.resource.data.status in ["draft", "published", "closed", "finished", "cancelled"]
+        && request.resource.data.isPublic is bool
+        && request.resource.data.capacity is number
+        && request.resource.data.capacity >= 0
+        && request.resource.data.pricingTiers is list;
+      allow delete: if false;
+    }
 
-function pkReg(regId) {
-  return get(/databases/$(database)/documents/pickup_registrations/$(regId)).data;
-}
+    match /pickup_registrations/{regId} {
+      // lista pública: nombre, tarifa y estado. Teléfono, cédula y comprobante van en /private
+      allow read: if true;
 
-// Dueño de la inscripción: quien la creó, el jugador con cuenta, o quien abrió el link privado.
-function pkCanManageReg(regId, data) {
-  return pkSignedIn() && (
-    data.get("ownerUid", data.get("uid", null)) == request.auth.uid
-    || data.get("linkedUid", null) == request.auth.uid
-    || exists(/databases/$(database)/documents/pickup_reg_claims/$(regId + "_" + request.auth.uid))
-  );
-}
+      allow create: if canEditClub() || (
+        signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.linkedUid in [null, request.auth.uid]
+        && request.resource.data.pickupId is string
+        && request.resource.data.displayName is string
+        && request.resource.data.amountDue is number
+        && request.resource.data.registrationStatus == "active"
+        && request.resource.data.paymentStatus in ["pending", "submitted", "not_required"]
+        && request.resource.data.paidAmount == 0
+        && request.resource.data.attendance == null
+        && request.resource.data.financeMovementId == null
+        && request.resource.data.creditRefunded == false
+        && request.resource.data.createdAt == request.time
+        && pkPickup(request.resource.data.pickupId).status == "published"
+        && request.time < pkPickup(request.resource.data.pickupId).startAt
+      );
 
-// Ajustes del club (los lee la página pública)
-match /club_config/pickups {
-  allow read: if true;
-  allow write: if pkIsAdmin();
-}
+      allow update: if canEditClub() || (
+        pkCanManageReg(regId, resource.data)
+        && resource.data.registrationStatus != "cancelled"
+        && (
+          // salirse: solo antes de la hora límite
+          (
+            request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(["registrationStatus", "cancelledAt", "cancelledBy", "updatedAt"])
+            && request.resource.data.registrationStatus == "cancelled"
+            && request.resource.data.cancelledBy == "player"
+            && request.time < pkPickup(resource.data.pickupId).cancelDeadlineAt
+          )
+          ||
+          // subir / re-subir comprobante
+          (
+            request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(["paymentStatus", "paymentMethod", "rejectReason", "updatedAt"])
+            && request.resource.data.paymentStatus == "submitted"
+            && resource.data.paymentStatus in ["pending", "rejected"]
+          )
+        )
+      );
 
-match /pickups/{pickupId} {
-  allow read: if resource.data.isPublic == true || pkIsAdmin();
-  allow write: if pkIsAdmin();
-}
+      allow delete: if false;
 
-match /pickup_registrations/{regId} {
-  // lista pública (solo nombre, tarifa y estado; los datos personales van en /private)
-  allow read: if true;
+      // teléfono, cédula, correo y comprobante
+      match /private/{docId} {
+        allow read: if canEditClub() || pkCanManageReg(regId, pkReg(regId));
 
-  allow create: if pkIsAdmin() || (
-    pkSignedIn()
-    && request.resource.data.ownerUid == request.auth.uid
-    && request.resource.data.linkedUid in [null, request.auth.uid]
-    && request.resource.data.registrationStatus == "active"
-    && request.resource.data.paymentStatus in ["pending", "submitted", "not_required"]
-    && request.resource.data.paidAmount == 0
-    && request.resource.data.attendance == null
-    && request.resource.data.financeMovementId == null
-    && request.resource.data.creditRefunded == false
-    && request.resource.data.createdAt == request.time
-    && pkPickup(request.resource.data.pickupId).status == "published"
-    && request.time < pkPickup(request.resource.data.pickupId).startAt
-  );
+        // se crea en el mismo batch que la inscripción
+        allow create: if canEditClub() || (
+          signedIn()
+          && !exists(/databases/$(database)/documents/pickup_registrations/$(regId))
+          && getAfter(/databases/$(database)/documents/pickup_registrations/$(regId)).data.ownerUid == request.auth.uid
+        );
 
-  allow update: if pkIsAdmin() || (
-    pkCanManageReg(regId, resource.data)
-    && resource.data.registrationStatus != "cancelled"
-    && (
-      // salirse: solo antes de la hora límite
-      (
-        request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(["registrationStatus", "cancelledAt", "cancelledBy", "updatedAt"])
-        && request.resource.data.registrationStatus == "cancelled"
-        && request.resource.data.cancelledBy == "player"
-        && request.time < pkPickup(resource.data.pickupId).cancelDeadlineAt
-      )
-      ||
-      // subir / re-subir comprobante
-      (
-        request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(["paymentStatus", "paymentMethod", "rejectReason", "updatedAt"])
-        && request.resource.data.paymentStatus == "submitted"
-        && resource.data.paymentStatus in ["pending", "rejected"]
-      )
-    )
-  );
+        allow update: if canEditClub() || (
+          pkCanManageReg(regId, pkReg(regId))
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["proof"])
+        );
 
-  allow delete: if pkIsAdmin();
+        allow delete: if false;
+      }
+    }
 
-  // teléfono, cédula y comprobante
-  match /private/{docId} {
-    allow read: if pkIsAdmin() || pkCanManageReg(regId, pkReg(regId));
+    // links privados de invitados: nadie los lee salvo admin
+    match /pickup_reg_keys/{key} {
+      allow read: if canEditClub();
+      allow create: if signedIn()
+        && !exists(/databases/$(database)/documents/pickup_registrations/$(request.resource.data.regId))
+        && getAfter(/databases/$(database)/documents/pickup_registrations/$(request.resource.data.regId)).data.ownerUid == request.auth.uid;
+      allow update, delete: if canEditClub();
+    }
 
-    // se crea junto con la inscripción (mismo batch)
-    allow create: if pkIsAdmin() || (
-      pkSignedIn()
-      && !exists(/databases/$(database)/documents/pickup_registrations/$(regId))
-      && getAfter(/databases/$(database)/documents/pickup_registrations/$(regId)).data.ownerUid == request.auth.uid
-    );
-
-    allow update: if pkIsAdmin() || (
-      pkCanManageReg(regId, pkReg(regId))
-      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["proof"])
-    );
-
-    allow delete: if pkIsAdmin();
-  }
-}
-
-// Links privados de invitados: nadie los puede leer salvo admin.
-match /pickup_reg_keys/{key} {
-  allow read: if pkIsAdmin();
-  allow create: if pkSignedIn()
-    && !exists(/databases/$(database)/documents/pickup_registrations/$(request.resource.data.regId))
-    && getAfter(/databases/$(database)/documents/pickup_registrations/$(request.resource.data.regId)).data.ownerUid == request.auth.uid;
-  allow update, delete: if pkIsAdmin();
-}
-
-// "Este dispositivo abrió el link privado" -> puede gestionar esa inscripción.
-match /pickup_reg_claims/{claimId} {
-  allow read: if pkIsAdmin() || (pkSignedIn() && resource.data.uid == request.auth.uid);
-  allow create, update: if pkSignedIn()
-    && request.resource.data.uid == request.auth.uid
-    && claimId == request.resource.data.regId + "_" + request.auth.uid
-    && get(/databases/$(database)/documents/pickup_reg_keys/$(request.resource.data.key)).data.regId == request.resource.data.regId;
-  allow delete: if pkIsAdmin();
-}
+    // "este dispositivo abrió el link privado"
+    match /pickup_reg_claims/{claimId} {
+      allow read: if canEditClub() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && claimId == request.resource.data.regId + "_" + request.auth.uid
+        && get(/databases/$(database)/documents/pickup_reg_keys/$(request.resource.data.key)).data.regId == request.resource.data.regId;
+      allow delete: if canEditClub();
+    }

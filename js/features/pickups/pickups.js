@@ -25,6 +25,7 @@ import {
   norm,
   paymentBadge,
   personKeyFromId,
+  pickupStatusBadge,
   personKeyFromUid,
   regTierLabel,
   splitSpots,
@@ -40,6 +41,8 @@ import {
   loadRegsForPickup,
   loadRegsOwnedBy,
   loadUserDoc,
+  migrateLegacyData,
+  needsMigration,
 } from "/js/features/pickups/pickups_services.js";
 
 import { setAlert } from "/js/features/pickups/pickups_admin_ui.js";
@@ -79,14 +82,30 @@ async function loadMine() {
 
 async function reload() {
   if (state.isAdmin) {
-    const [pickups, regs] = await Promise.all([loadAllPickups(), loadAllRegs()]);
+    let [pickups, regs] = await Promise.all([loadAllPickups(), loadAllRegs()]);
+    if (needsMigration(pickups, regs)) {
+      try {
+        const n = await migrateLegacyData(pickups, regs);
+        console.info(`[pickups] ${n} registros migrados al formato nuevo`);
+        [pickups, regs] = await Promise.all([loadAllPickups(), loadAllRegs()]);
+      } catch (err) {
+        console.error("[pickups] migración falló (¿reglas nuevas publicadas?):", err);
+        ctx.alert(t("admin.migrationFailed"), "warning");
+      }
+    }
     state.pickups = pickups;
     state.regs = regs;
     state.myRegs = regs.filter((r) => r.ownerUid === state.uid || r.linkedUid === state.uid || r.uid === state.uid || (state.payerKey && r.payerKey === state.payerKey));
   } else {
-    const [publicPickups, mine] = await Promise.all([loadPublicPickups(), loadMine()]);
+    const [publicPickups, mine] = await Promise.all([
+      loadPublicPickups(),
+      loadMine().catch((err) => {
+        console.warn("[pickups] no se pudieron cargar mis inscripciones:", err);
+        return [];
+      }),
+    ]);
     const upcoming = publicPickups.filter((p) => norm(p.status) === PICKUP_STATUS.PUBLISHED && !hasStarted(p));
-    const upcomingRegs = (await Promise.all(upcoming.map((p) => loadRegsForPickup(p.id)))).flat();
+    const upcomingRegs = (await Promise.all(upcoming.map((p) => loadRegsForPickup(p.id).catch(() => [])))).flat();
 
     const known = new Map(publicPickups.map((p) => [p.id, p]));
     const missing = [...new Set(mine.map((r) => r.pickupId))].filter((id) => !known.has(id));
@@ -104,9 +123,17 @@ async function reload() {
 /* =========================
    Render
 ========================= */
+// Jugadores: publicados, públicos y sin empezar. Admins: además borradores, cerrados y privados (con su estado).
+function isUpcomingFor(p) {
+  if (hasStarted(p)) return false;
+  const status = norm(p.status) || PICKUP_STATUS.DRAFT;
+  if (state.isAdmin) return ![PICKUP_STATUS.CANCELLED, PICKUP_STATUS.FINISHED].includes(status);
+  return p.isPublic === true && status === PICKUP_STATUS.PUBLISHED;
+}
+
 function renderUpcoming() {
   const upcoming = state.pickups
-    .filter((p) => p.isPublic === true && norm(p.status) === PICKUP_STATUS.PUBLISHED && !hasStarted(p))
+    .filter(isUpcomingFor)
     .sort((a, b) => (a.startAt?.toMillis?.() || 0) - (b.startAt?.toMillis?.() || 0));
 
   $("upcomingEmpty").classList.toggle("d-none", upcoming.length > 0);
@@ -117,7 +144,12 @@ function renderUpcoming() {
     return `
       <div class="col-12 col-md-6 col-xl-4">
         <div class="card shadow-sm h-100"><div class="card-body d-flex flex-column">
-          <div class="fw-semibold">${escapeHtml(p.title || "—")}</div>
+          <div class="d-flex justify-content-between gap-2">
+            <div class="fw-semibold">${escapeHtml(p.title || "—")}</div>
+            ${state.isAdmin && (norm(p.status) !== PICKUP_STATUS.PUBLISHED || p.isPublic !== true)
+              ? `<span class="badge ${pickupStatusBadge(p.status)}">${escapeHtml(t(`status.pickup.${norm(p.status) || "draft"}`))}${p.isPublic === true ? "" : " · 🔒"}</span>`
+              : ""}
+          </div>
           <div class="small text-muted mb-2">${escapeHtml(fmtDateTime(p.startAt))} · ${escapeHtml(p.venueName || "")}</div>
           <div class="small mb-3">
             ${escapeHtml(t("public.capacity"))}: <strong>${cap ? `${inList.length} / ${cap}` : `${inList.length} · ${escapeHtml(t("common.unlimited"))}`}</strong>

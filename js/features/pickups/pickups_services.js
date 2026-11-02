@@ -15,6 +15,7 @@ import {
   PICKUP_STATUS,
   REG_STATUS,
   getCancelDeadline,
+  personKeyFromId,
   regCashDue,
   regAmountDue,
 } from "/js/features/pickups/pickups_shared.js";
@@ -31,6 +32,7 @@ import {
   setDoc,
   addDoc,
   serverTimestamp,
+  deleteField,
   Timestamp,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
@@ -94,7 +96,10 @@ export async function loadAllRegs() {
 // Historial de una persona/pagador (para crédito y morosidad).
 export async function loadRegsByPayer(payerKey, legacyUid = null) {
   const jobs = [getDocs(query(collection(db, COL_REGS), where("payerKey", "==", payerKey)))];
-  if (legacyUid) jobs.push(getDocs(query(collection(db, COL_REGS), where("uid", "==", legacyUid))));
+  if (legacyUid) {
+    jobs.push(getDocs(query(collection(db, COL_REGS), where("ownerUid", "==", legacyUid))));
+    jobs.push(getDocs(query(collection(db, COL_REGS), where("uid", "==", legacyUid)))); // aún sin migrar
+  }
   const results = await Promise.all(jobs);
   const map = new Map();
   results.forEach((snap) => snapToList(snap).forEach((r) => map.set(r.id, r)));
@@ -354,8 +359,7 @@ async function createFinanceMovement({ type, amount, method, description, reg, p
     relatedUserId: reg.linkedUid || null,
     relatedMembershipId: null,
     relatedSubmissionId: null,
-    relatedPickupId: pickup?.id || reg.pickupId,
-    notes: null,
+    notes: `pickupId: ${pickup?.id || reg.pickupId}`,
     createdByUid: admin.uid,
     createdByName: admin.name,
     isVoided: false,
@@ -439,6 +443,92 @@ export async function rejectPayment(reg, reason) {
     reviewedByUid: admin.uid,
     financeMovementId: null,
   });
+}
+
+/* =========================
+   Migración de datos de la versión anterior (solo admin, corre sola al abrir Pickups)
+   - pickups: agrega cancellationHours / cancelDeadlineAt / active
+   - inscripciones: pasa email, teléfono y comprobante a /private y quita esos datos
+     de la lista pública; mapea registered/waitlist/attended al nuevo formato
+========================= */
+const LEGACY_REG_FIELDS = ["email", "phone", "paymentProof", "uid", "pricingTierId", "pricingTierLabel", "userCategory"];
+
+export function needsMigration(pickups = [], regs = []) {
+  return pickups.some((p) => p.startAt && !p.cancelDeadlineAt)
+    || regs.some((r) => LEGACY_REG_FIELDS.some((f) => f in r));
+}
+
+export async function migrateLegacyData(pickups = [], regs = []) {
+  const writes = [];
+
+  for (const p of pickups.filter((x) => x.startAt && !x.cancelDeadlineAt)) {
+    const hours = Number(p.cancellationHours ?? p.rules?.cancellationDeadlineHours ?? getPickupSettings().defaultCancellationHours);
+    const data = { ...p, cancellationHours: hours };
+    const deadline = getCancelDeadline(data);
+    writes.push((b) => b.update(doc(db, COL_PICKUPS, p.id), {
+      cancellationHours: hours,
+      cancelDeadlineAt: deadline ? Timestamp.fromDate(deadline) : null,
+      noShowMustPay: p.noShowMustPay ?? getPickupSettings().noShowMustPayByDefault,
+      active: p.status === PICKUP_STATUS.PUBLISHED && p.isPublic === true,
+    }));
+  }
+
+  const legacyRegs = regs.filter((x) => LEGACY_REG_FIELDS.some((f) => f in x));
+
+  // clave de persona por cédula (igual que en la versión nueva) para que crédito y morosidad sigan a la persona
+  const uids = [...new Set(legacyRegs.map((r) => r.ownerUid || r.uid).filter(Boolean))];
+  const keyByUid = new Map(await Promise.all(uids.map(async (uid) => {
+    const u = await loadUserDoc(uid).catch(() => null);
+    return [uid, (await personKeyFromId(u?.profile?.idNumber || u?.idNumber)) || `uid:${uid}`];
+  })));
+
+  for (const r of legacyRegs) {
+    const uid = r.ownerUid || r.uid || null;
+    const key = keyByUid.get(uid) || r.id;
+    const oldStatus = String(r.registrationStatus || "").toLowerCase();
+    const attendance = oldStatus === "attended" ? "attended" : oldStatus === "no_show" ? "no_show" : (r.attendance ?? null);
+    const approved = String(r.paymentStatus || "").toLowerCase() === PAYMENT_STATUS.APPROVED;
+
+    writes.push((b) => b.set(privateRef(r.id), {
+      ownerUid: uid,
+      email: r.email || null,
+      phone: r.phone || null,
+      idNumber: null,
+      proof: r.paymentProof?.downloadURL
+        ? { storagePath: r.paymentProof.storagePath || null, downloadURL: r.paymentProof.downloadURL }
+        : null,
+    }, { merge: true }));
+
+    writes.push((b) => b.update(doc(db, COL_REGS, r.id), {
+      ownerUid: uid,
+      linkedUid: r.linkedUid ?? uid,
+      source: r.source || "user",
+      personKey: r.personKey || key,
+      payerKey: r.payerKey || key,
+      tierId: r.tierId || r.pricingTierId || null,
+      tierLabel: r.tierLabel || r.pricingTierLabel || null,
+      registrationStatus: oldStatus === "cancelled" ? REG_STATUS.CANCELLED : REG_STATUS.ACTIVE,
+      attendance,
+      creditApplied: Number(r.creditApplied || 0),
+      paidAmount: approved ? Number(r.paidAmount ?? r.amountDue ?? 0) : 0,
+      email: deleteField(),
+      phone: deleteField(),
+      paymentProof: deleteField(),
+      uid: deleteField(),
+      pricingTierId: deleteField(),
+      pricingTierLabel: deleteField(),
+      userCategory: deleteField(),
+      updatedAt: serverTimestamp(),
+    }));
+  }
+
+  // Firestore permite 500 operaciones por batch
+  for (let i = 0; i < writes.length; i += 400) {
+    const batch = writeBatch(db);
+    writes.slice(i, i + 400).forEach((w) => w(batch));
+    await batch.commit();
+  }
+  return writes.length;
 }
 
 // El crédito de una inscripción cancelada se devolvió en dinero.
