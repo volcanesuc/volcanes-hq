@@ -24,7 +24,7 @@ const CACHE_KEY = `club_texts:${APP_CONFIG.firebase?.projectId || "app"}`;
 const CACHE_FRESH_MS = 10 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 2500;
 
-export const TEXT_ATTRS = ["placeholder", "title", "aria-label"];
+export const TEXT_ATTRS = ["placeholder", "title", "aria-label", "alt"];
 
 const registry = new Map(); // ns -> { label, defaults: { "a.b": "..." } }
 
@@ -217,7 +217,7 @@ if (typeof MutationObserver !== "undefined" && document.body) {
     if (!Object.keys(overrides).length) return;
     for (const r of records) {
       r.addedNodes.forEach((n) => {
-        if (n.nodeType === 1 && (n.hasAttribute?.("data-tx") || n.querySelector?.("[data-tx], [data-tx-placeholder], [data-tx-title], [data-tx-aria-label]"))) {
+        if (n.nodeType === 1 && (n.hasAttribute?.("data-tx") || n.querySelector?.("[data-tx], [data-tx-placeholder], [data-tx-title], [data-tx-aria-label], [data-tx-alt]"))) {
           applyTexts(n);
         }
       });

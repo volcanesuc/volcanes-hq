@@ -71,3 +71,17 @@ Textos de toda la app (por club)
 - Pantalla nueva: importar su archivo de textos en js/strings/all_strings.js y, si tiene data-tx,
   agregar el HTML a HTML_SOURCES
 - Los textos se guardan en cache 10 min en el navegador; después de guardar, recargá la página
+
+Landing (inicio) v2
+- Admin > Landing settings: "Secciones del landing" (prender/apagar + orden), botones de la portada,
+  Próximos eventos, Cómo unirte, Números del club, Patrocinadores, Galería, Tema del club y SEO.
+  Todo se guarda en club_config/landing y club_config/theme (las reglas de club_config ya sirven).
+- Firestore: pegar firebase/firestore.landing.rules (colección landing_photos) en tus reglas.
+- Storage: volver a publicar firebase/storage.rules (galería en clubs/{clubId}/gallery/{uid}/
+  y clubs/{clubId}/landing/ ahora solo lo suben admins).
+- Galería: los usuarios con cuenta suben fotos desde el Dashboard ("Galería del club");
+  quedan pendientes hasta que un admin las apruebe en Admin > Landing settings > Galería.
+- Calendario del inicio: pickups publicados + torneos. Si las reglas de "tournaments" no permiten
+  leer sin sesión, el inicio muestra solo pickups (un torneo con showOnLanding: false no se muestra).
+- El landing guarda una copia en el navegador y la muestra al instante; después actualiza desde Firebase.
+- Vista previa al compartir (WhatsApp/Facebook): copiar las etiquetas de Admin > SEO dentro del <head> de index.html.

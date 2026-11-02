@@ -6,9 +6,13 @@ import { db, auth } from "/js/auth/firebase.js";
 import { logout } from "/js/auth/auth.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import {
+  collection,
   doc,
-  getDoc
+  getDoc,
+  getDocs
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { fetchLandingData, readLandingCache } from "/js/features/landing/landing_data.js";
+import { legacyEnabled, renderNewSections } from "/js/features/landing/landing_sections.js";
 import { TX, txf } from "/js/strings/screens/home.js";
 
 const COL = APP_CONFIG.collections;
@@ -122,24 +126,8 @@ function showPendingState(kind = "player") {
     pendingSection?.classList.remove("d-none");
   }
 
-  const sectionsToHide = [
-    "featuredActivitySection",
-    "eventsSection",
-    "entrenamientos",
-    "honorsSection",
-    "uniformsSection",
-  ];
-
-  sectionsToHide.forEach((id) => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = "none";
-  });
-
-  const hero = document.querySelector(".hero");
-  if (hero) hero.style.display = "none";
-
-  const heroSocialsWrap = document.getElementById("heroSocialsWrap");
-  if (heroSocialsWrap) heroSocialsWrap.style.display = "none";
+  document.getElementById("landingMain")?.classList.add("d-none");
+  document.body.classList.remove("landing-loading");
 
   const footer = document.querySelector(".landing-footer");
   if (footer) {
@@ -299,30 +287,11 @@ function applyIndexSettings(indexSettings = {}) {
   setSectionVisible("uniformsSection", s.show_uniforms);
 }
 
-async function loadIndexSettings() {
-  try {
-    const ref = doc(db, COL_CLUB_CONFIG, "index_settings");
-    const snap = await getDoc(ref);
-
-    if (snap.exists()) {
-      applyIndexSettings(snap.data() || {});
-    } else {
-      applyIndexSettings();
-      console.error(`No existe ${COL_CLUB_CONFIG}/index_settings`);
-    }
-  } catch (err) {
-    console.error("Error loading index settings:", err);
-    applyIndexSettings();
-  }
-}
-
 /* =========================================================
    HERO
 ========================================================= */
 
-async function loadHeroData() {
-  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "hero")).catch(() => null);
-  const data = snap?.exists?.() ? (snap.data() || {}) : {};
+function heroFrom(data = {}) {
 
   return {
     title: data.title || CLUB_DATA.landing.hero.title,
@@ -364,11 +333,6 @@ function safeUrl(url) {
 /* =========================================================
    SOCIALS
 ========================================================= */
-
-async function loadSocialLinks() {
-  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "social_links")).catch(() => null);
-  return snap?.exists?.() ? (snap.data() || {}) : {};
-}
 
 function renderSocials(socials = {}) {
   const wrap = document.getElementById("heroSocialsWrap");
@@ -414,9 +378,7 @@ function renderSocials(socials = {}) {
    EVENTS
 ========================================================= */
 
-async function loadEventsData() {
-  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "events")).catch(() => null);
-  const data = snap?.exists?.() ? (snap.data() || {}) : {};
+function eventsFrom(data = {}) {
 
   return {
     title: data.title || "",
@@ -473,9 +435,7 @@ function renderEvents(eventsData = {}) {
    FEATURED ACTIVITY
 ========================================================= */
 
-async function loadFeaturedActivityData() {
-  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "featured_activity")).catch(() => null);
-  const data = snap?.exists?.() ? (snap.data() || {}) : {};
+function featuredFrom(data = {}) {
 
   return {
     title: data.title || "",
@@ -528,9 +488,7 @@ function renderFeaturedActivity(featuredData = {}) {
    TRAININGS & GAMES
 ========================================================= */
 
-async function loadTrainingsData() {
-  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "trainings")).catch(() => null);
-  const data = snap?.exists?.() ? (snap.data() || {}) : {};
+function trainingsFrom(data = {}) {
 
   return {
     title: data.title || TX.entrenamientosYJuegos,
@@ -591,9 +549,7 @@ function renderTrainings(trainingsData = {}, socials = {}) {
    HONORS
 ========================================================= */
 
-async function loadHonorsData() {
-  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "honors")).catch(() => null);
-  const data = snap?.exists?.() ? (snap.data() || {}) : {};
+function honorsFrom(data = {}) {
 
   return {
     title: data.title || TX.palmares,
@@ -657,9 +613,7 @@ function renderHonors(honorsData = {}) {
    UNIFORMS
 ========================================================= */
 
-async function loadUniformsData() {
-  const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "uniforms")).catch(() => null);
-  const data = snap?.exists?.() ? (snap.data() || {}) : {};
+function uniformsFrom(data = {}) {
 
   return {
     title: data.title || TX.uniformesDelEquipo,
@@ -759,35 +713,78 @@ function renderFooter() {
    LANDING DATA RENDER
 ========================================================= */
 
-async function renderPublicLanding() {
-  await loadIndexSettings();
+let lastRenderedKey = "";
 
-  const [
-    socials,
-    heroData,
-    featuredActivityData,
-    eventsData,
-    honorsData,
-    uniformsData,
-    trainingsData
-  ] = await Promise.all([
-    loadSocialLinks(),
-    loadHeroData(),
-    loadFeaturedActivityData(),
-    loadEventsData(),
-    loadHonorsData(),
-    loadUniformsData(),
-    loadTrainingsData(),
-  ]);
+// Pinta el landing con los datos (de cache o de Firebase). Si no cambió nada, no repinta.
+function renderLanding(data) {
+  const key = JSON.stringify(data);
+  if (key === lastRenderedKey) return;
+  lastRenderedKey = key;
 
-  renderHero(heroData);
-  renderSocials(socials);
-  renderFeaturedActivity(featuredActivityData);
-  renderTrainings(trainingsData, socials);
-  renderEvents(eventsData);
-  renderHonors(honorsData);
-  renderUniforms(uniformsData);
+  const docs = data.docs || {};
+  const hero = heroFrom(docs.hero);
+
+  applyIndexSettings(docs.index_settings || {});
+  renderHero(hero);
+  renderSocials(docs.social_links || {});
+  if (legacyEnabled(docs.index_settings, "featured")) renderFeaturedActivity(featuredFrom(docs.featured_activity));
+  if (legacyEnabled(docs.index_settings, "trainings")) renderTrainings(trainingsFrom(docs.trainings), docs.social_links || {});
+  if (legacyEnabled(docs.index_settings, "events")) renderEvents(eventsFrom(docs.events));
+  if (legacyEnabled(docs.index_settings, "honors")) renderHonors(honorsFrom(docs.honors));
+  if (legacyEnabled(docs.index_settings, "uniforms")) renderUniforms(uniformsFrom(docs.uniforms));
+  renderNewSections(data, { loadTournaments: loadTournamentEvents, heroDescription: hero.description });
   renderFooter();
+
+  document.body.classList.remove("landing-loading");
+  document.documentElement.classList.remove("preload");
+}
+
+// Pinta ya lo que haya en cache y después actualiza desde Firebase.
+function startLandingData() {
+  const cached = readLandingCache();
+  if (cached) renderLanding(cached);
+  fetchLandingData()
+    .then(renderLanding)
+    .catch((err) => {
+      console.error("Error cargando landing:", err);
+      if (!cached) renderLanding({ docs: {}, photos: [] });
+    });
+}
+
+/* =========================================================
+   TORNEOS PARA EL CALENDARIO
+========================================================= */
+function dayKey(value) {
+  if (!value) return "";
+  if (typeof value === "string") {
+    const m = value.trim().replaceAll("/", "-").match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return m ? `${m[1]}-${m[2]}-${m[3]}` : "";
+  }
+  const d = value?.toDate?.() || (value instanceof Date ? value : null);
+  if (!d) return "";
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// Si las reglas no dejan leer torneos sin sesión, el calendario muestra solo pickups.
+async function loadTournamentEvents() {
+  const snap = await getDocs(collection(db, COL.tournaments));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((t) => t.showOnLanding !== false)
+    .map((t) => {
+      const startDay = dayKey(t.dateStart);
+      if (!startDay) return null;
+      return {
+        id: `tournament:${t.id}`,
+        kind: "tournament",
+        startDay,
+        endDay: dayKey(t.dateEnd) || startDay,
+        title: t.name || TX.evento,
+        meta: t.location || "",
+        href: safeUrl(t.officialUrl || "") || "",
+      };
+    })
+    .filter(Boolean);
 }
 
 /* =========================================================
@@ -795,13 +792,14 @@ async function renderPublicLanding() {
 ========================================================= */
 
 async function bootNormalLanding() {
+  startLandingData();
   await init();
 
   await new Promise((resolve) => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       try {
         if (!user?.uid) {
-          await renderPublicLanding();
+          /* landing ya se pinta desde startLandingData() */
           resolve();
           return;
         }
@@ -824,7 +822,7 @@ async function bootNormalLanding() {
           return;
         }
 
-        await renderPublicLanding();
+        /* landing ya se pinta desde startLandingData() */
         resolve();
       } catch (err) {
         console.error("Error en bootNormalLanding:", err);

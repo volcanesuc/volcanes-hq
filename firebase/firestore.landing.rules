@@ -1,0 +1,26 @@
+/* =========================================================
+   LANDING: GALERÍA DE FOTOS
+   Pegar dentro de "match /databases/{database}/documents { ... }" de tus reglas,
+   junto a las demás colecciones. Usa tus helpers signedIn() y canEditClub().
+   (club_config/landing y club_config/theme ya están cubiertos por tu regla
+   "match /club_config/{docId}": lectura pública, escritura canEditClub()).
+========================================================= */
+match /landing_photos/{photoId} {
+  // públicas solo las aprobadas; el que subió ve las suyas; admins ven todo
+  allow read: if resource.data.status == "approved"
+    || canEditClub()
+    || (signedIn() && resource.data.uploaderUid == request.auth.uid);
+
+  // usuarios con cuenta (no invitados anónimos) suben como "pending";
+  // admins pueden subir directo como "approved"
+  allow create: if signedIn()
+    && request.auth.token.firebase.sign_in_provider != "anonymous"
+    && request.resource.data.uploaderUid == request.auth.uid
+    && request.resource.data.keys().hasOnly(["url", "storagePath", "caption", "uploaderUid", "uploaderName", "status", "createdAt", "reviewedAt"])
+    && request.resource.data.url is string
+    && request.resource.data.caption.size() <= 140
+    && (request.resource.data.status == "pending"
+        || (request.resource.data.status == "approved" && canEditClub()));
+
+  allow update, delete: if canEditClub();
+}

@@ -6,6 +6,7 @@ import { loadAdminEditUserModal } from "./components/admin-edit-user-modal.js";
 import { showLoader, hideLoader } from "./ui/loader.js";
 import { mountTextsEditor } from "./components/texts_editor.js";
 import { loadPickupSettings } from "./features/pickups/pickups_settings.js";
+import { mountLandingAdmin } from "./features/landing/landing_admin.js";
 
 import {
   collection,
@@ -2444,6 +2445,21 @@ async function refreshIndexToggleAvailability(syncToFirestore = true) {
 }
 
 // =========================
+// LANDING: secciones nuevas, orden, tema y SEO
+// =========================
+async function mountLandingAdminSafe() {
+  const mount = document.getElementById("landingAdminMount");
+  if (!mount) return;
+  // la tarjeta vieja de visibilidad la reemplaza "Secciones del landing"
+  document.getElementById("indexSettingsForm")?.closest("section")?.classList.add("d-none");
+  try {
+    await mountLandingAdmin(mount);
+  } catch (err) {
+    console.error("[admin] landing:", err);
+  }
+}
+
+// =========================
 // TEXTS (Ajustes > Textos)
 // =========================
 function bindTextsTab() {
@@ -2517,6 +2533,7 @@ async function boot() {
     $.uniformForm?.addEventListener("submit", addUniform);
 
     bindTextsTab();
+    mountLandingAdminSafe();
 
     $.approveLinkMode?.addEventListener("change", syncApproveModeUI);
     $.approveUserForm?.addEventListener("submit", approveUserFlow);

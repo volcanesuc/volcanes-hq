@@ -9,6 +9,7 @@ import { APP_CONFIG } from "../config/config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { TX } from "/js/strings/screens/header.js";
+import { logoHtml } from "/js/core/theme.js";
 
 const COL = APP_CONFIG.collections;
 const COL_SYSTEM_CONFIG = COL.system_config || "system_config";
@@ -182,6 +183,13 @@ export function getVisibleMenuItems(cfg) {
   return filterMenuByRolePermissions(menu, cfg).map((item) => ({ ...item, href: toAbsHref(item.href) }));
 }
 
+// si el tema cambia (logo nuevo) después de pintar el header
+window.addEventListener("club-theme:changed", () => {
+  document.querySelectorAll("[data-club-logo]").forEach((el) => {
+    el.innerHTML = logoHtml(el.getAttribute("data-club-logo"));
+  });
+});
+
 export async function loadHeader(activeTab, cfgOverride) {
   const header = document.getElementById("app-header");
   if (!header) return { ready: Promise.resolve() };
@@ -268,8 +276,8 @@ export async function loadHeader(activeTab, cfgOverride) {
           aria-label="${TX.abrirMenu}"
         >☰</button>
 
-        <a class="logo logo-link" href="${HOME_HREF}" title="${TX.irAlInicio}">
-          ${CLUB_DATA.header.logoText || TX.club}
+        <a class="logo logo-link" href="${HOME_HREF}" title="${TX.irAlInicio}" data-club-logo="${CLUB_DATA.header.logoText || TX.club}">
+          ${logoHtml(CLUB_DATA.header.logoText || TX.club)}
         </a>
       </div>
 
@@ -280,8 +288,8 @@ export async function loadHeader(activeTab, cfgOverride) {
 
     <div class="offcanvas offcanvas-start" tabindex="-1" id="mobileMenu" aria-labelledby="mobileMenuLabel">
       <div class="offcanvas-header">
-        <a class="offcanvas-title logo-link" id="mobileMenuLabel" href="${HOME_HREF}" title="${TX.irAlInicio}">
-          ${CLUB_DATA.header.mobileTitle || CLUB_DATA.header.logoText || TX.club}
+        <a class="offcanvas-title logo-link" id="mobileMenuLabel" href="${HOME_HREF}" title="${TX.irAlInicio}" data-club-logo="${CLUB_DATA.header.mobileTitle || CLUB_DATA.header.logoText || TX.club}">
+          ${logoHtml(CLUB_DATA.header.mobileTitle || CLUB_DATA.header.logoText || TX.club)}
         </a>
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="${TX.cerrar}"></button>
       </div>

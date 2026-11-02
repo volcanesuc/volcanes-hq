@@ -15,6 +15,8 @@ import { getVisibleMenuItems, loadHeader } from "./components/header.js";
 import { mountEventsCalendar } from "./components/events_calendar.js";
 import { dateToClubDay, loadPickupSettings } from "./features/pickups/pickups_settings.js";
 import { calendarOptions, loadUpcomingPickupEvents } from "./features/pickups/pickups_events.js";
+import { loadLandingConfig } from "./features/landing/landing_data.js";
+import { countMyPendingPhotos, openGalleryUpload } from "./components/gallery_upload.js";
 import { TX, txf } from "/js/strings/screens/dashboard.js";
 
 /* =========================================================
@@ -332,6 +334,7 @@ async function loadDashboard({ user, access } = {}) {
   }
 
   renderEventsCalendar(tournaments);
+  renderGalleryCard(user);
 
   renderBirthdays(players);
 
@@ -365,6 +368,28 @@ function renderQuickLinks(cfg) {
       </a>
     </div>`).join("");
   section.classList.toggle("d-none", !items.length);
+}
+
+/* =========================================================
+   GALERÍA: subir fotos (quedan pendientes de aprobación)
+========================================================= */
+async function renderGalleryCard(user) {
+  const section = document.getElementById("galleryCardSection");
+  if (!section || !user?.uid) return;
+  const landing = await loadLandingConfig().catch(() => ({}));
+  const gallery = landing.sections?.gallery || {};
+  const on = gallery.enabled === true && gallery.allowUploads !== false;
+  section.classList.toggle("d-none", !on);
+  if (!on) return;
+
+  const pending = await countMyPendingPhotos(user.uid);
+  document.getElementById("galleryCardTitle").textContent = TX.galleryCardTitle;
+  document.getElementById("galleryCardHint").textContent = pending
+    ? txf(TX.galleryCardPending, { n: pending })
+    : TX.galleryCardHint;
+  const btn = document.getElementById("galleryCardBtn");
+  btn.textContent = TX.galleryCardButton;
+  btn.onclick = () => openGalleryUpload({ onDone: () => renderGalleryCard(user) });
 }
 
 /* =========================================================

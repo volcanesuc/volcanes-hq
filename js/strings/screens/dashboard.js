@@ -4,6 +4,10 @@ import { defineStrings, fmt } from "/js/core/texts.js";
 
 export const TX = defineStrings("dashboard", "Dashboard", {
   quickLinksTitle: "Accesos rápidos",
+  galleryCardTitle: "📸 Galería del club",
+  galleryCardHint: "Subí tus fotos de entrenos, torneos y pickups. Un admin las revisa y aparecen en la página de inicio.",
+  galleryCardPending: "Tenés {n} foto(s) esperando aprobación.",
+  galleryCardButton: "Subir fotos",
   link_roster: "👥 Jugadores y perfiles",
   link_trainings: "📋 Historial y planes de entreno",
   link_attendance: "✅ Pasar y revisar asistencia",
