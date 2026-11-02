@@ -94,7 +94,3 @@
 .ec-kind--tournament { color: #b8860b; }
 .ec-card--tournament .pk-session__date { background: rgba(211, 158, 0, .14); color: #8a6500; }
 .pk-cal__day .pk-cal__dots i.ec-dot--tournament { background: #d39e00; }
-.ec-dot--training { background: #0f9d8a; }
-.pk-cal__day .pk-cal__dots i.ec-dot--training { background: #0f9d8a; }
-.ec-kind--training { color: #0f9d8a; }
-.ec-card--training .pk-session__date { background: rgba(15, 157, 138, .12); color: #0b7a6b; }

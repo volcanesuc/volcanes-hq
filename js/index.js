@@ -6,8 +6,10 @@ import { db, auth } from "/js/auth/firebase.js";
 import { logout } from "/js/auth/auth.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import {
+  collection,
   doc,
-  getDoc
+  getDoc,
+  getDocs
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { fetchLandingData, readLandingCache } from "/js/features/landing/landing_data.js";
 import { legacyEnabled, renderNewSections } from "/js/features/landing/landing_sections.js";
@@ -730,7 +732,7 @@ function renderLanding(data) {
   if (legacyEnabled(docs.index_settings, "events")) renderEvents(eventsFrom(docs.events));
   if (legacyEnabled(docs.index_settings, "honors")) renderHonors(honorsFrom(docs.honors));
   if (legacyEnabled(docs.index_settings, "uniforms")) renderUniforms(uniformsFrom(docs.uniforms));
-  renderNewSections(data, { heroDescription: hero.description });
+  renderNewSections(data, { loadTournaments: loadTournamentEvents, heroDescription: hero.description });
   renderFooter();
 
   document.body.classList.remove("landing-loading");
@@ -747,6 +749,42 @@ function startLandingData() {
       console.error("Error cargando landing:", err);
       if (!cached) renderLanding({ docs: {}, photos: [] });
     });
+}
+
+/* =========================================================
+   TORNEOS PARA EL CALENDARIO
+========================================================= */
+function dayKey(value) {
+  if (!value) return "";
+  if (typeof value === "string") {
+    const m = value.trim().replaceAll("/", "-").match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return m ? `${m[1]}-${m[2]}-${m[3]}` : "";
+  }
+  const d = value?.toDate?.() || (value instanceof Date ? value : null);
+  if (!d) return "";
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// Si las reglas no dejan leer torneos sin sesión, el calendario muestra solo pickups.
+async function loadTournamentEvents() {
+  const snap = await getDocs(collection(db, COL.tournaments));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((t) => t.showOnLanding !== false)
+    .map((t) => {
+      const startDay = dayKey(t.dateStart);
+      if (!startDay) return null;
+      return {
+        id: `tournament:${t.id}`,
+        kind: "tournament",
+        startDay,
+        endDay: dayKey(t.dateEnd) || startDay,
+        title: t.name || TX.evento,
+        meta: t.location || "",
+        href: safeUrl(t.officialUrl || "") || "",
+      };
+    })
+    .filter(Boolean);
 }
 
 /* =========================================================

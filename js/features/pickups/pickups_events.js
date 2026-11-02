@@ -67,7 +67,6 @@ export function calendarOptions() {
       prevMonth: t("calendar.prevMonth"),
       nextMonth: t("calendar.nextMonth"),
       view: t("calendar.view"),
-      more: t("calendar.more"),
     },
   };
 }

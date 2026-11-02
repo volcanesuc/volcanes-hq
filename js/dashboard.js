@@ -13,7 +13,8 @@ import { showLoader, hideLoader } from "./ui/loader.js";
 import { guardPage } from "./page-guard.js";
 import { getVisibleMenuItems, loadHeader } from "./components/header.js";
 import { mountEventsCalendar } from "./components/events_calendar.js";
-import { loadClubCalendarEvents } from "./features/calendar/club_events.js";
+import { dateToClubDay, loadPickupSettings } from "./features/pickups/pickups_settings.js";
+import { calendarOptions, loadUpcomingPickupEvents } from "./features/pickups/pickups_events.js";
 import { loadLandingConfig } from "./features/landing/landing_data.js";
 import { countMyPendingPhotos, openGalleryUpload } from "./components/gallery_upload.js";
 import { TX, txf } from "/js/strings/screens/dashboard.js";
@@ -332,7 +333,7 @@ async function loadDashboard({ user, access } = {}) {
     setNextTournamentError(TX.sinAccesoATorneos);
   }
 
-  renderEventsCalendar(tournaments, trainings);
+  renderEventsCalendar(tournaments);
   renderGalleryCard(user);
 
   renderBirthdays(players);
@@ -394,26 +395,61 @@ async function renderGalleryCard(user) {
 /* =========================================================
    CALENDARIO (pickups + torneos)
 ========================================================= */
-async function renderEventsCalendar(tournaments, trainings) {
+// "2026-11-02" / Timestamp / Date -> "YYYY-MM-DD"
+function toDayKey(value) {
+  if (!value) return "";
+  if (typeof value === "string") {
+    const m = value.trim().replaceAll("/", "-").match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  }
+  const d = toDateSafeAny(value);
+  return d ? dateToClubDay(d) : "";
+}
+
+function tournamentEvents(tournaments) {
+  return (tournaments || [])
+    .map((t) => {
+      const startDay = toDayKey(t.dateStart);
+      if (!startDay) return null;
+      const confirmed = t.confirmed === true;
+      return {
+        id: `tournament:${t.id}`,
+        kind: "tournament",
+        kindLabel: TX.kindTournament,
+        startDay,
+        endDay: toDayKey(t.dateEnd) || startDay,
+        title: t.name || TX.torneo,
+        meta: [formatTournamentRangePretty(toDateSafeAny(t.dateStart), toDateSafeAny(t.dateEnd)), t.location].filter(Boolean).join(" · "),
+        href: `/${tournamentRosterUrl(t.id)}`,
+        badgeHtml: `<span class="badge ${confirmed ? "text-bg-success" : "text-bg-secondary"}">${escapeHtml(confirmed ? TX.tournamentConfirmed : TX.tournamentTentative)}</span>`,
+      };
+    })
+    .filter(Boolean);
+}
+
+async function renderEventsCalendar(tournaments) {
   const el = document.getElementById("eventsCalendar");
   if (!el) return;
   document.getElementById("eventsCalendarTitle").textContent = TX.calendarTitle;
   document.getElementById("eventsCalendarHint").textContent = TX.calendarHint;
 
-  const { base, events, legend } = await loadClubCalendarEvents({
-    tournaments,
-    trainings,
-    trainingHref: "/trainings_history.html",
-    tournamentHref: (t) => `/${tournamentRosterUrl(t.id)}`,
-    tournamentMeta: (t) => [formatTournamentRangePretty(toDateSafeAny(t.dateStart), toDateSafeAny(t.dateEnd)), t.location].filter(Boolean).join(" · "),
-    tournamentBadge: (t) => `<span class="badge ${t.confirmed === true ? "text-bg-success" : "text-bg-secondary"}">${escapeHtml(t.confirmed === true ? TX.tournamentConfirmed : TX.tournamentTentative)}</span>`,
-  });
+  await loadPickupSettings();
+  let pickups = [];
+  try {
+    pickups = (await loadUpcomingPickupEvents({ withSpots: false })).map((ev) => ({ ...ev, kindLabel: TX.kindPickup }));
+  } catch (err) {
+    console.warn("[dashboard] pickups no disponibles:", err);
+  }
 
+  const base = calendarOptions();
   mountEventsCalendar(el, {
     ...base,
-    events,
-    legend,
+    events: [...tournamentEvents(tournaments), ...pickups],
     labels: { ...base.labels, upcoming: TX.calendarUpcoming, empty: TX.calendarEmpty, view: TX.calendarView },
+    legend: [
+      { kind: "pickup", label: TX.kindPickup },
+      { kind: "tournament", label: TX.kindTournament },
+    ],
   });
 }
 

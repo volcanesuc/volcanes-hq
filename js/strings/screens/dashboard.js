@@ -20,7 +20,7 @@ export const TX = defineStrings("dashboard", "Dashboard", {
   link_publicPickups: "📅 Calendario público de pickups",
   publicPickupsLabel: "Pickups (público)",
   calendarTitle: "📅 Próximos eventos",
-  calendarHint: "Entrenos, pickups y torneos. Tocá un día para ver qué hay.",
+  calendarHint: "Pickups y torneos. Tocá un día para ver qué hay.",
   calendarUpcoming: "Próximos eventos",
   calendarEmpty: "No hay eventos próximos.",
   calendarView: "Ver",

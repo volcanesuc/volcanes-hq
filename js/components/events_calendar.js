@@ -53,7 +53,6 @@ export function mountEventsCalendar(root, opts) {
     labels = {},
     formatDay = (k) => k,
     legend = [],
-    listLimit = 10, // próximos sin día elegido: se muestran estos y un "Ver más"
   } = opts;
 
   const upcoming = events
@@ -68,7 +67,6 @@ export function mountEventsCalendar(root, opts) {
     y: Number(startKey.slice(0, 4)),
     m: Number(startKey.slice(5, 7)) - 1,
     day: null,
-    limit: listLimit,
   };
 
   root.innerHTML = `
@@ -91,7 +89,6 @@ export function mountEventsCalendar(root, opts) {
           <button class="btn btn-sm btn-link d-none" type="button" data-ec-all>${esc(labels.showAll)}</button>
         </div>
         <div class="d-grid gap-2" data-ec-list></div>
-        <button class="btn btn-sm btn-outline-secondary w-100 mt-2 d-none" type="button" data-ec-more>${esc(labels.more || "+")}</button>
       </div>
     </div>`;
 
@@ -153,9 +150,7 @@ export function mountEventsCalendar(root, opts) {
   }
 
   function renderList() {
-    const all = state.day ? byDay.get(state.day) || [] : upcoming;
-    const list = state.day ? all : all.slice(0, state.limit);
-    $("[data-ec-more]").classList.toggle("d-none", list.length >= all.length);
+    const list = state.day ? byDay.get(state.day) || [] : upcoming;
     $("[data-ec-all]").classList.toggle("d-none", !state.day);
     $("[data-ec-list-title]").textContent = state.day ? formatDay(state.day) : labels.upcoming || "";
     $("[data-ec-list]").innerHTML = list.length
@@ -181,10 +176,6 @@ export function mountEventsCalendar(root, opts) {
     renderGrid();
     renderList();
   });
-  $("[data-ec-more]").onclick = () => {
-    state.limit += listLimit;
-    renderList();
-  };
   $("[data-ec-all]").onclick = () => {
     state.day = null;
     renderGrid();

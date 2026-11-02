@@ -221,7 +221,7 @@ function bindGalleryUpload() {
 ========================= */
 let calendarStarted = false;
 
-async function renderCalendar(landing) {
+async function renderCalendar(landing, { loadTournaments }) {
   const cfg = sectionConfig(landing, "calendar");
   show($("calendarSection"), cfg.enabled);
   if (!cfg.enabled) return;
@@ -231,20 +231,29 @@ async function renderCalendar(landing) {
   if (calendarStarted) return;
   calendarStarted = true;
 
-  // se carga aparte: el resto del landing no espera al calendario
-  const { loadClubCalendarEvents } = await import("/js/features/calendar/club_events.js");
-  const { base, events, legend } = await loadClubCalendarEvents({
-    publicLanding: true,
-    includeTrainingDocs: true,
-    trainingHref: "",
-    tournamentHref: (t) => safeUrl(t.officialUrl || ""),
-  });
+  // se carga aparte: el resto del landing no espera a los pickups
+  const [{ loadPickupSettings }, { calendarOptions, loadUpcomingPickupEvents }] = await Promise.all([
+    import("/js/features/pickups/pickups_settings.js"),
+    import("/js/features/pickups/pickups_events.js"),
+  ]);
+  await loadPickupSettings();
 
+  const [pickups, tournaments] = await Promise.all([
+    loadUpcomingPickupEvents({ withSpots: false }).catch(() => []),
+    loadTournaments().catch(() => []),
+  ]);
+
+  const base = calendarOptions();
   mountEventsCalendar($("landingCalendar"), {
     ...base,
-    events,
-    legend,
+    events: [
+      ...pickups.map((ev) => ({ ...ev, kindLabel: LX.kindPickup })),
+      ...tournaments.map((ev) => ({ ...ev, kindLabel: LX.kindTournament })),
+    ],
     labels: { ...base.labels, upcoming: pick(cfg.title, LX.calendarTitle), empty: LX.calendarEmpty },
+    legend: tournaments.length
+      ? [{ kind: "pickup", label: LX.kindPickup }, { kind: "tournament", label: LX.kindTournament }]
+      : [],
   });
 }
 
@@ -276,14 +285,14 @@ function applySeo(landing, fallbackDescription) {
 /* =========================
    Todo junto
 ========================= */
-export function renderNewSections(data, { heroDescription } = {}) {
+export function renderNewSections(data, { loadTournaments, heroDescription } = {}) {
   const landing = data.docs?.landing || {};
   renderHeroActions(landing);
   renderJoin(landing);
   renderStats(landing);
   renderSponsors(landing);
   renderGallery(landing, data.photos || []);
-  renderCalendar(landing).catch((err) => console.warn("[landing] calendario:", err));
+  renderCalendar(landing, { loadTournaments }).catch((err) => console.warn("[landing] calendario:", err));
   applySectionOrder(landing);
   applySeo(landing, heroDescription);
 }

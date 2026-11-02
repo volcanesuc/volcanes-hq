@@ -10,7 +10,7 @@ export const LX = defineStrings("landing", "Inicio: secciones nuevas", {
 
   // calendario
   calendarTitle: "Próximos eventos",
-  calendarSubtitle: "Entrenos, pickups abiertos y torneos del club. Tocá un día para ver qué hay.",
+  calendarSubtitle: "Pickups abiertos y torneos del club. Tocá un día para ver qué hay.",
   calendarEmpty: "No hay eventos próximos por ahora.",
   kindPickup: "Pickup",
   kindTournament: "Torneo",
