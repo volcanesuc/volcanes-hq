@@ -11,7 +11,10 @@ import { APP_CONFIG } from "./config/config.js";
 import { showLoader, hideLoader } from "./ui/loader.js";
 
 import { guardPage } from "./page-guard.js";
-import { loadHeader } from "./components/header.js";
+import { getVisibleMenuItems, loadHeader } from "./components/header.js";
+import { mountEventsCalendar } from "./components/events_calendar.js";
+import { dateToClubDay, loadPickupSettings } from "./features/pickups/pickups_settings.js";
+import { calendarOptions, loadUpcomingPickupEvents } from "./features/pickups/pickups_events.js";
 import { TX, txf } from "/js/strings/screens/dashboard.js";
 
 /* =========================================================
@@ -20,6 +23,7 @@ import { TX, txf } from "/js/strings/screens/dashboard.js";
 const { cfg, redirected } = await guardPage("dashboard");
 if (!redirected) {
   await loadHeader("home", cfg);
+  renderQuickLinks(cfg);
 }
 
 watchAuth(async (user, access) => {
@@ -318,13 +322,16 @@ async function loadDashboard({ user, access } = {}) {
   }
 
   // --- Tournaments
+  let tournaments = [];
   if (tournamentsRes.status === "fulfilled") {
-    const tournaments = tournamentsRes.value.docs.map(d => ({ id: d.id, ...d.data() }));
+    tournaments = tournamentsRes.value.docs.map(d => ({ id: d.id, ...d.data() }));
     renderNextTournament(tournaments);
   } else {
     console.error("Error cargando torneos:", tournamentsRes.reason);
     setNextTournamentError(TX.sinAccesoATorneos);
   }
+
+  renderEventsCalendar(tournaments);
 
   renderBirthdays(players);
 
@@ -334,6 +341,91 @@ async function loadDashboard({ user, access } = {}) {
   const alerts = calculateAlerts({ players, trainings });
   const visibleAlerts = filterAlertsForViewer(alerts, { user, access });
   renderAlerts(visibleAlerts);
+}
+
+/* =========================================================
+   ACCESOS RÁPIDOS
+========================================================= */
+function renderQuickLinks(cfg) {
+  const section = document.getElementById("quickLinksSection");
+  const wrap = document.getElementById("quickLinks");
+  if (!section || !wrap) return;
+
+  const items = getVisibleMenuItems(cfg).filter((item) => item.id !== "home");
+  if (cfg?.enabledTabs?.pickups === true) {
+    items.push({ id: "publicPickups", label: TX.publicPickupsLabel, href: "/public/pickups.html" });
+  }
+
+  document.getElementById("quickLinksTitle").textContent = TX.quickLinksTitle;
+  wrap.innerHTML = items.map((item) => `
+    <div class="col-6 col-md-4 col-xl-3">
+      <a class="quick-link" href="${escapeHtml(item.href)}">
+        <span class="quick-link__label">${escapeHtml(item.label)}</span>
+        <span class="quick-link__desc">${escapeHtml(TX[`link_${item.id}`] || "")}</span>
+      </a>
+    </div>`).join("");
+  section.classList.toggle("d-none", !items.length);
+}
+
+/* =========================================================
+   CALENDARIO (pickups + torneos)
+========================================================= */
+// "2026-11-02" / Timestamp / Date -> "YYYY-MM-DD"
+function toDayKey(value) {
+  if (!value) return "";
+  if (typeof value === "string") {
+    const m = value.trim().replaceAll("/", "-").match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  }
+  const d = toDateSafeAny(value);
+  return d ? dateToClubDay(d) : "";
+}
+
+function tournamentEvents(tournaments) {
+  return (tournaments || [])
+    .map((t) => {
+      const startDay = toDayKey(t.dateStart);
+      if (!startDay) return null;
+      const confirmed = t.confirmed === true;
+      return {
+        id: `tournament:${t.id}`,
+        kind: "tournament",
+        kindLabel: TX.kindTournament,
+        startDay,
+        endDay: toDayKey(t.dateEnd) || startDay,
+        title: t.name || TX.torneo,
+        meta: [formatTournamentRangePretty(toDateSafeAny(t.dateStart), toDateSafeAny(t.dateEnd)), t.location].filter(Boolean).join(" · "),
+        href: `/${tournamentRosterUrl(t.id)}`,
+        badgeHtml: `<span class="badge ${confirmed ? "text-bg-success" : "text-bg-secondary"}">${escapeHtml(confirmed ? TX.tournamentConfirmed : TX.tournamentTentative)}</span>`,
+      };
+    })
+    .filter(Boolean);
+}
+
+async function renderEventsCalendar(tournaments) {
+  const el = document.getElementById("eventsCalendar");
+  if (!el) return;
+  document.getElementById("eventsCalendarTitle").textContent = TX.calendarTitle;
+  document.getElementById("eventsCalendarHint").textContent = TX.calendarHint;
+
+  await loadPickupSettings();
+  let pickups = [];
+  try {
+    pickups = (await loadUpcomingPickupEvents({ withSpots: false })).map((ev) => ({ ...ev, kindLabel: TX.kindPickup }));
+  } catch (err) {
+    console.warn("[dashboard] pickups no disponibles:", err);
+  }
+
+  const base = calendarOptions();
+  mountEventsCalendar(el, {
+    ...base,
+    events: [...tournamentEvents(tournaments), ...pickups],
+    labels: { ...base.labels, upcoming: TX.calendarUpcoming, empty: TX.calendarEmpty, view: TX.calendarView },
+    legend: [
+      { kind: "pickup", label: TX.kindPickup },
+      { kind: "tournament", label: TX.kindTournament },
+    ],
+  });
 }
 
 /* =========================================================
@@ -407,14 +499,12 @@ function pickNextTournament(tournaments) {
     })
     .filter(t => t._ds);
 
+  // próximos o en curso (termina hoy o después); los que ya pasaron no se muestran
   const future = parsed
-    .filter(t => startOfDay(t._ds) >= now)
+    .filter(t => startOfDay(t._de || t._ds) >= now)
     .sort((a, b) => a._ds - b._ds);
 
-  if (future.length) return future[0];
-
-  parsed.sort((a, b) => b._ds - a._ds);
-  return parsed[0] || null;
+  return future[0] || null;
 }
 
 function renderNextTournament(tournaments) {

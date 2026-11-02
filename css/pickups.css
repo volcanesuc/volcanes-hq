@@ -85,3 +85,12 @@
   background: rgba(25, 71, 63, .08); color: var(--theme-primary, #19473f);
 }
 .min-w-0 { min-width: 0; }
+
+/* ===== calendario de eventos (tipos) ===== */
+.ec-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; background: var(--theme-primary, #19473f); }
+.ec-dot--tournament { background: #d39e00; }
+.pk-cal__day.is-selected .ec-dot { box-shadow: 0 0 0 1.5px #fff; }
+.ec-kind { color: var(--theme-primary, #19473f); text-transform: uppercase; letter-spacing: .03em; font-size: .7rem; }
+.ec-kind--tournament { color: #b8860b; }
+.ec-card--tournament .pk-session__date { background: rgba(211, 158, 0, .14); color: #8a6500; }
+.pk-cal__day .pk-cal__dots i.ec-dot--tournament { background: #d39e00; }

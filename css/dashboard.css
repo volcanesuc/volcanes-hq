@@ -1865,3 +1865,38 @@ mark.search-hit {
     font-size: 1.6rem;
   }
 }
+/* ===== ACCESOS RÁPIDOS + CALENDARIO (HOME) ===== */
+.dashboard-page .quick-links-card,
+.dashboard-page .calendar-card{
+  background: var(--card);
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+  padding: 1.2rem 1.25rem;
+}
+.dashboard-page .quick-links-card h3,
+.dashboard-page .calendar-card h3{
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: var(--theme-primary);
+}
+.dashboard-page .quick-link{
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  height: 100%;
+  padding: .75rem .9rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(0,0,0,0.015);
+  color: inherit;
+  text-decoration: none;
+  transition: transform .1s ease, border-color .1s ease, background .1s ease;
+}
+.dashboard-page .quick-link:hover{
+  transform: translateY(-1px);
+  border-color: var(--theme-primary);
+  background: rgba(25, 71, 63, .06);
+}
+.dashboard-page .quick-link__label{ font-weight: 800; color: var(--theme-primary); }
+.dashboard-page .quick-link__desc{ font-size: .8rem; color: #6c757d; }

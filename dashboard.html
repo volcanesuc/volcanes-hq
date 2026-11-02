@@ -23,6 +23,7 @@
   <!-- Estilos -->
   <link rel="stylesheet" href="/css/main.css" />
   <link rel="stylesheet" href="/css/dashboard.css" />
+  <link rel="stylesheet" href="/css/pickups.css" />
 </head>
 
 <body class="loading">
@@ -61,6 +62,14 @@
       </div>
     </section>
 
+    <!-- ================= ACCESOS RÁPIDOS ================= -->
+    <section class="mb-4 d-none" id="quickLinksSection">
+      <div class="quick-links-card">
+        <h3 class="mb-3" id="quickLinksTitle">Accesos rápidos</h3>
+        <div class="row g-2" id="quickLinks"></div>
+      </div>
+    </section>
+
     <!-- ================= BLOQUE CENTRAL ================= -->
     <section class="mb-4">
       <div class="row g-4">
@@ -86,6 +95,15 @@
           </a>
         </div>
 
+      </div>
+    </section>
+
+    <!-- ================= CALENDARIO ================= -->
+    <section class="mb-4">
+      <div class="calendar-card">
+        <h3 class="mb-1" id="eventsCalendarTitle">📅 Próximos eventos</h3>
+        <div class="small text-muted mb-3" id="eventsCalendarHint"></div>
+        <div id="eventsCalendar"><div class="text-muted small" data-tx="html_dashboard.cargando">Cargando…</div></div>
       </div>
     </section>
 

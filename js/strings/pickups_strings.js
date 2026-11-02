@@ -330,6 +330,7 @@ export const PICKUP_STRINGS = {
   "calendar.fullClosed": "Lleno",
   "calendar.view": "Ver y unirme",
   "calendar.weekdays": "L,M,K,J,V,S,D",
+  "calendar.kindPickup": "Pickup",
   "calendar.faqTitle": "Preguntas frecuentes",
   "calendar.faq1Q": "¿Tengo que inscribirme antes?",
   "calendar.faq1A": "Sí. Los cupos son limitados y se llenan por orden de inscripción.",

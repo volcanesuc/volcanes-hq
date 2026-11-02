@@ -175,6 +175,13 @@ function filterMenuByRolePermissions(menu, cfg) {
   return (menu || []).filter((item) => canSeeMenuItemByPermissions(item, cfg));
 }
 
+// Tabs que el usuario puede ver con este cfg (el de guardPage): para accesos directos.
+export function getVisibleMenuItems(cfg) {
+  const enabled = cfg?.enabledTabs || {};
+  const menu = (CLUB_DATA.header.menu || []).filter((item) => enabled[item.id] === true);
+  return filterMenuByRolePermissions(menu, cfg).map((item) => ({ ...item, href: toAbsHref(item.href) }));
+}
+
 export async function loadHeader(activeTab, cfgOverride) {
   const header = document.getElementById("app-header");
   if (!header) return { ready: Promise.resolve() };
