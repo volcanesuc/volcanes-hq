@@ -322,6 +322,7 @@ export const PICKUP_STRINGS = {
   "calendar.nextMonth": "Mes siguiente",
   "calendar.today": "Hoy",
   "calendar.showAll": "Ver todos",
+  "calendar.more": "Ver más",
   "calendar.dayEmpty": "No hay pickups ese día.",
   "calendar.empty": "No hay pickups próximos. ¡Volvé pronto!",
   "calendar.spots": "{taken}/{capacity} cupos",
