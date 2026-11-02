@@ -70,6 +70,18 @@ export async function loadPickupBySlug(slug) {
   return { id: d.id, ...d.data() };
 }
 
+// Sin filtro isPublic: solo funciona para miembros/admins (borradores y privados).
+export async function loadPickupBySlugAnyVisibility(slug) {
+  try {
+    const snap = await getDocs(query(collection(db, COL_PICKUPS), where("slug", "==", slug)));
+    if (snap.empty) return null;
+    const d = snap.docs[0];
+    return { id: d.id, ...d.data() };
+  } catch {
+    return null;
+  }
+}
+
 export async function loadPickup(id) {
   const snap = await getDoc(doc(db, COL_PICKUPS, id));
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;

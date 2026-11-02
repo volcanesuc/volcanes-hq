@@ -535,6 +535,13 @@ async function openEditor(pickup) {
 
   const p = pickup || {};
   $("peTitle").value = p.title || "";
+  $("peSlug").value = p.slug || "";
+  // pickup nuevo: el link sigue al título hasta que lo editen a mano
+  $("peSlug").dataset.touched = pickup ? "1" : "";
+  $("peSlug").oninput = () => { $("peSlug").dataset.touched = "1"; };
+  $("peTitle").oninput = () => {
+    if (!$("peSlug").dataset.touched) $("peSlug").value = slugify($("peTitle").value);
+  };
   $("peStatus").value = p.status || PICKUP_STATUS.DRAFT;
   $("peStartAt").value = dateToClubLocalInput(p.startAt);
   $("peEndAt").value = dateToClubLocalInput(p.endAt);
@@ -560,6 +567,14 @@ async function openEditor(pickup) {
   editor.modal.show();
 }
 
+// "pickup-jueves", y si ya existe: "pickup-jueves-2", "pickup-jueves-3"...
+function uniqueSlug(base, ownId) {
+  const taken = new Set(ctx.getPickups().filter((x) => x.id !== ownId).map((x) => x.slug));
+  let slug = base;
+  for (let n = 2; taken.has(slug); n++) slug = `${base}-${n}`;
+  return slug;
+}
+
 async function onEditorSubmit(ev) {
   ev.preventDefault();
   const fail = (msg) => { $("peError").textContent = msg; $("peError").classList.remove("d-none"); };
@@ -570,8 +585,7 @@ async function onEditorSubmit(ev) {
   if (!tiers.length) return fail(t("editor.errorTiers"));
 
   const title = $("peTitle").value.trim();
-  const existing = ctx.getPickups().find((x) => x.id === editor.id);
-  const slug = existing?.slug || `${slugify(title) || "pickup"}-${startAt.toISOString().slice(0, 10)}-${Math.random().toString(36).slice(2, 6)}`;
+  const slug = uniqueSlug(slugify($("peSlug").value) || slugify(title) || "pickup", editor.id);
 
   const data = {
     title,

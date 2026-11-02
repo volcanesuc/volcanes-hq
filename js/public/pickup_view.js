@@ -58,6 +58,7 @@ import {
   leaveRegistration,
   loadPickup,
   loadPickupBySlug,
+  loadPickupBySlugAnyVisibility,
   loadRegsByPayer,
   loadRegsByPersonKey,
   loadRegsForPickup,
@@ -915,27 +916,36 @@ async function claimLinks() {
     const slug = new URLSearchParams(window.location.search).get("slug")?.trim();
     if (!slug) return showError(t("public.missingSlug"));
 
-    state.pickup = await loadPickupBySlug(slug);
-    if (!state.pickup || norm(state.pickup.status) === PICKUP_STATUS.DRAFT) {
+    // esperar la sesión: los admins pueden ver borradores y pickups privados
+    state.user = await new Promise((resolve) => {
+      const unsub = onAuthStateChanged(auth, (u) => { unsub(); resolve(u || null); });
+    });
+    const viewerDoc = isAccountUser() ? await loadUserDoc(state.user.uid).catch(() => null) : null;
+    const isAdminViewer = norm(viewerDoc?.role) === "admin";
+
+    state.pickup = await loadPickupBySlug(slug).catch(() => null)
+      || (isAccountUser() ? await loadPickupBySlugAnyVisibility(slug) : null);
+
+    const hidden = state.pickup && (norm(state.pickup.status) === PICKUP_STATUS.DRAFT || state.pickup.isPublic !== true);
+    if (!state.pickup || (hidden && !isAdminViewer)) {
       $("pvActionsCard").classList.add("d-none");
-      return showError(t("public.notFound"));
+      return showError(t(state.pickup ? "public.notPublished" : "public.notFound"));
     }
 
     await reloadRegs();
     bindEvents();
+    await claimLinks().catch((err) => console.warn("[pickup] links:", err));
+    await refreshAccountContext();
     renderAll();
+    if (hidden) showInfo(t("public.adminPreview"));
 
+    // cambios de sesión posteriores (login, invitado anónimo)
     let first = true;
-    waitingForAuth = true;
     onAuthStateChanged(auth, async (user) => {
+      if (first) { first = false; return; }
       state.user = user || null;
-      if (first) {
-        first = false;
-        await claimLinks().catch((err) => console.warn("[pickup] links:", err));
-      }
       await refreshAccountContext();
       renderAll();
-      hideLoader();
     });
   } catch (err) {
     console.error("[pickup_view] init error:", err);

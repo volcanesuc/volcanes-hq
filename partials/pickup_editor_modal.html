@@ -21,6 +21,15 @@
               <select id="peStatus" class="form-select"></select>
             </div>
 
+            <div class="col-12">
+              <label class="form-label" for="peSlug" data-t="editor.slug">Link</label>
+              <div class="input-group">
+                <span class="input-group-text small">/public/pickup.html?slug=</span>
+                <input id="peSlug" class="form-control" maxlength="80" />
+              </div>
+              <div class="form-text" data-t="editor.slugHint"></div>
+            </div>
+
             <div class="col-12 col-md-6">
               <label class="form-label" for="peStartAt" data-t="editor.start">Inicio</label>
               <input id="peStartAt" type="datetime-local" class="form-control" required />
