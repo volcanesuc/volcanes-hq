@@ -3,10 +3,9 @@
 import { auth } from "/js/auth/firebase.js";
 import { showLoader, hideLoader } from "/js/ui/loader.js";
 
+import { mountTextsEditor } from "/js/components/texts_editor.js";
 import {
   applyStrings,
-  getAllStringKeys,
-  getDefaultString,
   getPickupSettings,
   savePickupSettings,
   t,
@@ -117,32 +116,11 @@ export function renderSettings() {
         <div id="stVenues" class="d-grid gap-2">${s.venues.map(venueRowHtml).join("")}</div>
       </div></div>
 
-      <div class="card shadow-sm mb-3"><div class="card-body">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-          <div>
-            <h2 class="h6 mb-0">${escapeHtml(t("settings.strings"))}</h2>
-            <div class="small text-muted">${escapeHtml(t("settings.stringsHint"))}</div>
-          </div>
-          <input id="stStringsSearch" class="form-control form-control-sm" style="max-width: 260px;" placeholder="${escapeHtml(t("common.search"))}" />
-        </div>
-        <div class="table-responsive" style="max-height: 60vh;">
-          <table class="table table-sm align-middle pk-strings-table">
-            <tbody id="stStrings">
-              ${getAllStringKeys().map((key) => `
-                <tr data-key="${escapeHtml(key)}">
-                  <td class="small text-muted" style="width: 30%;"><code>${escapeHtml(key)}</code></td>
-                  <td><textarea class="form-control form-control-sm" rows="1" data-string-key="${escapeHtml(key)}"
-                    placeholder="${escapeHtml(getDefaultString(key))}">${escapeHtml(s.strings[key] || "")}</textarea></td>
-                </tr>`).join("")}
-            </tbody>
-          </table>
-        </div>
-      </div></div>
-
-      <div class="d-flex justify-content-end mb-5">
+      <div class="d-flex justify-content-end mb-4">
         <button type="submit" class="btn btn-primary">${escapeHtml(t("common.save"))}</button>
       </div>
     </form>
+    <div id="stTexts"></div>
   `;
 
   tierEditor = mountTierEditor(root.querySelector("#stTiers"), root.querySelector("#stAddTier"), s.pricingTiers);
@@ -153,14 +131,11 @@ export function renderSettings() {
     if (ev.target.closest("[data-v-remove]")) ev.target.closest("[data-venue-row]").remove();
   };
 
-  root.querySelector("#stStringsSearch").oninput = (ev) => {
-    const term = ev.target.value.trim().toLowerCase();
-    root.querySelectorAll("#stStrings tr").forEach((tr) => {
-      const key = tr.getAttribute("data-key");
-      const text = `${key} ${getDefaultString(key)} ${tr.querySelector("textarea").value}`.toLowerCase();
-      tr.classList.toggle("d-none", !!term && !text.includes(term));
-    });
-  };
+  mountTextsEditor(root.querySelector("#stTexts"), {
+    section: "pickups",
+    legacy: { pickups: s.strings },
+    onSaved: () => applyStrings(),
+  });
 
   root.querySelector("#settingsForm").onsubmit = onSave;
 }
@@ -191,12 +166,6 @@ async function onSave(ev) {
   const v = (id) => root.querySelector(`#${id}`).value.trim();
   const c = (id) => root.querySelector(`#${id}`).checked;
 
-  const strings = {};
-  root.querySelectorAll("[data-string-key]").forEach((el) => {
-    const val = el.value.trim();
-    if (val) strings[el.getAttribute("data-string-key")] = val;
-  });
-
   const next = {
     timezone: v("stTimezone"),
     locale: v("stLocale") || "es-CR",
@@ -219,7 +188,8 @@ async function onSave(ev) {
     financeCategory: v("stFinanceCategory") || "pickup",
     pricingTiers: tierEditor.read(),
     venues: readVenues(),
-    strings,
+    // Los textos ahora se guardan en club_config/texts (editor de abajo); estos quedan como respaldo.
+    strings: getPickupSettings().strings,
   };
 
   showLoader();

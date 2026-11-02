@@ -1,5 +1,7 @@
 // js/strings/playbook.js
-export const PLAYBOOK_STRINGS = {
+import { defineStrings } from "/js/core/texts.js";
+
+export const PLAYBOOK_STRINGS = defineStrings("playbook", "Playbook", {
   ui: {
     loading: "Cargando Playbook…",
     subtitleAdmin: "Biblioteca de ejercicios y estructuras de práctica",
@@ -20,4 +22,4 @@ export const PLAYBOOK_STRINGS = {
     drillNotFound: "No encontré ese drill. Seleccionalo desde la lista.",
     drillAlreadyAdded: "Ese drill ya está agregado a este Plan de entrenamiento.",
   }
-};
+});

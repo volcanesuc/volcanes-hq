@@ -3,6 +3,9 @@
 import { db } from "/js/auth/firebase.js";
 import { APP_CONFIG } from "/js/config/config.js";
 import { PICKUP_STRINGS } from "/js/strings/pickups_strings.js";
+import { getOverride, registerStrings } from "/js/core/texts.js";
+
+registerStrings("pickups", "Pickups", PICKUP_STRINGS);
 
 import {
   doc,
@@ -89,8 +92,9 @@ export function getPickupSettings() {
 /* =========================
    Textos
 ========================= */
+// Orden: Ajustes > Textos (club_config/texts) > textos viejos de club_config/pickups > default.
 export function t(key, vars = {}) {
-  const override = settings.strings?.[key];
+  const override = getOverride(`pickups.${key}`) ?? settings.strings?.[key];
   const base = typeof override === "string" && override.trim() ? override : PICKUP_STRINGS[key];
   const text = base ?? key;
   return String(text).replace(/\{(\w+)\}/g, (_, k) => (vars[k] ?? vars[k] === 0 ? String(vars[k]) : ""));

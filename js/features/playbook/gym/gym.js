@@ -9,6 +9,7 @@ import {
   updateDoc,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { TX, txf } from "/js/strings/screens/gym.js";
 
 
 /* =========================
@@ -48,7 +49,7 @@ export async function initGymTab({ db, canEdit }) {
 // Se usa también en gym_routine.html / gym_plan.html si querés reutilizarlo
 export async function loadRoutineResolved({ db, routineId }) {
   const rSnap = await getDoc(doc(db, COL_ROUTINES, routineId));
-  if (!rSnap.exists()) throw new Error("Rutina no existe");
+  if (!rSnap.exists()) throw new Error(TX.rutinaNoExiste);
 
   const routine = { id: rSnap.id, ...rSnap.data() };
 
@@ -309,16 +310,16 @@ function renderExercises() {
                   type="button"
                   class="btn btn-sm btn-outline-secondary"
                   data-open-media="${escapeHtml(mediaUrl)}"
-                  data-media-title="${escapeHtml(ex.name || "Media")}"
+                  data-media-title="${escapeHtml(ex.name || TX.media)}"
                 >
-                  Ver
+                  ${TX.ver}
                 </button>`
               : ``
           }
 
           ${
             _ctx.canEdit
-              ? `<button class="btn btn-sm btn-primary" data-edit-exercise-btn="${escapeHtml(ex.id)}">Editar</button>`
+              ? `<button class="btn btn-sm btn-primary" data-edit-exercise-btn="${escapeHtml(ex.id)}">${TX.editar}</button>`
               : ``
           }
         </div>
@@ -363,7 +364,7 @@ function bindExerciseMediaButtons() {
       e.stopPropagation();
 
       const rawUrl = btn.getAttribute("data-open-media");
-      const title = btn.getAttribute("data-media-title") || "Media";
+      const title = btn.getAttribute("data-media-title") || TX.media;
 
       if (!rawUrl) return;
 
@@ -381,8 +382,8 @@ function ensureMediaModal() {
       <div class="modal-dialog modal-dialog-centered modal-xl modal-fullscreen-sm-down">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="gymMediaModalTitle">Media</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            <h5 class="modal-title" id="gymMediaModalTitle">${TX.media}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="${TX.cerrar}"></button>
           </div>
 
           <div class="modal-body">
@@ -397,9 +398,9 @@ function ensureMediaModal() {
               target="_blank"
               rel="noopener"
             >
-              Abrir en pestaña nueva
+              ${TX.abrirEnPestanaNueva}
             </a>
-            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Cerrar</button>
+            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">${TX.cerrar}</button>
           </div>
         </div>
       </div>
@@ -415,7 +416,7 @@ function ensureMediaModal() {
   });
 }
 
-function openMediaModal(rawUrl, title = "Media") {
+function openMediaModal(rawUrl, title = TX.media) {
   ensureMediaModal();
 
   const cleanUrl = safeUrl(rawUrl);
@@ -431,7 +432,7 @@ function openMediaModal(rawUrl, title = "Media") {
 
   if (!box || !modalEl) return;
 
-  if (titleEl) titleEl.textContent = title || "Media";
+  if (titleEl) titleEl.textContent = title || TX.media;
   if (openNewTab) openNewTab.href = cleanUrl;
 
   const mediaType = detectMediaType(cleanUrl);
@@ -476,7 +477,7 @@ function detectMediaType(url) {
   return "unknown";
 }
 
-function renderMediaContent(type, rawUrl, title = "Media") {
+function renderMediaContent(type, rawUrl, title = TX.media) {
   if (type === "image") {
     return `
       <div class="text-center">
@@ -520,7 +521,7 @@ function renderMediaContent(type, rawUrl, title = "Media") {
         ></iframe>
       </div>
       <div class="text-muted small mt-2">
-        Si no carga aquí, abrilo en pestaña nueva.
+        ${TX.siNoCargaAqui}
       </div>
     </div>
   `;
@@ -627,7 +628,7 @@ function renderRoutines() {
       <div class="d-flex justify-content-between gap-2 flex-wrap">
         <div>
           <div class="fw-semibold">${escapeHtml(r.name || "—")}</div>
-          <div class="text-muted small">${isPublic ? "🌐 Pública" : "🔒 Privada"}</div>
+          <div class="text-muted small">${isPublic ? TX.publica : TX.privada}</div>
           ${r.description ? `<div class="small mt-1">${escapeHtml(r.description)}</div>` : ``}
         </div>
 
@@ -635,16 +636,16 @@ function renderRoutines() {
           ${
             isPublic
               ? `
-                <a class="btn btn-sm btn-outline-secondary" href="${routineSharePath(r.id)}" target="_blank" rel="noopener">Ver</a>
-                <button class="btn btn-sm btn-outline-primary" data-copy-routine="${escapeHtml(r.id)}">Copiar link</button>
+                <a class="btn btn-sm btn-outline-secondary" href="${routineSharePath(r.id)}" target="_blank" rel="noopener">${TX.ver}</a>
+                <button class="btn btn-sm btn-outline-primary" data-copy-routine="${escapeHtml(r.id)}">${TX.copiarLink}</button>
               `
               : `
-                ${_ctx.canEdit ? `<button class="btn btn-sm btn-outline-primary" data-make-routine-public="${escapeHtml(r.id)}">Hacer pública</button>` : ``}
+                ${_ctx.canEdit ? `<button class="btn btn-sm btn-outline-primary" data-make-routine-public="${escapeHtml(r.id)}">${TX.hacerPublica}</button>` : ``}
               `
           }
 
-          <button class="btn btn-sm btn-outline-secondary" data-preview-routine="${escapeHtml(r.id)}">Preview</button>
-          ${_ctx.canEdit ? `<button class="btn btn-sm btn-primary" data-edit-routine="${escapeHtml(r.id)}">Editar</button>` : ``}
+          <button class="btn btn-sm btn-outline-secondary" data-preview-routine="${escapeHtml(r.id)}">${TX.preview}</button>
+          ${_ctx.canEdit ? `<button class="btn btn-sm btn-primary" data-edit-routine="${escapeHtml(r.id)}">${TX.editar}</button>` : ``}
         </div>
       </div>
 
@@ -665,11 +666,11 @@ function bindRoutineButtons() {
       try {
         await copyRoutineLink(id);
         const old = btn.textContent;
-        btn.textContent = "Copiado ✅";
+        btn.textContent = TX.copiado;
         setTimeout(() => (btn.textContent = old), 1200);
       } catch (e) {
         console.error(e);
-        alert("No pude copiar el link.");
+        alert(TX.noPudeCopiarEl);
       }
     });
   });
@@ -689,7 +690,7 @@ function bindRoutineButtons() {
         await loadRoutinesAndRender();
       } catch (e) {
         console.error(e);
-        alert("Error haciendo la rutina pública.");
+        alert(TX.errorHaciendoLaRutina);
       } finally {
         btn.disabled = false;
       }
@@ -713,13 +714,13 @@ function bindRoutineButtons() {
 
       try {
         box.classList.remove("d-none");
-        box.innerHTML = `<div class="text-muted small">Cargando preview…</div>`;
+        box.innerHTML = `<div class="text-muted small">${TX.cargandoPreview}</div>`;
 
         const { routine, resolvedItems } = await loadRoutineResolved({ db: _ctx.db, routineId: id });
         box.innerHTML = renderRoutinePreview(routine, resolvedItems);
       } catch (e) {
         console.error(e);
-        box.innerHTML = `<div class="text-danger small">Error cargando preview.</div>`;
+        box.innerHTML = `<div class="text-danger small">${TX.errorCargandoPreview}</div>`;
       }
     });
   });
@@ -742,13 +743,13 @@ function renderRoutinePreview(_routine, items) {
       <div class="fw-semibold">${escapeHtml(it.order)}. ${escapeHtml(it.name)}</div>
       <div class="text-muted small">${escapeHtml(fmtItemSeries(it))}</div>
       ${it.notes ? `<div class="small mt-1">${escapeHtml(it.notes)}</div>` : ``}
-      ${it.videoUrl ? `<a class="small" href="${escapeHtml(it.videoUrl)}" target="_blank" rel="noopener">Video</a>` : ``}
+      ${it.videoUrl ? `<a class="small" href="${escapeHtml(it.videoUrl)}" target="_blank" rel="noopener">${TX.video}</a>` : ``}
     </div>
   `
     )
     .join("");
 
-  return `<div class="mt-2">${rows || `<div class="text-muted small">Sin ejercicios.</div>`}</div>`;
+  return `<div class="mt-2">${rows || `<div class="text-muted small">${TX.sinEjercicios}</div>`}</div>`;
 }
 
 function fmtItemSeries(it) {
@@ -756,14 +757,14 @@ function fmtItemSeries(it) {
   const st = (it.seriesType || "reps").toString();
 
   if (st === "distance") {
-    parts.push(`Distancia: ${it.distance ?? "—"} ${it.distanceUnit ?? ""}`.trim());
+    parts.push(txf(TX.distancia, { value: it.distance ?? "—", value2: it.distanceUnit ?? "" }).trim());
   } else {
-    parts.push(`Sets: ${it.sets ?? "—"}`);
-    parts.push(`Reps: ${fmtMaybeText(it.reps)}`);
+    parts.push(txf(TX.sets, { value: it.sets ?? "—" }));
+    parts.push(txf(TX.reps, { reps: fmtMaybeText(it.reps) }));
   }
 
   if (it.restSec !== null && it.restSec !== undefined) {
-    parts.push(`Descanso: ${it.restSec}s`);
+    parts.push(txf(TX.descansoS, { restSec: it.restSec }));
   }
 
   return parts.join(" · ");
@@ -797,7 +798,7 @@ function renderPlans() {
         <div>
           <div class="fw-semibold">${escapeHtml(planTitle(p))}</div>
           <div class="text-muted small">
-            ${isPublic ? "🌐 Público" : "🔒 Privado"}
+            ${isPublic ? TX.publico : TX.privado}
             ${p.monthKey ? ` · ${escapeHtml(p.monthKey)}` : ``}
           </div>
           ${p.description ? `<div class="small mt-1">${escapeHtml(p.description)}</div>` : ``}
@@ -807,14 +808,14 @@ function renderPlans() {
           ${
             isPublic
               ? `
-                <a class="btn btn-sm btn-outline-secondary" href="${planSharePath(p.id)}" target="_blank" rel="noopener">Ver</a>
-                <button class="btn btn-sm btn-outline-primary" data-copy-plan="${escapeHtml(p.id)}">Copiar link</button>
+                <a class="btn btn-sm btn-outline-secondary" href="${planSharePath(p.id)}" target="_blank" rel="noopener">${TX.ver}</a>
+                <button class="btn btn-sm btn-outline-primary" data-copy-plan="${escapeHtml(p.id)}">${TX.copiarLink}</button>
               `
               : `
-                ${_ctx.canEdit ? `<button class="btn btn-sm btn-outline-primary" data-make-plan-public="${escapeHtml(p.id)}">Hacer público</button>` : ``}
+                ${_ctx.canEdit ? `<button class="btn btn-sm btn-outline-primary" data-make-plan-public="${escapeHtml(p.id)}">${TX.hacerPublico}</button>` : ``}
               `
           }
-          ${_ctx.canEdit ? `<button class="btn btn-sm btn-primary" data-edit-plan="${escapeHtml(p.id)}">Editar</button>` : ``}
+          ${_ctx.canEdit ? `<button class="btn btn-sm btn-primary" data-edit-plan="${escapeHtml(p.id)}">${TX.editar}</button>` : ``}
         </div>
       </div>
     `;
@@ -833,11 +834,11 @@ function bindPlanButtons() {
       try {
         await copyPlanLink(id);
         const old = btn.textContent;
-        btn.textContent = "Copiado ✅";
+        btn.textContent = TX.copiado;
         setTimeout(() => (btn.textContent = old), 1200);
       } catch (e) {
         console.error(e);
-        alert("No pude copiar el link del plan.");
+        alert(TX.noPudeCopiarEl2);
       }
     });
   });
@@ -857,7 +858,7 @@ function bindPlanButtons() {
         await loadPlansAndRender();
       } catch (e) {
         console.error(e);
-        alert("Error haciendo el plan público.");
+        alert(TX.errorHaciendoElPlan);
       } finally {
         btn.disabled = false;
       }
@@ -880,14 +881,14 @@ function planTitle(p) {
   return (
     (p.title || "").trim() ||
     (p.name || "").trim() ||
-    (p.monthKey ? `Plan de Gimnasio – ${monthKeyToLabel(p.monthKey)}` : "Plan de Gimnasio")
+    (p.monthKey ? txf(TX.planDeGimnasio, { value: monthKeyToLabel(p.monthKey) }) : TX.planDeGimnasio2)
   );
 }
 
 function monthKeyToLabel(monthKey) {
   // "YYYY-MM" -> "Mes YYYY-MM" (simple, sin depender de locale)
   // Si querés nombres de meses en español, lo hago luego con un map.
-  return `Mes ${monthKey}`;
+  return txf(TX.mes, { monthKey });
 }
 
 /* =========================

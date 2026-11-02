@@ -1,5 +1,6 @@
 // /js/ui/media_viewer_modal.js
 import { Modal } from "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/+esm";
+import { TX } from "/js/strings/screens/media_viewer.js";
 
 let modalReady = false;
 
@@ -12,7 +13,7 @@ export function openMediaViewerModal(rawUrl, options = {}) {
     return;
   }
 
-  const title = options?.title || "Media";
+  const title = options?.title || TX.media;
 
   const titleEl = document.getElementById("mediaViewerModalTitle");
   const box = document.getElementById("mediaViewerContainer");
@@ -46,8 +47,8 @@ function ensureMediaViewerModal() {
       <div class="modal-dialog modal-fullscreen">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="mediaViewerModalTitle">Media</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            <h5 class="modal-title" id="mediaViewerModalTitle">${TX.media}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="${TX.cerrar}"></button>
           </div>
 
           <div class="modal-body">
@@ -62,9 +63,9 @@ function ensureMediaViewerModal() {
               target="_blank"
               rel="noopener"
             >
-              Abrir en pestaña nueva
+              ${TX.abrirEnPestanaNueva}
             </a>
-            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Cerrar</button>
+            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">${TX.cerrar}</button>
           </div>
         </div>
       </div>
@@ -117,7 +118,7 @@ function detectMediaType(url) {
   return "unknown";
 }
 
-function renderMediaContent(type, rawUrl, title = "Media") {
+function renderMediaContent(type, rawUrl, title = TX.media) {
   if (type === "image") {
     return `
       <div class="text-center">
@@ -161,7 +162,7 @@ function renderMediaContent(type, rawUrl, title = "Media") {
         ></iframe>
       </div>
       <div class="text-muted small mt-2">
-        Si no carga aquí, abrilo en pestaña nueva.
+        ${TX.siNoCargaAqui}
       </div>
     </div>
   `;

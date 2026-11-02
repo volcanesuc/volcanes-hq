@@ -13,6 +13,7 @@ import {
 import { APP_CONFIG } from "../config/config.js";
 import { showLoader, hideLoader } from "../ui/loader.js";
 import { TOURNAMENT_STRINGS } from "../strings.js";
+import { TX, txf } from "/js/strings/screens/tournament_editor.js";
 
 const S = TOURNAMENT_STRINGS;
 const COL = APP_CONFIG.collections;
@@ -121,7 +122,7 @@ export function createTournamentEditor() {
     try {
       const snap = await getDoc(doc(db, TOURNAMENTS_COL, id));
       if (!snap.exists()) {
-        alert(S.messages?.errorLoad || "No se pudo cargar el torneo.");
+        alert(S.messages?.errorLoad || TX.noSePudoCargar);
         return;
       }
 
@@ -135,7 +136,7 @@ export function createTournamentEditor() {
       modal?.show();
     } catch (e) {
       console.error(e);
-      alert(S.messages?.errorLoad || "No se pudo cargar el torneo.");
+      alert(S.messages?.errorLoad || TX.noSePudoCargar);
     } finally {
       hideLoader();
     }
@@ -167,7 +168,7 @@ export function createTournamentEditor() {
       };
 
       if (!payload.name || !payload.dateStart) {
-        alert(S.messages?.missingRequired || "Faltan campos obligatorios.");
+        alert(S.messages?.missingRequired || TX.faltanCamposObligatorios);
         return;
       }
 
@@ -191,7 +192,7 @@ export function createTournamentEditor() {
       );
     } catch (err) {
       console.error(err);
-      alert(S.messages?.errorSave || "Error guardando torneo.");
+      alert(S.messages?.errorSave || TX.errorGuardandoTorneo);
     } finally {
       hideLoader();
     }
@@ -204,7 +205,7 @@ export function createTournamentEditor() {
     const id = f.id.value;
     if (!id) return;
 
-    const ok = confirm(S.actions?.confirmDelete || "¿Eliminar este torneo?");
+    const ok = confirm(S.actions?.confirmDelete || TX.eliminarEsteTorneo);
     if (!ok) return;
 
     showLoader();
@@ -219,7 +220,7 @@ export function createTournamentEditor() {
       );
     } catch (e) {
       console.error(e);
-      alert(S.messages?.errorDelete || "Error eliminando torneo.");
+      alert(S.messages?.errorDelete || TX.errorEliminandoTorneo);
     } finally {
       hideLoader();
     }
@@ -238,13 +239,13 @@ function applyStrings(f, deleteBtn) {
   f.name.placeholder = S.fields.name.placeholder || "";
 
   f.lblDateStart.textContent = S.fields.dateStart.label;
-  f.lblDateEnd.textContent = `${S.fields.dateEnd.label} (opcional)`;
+  f.lblDateEnd.textContent = txf(TX.opcional, { label: S.fields.dateEnd.label });
 
   f.lblType.textContent = S.fields.type.label;
   f.lblAge.textContent = S.fields.age.label;
   f.lblVenue.textContent = S.fields.venue.label;
 
-  f.lblLocation.textContent = `${S.fields.location.label} (opcional)`;
+  f.lblLocation.textContent = txf(TX.opcional, { label: S.fields.location.label });
   f.location.placeholder = S.fields.location.placeholder || "";
 
   if (S.fields?.officialUrl?.label && f.officialUrl) {
@@ -253,7 +254,7 @@ function applyStrings(f, deleteBtn) {
   }
 
   if (f.lblFeeCurrency) {
-    f.lblFeeCurrency.textContent = S.fields?.feeCurrency?.label || "Moneda";
+    f.lblFeeCurrency.textContent = S.fields?.feeCurrency?.label || TX.moneda;
   }
 
   f.lblTeamFee.textContent = S.fields.teamFee.label;
@@ -274,8 +275,8 @@ function applyStrings(f, deleteBtn) {
 
   if (f.feeCurrency) {
     fillSelect(f.feeCurrency, {
-      CRC: "Colones (₡)",
-      USD: "Dólares ($)"
+      CRC: TX.colones,
+      USD: TX.dolares
     });
   }
 }

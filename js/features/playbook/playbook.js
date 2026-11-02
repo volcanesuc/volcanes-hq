@@ -27,6 +27,7 @@ import {
   query,
   where,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { TX, txf } from "/js/strings/screens/playbook_js.js";
 
 /* =========================
    Collections
@@ -68,8 +69,8 @@ watchAuth(async () => {
     setRoleUI();
 
     $.pageSubtitle.textContent = canEdit
-      ? (S.ui?.subtitleAdmin || "Admin")
-      : (S.ui?.subtitleViewer || "Viewer");
+      ? (S.ui?.subtitleAdmin || TX.admin)
+      : (S.ui?.subtitleViewer || TX.viewer);
 
     await loadDrills();
     await loadTrainings();
@@ -78,7 +79,7 @@ watchAuth(async () => {
       await initGymEditors({ db, canEdit, modalMountId: "modalMount" });
     } catch (e) {
       console.error("[playbook] Gym init error:", e);
-      showAlert("La pestaña Gimnasio falló al cargar. Ver consola.", "warning");
+      showAlert(TX.laPestanaGimnasioFallo, "warning");
     }
   } finally {
     hideLoader();
@@ -103,14 +104,14 @@ function setRoleUI() {
   if (canEdit) {
     if (badge) {
       badge.className = "badge text-bg-primary";
-      badge.textContent = "ADMIN (EDIT)";
+      badge.textContent = TX.adminEdit;
     }
     $.openCreateDrillBtn?.classList.remove("d-none");
     $.openCreateTrainingBtn?.classList.remove("d-none");
   } else {
     if (badge) {
       badge.className = "badge text-bg-secondary";
-      badge.textContent = "VIEW ONLY";
+      badge.textContent = TX.viewOnly;
     }
     $.openCreateDrillBtn?.classList.add("d-none");
     $.openCreateTrainingBtn?.classList.add("d-none");
@@ -216,7 +217,7 @@ function renderDrillTagFilters() {
   if (!el) return;
 
   if (!drillTagCatalog.length) {
-    el.innerHTML = `<span class="text-muted small">Sin tags todavía.</span>`;
+    el.innerHTML = `<span class="text-muted small">${TX.sinTagsTodavia}</span>`;
     return;
   }
 
@@ -238,7 +239,7 @@ function renderDrillTagFilters() {
         cursor:pointer;
       "
     >
-      Todos
+      ${TX.todos}
     </span>
   `;
 
@@ -296,7 +297,7 @@ async function loadTrainings() {
     renderTrainings();
   } catch (err) {
     console.error("[playbook] loadTrainings error:", err);
-    showAlert("Error cargando entrenamientos. Ver consola.", "danger");
+    showAlert(TX.errorCargandoEntrenamientosVer, "danger");
     trainings = [];
     renderTrainings();
   }
@@ -344,7 +345,7 @@ function renderDrills() {
 
     const tagsHtml = Array.isArray(d.tags) && d.tags.length
       ? `<div class="d-flex flex-wrap gap-2 mt-2">${renderTagPills(d.tags)}</div>`
-      : `<div class="text-muted small mt-2">Sin tags</div>`;
+      : `<div class="text-muted small mt-2">${TX.sinTags}</div>`;
 
     card.innerHTML = `
       <div class="card h-100" ${clickable}>
@@ -360,11 +361,11 @@ function renderDrills() {
                           type="button"
                           class="btn btn-link btn-sm p-0 text-decoration-none"
                           data-open-external="${escapeHtml(tactical)}"
-                          data-open-title="${escapeHtml(d.name || "Tactical Board")}"
+                          data-open-title="${escapeHtml(d.name || TX.tacticalBoard)}"
                        >
-                          Ver
+                          ${TX.ver}
                        </button>`
-                    : `<span class="text-muted">Sin Tactical</span>`
+                    : `<span class="text-muted">${TX.sinTactical}</span>`
                 }
 
                 <span>•</span>
@@ -375,11 +376,11 @@ function renderDrills() {
                           type="button"
                           class="btn btn-link btn-sm p-0 text-decoration-none"
                           data-open-external="${escapeHtml(video)}"
-                          data-open-title="${escapeHtml(d.name || "Video")}"
+                          data-open-title="${escapeHtml(d.name || TX.video)}"
                        >
-                          Video
+                          ${TX.video}
                        </button>`
-                    : `<span class="text-muted">Sin video</span>`
+                    : `<span class="text-muted">${TX.sinVideo}</span>`
                 }
               </div>
 
@@ -388,7 +389,7 @@ function renderDrills() {
 
             <div class="text-end">
               <span class="badge ${active ? "text-bg-success" : "text-bg-secondary"}">
-                ${active ? "Activo" : "Archivado"}
+                ${active ? TX.activo : TX.archivado}
               </span>
 
               ${
@@ -397,7 +398,7 @@ function renderDrills() {
                        <button class="btn btn-outline-danger btn-sm"
                                data-action="toggle"
                                data-id="${escapeHtml(d.id)}">
-                         ${active ? "Archivar" : "Reactivar"}
+                         ${active ? TX.archivar : TX.reactivar}
                        </button>
                      </div>`
                   : ``
@@ -407,26 +408,26 @@ function renderDrills() {
 
           <hr />
 
-          <div class="small text-muted">Objetivo</div>
+          <div class="small text-muted">${TX.objetivo}</div>
           <div>${escapeHtml(d.objective || "—")}</div>
 
           <div class="row mt-2 g-2">
             <div class="col-6">
-              <div class="small text-muted">Volumen</div>
+              <div class="small text-muted">${TX.volumen}</div>
               <div>${escapeHtml(d.volume || "—")}</div>
             </div>
             <div class="col-6">
-              <div class="small text-muted">Descanso</div>
+              <div class="small text-muted">${TX.descanso}</div>
               <div>${escapeHtml(d.restAfter || "—")}</div>
             </div>
           </div>
           <div class="col-12 col-md-4">
-            <div class="small text-muted">Mínimo de personas</div>
+            <div class="small text-muted">${TX.minimoDePersonas}</div>
             <div>${d.minPlayers > 0 ? escapeHtml(d.minPlayers) : "—"}</div>
           </div>
 
           <div class="mt-2">
-            <div class="small text-muted">Recomendaciones</div>
+            <div class="small text-muted">${TX.recomendaciones}</div>
             <div class="text-muted">${escapeHtml(d.recommendations || "—")}</div>
           </div>
         </div>
@@ -442,7 +443,7 @@ function renderDrills() {
       e.stopPropagation();
 
       const url = btn.getAttribute("data-open-external");
-      const title = btn.getAttribute("data-open-title") || "Vista previa";
+      const title = btn.getAttribute("data-open-title") || TX.vistaPrevia;
       if (!url) return;
 
       openMediaViewerModal(url, { title });
@@ -529,20 +530,20 @@ function renderTrainings() {
       <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
         <div>
           <div class="fw-semibold">${escapeHtml(t.name || "—")}</div>
-          <div class="text-muted small">${escapeHtml(dateLbl)} · ${drillCount} drill(s)</div>
-          <div class="text-muted small">${isPublic ? "🌐 Público" : "🔒 Privado (solo logueados)"}</div>
+          <div class="text-muted small">${txf(TX.drillS, { dateLbl: escapeHtml(dateLbl), drillCount })}</div>
+          <div class="text-muted small">${isPublic ? TX.publico : TX.privadoSoloLogueados}</div>
         </div>
 
         <div class="d-flex gap-2 flex-wrap">
           ${
             isPublic
-              ? `<a class="btn btn-sm btn-outline-secondary" href="${sharePath}" target="_blank" rel="noopener">Ver</a>
-                 <button class="btn btn-sm btn-outline-primary" data-copy="${escapeHtml(sharePath)}">Copiar link</button>`
-              : `<button class="btn btn-sm btn-outline-secondary" data-view-private="${escapeHtml(t.id)}">Ver</button>`
+              ? `<a class="btn btn-sm btn-outline-secondary" href="${sharePath}" target="_blank" rel="noopener">${TX.ver}</a>
+                 <button class="btn btn-sm btn-outline-primary" data-copy="${escapeHtml(sharePath)}">${TX.copiarLink}</button>`
+              : `<button class="btn btn-sm btn-outline-secondary" data-view-private="${escapeHtml(t.id)}">${TX.ver}</button>`
           }
           ${
             canEdit
-              ? `<button class="btn btn-sm btn-primary" data-edit="${escapeHtml(t.id)}">Editar</button>`
+              ? `<button class="btn btn-sm btn-primary" data-edit="${escapeHtml(t.id)}">${TX.editar}</button>`
               : ``
           }
         </div>
@@ -561,10 +562,10 @@ function renderTrainings() {
       try {
         await navigator.clipboard.writeText(url);
         const old = btn.textContent;
-        btn.textContent = "Copiado ✅";
+        btn.textContent = TX.copiado;
         setTimeout(() => (btn.textContent = old), 1200);
       } catch {
-        alert("No pude copiar. Link:\n" + url);
+        alert(TX.noPudeCopiarLink + url);
       }
     });
   });
@@ -652,7 +653,7 @@ async function createDrillFromForm() {
   const tags = parseTagsInput($.drillTags?.value);
 
   if (!name || !authorName) {
-    showAlert(S.errors?.required || "Campos requeridos.", "warning");
+    showAlert(S.errors?.required || TX.camposRequeridos, "warning");
     return;
   }
 
@@ -676,7 +677,7 @@ async function createDrillFromForm() {
   });
 
   $.drillForm?.reset?.();
-  showAlert(S.ok?.drillCreated || "Drill creado.", "success");
+  showAlert(S.ok?.drillCreated || TX.drillCreado, "success");
   await loadDrills();
 }
 
@@ -690,7 +691,7 @@ async function toggleDrillActive(drillId) {
     updatedAt: serverTimestamp(),
   });
 
-  showAlert(next ? (S.ok?.drillReactivated || "Reactivado.") : (S.ok?.drillArchived || "Archivado."), "success");
+  showAlert(next ? (S.ok?.drillReactivated || TX.reactivado) : (S.ok?.drillArchived || TX.archivado2), "success");
   await loadDrills();
 }
 
@@ -746,7 +747,7 @@ async function openDrillEditor(drillId) {
   const ui = await ensureDrillEditorModal();
   drillEditor.id = drillId;
 
-  if (ui.titleEl) ui.titleEl.textContent = "Editar drill";
+  if (ui.titleEl) ui.titleEl.textContent = TX.editarDrill;
 
   ui.name.value = d.name || "";
   ui.author.value = d.authorName || "";
@@ -775,7 +776,7 @@ async function saveDrillEdits(ui) {
   const tags = parseTagsInput(ui.tags.value);
 
   if (!name || !authorName) {
-    showAlert(S.errors?.required || "Campos requeridos.", "warning");
+    showAlert(S.errors?.required || TX.camposRequeridos, "warning");
     return;
   }
 
@@ -794,7 +795,7 @@ async function saveDrillEdits(ui) {
     updatedAt: serverTimestamp(),
   }, { merge: true });
 
-  showAlert("Drill actualizado ✅", "success");
+  showAlert(TX.drillActualizado, "success");
 }
 
 

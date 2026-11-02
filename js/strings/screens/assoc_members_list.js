@@ -1,0 +1,43 @@
+// /js/strings/screens/assoc_members_list.js
+// Textos de assoc_members_list.js (editables en Ajustes > Textos).
+import { defineStrings, fmt } from "/js/core/texts.js";
+
+export const TX = defineStrings("assoc_members_list", "Asociación: asociados", {
+  supporter: "Supporter",
+  otro: "Otro",
+  alDia: "Al día{suffix}",
+  inactivo: "Inactivo",
+  listadoDeMiembrosCon: "Listado de miembros con filtros y acceso a edición.",
+  crearMiembrosManualmenteEsta: "Crear miembros manualmente está deshabilitado por ahora",
+  nuevo: "Nuevo",
+  actualizar: "Actualizar",
+  buscar: "Buscar",
+  nombreEmailOTelefono: "Nombre, email o teléfono…",
+  tipo: "Tipo",
+  todos: "Todos",
+  asociacion: "Asociación",
+  alDia2: "Al día",
+  morosos: "Morosos",
+  pendiente: "Pendiente",
+  validando: "Validando",
+  vencido: "Vencido",
+  miembro: "Miembro",
+  contacto: "Contacto",
+  inicio: "Inicio",
+  fin: "Fin",
+  estado: "Estado",
+  acciones: "Acciones",
+  cargando: "Cargando…",
+  cargandoMiembros: "Cargando Miembros…",
+  errorCargandoMiembros: "Error cargando miembros: {err}",
+  noHayMiembrosCon: "No hay miembros con esos filtros.",
+  holaRecordatorioDePago: "Hola! Recordatorio de pago a la asociación usando el siguiente link {payLink}",
+  holaRecordatorioDePago2: "Hola! Recordatorio de pago a la asociación.",
+  hola: "Hola!",
+  whatsapp: "WhatsApp",
+  enviarWhatsapp: "Enviar WhatsApp",
+  cedula: "Cédula: {idNumber}",
+  editar: "Editar",
+});
+
+export const txf = fmt;

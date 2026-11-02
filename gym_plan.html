@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Plan de Gimnasio</title>
+  <title data-tx="html_gym_plan.planDeGimnasio">Plan de Gimnasio</title>
   <script>document.documentElement.classList.add("preload");</script>
   <style>
     html.preload, html.preload body { background: #0b0b0c; }
@@ -29,11 +29,11 @@
   <main class="container py-4">
     <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
       <div>
-        <h1 class="h4 mb-1" id="planTitle">Plan de Gimnasio</h1>
+        <h1 class="h4 mb-1" id="planTitle" data-tx="html_gym_plan.planDeGimnasio">Plan de Gimnasio</h1>
         <div class="text-muted small" id="planMeta"></div>
       </div>
       <div class="d-flex gap-2">
-        <button class="btn btn-sm btn-outline-secondary d-none" id="copyLinkBtn">Copiar link</button>
+        <button class="btn btn-sm btn-outline-secondary d-none" id="copyLinkBtn" data-tx="html_gym_plan.copiarLink">Copiar link</button>
       </div>
     </div>
 
@@ -45,13 +45,13 @@
 
     <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-2">
       <div>
-        <div class="fw-semibold" id="planSectionTitle">Slots del plan</div>
-        <div class="text-muted small">Rutinas asignadas por día / slot.</div>
+        <div class="fw-semibold" id="planSectionTitle" data-tx="html_gym_plan.slotsDelPlan">Slots del plan</div>
+        <div class="text-muted small" data-tx="html_gym_plan.rutinasAsignadasPorDia">Rutinas asignadas por día / slot.</div>
       </div>
     </div>
 
     <div class="list-group" id="routinesList"></div>
-    <div class="text-muted small mt-3 d-none" id="emptyState">Este plan no tiene rutinas configuradas.</div>
+    <div class="text-muted small mt-3 d-none" id="emptyState" data-tx="html_gym_plan.estePlanNoTiene">Este plan no tiene rutinas configuradas.</div>
 
     <div class="mt-3 text-danger small d-none" id="errorBox"></div>
   </main>

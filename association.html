@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Asociación</title>
+  <title data-tx="html_association.asociacion">Asociación</title>
 
   <script>document.documentElement.classList.add("preload");</script>
   <style>
@@ -35,18 +35,18 @@
     <!-- Page header -->
     <div class="d-flex flex-column flex-md-row align-items-md-end justify-content-between gap-2 mb-3">
       <div>
-        <h1 class="page-title mb-1" id="pageTitle">Asociación</h1>
-        <p class="page-subtitle mb-0" id="pageSubtitle">
+        <h1 class="page-title mb-1" id="pageTitle" data-tx="html_association.asociacion">Asociación</h1>
+        <p class="page-subtitle mb-0" id="pageSubtitle" data-tx="html_association.membresiasPagosYPlanes">
           Membresías, pagos y planes del club
         </p>
       </div>
 
       <!-- Quick actions (opcional, para después) -->
       <div class="d-flex gap-2">
-        <button class="btn btn-outline-success btn-sm d-none" id="btnNewMembership">
+        <button class="btn btn-outline-success btn-sm d-none" id="btnNewMembership" data-tx="html_association.nuevaMembresia">
           + Nueva membresía
         </button>
-        <button class="btn btn-success btn-sm d-none" id="btnValidatePending">
+        <button class="btn btn-success btn-sm d-none" id="btnValidatePending" data-tx="html_association.validarPendientes">
           Validar pendientes
         </button>
       </div>
@@ -58,27 +58,27 @@
 
         <ul class="nav nav-pills gap-2" id="associationTabs">
           <li class="nav-item">
-            <a class="nav-link" href="association.html?tab=plans" data-tab="plans">
+            <a class="nav-link" href="association.html?tab=plans" data-tab="plans" data-tx="html_association.planes">
               Planes
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="association.html?tab=members" data-tab="members">
+            <a class="nav-link" href="association.html?tab=members" data-tab="members" data-tx="html_association.miembros">
               Miembros
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="association.html?tab=memberships" data-tab="memberships">
+            <a class="nav-link" href="association.html?tab=memberships" data-tab="memberships" data-tx="html_association.membresias">
               Membresías
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="association.html?tab=payments" data-tab="payments">
+            <a class="nav-link" href="association.html?tab=payments" data-tab="payments" data-tx="html_association.pagos">
               Pagos
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="association.html?tab=accounting" data-tab="accounting">
+            <a class="nav-link" href="association.html?tab=accounting" data-tab="accounting" data-tx="html_association.contabilidad">
               Contabilidad
             </a>
           </li>

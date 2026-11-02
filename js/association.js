@@ -3,6 +3,7 @@ import { guardPage } from "./page-guard.js";
 import { loadHeader } from "./components/header.js";
 import { initModalHost } from "./ui/modal_host.js";
 import { showLoader, hideLoader } from "./ui/loader.js";
+import { TX, txf } from "/js/strings/screens/association.js";
 
 const TABS = ["members", "memberships", "payments", "plans", "accounting"];
 
@@ -44,41 +45,41 @@ async function mountTab(tab, cfg) {
     panel.appendChild(mount);
   }
 
-  mount.innerHTML = `<div class="py-3">Cargando...</div>`;
+  mount.innerHTML = `<div class="py-3">${TX.cargando}</div>`;
 
   try {
 
     if (tab === "plans") { //muestra la lista de subscripciones (anualidad, etc)
       const mod = await import("./features/subscription_plans.js?v=1");
-      if (!mod.mount) throw new Error("subscription_plans.js no exporta mount()");
+      if (!mod.mount) throw new Error(TX.subscriptionPlansJsNo);
       await mod.mount(mount, cfg);
       return;
     }
 
     if (tab === "members") { //muestra la lista de miembros en el tab de asociacion
       const mod = await import("./features/association/assoc_members_list.js?v=1");
-      if (!mod.mount) throw new Error("assoc_members_list.js no exporta mount()");
+      if (!mod.mount) throw new Error(TX.assocMembersListJs);
       await mod.mount(mount, cfg);
       return;
     }
 
     if (tab === "memberships") { //linkea miembro - pagos - plan de membresia
       const mod = await import("./features/association/assoc_memberships_list.js?v=1");
-      if (!mod.mount) throw new Error("assoc_memberships_list.js no exporta mount()");
+      if (!mod.mount) throw new Error(TX.assocMembershipsListJs);
       await mod.mount(mount, cfg);
       return;
     }
 
     if (tab === "payments") { //lista de pagos realizados para membresias (asociarse)
       const mod = await import("./features/association/assoc_payments_validation_list.js?v=1");
-      if (!mod.mount) throw new Error("assoc_payments_validation_list.js no exporta mount()");
+      if (!mod.mount) throw new Error(TX.assocPaymentsValidationList);
       await mod.mount(mount, cfg);
       return;
     }
 
     if (tab === "accounting") { //entradas y salidas de dinero
       const mod = await import("./features/association/assoc_accounting.js?v=1");
-      if (!mod.mount) throw new Error("assoc_accounting.js no exporta mount()");
+      if (!mod.mount) throw new Error(TX.assocAccountingJsNo);
       await mod.mount(mount, cfg);
       return;
     }
@@ -86,7 +87,7 @@ async function mountTab(tab, cfg) {
     console.error(err);
     mount.innerHTML = `
       <div class="alert alert-danger">
-        <div class="fw-bold">Error cargando "${tab}"</div>
+        <div class="fw-bold">${txf(TX.errorCargando, { tab })}</div>
         <div class="small mt-1"><code>${String(err?.message || err)}</code></div>
       </div>
     `;
@@ -99,7 +100,7 @@ async function renderAssociation(cfg) {
   await mountTab(tab, cfg);
 }
 
-showLoader("Cargando asociación…");
+showLoader(TX.cargandoAsociacion);
 
 const { cfg, redirected } = await guardPage("association");
 

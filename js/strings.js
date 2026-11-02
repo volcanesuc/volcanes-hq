@@ -1,5 +1,8 @@
 // js/strings.js
-export const CLUB_DATA = {
+import { defineStrings } from "/js/core/texts.js";
+
+const SKIP_KEYS = ["id", "href", "image", "images", "category", "type", "format"];
+export const CLUB_DATA = defineStrings("club", "Club, menú e inicio", {
   club: {
     id: "volcanes",
     shortName: "Volcanes",
@@ -125,10 +128,10 @@ export const CLUB_DATA = {
   footer: {
     copyright: "© Volcanes Ultimate"
   }
-};
+}, { skip: SKIP_KEYS });
 
 
-export const TOURNAMENT_STRINGS = {
+export const TOURNAMENT_STRINGS = defineStrings("tournaments", "Torneos", {
   page: {
     title: "Torneos",
     subtitle: "Planificación de torneos y participación del equipo",
@@ -259,4 +262,4 @@ export const TOURNAMENT_STRINGS = {
     errorDelete: "Error al eliminar el torneo.",
     missingRequired: "Faltan campos obligatorios."
   }
-};
+});

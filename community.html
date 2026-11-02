@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Comunidad</title>
+  <title data-tx="html_community.comunidad">Comunidad</title>
 
   <script>document.documentElement.classList.add("preload");</script>
   <style>
@@ -55,8 +55,8 @@
   <main class="container py-4 community-page">
     <section class="community-page-head mb-3">
       <div>
-        <h1 class="page-title mb-1">Comunidad</h1>
-        <div class="text-muted">
+        <h1 class="page-title mb-1" data-tx="html_community.comunidad">Comunidad</h1>
+        <div class="text-muted" data-tx="html_community.opinionesSesionesGrabadasRecursos">
           Opiniones, sesiones grabadas, recursos y contenido del club.
         </div>
       </div>
@@ -64,8 +64,8 @@
       <div class="community-actions">
         <button id="newPostBtn" type="button" class="btn btn-primary community-add-btn">
           <i class="bi bi-plus-lg"></i>
-          <span class="label-desktop">Nuevo post</span>
-          <span class="label-mobile">Crear</span>
+          <span class="label-desktop" data-tx="html_community.nuevoPost">Nuevo post</span>
+          <span class="label-mobile" data-tx="html_community.crear">Crear</span>
         </button>
       </div>
     </section>
@@ -76,7 +76,7 @@
         <div class="card kpi-card">
           <div class="card-body">
             <div class="kpi-value" id="kpiPosts">0</div>
-            <div class="kpi-label">Posts publicados</div>
+            <div class="kpi-label" data-tx="html_community.postsPublicados">Posts publicados</div>
           </div>
         </div>
       </div>
@@ -85,7 +85,7 @@
         <div class="card kpi-card">
           <div class="card-body">
             <div class="kpi-value" id="kpiVideos">0</div>
-            <div class="kpi-label">Videos / sesiones</div>
+            <div class="kpi-label" data-tx="html_community.videosSesiones">Videos / sesiones</div>
           </div>
         </div>
       </div>
@@ -94,7 +94,7 @@
         <div class="card kpi-card">
           <div class="card-body">
             <div class="kpi-value" id="kpiResources">0</div>
-            <div class="kpi-label">Recursos y media</div>
+            <div class="kpi-label" data-tx="html_community.recursosYMedia">Recursos y media</div>
           </div>
         </div>
       </div>
@@ -111,7 +111,7 @@
         aria-controls="communityFiltersCollapse"
       >
         <span class="fw-semibold">
-          <i class="bi bi-funnel me-2"></i>Filtros
+          <i class="bi bi-funnel me-2"></i><span data-tx="html_community.filtros">Filtros</span>
         </span>
         <i class="bi bi-chevron-down community-filters-chevron"></i>
       </button>
@@ -120,34 +120,34 @@
         <div class="card-body community-filters-body">
           <div class="row g-3 align-items-end">
             <div class="col-12 col-md-4">
-              <label class="form-label">Buscar</label>
+              <label class="form-label" data-tx="html_community.buscar">Buscar</label>
               <input
                 id="communitySearch"
                 type="search"
                 class="form-control"
-                placeholder="Buscar por título, texto, autor o tags"
+                placeholder="Buscar por título, texto, autor o tags" data-tx-placeholder="html_community.buscarPorTituloTexto"
               />
             </div>
 
             <div class="col-12 col-md-3">
-              <label class="form-label">Tipo</label>
+              <label class="form-label" data-tx="html_community.tipo">Tipo</label>
               <select id="communityTypeFilter" class="form-select">
-                <option value="">Todos</option>
-                <option value="opinion">Opinión</option>
-                <option value="video">Video</option>
-                <option value="session">Sesión</option>
-                <option value="media">Media</option>
-                <option value="document">Documento</option>
-                <option value="announcement">Anuncio</option>
+                <option value="" data-tx="html_community.todos">Todos</option>
+                <option value="opinion" data-tx="html_community.opinion">Opinión</option>
+                <option value="video" data-tx="html_community.video">Video</option>
+                <option value="session" data-tx="html_community.sesion">Sesión</option>
+                <option value="media" data-tx="html_community.media">Media</option>
+                <option value="document" data-tx="html_community.documento">Documento</option>
+                <option value="announcement" data-tx="html_community.anuncio">Anuncio</option>
               </select>
             </div>
 
             <div class="col-12 col-md-3">
-              <label class="form-label">Destacados</label>
+              <label class="form-label" data-tx="html_community.destacados">Destacados</label>
               <select id="communityPinnedFilter" class="form-select">
-                <option value="">Todos</option>
-                <option value="pinned">Solo destacados</option>
-                <option value="not-pinned">No destacados</option>
+                <option value="" data-tx="html_community.todos">Todos</option>
+                <option value="pinned" data-tx="html_community.soloDestacados">Solo destacados</option>
+                <option value="not-pinned" data-tx="html_community.noDestacados">No destacados</option>
               </select>
             </div>
 
@@ -158,7 +158,7 @@
                 class="btn btn-outline-danger"
               >
                 <i class="bi bi-x-circle"></i>
-                Limpiar
+                <span data-tx="html_community.limpiar">Limpiar</span>
               </button>
             </div>
           </div>
@@ -169,8 +169,8 @@
     <!-- destacados -->
     <section class="mb-4" id="featuredSection" hidden>
       <div class="d-flex align-items-center gap-2 mb-2">
-        <h2 class="section-title mb-0">Destacados</h2>
-        <span class="badge text-bg-warning">Pinned</span>
+        <h2 class="section-title mb-0" data-tx="html_community.destacados">Destacados</h2>
+        <span class="badge text-bg-warning" data-tx="html_community.pinned">Pinned</span>
       </div>
       <div id="featuredPosts" class="community-feed"></div>
     </section>
@@ -178,16 +178,16 @@
     <!-- feed -->
     <section>
       <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-        <h2 class="section-title mb-0">Feed</h2>
-        <small class="text-muted" id="communityCountLabel">0 posts</small>
+        <h2 class="section-title mb-0" data-tx="html_community.feed">Feed</h2>
+        <small class="text-muted" id="communityCountLabel" data-tx="html_community.t0Posts">0 posts</small>
       </div>
 
       <div id="communityEmptyState" class="community-empty" hidden>
         <div class="community-empty__icon">
           <i class="bi bi-chat-square-text"></i>
         </div>
-        <h3 class="community-empty__title">Todavía no hay posts</h3>
-        <p class="community-empty__text mb-0">
+        <h3 class="community-empty__title" data-tx="html_community.todaviaNoHayPosts">Todavía no hay posts</h3>
+        <p class="community-empty__text mb-0" data-tx="html_community.publicaUnaOpinionUna">
           Publicá una opinión, una grabación de sesión, un documento o un recurso para el equipo.
         </p>
       </div>

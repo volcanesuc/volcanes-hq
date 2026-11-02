@@ -20,6 +20,7 @@ import {
   doc,
   getDoc,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { TX, txf } from "/js/strings/screens/gym_public_routine.js";
 
 const root = document.getElementById("root");
 
@@ -29,10 +30,10 @@ const routineId = params.get("id");
 if (!routineId) {
   root.innerHTML = `
     <div class="alert alert-warning">
-      Falta parámetro <b>id</b> en el link.
+      ${TX.faltaParametro} <b>id</b> ${TX.enElLink}
     </div>
   `;
-  throw new Error("Missing id");
+  throw new Error(TX.missingId);
 }
 
 try {
@@ -41,7 +42,7 @@ try {
   if (routine.isPublic !== true) {
     root.innerHTML = `
       <div class="alert alert-warning">
-        Esta rutina es privada.
+        ${TX.estaRutinaEsPrivada}
       </div>
     `;
   } else {
@@ -52,7 +53,7 @@ try {
   console.error("[public_routine] error:", e);
   root.innerHTML = `
     <div class="alert alert-danger">
-      Error cargando rutina.
+      ${TX.errorCargandoRutina}
     </div>
   `;
 }
@@ -62,7 +63,7 @@ try {
 ========================= */
 async function loadRoutineResolved({ db, routineId }) {
   const rSnap = await getDoc(doc(db, "gym_routines", routineId));
-  if (!rSnap.exists()) throw new Error("Rutina no existe");
+  if (!rSnap.exists()) throw new Error(TX.rutinaNoExiste);
 
   const routine = { id: rSnap.id, ...rSnap.data() };
 
@@ -124,29 +125,29 @@ function renderRoutine(r, items) {
   return `
     <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap mb-3">
       <div>
-        <h1 class="h4 mb-1">${escapeHtml(r.name || "Rutina")}</h1>
+        <h1 class="h4 mb-1">${escapeHtml(r.name || TX.rutina)}</h1>
         ${r.description ? `<div class="text-muted">${escapeHtml(r.description)}</div>` : `<div class="text-muted">—</div>`}
       </div>
 
       <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary btn-sm" id="copyLinkBtn">Copiar link</button>
+        <button class="btn btn-outline-primary btn-sm" id="copyLinkBtn">${TX.copiarLink}</button>
       </div>
     </div>
 
     <div class="text-muted small mb-3">
-      Link: <span class="font-monospace">${escapeHtml(shareUrl)}</span>
+      ${TX.link} <span class="font-monospace">${escapeHtml(shareUrl)}</span>
     </div>
 
     <div class="list-group">
       ${
         items.length
           ? items.map(it => renderExerciseItem(it)).join("")
-          : `<div class="list-group-item"><span class="text-muted">Sin ejercicios.</span></div>`
+          : `<div class="list-group-item"><span class="text-muted">${TX.sinEjercicios}</span></div>`
       }
     </div>
 
     <div class="text-muted small mt-3">
-      *Si la rutina guarda sets/reps/rest en <code>null</code>, se usan los defaults del ejercicio.
+      ${TX.siLaRutinaGuarda} <code>null</code>${TX.seUsanLosDefaults}
     </div>
   `;
 }
@@ -166,7 +167,7 @@ function renderExerciseItem(it) {
             ${escapeHtml(it.order)}. ${escapeHtml(it.name)}
             ${
               it._exerciseMissing
-                ? `<span class="badge text-bg-warning ms-2">Ejercicio no existe</span>`
+                ? `<span class="badge text-bg-warning ms-2">${TX.ejercicioNoExiste}</span>`
                 : ``
             }
           </div>
@@ -179,7 +180,7 @@ function renderExerciseItem(it) {
         </div>
 
         <div class="d-flex gap-2 align-items-start">
-          ${it.videoUrl ? `<a class="btn btn-outline-secondary btn-sm" href="${escapeHtml(it.videoUrl)}" target="_blank" rel="noopener">Video</a>` : ``}
+          ${it.videoUrl ? `<a class="btn btn-outline-secondary btn-sm" href="${escapeHtml(it.videoUrl)}" target="_blank" rel="noopener">${TX.video}</a>` : ``}
         </div>
       </div>
     </div>
@@ -193,14 +194,14 @@ function fmtSeriesLine(it) {
   if (st === "distance") {
     const dist = it.distance ?? "—";
     const unit = it.distanceUnit ?? "";
-    parts.push(`Distancia: ${dist} ${unit}`.trim());
+    parts.push(txf(TX.distancia, { dist, unit }).trim());
   } else {
-    parts.push(`Sets: ${it.sets ?? "—"}`);
-    parts.push(`Reps: ${it.reps ?? "—"}`);
+    parts.push(txf(TX.sets, { value: it.sets ?? "—" }));
+    parts.push(txf(TX.reps, { value: it.reps ?? "—" }));
   }
 
   if (it.restSec !== null && it.restSec !== undefined) {
-    parts.push(`Descanso: ${it.restSec}s`);
+    parts.push(txf(TX.descansoS, { restSec: it.restSec }));
   }
 
   return parts.join(" · ");
@@ -218,10 +219,10 @@ function bindCopyButton(routineId) {
     try {
       await navigator.clipboard.writeText(url);
       const old = btn.textContent;
-      btn.textContent = "Copiado ✅";
+      btn.textContent = TX.copiado;
       setTimeout(() => (btn.textContent = old), 1200);
     } catch (e) {
-      alert("No pude copiar el link.\n" + url);
+      alert(TX.noPudeCopiarEl + url);
     }
   });
 }

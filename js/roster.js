@@ -21,6 +21,7 @@ import { guardPage } from "./page-guard.js";
 import { loadHeader } from "./components/header.js";
 
 import { showLoader, hideLoader } from "./ui/loader.js";
+import { TX } from "/js/strings/screens/roster.js";
 
 /*************************************************
  * INIT
@@ -151,9 +152,9 @@ function getRosterFilterConfig() {
     genders: Array.isArray(filtersCfg.genders) && filtersCfg.genders.length
       ? filtersCfg.genders
       : [
-          { value: "F", label: "Femenino" },
-          { value: "M", label: "Masculino" },
-          { value: "X", label: "Otro" }
+          { value: "F", label: TX.femenino },
+          { value: "M", label: TX.masculino },
+          { value: "X", label: TX.otro }
         ],
     roles: rolesFromConfig
   };
@@ -384,19 +385,19 @@ function formatBirthdayMonthDay(value) {
 
 function setModalCopy(isEdit = false, player = null) {
   if (modalTitle) {
-    modalTitle.textContent = isEdit ? "Editar jugador" : "Nuevo jugador";
+    modalTitle.textContent = isEdit ? TX.editarJugador : TX.nuevoJugador;
   }
 
   if (modalSubtitle) {
     if (isEdit && player) {
-      modalSubtitle.textContent = player.displayName || "Actualizar información del jugador";
+      modalSubtitle.textContent = player.displayName || TX.actualizarInformacionDelJugador;
     } else {
-      modalSubtitle.textContent = "Registrar jugador en el roster";
+      modalSubtitle.textContent = TX.registrarJugadorEnEl;
     }
   }
 
   if (modalSaveBtn) {
-    modalSaveBtn.textContent = isEdit ? "Guardar cambios" : "Crear jugador";
+    modalSaveBtn.textContent = isEdit ? TX.guardarCambios : TX.crearJugador;
   }
 }
 
@@ -496,7 +497,7 @@ function populateRosterFilters() {
 
   if (filters.gender) {
     filters.gender.innerHTML = `
-      <option value="">Todos</option>
+      <option value="">${TX.todos}</option>
       ${cfg.genders
         .map(g => `<option value="${escapeHtml(g.value)}">${escapeHtml(g.label)}</option>`)
         .join("")}
@@ -505,7 +506,7 @@ function populateRosterFilters() {
 
   if (filters.role) {
     filters.role.innerHTML = `
-      <option value="">Todos</option>
+      <option value="">${TX.todos}</option>
       ${cfg.roles
         .map(r => `<option value="${escapeHtml(r.value)}">${escapeHtml(r.label)}</option>`)
         .join("")}
@@ -634,7 +635,7 @@ function render() {
             <td>${escapeHtml(formatBirthdayMonthDay(getPlayerBirthDate(p)))}</td>
             <td>
               <span class="badge ${p.active ? "bg-success" : "bg-secondary"}">
-                ${p.active ? "Activo" : "Inactivo"}
+                ${p.active ? TX.activo : TX.inactivo}
               </span>
             </td>
           </tr>

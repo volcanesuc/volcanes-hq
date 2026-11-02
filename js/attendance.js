@@ -7,6 +7,7 @@ import { APP_CONFIG } from "./config/config.js";
 import { showLoader, hideLoader } from "./ui/loader.js";
 import { guardPage } from "./page-guard.js";
 import { loadHeader } from "./components/header.js";
+import { TX, txf } from "/js/strings/screens/attendance.js";
 
 // Header
 const { cfg, redirected } = await guardPage("attendance");
@@ -347,12 +348,12 @@ function applyFilter() {
   if ((start2 || end2) && filteredTrainings.length === 0) {
     if (trainingsTable) {
       trainingsTable.innerHTML =
-        `<tr><td colspan="2" class="text-muted p-3">No hay entrenamientos en este rango.</td></tr>`;
+        `<tr><td colspan="2" class="text-muted p-3">${TX.noHayEntrenamientosEn}</td></tr>`;
     }
 
     if (playersTable) {
       playersTable.innerHTML =
-        `<tr><td colspan="3" class="text-muted p-3">No hay datos para calcular asistencia.</td></tr>`;
+        `<tr><td colspan="3" class="text-muted p-3">${TX.noHayDatosPara}</td></tr>`;
     }
 
     if (trainingsCards) trainingsCards.innerHTML = "";
@@ -502,22 +503,22 @@ async function generatePdf() {
     );
 
     const { jsPDF } = window.jspdf || {};
-    if (!jsPDF) throw new Error("jsPDF no está cargado. Revisá el script CDN.");
+    if (!jsPDF) throw new Error(TX.jspdfNoEstaCargado);
 
     const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
-    doc.text("Reporte de Asistencia (CACUC)", 40, 50);
+    doc.text(TX.reporteDeAsistenciaCacuc, 40, 50);
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
-    doc.text(`Rango: ${start || "—"} a ${end || "—"}`, 40, 70);
-    doc.text(`Entrenamientos: ${totalTrainings} · Jugadores activos: ${rows.length}`, 40, 88);
+    doc.text(txf(TX.rangoA, { value: start || "—", value2: end || "—" }), 40, 70);
+    doc.text(txf(TX.entrenamientosJugadoresActivos, { totalTrainings, rowsCount: rows.length }), 40, 88);
 
     doc.autoTable({
       startY: 110,
-      head: [["Jugador", "Asistencias", "Total entrenos", "% participación"]],
+      head: [[TX.jugador, TX.asistencias, TX.totalEntrenos, TX.participacion]],
       body: rows.map((r) => [
         r.name,
         String(r.count),
@@ -534,7 +535,7 @@ async function generatePdf() {
     doc.save(filename);
   } catch (e) {
     console.error(e);
-    alert(`No se pudo generar el PDF: ${e.message || e}`);
+    alert(txf(TX.noSePudoGenerar, { value: e.message || e }));
   }
 }
 
@@ -568,7 +569,7 @@ function renderTrainings(list) {
           <div class="mobile-card">
             <div class="mobile-card__title">${t.date ?? "—"}</div>
             <div class="mobile-card__row">
-              <div class="mobile-card__sub">Asistencia</div>
+              <div class="mobile-card__sub">${TX.asistencia}</div>
               <span class="${pillClass}">👥 ${t.count ?? 0}</span>
             </div>
           </div>
@@ -658,7 +659,7 @@ function renderTopPlayers(playersArr, totalTrainings) {
           <div class="top3-row">
             <div>
               <div class="top3-name">${medals[i]} ${player.displayName ?? "—"}</div>
-              <div class="top3-meta">${count ?? 0} de ${totalTrainings} · ${pct ?? 0}%</div>
+              <div class="top3-meta">${txf(TX.de, { value: count ?? 0, totalTrainings, value2: pct ?? 0 })}</div>
             </div>
             <span class="pill pill--good">${count ?? 0}</span>
           </div>
@@ -711,7 +712,7 @@ function renderChart(trainings, activeRoster = 0) {
       labels,
       datasets: [
         {
-          label: activeRoster > 0 ? "% Asistencia" : "Asistencia",
+          label: activeRoster > 0 ? TX.asistencia2 : TX.asistencia,
           data: values,
           tension: 0.35,
           borderWidth: 3,

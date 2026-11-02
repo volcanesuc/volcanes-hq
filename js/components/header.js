@@ -8,6 +8,7 @@ import { APP_CONFIG } from "../config/config.js";
 
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { TX } from "/js/strings/screens/header.js";
 
 const COL = APP_CONFIG.collections;
 const COL_SYSTEM_CONFIG = COL.system_config || "system_config";
@@ -257,11 +258,11 @@ export async function loadHeader(activeTab, cfgOverride) {
           data-bs-toggle="offcanvas"
           data-bs-target="#mobileMenu"
           aria-controls="mobileMenu"
-          aria-label="Abrir menú"
+          aria-label="${TX.abrirMenu}"
         >☰</button>
 
-        <a class="logo logo-link" href="${HOME_HREF}" title="Ir al inicio">
-          ${CLUB_DATA.header.logoText || "Club"}
+        <a class="logo logo-link" href="${HOME_HREF}" title="${TX.irAlInicio}">
+          ${CLUB_DATA.header.logoText || TX.club}
         </a>
       </div>
 
@@ -272,10 +273,10 @@ export async function loadHeader(activeTab, cfgOverride) {
 
     <div class="offcanvas offcanvas-start" tabindex="-1" id="mobileMenu" aria-labelledby="mobileMenuLabel">
       <div class="offcanvas-header">
-        <a class="offcanvas-title logo-link" id="mobileMenuLabel" href="${HOME_HREF}" title="Ir al inicio">
-          ${CLUB_DATA.header.mobileTitle || CLUB_DATA.header.logoText || "Club"}
+        <a class="offcanvas-title logo-link" id="mobileMenuLabel" href="${HOME_HREF}" title="${TX.irAlInicio}">
+          ${CLUB_DATA.header.mobileTitle || CLUB_DATA.header.logoText || TX.club}
         </a>
-        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="${TX.cerrar}"></button>
       </div>
 
       <div class="offcanvas-body">
@@ -308,7 +309,7 @@ export async function loadHeader(activeTab, cfgOverride) {
       return;
     }
 
-    const logoutLabel = CLUB_DATA.header?.logout?.label || "SALIR";
+    const logoutLabel = CLUB_DATA.header?.logout?.label || TX.salir;
 
     const isIndex =
       location.pathname === "/" ||
@@ -324,15 +325,15 @@ export async function loadHeader(activeTab, cfgOverride) {
     if (!user) {
       cta.innerHTML = `
         <button id="googleLoginBtn" class="btn btn-light btn-sm d-flex align-items-center gap-2">
-          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="16" height="16" alt="Google">
-          Ingresar
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="16" height="16" alt="${TX.google}">
+          ${TX.ingresar}
         </button>
       `;
 
       mcta.innerHTML = `
         <button id="googleLoginBtnMobile" class="btn btn-light w-100 d-flex align-items-center justify-content-center gap-2">
-          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="16" height="16" alt="Google">
-          Ingresar
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="16" height="16" alt="${TX.google}">
+          ${TX.ingresar}
         </button>
       `;
 
@@ -341,7 +342,7 @@ export async function loadHeader(activeTab, cfgOverride) {
           await loginWithGoogle();
         } catch (e) {
           console.error(e);
-          alert("No se pudo iniciar sesión con Google.");
+          alert(TX.noSePudoIniciar);
         }
       };
 

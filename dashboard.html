@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard</title>
+  <title data-tx="html_dashboard.dashboard">Dashboard</title>
 
   <script>document.documentElement.classList.add("preload");</script>
   <style>
@@ -40,21 +40,21 @@
         <div class="col-12 col-md-4">
           <div class="kpi-box h-100">
             <div class="kpi-value" id="kpiActivePlayers">—</div>
-            <div class="kpi-label">Jugadores activos</div>
+            <div class="kpi-label" data-tx="html_dashboard.jugadoresActivos">Jugadores activos</div>
           </div>
         </div>
 
         <div class="col-12 col-md-4">
           <div class="kpi-box h-100">
             <div class="kpi-value" id="kpiAvgAttendance">—</div>
-            <div class="kpi-label">Asistencia promedio</div>
+            <div class="kpi-label" data-tx="html_dashboard.asistenciaPromedio">Asistencia promedio</div>
           </div>
         </div>
 
         <div class="col-12 col-md-4">
           <div class="kpi-box h-100">
             <div class="kpi-value" id="kpiTrainingsCount">—</div>
-            <div class="kpi-label">Entrenamientos realizados</div>
+            <div class="kpi-label" data-tx="html_dashboard.entrenamientosRealizados">Entrenamientos realizados</div>
           </div>
         </div>
 
@@ -68,9 +68,9 @@
         <!-- ALERTAS -->
         <div class="col-12 col-lg-8">
           <div class="alerts-card h-100">
-            <h3 class="mb-3">🚨 Alertas del club</h3>
+            <h3 class="mb-3" data-tx="html_dashboard.alertasDelClub">🚨 Alertas del club</h3>
             <div id="alertsList" class="alerts-list">
-              <li class="list-group-item text-muted">
+              <li class="list-group-item text-muted" data-tx="html_dashboard.cargandoAlertas">
                 Cargando alertas…
               </li>
             </div>
@@ -80,8 +80,8 @@
         <!-- PRÓXIMO TORNEO -->
         <div class="col-12 col-lg-4">
           <a id="nextTournamentCard" class="next-tournament-card h-100 text-center d-block text-decoration-none" href="#">
-            <h3 class="mb-3">🏆 Próximo torneo</h3>
-            <p class="t-date mb-1" id="nextTournamentDate">Cargando…</p>
+            <h3 class="mb-3" data-tx="html_dashboard.proximoTorneo">🏆 Próximo torneo</h3>
+            <p class="t-date mb-1" id="nextTournamentDate" data-tx="html_dashboard.cargando">Cargando…</p>
             <p class="t-name mb-0" id="nextTournamentName">—</p>
           </a>
         </div>
@@ -92,8 +92,8 @@
     <!-- ================= CUMPLEAÑOS ================= -->
     <section class="mb-5">
       <div class="birthdays-card">
-        <h3 class="mb-3">🎂 Cumpleañeros del mes</h3>
-        <div id="birthdaysList">
+        <h3 class="mb-3" data-tx="html_dashboard.cumpleanerosDelMes">🎂 Cumpleañeros del mes</h3>
+        <div id="birthdaysList" data-tx="html_dashboard.cargando">
           Cargando…
         </div>
       </div>

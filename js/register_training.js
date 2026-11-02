@@ -14,6 +14,7 @@ import {
   where,
   deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { TX, txf } from "/js/strings/screens/register_training.js";
 
 /* ================= CONFIG / COLLECTIONS ================= */
 
@@ -128,7 +129,7 @@ processBtn.onclick = () => {
 
 saveBtn.onclick = async () => {
   const date = trainingDateInput.value;
-  if (!date) return alert("Elegí una fecha");
+  if (!date) return alert(TX.elegiUnaFecha);
 
   saveBtn.disabled = true;
 
@@ -162,10 +163,10 @@ saveBtn.onclick = async () => {
       });
     }
 
-    alert(`Entreno guardado ✅ (${checked.length} presentes)`);
+    alert(txf(TX.entrenoGuardadoPresentes, { checkedCount: checked.length }));
   } catch (e) {
     console.error(e);
-    alert("❌ Error guardando entreno");
+    alert(TX.errorGuardandoEntreno);
   } finally {
     saveBtn.disabled = false;
   }

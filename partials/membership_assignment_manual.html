@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Nueva membresía</title>
+  <title data-tx="html_membership_assignment_manual.nuevaMembresia">Nueva membresía</title>
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -100,9 +100,9 @@
   <div class="card-modal">
 
     <div class="top">
-      <div class="kicker">Membresía</div>
-      <h1 class="title">Nueva membresía</h1>
-      <button class="btn-x" id="btnClose" type="button" aria-label="Cerrar">×</button>
+      <div class="kicker" data-tx="html_membership_assignment_manual.membresia">Membresía</div>
+      <h1 class="title" data-tx="html_membership_assignment_manual.nuevaMembresia">Nueva membresía</h1>
+      <button class="btn-x" id="btnClose" type="button" aria-label="Cerrar" data-tx-aria-label="html_membership_assignment_manual.cerrar">×</button>
     </div>
 
     <div class="body">
@@ -111,33 +111,33 @@
         <!-- Form -->
         <div class="col-12 col-lg-7">
           <div class="p-2">
-            <h6 class="mb-2">Datos</h6>
-            <div class="helper mb-3">Elegí el asociado y el plan. Luego confirmá para crear la membresía.</div>
+            <h6 class="mb-2" data-tx="html_membership_assignment_manual.datos">Datos</h6>
+            <div class="helper mb-3" data-tx="html_membership_assignment_manual.elegiElAsociadoY">Elegí el asociado y el plan. Luego confirmá para crear la membresía.</div>
 
             <div class="row g-2">
               <div class="col-12 col-md-4">
-                <label class="form-label">Temporada</label>
+                <label class="form-label" data-tx="html_membership_assignment_manual.temporada">Temporada</label>
                 <input id="season" class="form-control" type="number" min="2000" max="2100" step="1" placeholder="2026" value="2026" />
               </div>
 
               <div class="col-12">
-                <label class="form-label">Asociado</label>
+                <label class="form-label" data-tx="html_membership_assignment_manual.asociado">Asociado</label>
                 <div class="picklist">
-                  <input id="associateSearch" class="form-control" placeholder="Buscar por nombre, email o teléfono…" autocomplete="off" />
+                  <input id="associateSearch" class="form-control" placeholder="Buscar por nombre, email o teléfono…" autocomplete="off" data-tx-placeholder="html_membership_assignment_manual.buscarPorNombreEmail" />
                   <div id="associateMenu" class="picklist-menu"></div>
                 </div>
                 <div class="mt-2 d-flex align-items-center justify-content-between flex-wrap gap-2">
-                  <div id="associateSelected" class="helper">Ninguno seleccionado</div>
+                  <div id="associateSelected" class="helper" data-tx="html_membership_assignment_manual.ningunoSeleccionado">Ninguno seleccionado</div>
                   <button class="btn btn-sm btn-outline-secondary" id="btnNewAssociate" type="button">
-                    <i class="bi bi-plus-circle me-1"></i> Nuevo asociado
+                    <i class="bi bi-plus-circle me-1"></i> <span data-tx="html_membership_assignment_manual.nuevoAsociado">Nuevo asociado</span>
                   </button>
                 </div>
               </div>
 
               <div class="col-12">
-                <label class="form-label">Plan</label>
+                <label class="form-label" data-tx="html_membership_assignment_manual.plan">Plan</label>
                 <select id="planSelect" class="form-select">
-                  <option value="">Cargando planes…</option>
+                  <option value="" data-tx="html_membership_assignment_manual.cargandoPlanes">Cargando planes…</option>
                 </select>
                 <div id="planHint" class="helper mt-2"></div>
               </div>
@@ -147,13 +147,13 @@
 
             <div class="d-flex gap-2 flex-wrap">
               <button class="btn btn-primary" id="btnCreate" type="button">
-                <i class="bi bi-check2-circle me-1"></i> Crear membresía
+                <i class="bi bi-check2-circle me-1"></i> <span data-tx="html_membership_assignment_manual.crearMembresia">Crear membresía</span>
               </button>
-              <button class="btn btn-outline-secondary" id="btnClear" type="button">Limpiar</button>
+              <button class="btn btn-outline-secondary" id="btnClear" type="button" data-tx="html_membership_assignment_manual.limpiar">Limpiar</button>
             </div>
 
             <div class="helper mt-3">
-              Se crearán documentos en <span class="mono">memberships</span> y, si aplica, cuotas en <span class="mono">membership_installments</span>.
+              <span data-tx="html_membership_assignment_manual.seCrearanDocumentosEn">Se crearán documentos en</span> <span class="mono" data-tx="html_membership_assignment_manual.memberships">memberships</span> <span data-tx="html_membership_assignment_manual.ySiAplicaCuotas">y, si aplica, cuotas en</span> <span class="mono" data-tx="html_membership_assignment_manual.membershipInstallments">membership_installments</span>.
             </div>
           </div>
         </div>
@@ -162,33 +162,33 @@
         <div class="col-12 col-lg-5">
           <div class="p-2">
             <div class="d-flex align-items-center justify-content-between">
-              <h6 class="mb-0">Preview</h6>
-              <span class="badge-soft" id="previewStatus">Pendiente</span>
+              <h6 class="mb-0" data-tx="html_membership_assignment_manual.preview">Preview</h6>
+              <span class="badge-soft" id="previewStatus" data-tx="html_membership_assignment_manual.pendiente">Pendiente</span>
             </div>
 
             <div class="mt-3">
-              <div class="helper">Asociado</div>
+              <div class="helper" data-tx="html_membership_assignment_manual.asociado">Asociado</div>
               <div class="fw-bold" id="previewAssociate">—</div>
               <div class="helper" id="previewAssociateContact">—</div>
             </div>
 
             <div class="mt-3">
-              <div class="helper">Plan</div>
+              <div class="helper" data-tx="html_membership_assignment_manual.plan">Plan</div>
               <div class="fw-bold" id="previewPlan">—</div>
               <div class="helper" id="previewPlanMeta">—</div>
             </div>
 
             <div class="mt-3">
-              <div class="helper">Total</div>
+              <div class="helper" data-tx="html_membership_assignment_manual.total">Total</div>
               <div class="fs-4 fw-bold" id="previewTotal">—</div>
             </div>
 
             <div class="mt-3">
-              <div class="helper mb-1">Cuotas</div>
+              <div class="helper mb-1" data-tx="html_membership_assignment_manual.cuotas">Cuotas</div>
               <div class="table-responsive">
                 <table class="table table-sm align-middle mb-0">
                   <thead>
-                    <tr><th>#</th><th>Vence</th><th>Monto</th></tr>
+                    <tr><th>#</th><th data-tx="html_membership_assignment_manual.vence">Vence</th><th data-tx="html_membership_assignment_manual.monto">Monto</th></tr>
                   </thead>
                   <tbody id="previewInstallments">
                     <tr><td colspan="3" class="text-muted">—</td></tr>
@@ -198,16 +198,16 @@
             </div>
 
             <div id="resultBox" class="linkbox mt-3" style="display:none;">
-              <div class="fw-bold mb-1">Link de pago</div>
+              <div class="fw-bold mb-1" data-tx="html_membership_assignment_manual.linkDePago">Link de pago</div>
               <div class="mono small" id="payLinkText" style="word-break:break-all;"></div>
               <div class="d-flex gap-2 mt-2 flex-wrap">
                 <button class="btn btn-sm btn-dark" id="btnCopyLink" type="button">
-                  <i class="bi bi-clipboard me-1"></i> Copiar
+                  <i class="bi bi-clipboard me-1"></i> <span data-tx="html_membership_assignment_manual.copiar">Copiar</span>
                 </button>
                 <a class="btn btn-sm btn-outline-dark" id="btnOpenLink" target="_blank" rel="noreferrer">
-                  <i class="bi bi-box-arrow-up-right me-1"></i> Abrir
+                  <i class="bi bi-box-arrow-up-right me-1"></i> <span data-tx="html_membership_assignment_manual.abrir">Abrir</span>
                 </a>
-                <a class="btn btn-sm btn-outline-secondary" id="btnGoDetail" href="#" target="_blank" rel="noopener">
+                <a class="btn btn-sm btn-outline-secondary" id="btnGoDetail" href="#" target="_blank" rel="noopener" data-tx="html_membership_assignment_manual.verDetalleAdmin">
                   Ver detalle (admin)
                 </a>
               </div>
@@ -220,7 +220,7 @@
     </div>
 
     <div class="footer">
-      <button class="btn btn-outline-secondary" id="btnCancel" type="button">Cancelar</button>
+      <button class="btn btn-outline-secondary" id="btnCancel" type="button" data-tx="html_membership_assignment_manual.cancelar">Cancelar</button>
     </div>
 
   </div>

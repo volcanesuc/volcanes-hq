@@ -6,14 +6,14 @@
       <form id="drillForm" class="h-100 d-flex flex-column">
         <div class="modal-header app-modal__header">
           <div>
-            <h5 class="modal-title mb-0">Crear drill</h5>
-            <div class="small app-modal__subtitle">Completá la información del drill.</div>
+            <h5 class="modal-title mb-0" data-tx="html_drill_create_modal.crearDrill">Crear drill</h5>
+            <div class="small app-modal__subtitle" data-tx="html_drill_create_modal.completaLaInformacionDel">Completá la información del drill.</div>
           </div>
           <button
             type="button"
             class="btn-close btn-close-white"
             data-bs-dismiss="modal"
-            aria-label="Cerrar"
+            aria-label="Cerrar" data-tx-aria-label="html_drill_create_modal.cerrar"
           ></button>
         </div>
 
@@ -23,59 +23,59 @@
               <div class="row g-3">
 
                 <div class="col-12 col-lg-6">
-                  <label class="form-label" for="drillName">Nombre *</label>
+                  <label class="form-label" for="drillName" data-tx="html_drill_create_modal.nombre">Nombre *</label>
                   <input class="form-control" id="drillName" required maxlength="120" />
                 </div>
 
                 <div class="col-12 col-lg-6">
-                  <label class="form-label" for="drillAuthor">Autor *</label>
+                  <label class="form-label" for="drillAuthor" data-tx="html_drill_create_modal.autor">Autor *</label>
                   <input class="form-control" id="drillAuthor" required maxlength="80" />
                 </div>
 
                 <div class="col-12 col-lg-6">
-                  <label class="form-label" for="drillTacticalUrl">Link Tactical Board</label>
+                  <label class="form-label" for="drillTacticalUrl" data-tx="html_drill_create_modal.linkTacticalBoard">Link Tactical Board</label>
                   <input class="form-control" id="drillTacticalUrl" type="url" placeholder="https://..." />
                 </div>
 
                 <div class="col-12 col-lg-6">
-                  <label class="form-label" for="drillVideoUrl">Link video del equipo (opcional)</label>
+                  <label class="form-label" for="drillVideoUrl" data-tx="html_drill_create_modal.linkVideoDelEquipo">Link video del equipo (opcional)</label>
                   <input class="form-control" id="drillVideoUrl" type="url" placeholder="https://..." />
                 </div>
 
                 <div class="col-12">
-                  <label class="form-label" for="drillObjective">Objetivo</label>
+                  <label class="form-label" for="drillObjective" data-tx="html_drill_create_modal.objetivo">Objetivo</label>
                   <textarea class="form-control" id="drillObjective" rows="2"></textarea>
                 </div>
 
                 <div class="col-12 col-md-4">
-                  <label class="form-label" for="drillVolume">Volumen</label>
-                  <input class="form-control" id="drillVolume" maxlength="60" placeholder="Ej: 6 reps / 10 min" />
+                  <label class="form-label" for="drillVolume" data-tx="html_drill_create_modal.volumen">Volumen</label>
+                  <input class="form-control" id="drillVolume" maxlength="60" placeholder="Ej: 6 reps / 10 min" data-tx-placeholder="html_drill_create_modal.ej6Reps10" />
                 </div>
 
                 <div class="col-12 col-md-4">
-                  <label class="form-label" for="drillRest">Descanso post-drill</label>
-                  <input class="form-control" id="drillRest" maxlength="60" placeholder="Ej: 90s" />
+                  <label class="form-label" for="drillRest" data-tx="html_drill_create_modal.descansoPostDrill">Descanso post-drill</label>
+                  <input class="form-control" id="drillRest" maxlength="60" placeholder="Ej: 90s" data-tx-placeholder="html_drill_create_modal.ej90s" />
                 </div>
 
                 <div class="col-12 col-md-4">
-                  <label class="form-label" for="drillMinPlayers">Cantidad mínima de personas</label>
-                  <input class="form-control" id="drillMinPlayers" type="number" min="1" step="1" placeholder="Ej: 6" />
+                  <label class="form-label" for="drillMinPlayers" data-tx="html_drill_create_modal.cantidadMinimaDePersonas">Cantidad mínima de personas</label>
+                  <input class="form-control" id="drillMinPlayers" type="number" min="1" step="1" placeholder="Ej: 6" data-tx-placeholder="html_drill_create_modal.ej6" />
                 </div>
 
                 <div class="col-12">
-                  <label class="form-label" for="drillRecs">Recomendaciones</label>
+                  <label class="form-label" for="drillRecs" data-tx="html_drill_create_modal.recomendaciones">Recomendaciones</label>
                   <textarea class="form-control" id="drillRecs" rows="3"></textarea>
                 </div>
 
                 <div class="col-12">
-                  <label class="form-label" for="drillTags">Tags</label>
+                  <label class="form-label" for="drillTags" data-tx="html_drill_create_modal.tags">Tags</label>
                   <input
                     class="form-control"
                     id="drillTags"
                     maxlength="240"
-                    placeholder="Ej: Finalización, Transición ofensiva, 1v1"
+                    placeholder="Ej: Finalización, Transición ofensiva, 1v1" data-tx-placeholder="html_drill_create_modal.ejFinalizacionTransicionOfensiva"
                   />
-                  <div class="form-text">Separalos por coma.</div>
+                  <div class="form-text" data-tx="html_drill_create_modal.separalosPorComa">Separalos por coma.</div>
                 </div>
 
               </div>
@@ -84,8 +84,8 @@
         </div>
 
         <div class="modal-footer app-modal__footer">
-          <button class="btn btn-outline-secondary" data-bs-dismiss="modal" type="button">Cancelar</button>
-          <button class="btn btn-primary" id="saveCreateDrillBtn" type="button">Guardar drill</button>
+          <button class="btn btn-outline-secondary" data-bs-dismiss="modal" type="button" data-tx="html_drill_create_modal.cancelar">Cancelar</button>
+          <button class="btn btn-primary" id="saveCreateDrillBtn" type="button" data-tx="html_drill_create_modal.guardarDrill">Guardar drill</button>
         </div>
       </form>
 

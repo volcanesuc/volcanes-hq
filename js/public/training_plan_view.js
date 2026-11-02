@@ -8,6 +8,7 @@ import {
   getDoc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { openMediaViewerModal } from "../ui/media_viewer_modal.js";
+import { TX } from "/js/strings/screens/training_plan_view.js";
 
 const TRAININGS_COL = "playbook_trainings";
 const DRILLS_COL = "drills";
@@ -122,7 +123,7 @@ function drillCard(d) {
     ? `
       <div class="mt-2 d-flex flex-wrap gap-1">
         ${normalizedTags.map(tag => {
-          const label = typeof tag === "string" ? tag : (tag?.label || "Tag");
+          const label = typeof tag === "string" ? tag : (tag?.label || TX.tag);
           const key = typeof tag === "string" ? tag : (tag?.key || label);
           const color = typeof tag === "string"
             ? colorFromString(key)
@@ -162,7 +163,7 @@ function drillCard(d) {
                       data-open-media="${escapeHtml(tactical)}"
                       data-open-title="${escapeHtml(name)}"
                     >
-                      Ver
+                      ${TX.ver}
                     </button>`
                   : ``
               }
@@ -175,7 +176,7 @@ function drillCard(d) {
                       data-open-media="${escapeHtml(video)}"
                       data-open-title="${escapeHtml(name)}"
                     >
-                      Video
+                      ${TX.video}
                     </button>`
                   : ``
               }
@@ -186,11 +187,11 @@ function drillCard(d) {
 
           <div class="row mt-3 g-2">
             <div class="col-6">
-              <div class="small text-muted">Volumen</div>
+              <div class="small text-muted">${TX.volumen}</div>
               <div>${escapeHtml(volume)}</div>
             </div>
             <div class="col-6">
-              <div class="small text-muted">Descanso</div>
+              <div class="small text-muted">${TX.descanso}</div>
               <div>${escapeHtml(rest)}</div>
             </div>
           </div>
@@ -198,7 +199,7 @@ function drillCard(d) {
           ${
             d?.objective
               ? `<div class="mt-3">
-                   <div class="small text-muted">Objetivo</div>
+                   <div class="small text-muted">${TX.objetivo}</div>
                    <div class="text-muted">${escapeHtml(d.objective)}</div>
                  </div>`
               : ``
@@ -230,7 +231,7 @@ function bindDrillMediaEvents() {
     e.preventDefault();
 
     const url = btn.getAttribute("data-open-media");
-    const title = btn.getAttribute("data-open-title") || "Vista previa";
+    const title = btn.getAttribute("data-open-title") || TX.vistaPrevia;
 
     if (!url) return;
 
@@ -282,7 +283,7 @@ async function initHeader() {
   const id = (params.get("id") || "").trim();
 
   if (!id) {
-    showError("Falta el parámetro id. Ej: training_plan.html?id=XXXX");
+    showError(TX.faltaElParametroId);
     return;
   }
 
@@ -294,32 +295,32 @@ async function initHeader() {
 
     const snap = await getDoc(doc(db, TRAININGS_COL, id));
     if (!snap.exists()) {
-      showError("No se encontró este Plan de Entrenamiento.");
+      showError(TX.noSeEncontroEste);
       return;
     }
 
     const t = { id: snap.id, ...snap.data() };
 
     if (t.isPublic !== true) {
-      showError("Este Plan de Entrenamiento es privado.");
+      showError(TX.estePlanDeEntrenamiento);
       return;
     }
 
     tvShareBtn?.addEventListener("click", async () => {
       try {
         await navigator.clipboard.writeText(window.location.href);
-        tvShareBtn.textContent = "Link copiado ✅";
-        setTimeout(() => (tvShareBtn.textContent = "Compartir"), 1200);
+        tvShareBtn.textContent = TX.linkCopiado;
+        setTimeout(() => (tvShareBtn.textContent = TX.compartir), 1200);
       } catch {
-        alert("No pude copiar el link. Copialo manualmente de la barra.");
+        alert(TX.noPudeCopiarEl);
       }
     });
 
-    if (tvTitle) tvTitle.textContent = t.name || "Plan de Entrenamiento";
-    if (tvSubtitle) tvSubtitle.textContent = "Plan de Entrenamiento";
+    if (tvTitle) tvTitle.textContent = t.name || TX.planDeEntrenamiento;
+    if (tvSubtitle) tvSubtitle.textContent = TX.planDeEntrenamiento;
     if (tvDate) tvDate.textContent = fmtDate(t.date);
     if (tvNotes) tvNotes.innerHTML = formatNotes(t.notes);
-    if (tvPublicState) tvPublicState.textContent = "Público";
+    if (tvPublicState) tvPublicState.textContent = TX.publico;
 
     const ids = extractOrderedIds(t);
     if (!ids.length) {
@@ -336,7 +337,7 @@ async function initHeader() {
     tvEmpty?.classList.toggle("d-none", drills.length > 0);
   } catch (e) {
     console.error(e);
-    showError("Error cargando el Plan de Entrenamiento.");
+    showError(TX.errorCargandoElPlan);
   } finally {
     hideLoader();
   }

@@ -1,4 +1,5 @@
 import { CARTAGLOW_DATA as D } from "./cartaglow_strings.js";
+import { TX, txf } from "/js/strings/screens/cartaglow_page.js";
 
 /* =========================
    Helpers
@@ -102,7 +103,7 @@ function youtubeEmbedUrl(url) {
 /* =========================
    Meta
 ========================= */
-document.title = D.meta?.title ?? "Cartaglow";
+document.title = D.meta?.title ?? TX.cartaglow;
 
 const ogImg = document.querySelector('meta[property="og:image"]');
 if (ogImg && D.meta?.ogImage) ogImg.setAttribute("content", D.meta.ogImage);
@@ -110,13 +111,13 @@ if (ogImg && D.meta?.ogImage) ogImg.setAttribute("content", D.meta.ogImage);
 /* =========================
    Header + Hero
 ========================= */
-$("#cgClubName").textContent = D.header?.clubName ?? "Volcanes Ultimate";
+$("#cgClubName").textContent = D.header?.clubName ?? TX.volcanesUltimate;
 
 const ig = $("#cgInstagramLink");
 if (ig && D.header?.instagramUrl) ig.href = D.header.instagramUrl;
 
-$("#cgEditionPill").textContent = D.hero?.editionPill ?? "Cartaglow";
-$("#cgTitle").textContent = D.hero?.title ?? "Cartaglow";
+$("#cgEditionPill").textContent = D.hero?.editionPill ?? TX.cartaglow;
+$("#cgTitle").textContent = D.hero?.title ?? TX.cartaglow;
 $("#cgSubtitle").textContent = D.hero?.subtitle ?? "";
 
 const heroImg = $("#cgHeroImage");
@@ -126,7 +127,7 @@ if (heroImg && D.hero?.image) heroImg.src = D.hero.image;
 const regBtn = $("#cgRegisterBtn");
 const regNote = $("#cgRegisterNote");
 if (regBtn) {
-  regBtn.textContent = D.registration?.ctaLabel ?? "Registrarse";
+  regBtn.textContent = D.registration?.ctaLabel ?? TX.registrarse;
 
   const enabled = Boolean(D.registration?.enabled);
   const url = D.registration?.url ?? "#";
@@ -134,7 +135,7 @@ if (regBtn) {
   if (!enabled) {
     regBtn.classList.add("cg-btn-disabled");
     regBtn.disabled = true;
-    regBtn.title = "Próximamente";
+    regBtn.title = TX.proximamente;
     if (regNote) regNote.textContent = D.registration?.disabledNote ?? "";
   } else {
     regBtn.disabled = false;
@@ -181,7 +182,7 @@ if (infoWrap) {
 /* =========================
    Testimonials
 ========================= */
-$("#cgTestimonialsTitle").textContent = D.testimonials?.title ?? "Testimonios";
+$("#cgTestimonialsTitle").textContent = D.testimonials?.title ?? TX.testimonios;
 $("#cgTestimonialsSubtitle").textContent = D.testimonials?.subtitle ?? "";
 
 const tWrap = $("#cgTestimonials");
@@ -211,7 +212,7 @@ if (tWrap) {
 /* =========================
    Showcase
 ========================= */
-$("#cgShowcaseTitle").textContent = D.showcase?.title ?? "Showcase";
+$("#cgShowcaseTitle").textContent = D.showcase?.title ?? TX.showcase;
 $("#cgShowcaseText").textContent = D.showcase?.text ?? "";
 $("#cgShowcaseCredit").textContent = D.showcase?.credit ?? "";
 
@@ -225,7 +226,7 @@ if (gallery) {
     const img = document.createElement("img");
     img.className = "cg-thumb";
     img.src = src;
-    img.alt = "Cartaglow";
+    img.alt = TX.cartaglow;
     gallery.appendChild(img);
   });
 }
@@ -247,7 +248,7 @@ if (mediaSection) {
     const galleryLink = document.getElementById("cgMedia2025GalleryLink");
     const iframe = document.getElementById("cgMedia2025Iframe");
 
-    if (titleEl) titleEl.textContent = M.title ?? "Cartaglow 2025";
+    if (titleEl) titleEl.textContent = M.title ?? TX.cartaglow2025;
     if (subEl) subEl.textContent = M.subtitle ?? "";
 
     if (finalLink) {
@@ -273,7 +274,7 @@ if (mediaSection) {
 /* =========================
    Stats 2024 (CSV)
 ========================= */
-$("#cgStatsTitle").textContent = D.stats2024?.title ?? "Stats";
+$("#cgStatsTitle").textContent = D.stats2024?.title ?? TX.stats;
 $("#cgStatsSubtitle").textContent = D.stats2024?.subtitle ?? "";
 
 const sourceLink = $("#cgStatsSourceLink");
@@ -292,25 +293,25 @@ async function loadStats() {
   if (!headEl || !bodyEl || !kpisEl) return;
 
   // loading placeholders
-  headEl.innerHTML = `<th>Cargando…</th>`;
+  headEl.innerHTML = `<th>${TX.cargando}</th>`;
   bodyEl.innerHTML = "";
   kpisEl.innerHTML = "";
 
   let text;
   try {
     const res = await fetch(csvUrl, { cache: "no-store" });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) throw new Error(txf(TX.http, { status: res.status }));
     text = await res.text();
   } catch (e) {
-    headEl.innerHTML = `<th>Error</th>`;
-    bodyEl.innerHTML = `<tr><td>No se pudo cargar el CSV. Revisa el link o CORS.</td></tr>`;
+    headEl.innerHTML = `<th>${TX.error}</th>`;
+    bodyEl.innerHTML = `<tr><td>${TX.noSePudoCargar}</td></tr>`;
     return;
   }
 
   const rows = parseCSV(text);
   if (!rows.length) {
-    headEl.innerHTML = `<th>Vacío</th>`;
-    bodyEl.innerHTML = `<tr><td>El CSV está vacío.</td></tr>`;
+    headEl.innerHTML = `<th>${TX.vacio}</th>`;
+    bodyEl.innerHTML = `<tr><td>${TX.elCsvEstaVacio}</td></tr>`;
     return;
   }
 
@@ -349,7 +350,7 @@ async function loadStats() {
 
   kpis.forEach(k => {
     if (k.type === "rows") {
-      kpiHtml.push(buildKpi(k.label || "Filas", String(dataRows.length)));
+      kpiHtml.push(buildKpi(k.label || TX.filas, String(dataRows.length)));
       return;
     }
 
@@ -367,13 +368,13 @@ async function loadStats() {
           .filter(v => v.length)
       );
 
-      kpiHtml.push(buildKpi(k.label || `Únicos (${col})`, String(set.size)));
+      kpiHtml.push(buildKpi(k.label || txf(TX.unicos, { col }), String(set.size)));
     }
   });
 
   // si no se generó nada, al menos filas
   if (!kpiHtml.length) {
-    kpiHtml.push(buildKpi("Filas", String(dataRows.length)));
+    kpiHtml.push(buildKpi(TX.filas, String(dataRows.length)));
   }
 
   kpisEl.innerHTML = kpiHtml.join("");
@@ -384,4 +385,4 @@ loadStats();
 /* =========================
    Footer
 ========================= */
-$("#cgFooterText").textContent = D.footer?.text ?? "Cartaglow • Volcanes Ultimate";
+$("#cgFooterText").textContent = D.footer?.text ?? TX.cartaglowVolcanesUltimate;

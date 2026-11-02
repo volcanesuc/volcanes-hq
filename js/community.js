@@ -21,6 +21,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 import { loadPartialOnce } from "/js/ui/loadPartial.js";
+import { TX, txf } from "/js/strings/screens/community.js";
 
 const COL = APP_CONFIG.collections;
 const COMMUNITY_COL = COL.communityPosts || "community_posts";
@@ -74,7 +75,7 @@ let authBootstrapped = false;
 boot();
 
 async function boot() {
-  showLoader("Cargando comunidad...");
+  showLoader(TX.cargandoComunidad);
 
   try {
     const { cfg, redirected } = await guardPage("community");
@@ -88,7 +89,7 @@ async function boot() {
     bindEvents();
     
   watchAuth(async (user) => {
-    showLoader("Cargando comunidad...");
+    showLoader(TX.cargandoComunidad);
 
     try {
       state.user = user || null;
@@ -154,8 +155,8 @@ function bindEvents() {
 
   $.newPostBtn?.addEventListener("click", () => {
     resetForm();
-    $.modalTitle.textContent = "Nuevo post";
-    $.modalSubtitle.textContent = "Compartí ideas, sesiones grabadas y recursos del club";
+    $.modalTitle.textContent = TX.nuevoPost;
+    $.modalSubtitle.textContent = TX.compartiIdeasSesionesGrabadas;
     postModal?.show();
   });
 
@@ -223,7 +224,7 @@ async function loadPosts() {
 
 function normalizePost(post) {
   return {
-    title: post.title || "Sin título",
+    title: post.title || TX.sinTitulo,
     summary: post.summary || "",
     body: post.body || "",
     type: post.type || "opinion",
@@ -233,7 +234,7 @@ function normalizePost(post) {
     mediaType: post.mediaType || "",
     mediaUrl: post.mediaUrl || "",
     authorId: post.authorId || "",
-    authorName: post.authorName || "Miembro del club",
+    authorName: post.authorName || TX.miembroDelClub,
     visibility: post.visibility || "club",
     pinned: !!post.pinned,
     tags: Array.isArray(post.tags) ? post.tags : [],
@@ -365,7 +366,7 @@ function renderPostCard(post) {
       <div class="community-link-box">
         <i class="bi bi-link-45deg me-1"></i>
         <a href="${escapeAttr(post.mediaUrl)}" target="_blank" rel="noopener noreferrer">
-          Abrir recurso
+          ${TX.abrirRecurso}
         </a>
       </div>
     `;
@@ -376,7 +377,7 @@ function renderPostCard(post) {
       <div class="community-link-box">
         <i class="bi bi-box-arrow-up-right me-1"></i>
         <a href="${escapeAttr(post.externalUrl)}" target="_blank" rel="noopener noreferrer">
-          Ver link relacionado
+          ${TX.verLinkRelacionado}
         </a>
       </div>
     `
@@ -395,7 +396,7 @@ function renderPostCard(post) {
               ${post.pinned ? `
                 <span class="community-pin-badge">
                   <i class="bi bi-pin-angle-fill"></i>
-                  Destacado
+                  ${TX.destacado}
                 </span>
               ` : ""}
             </div>
@@ -417,7 +418,7 @@ function renderPostCard(post) {
                 data-action="edit-post"
                 data-id="${post.id}"
               >
-                <i class="bi bi-pencil"></i> Editar
+                <i class="bi bi-pencil"></i> ${TX.editar}
               </button>
 
               <button
@@ -426,7 +427,7 @@ function renderPostCard(post) {
                 data-action="delete-post"
                 data-id="${post.id}"
               >
-                <i class="bi bi-trash"></i> Eliminar
+                <i class="bi bi-trash"></i> ${TX.eliminar}
               </button>
             ` : ""}
           </div>
@@ -443,7 +444,7 @@ function renderPostCard(post) {
         <div class="community-footer">
           <div class="community-footer__left">
             <span><i class="bi bi-person-circle me-1"></i>${escapeHtml(post.authorName)}</span>
-            <span><i class="bi bi-eye me-1"></i>${post.visibility === "staff" ? "Solo staff" : "Club"}</span>
+            <span><i class="bi bi-eye me-1"></i>${post.visibility === "staff" ? TX.soloStaff : TX.club}</span>
           </div>
 
           <div class="community-footer__right">
@@ -454,7 +455,7 @@ function renderPostCard(post) {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <i class="bi bi-youtube"></i> YouTube
+                <i class="bi bi-youtube"></i> ${TX.youtube}
               </a>
             ` : ""}
 
@@ -465,7 +466,7 @@ function renderPostCard(post) {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <i class="bi bi-box-arrow-up-right"></i> Abrir
+                <i class="bi bi-box-arrow-up-right"></i> ${TX.abrir}
               </a>
             ` : ""}
           </div>
@@ -479,26 +480,26 @@ async function onSubmitForm(e) {
   e.preventDefault();
 
   if (!state.user?.uid) {
-    alert("Necesitás iniciar sesión para publicar.");
+    alert(TX.necesitasIniciarSesionPara);
     return;
   }
 
   const payload = buildFormPayload();
 
   if (!payload.title) {
-    alert("El título es obligatorio.");
+    alert(TX.elTituloEsObligatorio);
     return;
   }
 
   if (!payload.body && !payload.youtubeUrl && !payload.mediaUrl && !payload.externalUrl) {
-    alert("Agregá contenido, un link de YouTube, media o un link externo.");
+    alert(TX.agregaContenidoUnLink);
     return;
   }
 
   $.saveBtn.disabled = true;
 
   try {
-    showLoader("Guardando post...");
+    showLoader(TX.guardandoPost);
 
     const editId = $.postId.value?.trim();
 
@@ -523,7 +524,7 @@ async function onSubmitForm(e) {
     await loadPosts();
   } catch (err) {
     console.error("Error saving post:", err);
-    alert("No se pudo guardar el post.");
+    alert(TX.noSePudoGuardar);
   } finally {
     $.saveBtn.disabled = false;
     hideLoader();
@@ -554,8 +555,8 @@ function buildFormPayload() {
 function resetForm() {
   $.form.reset();
   $.postId.value = "";
-  $.modalTitle.textContent = "Nuevo post";
-  $.modalSubtitle.textContent = "Compartí ideas, sesiones grabadas y recursos del club";
+  $.modalTitle.textContent = TX.nuevoPost;
+  $.modalSubtitle.textContent = TX.compartiIdeasSesionesGrabadas;
   $.type.value = "opinion";
   $.visibility.value = "club";
   syncFormByType();
@@ -589,8 +590,8 @@ async function openEditPost(id) {
   $.tags.value = (post.tags || []).join(", ");
   $.visibility.value = post.visibility || "club";
   $.pinned.checked = !!post.pinned;
-  $.modalTitle.textContent = "Editar post";
-  $.modalSubtitle.textContent = "Actualizá contenido, links, visibilidad y destacados";
+  $.modalTitle.textContent = TX.editarPost;
+  $.modalSubtitle.textContent = TX.actualizaContenidoLinksVisibilidad;
 
   syncFormByType();
   postModal?.show();
@@ -601,16 +602,16 @@ async function handleDeletePost(id) {
   if (!post) return;
   if (!canManagePost(post)) return;
 
-  const ok = window.confirm(`¿Eliminar "${post.title}"?`);
+  const ok = window.confirm(txf(TX.eliminar2, { title: post.title }));
   if (!ok) return;
 
   try {
-    showLoader("Eliminando post...");
+    showLoader(TX.eliminandoPost);
     await deleteDoc(doc(db, COMMUNITY_COL, id));
     await loadPosts();
   } catch (err) {
     console.error("Error deleting post:", err);
-    alert("No se pudo eliminar el post.");
+    alert(TX.noSePudoEliminar);
   } finally {
     hideLoader();
   }
@@ -618,7 +619,7 @@ async function handleDeletePost(id) {
 
 function resolveAuthorName() {
   const email = state.user?.email || "";
-  if (!email) return "Miembro del club";
+  if (!email) return TX.miembroDelClub;
 
   const displayName = state.user?.displayName?.trim();
   if (displayName) return displayName;
@@ -629,18 +630,18 @@ function resolveAuthorName() {
 function getTypeMeta(type) {
   switch (type) {
     case "video":
-      return { label: "Video", icon: "bi-youtube" };
+      return { label: TX.video, icon: "bi-youtube" };
     case "session":
-      return { label: "Sesión", icon: "bi-camera-video-fill" };
+      return { label: TX.sesion, icon: "bi-camera-video-fill" };
     case "media":
-      return { label: "Media", icon: "bi-image" };
+      return { label: TX.media, icon: "bi-image" };
     case "document":
-      return { label: "Documento", icon: "bi-file-earmark-text" };
+      return { label: TX.documento, icon: "bi-file-earmark-text" };
     case "announcement":
-      return { label: "Anuncio", icon: "bi-megaphone" };
+      return { label: TX.anuncio, icon: "bi-megaphone" };
     case "opinion":
     default:
-      return { label: "Opinión", icon: "bi-chat-left-text" };
+      return { label: TX.opinion, icon: "bi-chat-left-text" };
   }
 }
 

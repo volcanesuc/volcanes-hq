@@ -1,11 +1,12 @@
-import { auth } from "../firebase.js";
+import { auth } from "./firebase.js";
 import { signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { mountLoader, showLoaderOverlay } from "../ui/loader.component.js";
+import { TX } from "/js/strings/screens/signout.js";
 
 async function forceSignOut() {
   try {
     mountLoader();
-    showLoaderOverlay("Cerrando sesión...");
+    showLoaderOverlay(TX.cerrandoSesion);
 
     // 🔥 Firebase sign out
     await signOut(auth);

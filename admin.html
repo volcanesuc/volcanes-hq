@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Administración</title>
+  <title data-tx="html_admin.administracion">Administración</title>
 
   <script>document.documentElement.classList.add("preload");</script>
   <script src="/js/ui/loader.preload.js"></script>
@@ -29,8 +29,8 @@
 
   <main class="container py-4 admin-page">
     <div class="mb-4">
-      <h1 class="h3 mb-1">Administración</h1>
-      <p class="text-muted mb-0">
+      <h1 class="h3 mb-1" data-tx="html_admin.administracion">Administración</h1>
+      <p class="text-muted mb-0" data-tx="html_admin.configuracionGeneralDeLa">
         Configuración general de la plataforma, usuarios y registro público.
       </p>
     </div>
@@ -49,7 +49,7 @@
               type="button"
               role="tab"
               aria-controls="landing-pane"
-              aria-selected="true"
+              aria-selected="true" data-tx="html_admin.landingSettings"
             >
               Landing settings
             </button>
@@ -64,7 +64,7 @@
               type="button"
               role="tab"
               aria-controls="users-pane"
-              aria-selected="false"
+              aria-selected="false" data-tx="html_admin.users"
             >
               Users
             </button>
@@ -79,9 +79,24 @@
               type="button"
               role="tab"
               aria-controls="register-pane"
-              aria-selected="false"
+              aria-selected="false" data-tx="html_admin.registerSettings"
             >
               Register settings
+            </button>
+          </li>
+
+          <li class="nav-item" role="presentation">
+            <button
+              class="nav-link"
+              id="texts-tab"
+              data-bs-toggle="pill"
+              data-bs-target="#texts-pane"
+              type="button"
+              role="tab"
+              aria-controls="texts-pane"
+              aria-selected="false" data-tx="html_admin.textos"
+            >
+              Textos
             </button>
           </li>
         </ul>
@@ -97,8 +112,8 @@
             tabindex="0"
           >
             <div class="admin-tab-intro mb-4">
-              <h2 class="h5 mb-1">Landing settings</h2>
-              <p class="text-muted mb-0">
+              <h2 class="h5 mb-1" data-tx="html_admin.landingSettings">Landing settings</h2>
+              <p class="text-muted mb-0" data-tx="html_admin.configuracionDeVisibilidadY">
                 Configuración de visibilidad y contenido público del landing.
               </p>
             </div>
@@ -108,8 +123,8 @@
               <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                   <div>
-                    <h2 class="h5 mb-1">Visibilidad del landing</h2>
-                    <p class="text-muted mb-0">Mostrá u ocultá secciones públicas de la pantalla principal.</p>
+                    <h2 class="h5 mb-1" data-tx="html_admin.visibilidadDelLanding">Visibilidad del landing</h2>
+                    <p class="text-muted mb-0" data-tx="html_admin.mostraUOcultaSecciones">Mostrá u ocultá secciones públicas de la pantalla principal.</p>
                   </div>
                 </div>
 
@@ -117,7 +132,7 @@
                   <div class="col-md-6">
                     <div class="form-check form-switch">
                       <input class="form-check-input" type="checkbox" id="idxShowTrainings" />
-                      <label class="form-check-label" for="idxShowTrainings">
+                      <label class="form-check-label" for="idxShowTrainings" data-tx="html_admin.mostrarEntrenamientosYJuegos">
                         Mostrar entrenamientos y juegos
                       </label>
                       <span id="idxShowTrainingsState" class="ms-2 small text-muted"></span>
@@ -127,7 +142,7 @@
                   <div class="col-md-6">
                     <div class="form-check form-switch">
                       <input class="form-check-input" type="checkbox" id="idxShowEvents" />
-                      <label class="form-check-label" for="idxShowEvents">
+                      <label class="form-check-label" for="idxShowEvents" data-tx="html_admin.mostrarTorneosEventos">
                         Mostrar torneos / eventos
                       </label>
                       <span id="idxShowEventsState" class="ms-2 small text-muted"></span>
@@ -137,7 +152,7 @@
                   <div class="col-md-6">
                     <div class="form-check form-switch">
                       <input class="form-check-input" type="checkbox" id="idxShowHonors" />
-                      <label class="form-check-label" for="idxShowHonors">
+                      <label class="form-check-label" for="idxShowHonors" data-tx="html_admin.mostrarPalmares">
                         Mostrar palmarés
                       </label>
                       <span id="idxShowHonorsState" class="ms-2 small text-muted"></span>
@@ -147,7 +162,7 @@
                   <div class="col-md-6">
                     <div class="form-check form-switch">
                       <input class="form-check-input" type="checkbox" id="idxShowUniforms" />
-                      <label class="form-check-label" for="idxShowUniforms">
+                      <label class="form-check-label" for="idxShowUniforms" data-tx="html_admin.mostrarUniformes">
                         Mostrar uniformes
                       </label>
                       <span id="idxShowUniformsState" class="ms-2 small text-muted"></span>
@@ -157,7 +172,7 @@
                   <div class="col-md-6">
                     <div class="form-check form-switch">
                       <input class="form-check-input" type="checkbox" id="idxShowFeaturedActivity" />
-                      <label class="form-check-label" for="idxShowFeaturedActivity">
+                      <label class="form-check-label" for="idxShowFeaturedActivity" data-tx="html_admin.mostrarActividadDestacada">
                         Mostrar actividad destacada
                       </label>
                       <span id="idxShowFeaturedActivityState" class="ms-2 small text-muted"></span>
@@ -166,7 +181,7 @@
 
                   <div class="col-12">
                     <button class="btn btn-primary" type="submit">
-                      <i class="bi bi-save me-1"></i>Guardar visibilidad
+                      <i class="bi bi-save me-1"></i><span data-tx="html_admin.guardarVisibilidad">Guardar visibilidad</span>
                     </button>
                   </div>
                 </form>
@@ -177,28 +192,28 @@
             <section class="card shadow-sm mt-4 admin-inner-card">
               <div class="card-body">
                 <div class="mb-3">
-                  <h2 class="h5 mb-1">Hero del landing</h2>
-                  <p class="text-muted mb-0">Título, descripción e imagen principal.</p>
+                  <h2 class="h5 mb-1" data-tx="html_admin.heroDelLanding">Hero del landing</h2>
+                  <p class="text-muted mb-0" data-tx="html_admin.tituloDescripcionEImagen">Título, descripción e imagen principal.</p>
                 </div>
 
                 <form id="heroSettingsForm" class="row g-3">
                   <div class="col-12">
-                    <label class="form-label">Título</label>
+                    <label class="form-label" data-tx="html_admin.titulo">Título</label>
                     <input id="heroTitleInput" class="form-control" type="text" />
                   </div>
 
                   <div class="col-12">
-                    <label class="form-label">Descripción</label>
+                    <label class="form-label" data-tx="html_admin.descripcion">Descripción</label>
                     <textarea id="heroDescriptionInput" class="form-control" rows="4"></textarea>
                   </div>
 
                   <div class="col-md-8">
-                    <label class="form-label">Image URL</label>
+                    <label class="form-label" data-tx="html_admin.imageUrl">Image URL</label>
                     <input id="heroImageUrlInput" class="form-control" type="url" placeholder="https://..." />
                   </div>
 
                   <div class="col-md-4">
-                    <label class="form-label">Subir imagen</label>
+                    <label class="form-label" data-tx="html_admin.subirImagen">Subir imagen</label>
                     <input id="heroImageFileInput" class="form-control" type="file" accept="image/*" />
                   </div>
 
@@ -207,7 +222,7 @@
                   </div>
 
                   <div class="col-12">
-                    <button class="btn btn-primary" type="submit">Guardar hero</button>
+                    <button class="btn btn-primary" type="submit" data-tx="html_admin.guardarHero">Guardar hero</button>
                   </div>
                 </form>
               </div>
@@ -218,18 +233,18 @@
               <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                   <div>
-                    <h2 class="h5 mb-1">Entrenamientos y Juegos</h2>
-                    <p class="text-muted mb-0">Contenido editable de la sección del landing.</p>
+                    <h2 class="h5 mb-1" data-tx="html_admin.entrenamientosYJuegos">Entrenamientos y Juegos</h2>
+                    <p class="text-muted mb-0" data-tx="html_admin.contenidoEditableDeLa">Contenido editable de la sección del landing.</p>
                   </div>
                 </div>
 
                 <form id="trainingsSettingsForm" class="row g-3 mb-4">
                   <div class="col-md-8">
-                    <label class="form-label">Título de la sección</label>
-                    <input id="trainingsTitle" class="form-control" type="text" placeholder="Entrenamientos y Juegos" />
+                    <label class="form-label" data-tx="html_admin.tituloDeLaSeccion">Título de la sección</label>
+                    <input id="trainingsTitle" class="form-control" type="text" placeholder="Entrenamientos y Juegos" data-tx-placeholder="html_admin.entrenamientosYJuegos" />
                   </div>
                   <div class="col-md-4 d-flex align-items-end">
-                    <button class="btn btn-outline-primary w-100" type="submit">
+                    <button class="btn btn-outline-primary w-100" type="submit" data-tx="html_admin.guardarTitulo">
                       Guardar título
                     </button>
                   </div>
@@ -237,26 +252,26 @@
 
                 <form id="trainingBlockForm" class="row g-3 mb-3">
                   <div class="col-md-3">
-                    <label class="form-label">Bloque</label>
+                    <label class="form-label" data-tx="html_admin.bloque">Bloque</label>
                     <select id="trainingBlockId" class="form-select">
-                      <option value="trainings">Entrenamientos</option>
-                      <option value="games">Juegos y Torneos</option>
+                      <option value="trainings" data-tx="html_admin.entrenamientos">Entrenamientos</option>
+                      <option value="games" data-tx="html_admin.juegosYTorneos">Juegos y Torneos</option>
                     </select>
                   </div>
 
                   <div class="col-md-3">
-                    <label class="form-label">Nombre visible</label>
-                    <input id="trainingBlockName" class="form-control" type="text" placeholder="Entrenamientos" />
+                    <label class="form-label" data-tx="html_admin.nombreVisible">Nombre visible</label>
+                    <input id="trainingBlockName" class="form-control" type="text" placeholder="Entrenamientos" data-tx-placeholder="html_admin.entrenamientos" />
                   </div>
 
                   <div class="col-md-3">
-                    <label class="form-label">Día</label>
-                    <input id="trainingDay" class="form-control" type="text" placeholder="Domingos" />
+                    <label class="form-label" data-tx="html_admin.dia">Día</label>
+                    <input id="trainingDay" class="form-control" type="text" placeholder="Domingos" data-tx-placeholder="html_admin.domingos" />
                   </div>
 
                   <div class="col-md-2">
-                    <label class="form-label">Hora</label>
-                    <input id="trainingTime" class="form-control" type="text" placeholder="8:00 am – 10:30 am" />
+                    <label class="form-label" data-tx="html_admin.hora">Hora</label>
+                    <input id="trainingTime" class="form-control" type="text" placeholder="8:00 am – 10:30 am" data-tx-placeholder="html_admin.t800Am10" />
                   </div>
 
                   <div class="col-md-1 d-flex align-items-end">
@@ -270,16 +285,16 @@
                   <table class="table align-middle mb-0">
                     <thead>
                       <tr>
-                        <th>Bloque</th>
-                        <th>Nombre</th>
-                        <th>Día</th>
-                        <th>Hora</th>
-                        <th>Acciones</th>
+                        <th data-tx="html_admin.bloque">Bloque</th>
+                        <th data-tx="html_admin.nombre">Nombre</th>
+                        <th data-tx="html_admin.dia">Día</th>
+                        <th data-tx="html_admin.hora">Hora</th>
+                        <th data-tx="html_admin.acciones">Acciones</th>
                       </tr>
                     </thead>
                     <tbody id="trainingsTableBody">
                       <tr>
-                        <td colspan="5" class="text-muted">Cargando…</td>
+                        <td colspan="5" class="text-muted" data-tx="html_admin.cargando">Cargando…</td>
                       </tr>
                     </tbody>
                   </table>
@@ -292,50 +307,50 @@
               <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                   <div>
-                    <h2 class="h5 mb-1">Redes sociales</h2>
-                    <p class="text-muted mb-0">Links que se mostrarán en el landing si tienen valor.</p>
+                    <h2 class="h5 mb-1" data-tx="html_admin.redesSociales">Redes sociales</h2>
+                    <p class="text-muted mb-0" data-tx="html_admin.linksQueSeMostraran">Links que se mostrarán en el landing si tienen valor.</p>
                   </div>
                 </div>
 
                 <form id="socialLinksForm" class="row g-3">
                   <div class="col-md-6">
-                    <label class="form-label">Instagram</label>
+                    <label class="form-label" data-tx="html_admin.instagram">Instagram</label>
                     <input id="socialInstagram" class="form-control" type="url" placeholder="https://instagram.com/..." />
                   </div>
 
                   <div class="col-md-6">
-                    <label class="form-label">Facebook</label>
+                    <label class="form-label" data-tx="html_admin.facebook">Facebook</label>
                     <input id="socialFacebook" class="form-control" type="url" placeholder="https://facebook.com/..." />
                   </div>
 
                   <div class="col-md-6">
-                    <label class="form-label">TikTok</label>
+                    <label class="form-label" data-tx="html_admin.tiktok">TikTok</label>
                     <input id="socialTiktok" class="form-control" type="url" placeholder="https://tiktok.com/@..." />
                   </div>
 
                   <div class="col-md-6">
-                    <label class="form-label">YouTube</label>
+                    <label class="form-label" data-tx="html_admin.youtube">YouTube</label>
                     <input id="socialYoutube" class="form-control" type="url" placeholder="https://youtube.com/..." />
                   </div>
 
                   <div class="col-md-6">
-                    <label class="form-label">X / Twitter</label>
+                    <label class="form-label" data-tx="html_admin.xTwitter">X / Twitter</label>
                     <input id="socialX" class="form-control" type="url" placeholder="https://x.com/..." />
                   </div>
 
                   <div class="col-md-6">
-                    <label class="form-label">WhatsApp / Canal</label>
+                    <label class="form-label" data-tx="html_admin.whatsappCanal">WhatsApp / Canal</label>
                     <input id="socialWhatsapp" class="form-control" type="url" placeholder="https://wa.me/... o link del canal" />
                   </div>
 
                   <div class="col-md-6">
-                    <label class="form-label">Texto del botón WhatsApp</label>
-                    <input id="socialWhatsappLabel" class="form-control" type="text" placeholder="WhatsApp" />
+                    <label class="form-label" data-tx="html_admin.textoDelBotonWhatsapp">Texto del botón WhatsApp</label>
+                    <input id="socialWhatsappLabel" class="form-control" type="text" placeholder="WhatsApp" data-tx-placeholder="html_admin.whatsapp" />
                   </div>
 
                   <div class="col-12">
                     <button class="btn btn-primary" type="submit">
-                      <i class="bi bi-save me-1"></i>Guardar redes
+                      <i class="bi bi-save me-1"></i><span data-tx="html_admin.guardarRedes">Guardar redes</span>
                     </button>
                   </div>
                 </form>
@@ -347,18 +362,18 @@
               <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                   <div>
-                    <h2 class="h5 mb-1">Palmarés</h2>
-                    <p class="text-muted mb-0">Estos logros se cargarán desde Firebase en el index.</p>
+                    <h2 class="h5 mb-1" data-tx="html_admin.palmares">Palmarés</h2>
+                    <p class="text-muted mb-0" data-tx="html_admin.estosLogrosSeCargaran">Estos logros se cargarán desde Firebase en el index.</p>
                   </div>
                 </div>
 
                 <form id="honorsSettingsForm" class="row g-3 mb-4">
                   <div class="col-md-8">
-                    <label class="form-label">Título de la sección</label>
-                    <input id="honorsTitle" class="form-control" type="text" placeholder="Palmarés" />
+                    <label class="form-label" data-tx="html_admin.tituloDeLaSeccion">Título de la sección</label>
+                    <input id="honorsTitle" class="form-control" type="text" placeholder="Palmarés" data-tx-placeholder="html_admin.palmares" />
                   </div>
                   <div class="col-md-4 d-flex align-items-end">
-                    <button class="btn btn-outline-primary w-100" type="submit">
+                    <button class="btn btn-outline-primary w-100" type="submit" data-tx="html_admin.guardarTitulo">
                       Guardar título
                     </button>
                   </div>
@@ -366,23 +381,23 @@
 
                 <form id="honorForm" class="row g-3 mb-3">
                   <div class="col-md-4">
-                    <label class="form-label">Posición</label>
-                    <input id="honorPosition" class="form-control" type="text" placeholder="Primer Lugar" />
+                    <label class="form-label" data-tx="html_admin.posicion">Posición</label>
+                    <input id="honorPosition" class="form-control" type="text" placeholder="Primer Lugar" data-tx-placeholder="html_admin.primerLugar" />
                   </div>
 
                   <div class="col-md-4">
-                    <label class="form-label">Torneo</label>
-                    <input id="honorTournament" class="form-control" type="text" placeholder="Copa Invierno" />
+                    <label class="form-label" data-tx="html_admin.torneo">Torneo</label>
+                    <input id="honorTournament" class="form-control" type="text" placeholder="Copa Invierno" data-tx-placeholder="html_admin.copaInvierno" />
                   </div>
 
                   <div class="col-md-2">
-                    <label class="form-label">Año</label>
+                    <label class="form-label" data-tx="html_admin.ano">Año</label>
                     <input id="honorYear" class="form-control" type="number" min="1900" max="2100" placeholder="2025" />
                   </div>
 
                   <div class="col-md-2 d-flex align-items-end">
                     <button class="btn btn-primary w-100" type="submit">
-                      <i class="bi bi-plus-lg me-1"></i>Agregar
+                      <i class="bi bi-plus-lg me-1"></i><span data-tx="html_admin.agregar">Agregar</span>
                     </button>
                   </div>
                 </form>
@@ -391,15 +406,15 @@
                   <table class="table align-middle mb-0">
                     <thead>
                       <tr>
-                        <th>Posición</th>
-                        <th>Torneo</th>
-                        <th>Año</th>
-                        <th>Acciones</th>
+                        <th data-tx="html_admin.posicion">Posición</th>
+                        <th data-tx="html_admin.torneo">Torneo</th>
+                        <th data-tx="html_admin.ano">Año</th>
+                        <th data-tx="html_admin.acciones">Acciones</th>
                       </tr>
                     </thead>
                     <tbody id="honorsTableBody">
                       <tr>
-                        <td colspan="4" class="text-muted">Cargando…</td>
+                        <td colspan="4" class="text-muted" data-tx="html_admin.cargando">Cargando…</td>
                       </tr>
                     </tbody>
                   </table>
@@ -411,54 +426,54 @@
             <section class="card shadow-sm mt-4 admin-inner-card">
               <div class="card-body">
                 <div class="mb-3">
-                  <h2 class="h5 mb-1">Actividad destacada</h2>
-                  <p class="text-muted mb-0">
+                  <h2 class="h5 mb-1" data-tx="html_admin.actividadDestacada">Actividad destacada</h2>
+                  <p class="text-muted mb-0" data-tx="html_admin.usalaParaRifasActivas">
                     Usala para rifas activas, clínicas, campamentos o cualquier CTA temporal.
                   </p>
                 </div>
 
                 <form id="featuredActivitySettingsForm" class="row g-3">
                   <div class="col-md-6">
-                    <label class="form-label">Título</label>
+                    <label class="form-label" data-tx="html_admin.titulo">Título</label>
                     <input
                       id="featuredActivityTitleInput"
                       class="form-control"
                       type="text"
-                      placeholder="Clínica de Ultimate para principiantes"
+                      placeholder="Clínica de Ultimate para principiantes" data-tx-placeholder="html_admin.clinicaDeUltimatePara"
                     />
                   </div>
 
                   <div class="col-md-6">
-                    <label class="form-label">Subtítulo / información</label>
+                    <label class="form-label" data-tx="html_admin.subtituloInformacion">Subtítulo / información</label>
                     <input
                       id="featuredActivitySubtitleInput"
                       class="form-control"
                       type="text"
-                      placeholder="Sábado 12 de abril · cupos limitados · abierta a todo público"
+                      placeholder="Sábado 12 de abril · cupos limitados · abierta a todo público" data-tx-placeholder="html_admin.sabado12DeAbril"
                     />
                   </div>
 
                   <div class="col-md-4">
                     <div class="form-check form-switch mt-4 pt-2">
                       <input class="form-check-input" type="checkbox" id="featuredActivityCtaEnabledInput" />
-                      <label class="form-check-label" for="featuredActivityCtaEnabledInput">
+                      <label class="form-check-label" for="featuredActivityCtaEnabledInput" data-tx="html_admin.mostrarBoton">
                         Mostrar botón
                       </label>
                     </div>
                   </div>
 
                   <div class="col-md-4">
-                    <label class="form-label">Texto del botón</label>
+                    <label class="form-label" data-tx="html_admin.textoDelBoton">Texto del botón</label>
                     <input
                       id="featuredActivityCtaTextInput"
                       class="form-control"
                       type="text"
-                      placeholder="Inscribirme"
+                      placeholder="Inscribirme" data-tx-placeholder="html_admin.inscribirme"
                     />
                   </div>
 
                   <div class="col-md-4">
-                    <label class="form-label">Link del botón</label>
+                    <label class="form-label" data-tx="html_admin.linkDelBoton">Link del botón</label>
                     <input
                       id="featuredActivityCtaUrlInput"
                       class="form-control"
@@ -468,7 +483,7 @@
                   </div>
 
                   <div class="col-12">
-                    <button class="btn btn-primary" type="submit">
+                    <button class="btn btn-primary" type="submit" data-tx="html_admin.guardarActividadDestacada">
                       Guardar actividad destacada
                     </button>
                   </div>
@@ -480,57 +495,57 @@
             <section class="card shadow-sm mt-4 admin-inner-card">
               <div class="card-body">
                 <div class="mb-3">
-                  <h2 class="h5 mb-1">Torneo / Evento principal</h2>
-                  <p class="text-muted mb-0">Contenido editable de la sección pública.</p>
+                  <h2 class="h5 mb-1" data-tx="html_admin.torneoEventoPrincipal">Torneo / Evento principal</h2>
+                  <p class="text-muted mb-0" data-tx="html_admin.contenidoEditableDeLa2">Contenido editable de la sección pública.</p>
                 </div>
 
                 <form id="eventsSettingsForm" class="row g-3">
                   <div class="col-md-6">
-                    <label class="form-label">Título</label>
+                    <label class="form-label" data-tx="html_admin.titulo">Título</label>
                     <input id="eventTitleInput" class="form-control" type="text" />
                   </div>
 
                   <div class="col-md-6">
-                    <label class="form-label">Subtítulo</label>
+                    <label class="form-label" data-tx="html_admin.subtitulo">Subtítulo</label>
                     <input id="eventSubtitleInput" class="form-control" type="text" />
                   </div>
 
                   <div class="col-md-4">
-                    <label class="form-label">Imagen 1</label>
+                    <label class="form-label" data-tx="html_admin.imagen1">Imagen 1</label>
                     <input id="eventImage1Input" class="form-control" type="url" />
                   </div>
 
                   <div class="col-md-4">
-                    <label class="form-label">Imagen 2</label>
+                    <label class="form-label" data-tx="html_admin.imagen2">Imagen 2</label>
                     <input id="eventImage2Input" class="form-control" type="url" />
                   </div>
 
                   <div class="col-md-4">
-                    <label class="form-label">Imagen 3</label>
+                    <label class="form-label" data-tx="html_admin.imagen3">Imagen 3</label>
                     <input id="eventImage3Input" class="form-control" type="url" />
                   </div>
 
                   <div class="col-md-4">
                     <div class="form-check form-switch mt-4 pt-2">
                       <input class="form-check-input" type="checkbox" id="eventCtaEnabledInput" />
-                      <label class="form-check-label" for="eventCtaEnabledInput">
+                      <label class="form-check-label" for="eventCtaEnabledInput" data-tx="html_admin.mostrarBoton">
                         Mostrar botón
                       </label>
                     </div>
                   </div>
 
                   <div class="col-md-4">
-                    <label class="form-label">Texto del botón</label>
-                    <input id="eventCtaTextInput" class="form-control" type="text" placeholder="Registro abierto" />
+                    <label class="form-label" data-tx="html_admin.textoDelBoton">Texto del botón</label>
+                    <input id="eventCtaTextInput" class="form-control" type="text" placeholder="Registro abierto" data-tx-placeholder="html_admin.registroAbierto" />
                   </div>
 
                   <div class="col-md-4">
-                    <label class="form-label">Link del botón</label>
+                    <label class="form-label" data-tx="html_admin.linkDelBoton">Link del botón</label>
                     <input id="eventCtaUrlInput" class="form-control" type="url" placeholder="https://..." />
                   </div>
 
                   <div class="col-12">
-                    <button class="btn btn-primary" type="submit">
+                    <button class="btn btn-primary" type="submit" data-tx="html_admin.guardarTorneo">
                       Guardar torneo
                     </button>
                   </div>
@@ -543,34 +558,34 @@
               <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                   <div>
-                    <h2 class="h5 mb-1">Uniformes</h2>
-                    <p class="text-muted mb-0">Sección y productos del landing cargados desde Firebase.</p>
+                    <h2 class="h5 mb-1" data-tx="html_admin.uniformes">Uniformes</h2>
+                    <p class="text-muted mb-0" data-tx="html_admin.seccionYProductosDel">Sección y productos del landing cargados desde Firebase.</p>
                   </div>
                 </div>
 
                 <form id="uniformSettingsForm" class="row g-3 mb-4">
                   <div class="col-md-4">
-                    <label class="form-label">Título</label>
-                    <input id="uniformsTitle" class="form-control" type="text" placeholder="Uniformes del Equipo" />
+                    <label class="form-label" data-tx="html_admin.titulo">Título</label>
+                    <input id="uniformsTitle" class="form-control" type="text" placeholder="Uniformes del Equipo" data-tx-placeholder="html_admin.uniformesDelEquipo" />
                   </div>
 
                   <div class="col-md-4">
-                    <label class="form-label">Subtítulo</label>
-                    <input id="uniformsSubtitle" class="form-control" type="text" placeholder="Compra tu indumentaria oficial del club" />
+                    <label class="form-label" data-tx="html_admin.subtitulo">Subtítulo</label>
+                    <input id="uniformsSubtitle" class="form-control" type="text" placeholder="Compra tu indumentaria oficial del club" data-tx-placeholder="html_admin.compraTuIndumentariaOficial" />
                   </div>
 
                   <div class="col-md-2">
-                    <label class="form-label">Texto botón</label>
-                    <input id="uniformsCtaLabel" class="form-control" type="text" placeholder="Comprar" />
+                    <label class="form-label" data-tx="html_admin.textoBoton">Texto botón</label>
+                    <input id="uniformsCtaLabel" class="form-control" type="text" placeholder="Comprar" data-tx-placeholder="html_admin.comprar" />
                   </div>
 
                   <div class="col-md-2">
-                    <label class="form-label">Order URL</label>
+                    <label class="form-label" data-tx="html_admin.orderUrl">Order URL</label>
                     <input id="uniformsOrderUrl" class="form-control" type="url" placeholder="https://..." />
                   </div>
 
                   <div class="col-12">
-                    <button class="btn btn-outline-primary" type="submit">
+                    <button class="btn btn-outline-primary" type="submit" data-tx="html_admin.guardarConfiguracion">
                       Guardar configuración
                     </button>
                   </div>
@@ -578,17 +593,17 @@
 
                 <form id="uniformForm" class="row g-3 mb-3">
                   <div class="col-md-4">
-                    <label class="form-label">Nombre</label>
-                    <input id="uniformName" class="form-control" type="text" placeholder="Camisa Oficial" />
+                    <label class="form-label" data-tx="html_admin.nombre">Nombre</label>
+                    <input id="uniformName" class="form-control" type="text" placeholder="Camisa Oficial" data-tx-placeholder="html_admin.camisaOficial" />
                   </div>
 
                   <div class="col-md-3">
-                    <label class="form-label">Categoría</label>
-                    <input id="uniformCategory" class="form-control" type="text" placeholder="camisa" />
+                    <label class="form-label" data-tx="html_admin.categoria">Categoría</label>
+                    <input id="uniformCategory" class="form-control" type="text" placeholder="camisa" data-tx-placeholder="html_admin.camisa" />
                   </div>
 
                   <div class="col-md-4">
-                    <label class="form-label">Imagen URL</label>
+                    <label class="form-label" data-tx="html_admin.imagenUrl">Imagen URL</label>
                     <input id="uniformImage" class="form-control" type="url" placeholder="/img/camisas/classic.PNG o https://..." />
                   </div>
 
@@ -603,15 +618,15 @@
                   <table class="table align-middle mb-0">
                     <thead>
                       <tr>
-                        <th>Nombre</th>
-                        <th>Categoría</th>
-                        <th>Imagen</th>
-                        <th>Acciones</th>
+                        <th data-tx="html_admin.nombre">Nombre</th>
+                        <th data-tx="html_admin.categoria">Categoría</th>
+                        <th data-tx="html_admin.imagen">Imagen</th>
+                        <th data-tx="html_admin.acciones">Acciones</th>
                       </tr>
                     </thead>
                     <tbody id="uniformsTableBody">
                       <tr>
-                        <td colspan="4" class="text-muted">Cargando…</td>
+                        <td colspan="4" class="text-muted" data-tx="html_admin.cargando">Cargando…</td>
                       </tr>
                     </tbody>
                   </table>
@@ -629,8 +644,8 @@
             tabindex="0"
           >
             <div class="admin-tab-intro mb-4">
-              <h2 class="h5 mb-1">Users</h2>
-              <p class="text-muted mb-0">
+              <h2 class="h5 mb-1" data-tx="html_admin.users">Users</h2>
+              <p class="text-muted mb-0" data-tx="html_admin.gestionDeUsuariosJugadores">
                 Gestión de usuarios, jugadores, vínculos y accesos de plataforma.
               </p>
             </div>
@@ -639,44 +654,44 @@
               <div class="card-body">
                 <div class="row g-3 align-items-end">
                   <div class="col-lg-4">
-                    <label class="form-label">Buscar</label>
+                    <label class="form-label" data-tx="html_admin.buscar">Buscar</label>
                     <input
                       id="usersSearchInput"
                       class="form-control"
                       type="search"
-                      placeholder="Nombre, email, UID..."
+                      placeholder="Nombre, email, UID..." data-tx-placeholder="html_admin.nombreEmailUid"
                     />
                   </div>
 
                   <div class="col-md-4 col-lg-2">
-                    <label class="form-label">Rol</label>
+                    <label class="form-label" data-tx="html_admin.rol">Rol</label>
                     <select id="usersRoleFilter" class="form-select">
-                      <option value="">Todos</option>
+                      <option value="" data-tx="html_admin.todos">Todos</option>
                     </select>
                   </div>
 
                   <div class="col-md-4 col-lg-2">
-                    <label class="form-label">Asociación</label>
+                    <label class="form-label" data-tx="html_admin.asociacion">Asociación</label>
                     <select id="usersAssociationFilter" class="form-select">
-                      <option value="">Todos</option>
-                      <option value="active">Activa</option>
-                      <option value="inactive">Inactiva</option>
-                      <option value="none">Sin dato</option>
+                      <option value="" data-tx="html_admin.todos">Todos</option>
+                      <option value="active" data-tx="html_admin.activa">Activa</option>
+                      <option value="inactive" data-tx="html_admin.inactiva">Inactiva</option>
+                      <option value="none" data-tx="html_admin.sinDato">Sin dato</option>
                     </select>
                   </div>
 
                   <div class="col-md-4 col-lg-2">
-                    <label class="form-label">Pickups</label>
+                    <label class="form-label" data-tx="html_admin.pickups">Pickups</label>
                     <select id="usersPickupsFilter" class="form-select">
-                      <option value="">Todos</option>
-                      <option value="true">Con acceso</option>
-                      <option value="false">Sin acceso</option>
+                      <option value="" data-tx="html_admin.todos">Todos</option>
+                      <option value="true" data-tx="html_admin.conAcceso">Con acceso</option>
+                      <option value="false" data-tx="html_admin.sinAcceso">Sin acceso</option>
                     </select>
                   </div>
 
                   <div class="col-lg-2">
                     <button id="refreshUsersBtn" class="btn btn-outline-secondary w-100" type="button">
-                      <i class="bi bi-arrow-clockwise me-1"></i>Actualizar
+                      <i class="bi bi-arrow-clockwise me-1"></i><span data-tx="html_admin.actualizar">Actualizar</span>
                     </button>
                   </div>
                 </div>
@@ -688,28 +703,28 @@
                 <div class="row g-3 admin-kpis">
                   <div class="col-md-6 col-xl-3">
                     <div class="admin-kpi-box">
-                      <span class="admin-kpi-label">Total users</span>
+                      <span class="admin-kpi-label" data-tx="html_admin.totalUsers">Total users</span>
                       <strong id="usersKpiTotal" class="admin-kpi-value">—</strong>
                     </div>
                   </div>
 
                   <div class="col-md-6 col-xl-3">
                     <div class="admin-kpi-box">
-                      <span class="admin-kpi-label">Pendientes</span>
+                      <span class="admin-kpi-label" data-tx="html_admin.pendientes">Pendientes</span>
                       <strong id="usersKpiPending" class="admin-kpi-value">—</strong>
                     </div>
                   </div>
 
                   <div class="col-md-6 col-xl-3">
                     <div class="admin-kpi-box">
-                      <span class="admin-kpi-label">Sin player</span>
+                      <span class="admin-kpi-label" data-tx="html_admin.sinPlayer">Sin player</span>
                       <strong id="usersKpiNoPlayer" class="admin-kpi-value">—</strong>
                     </div>
                   </div>
 
                   <div class="col-md-6 col-xl-3">
                     <div class="admin-kpi-box">
-                      <span class="admin-kpi-label">Con pickups</span>
+                      <span class="admin-kpi-label" data-tx="html_admin.conPickups">Con pickups</span>
                       <strong id="usersKpiPickups" class="admin-kpi-value">—</strong>
                     </div>
                   </div>
@@ -721,8 +736,8 @@
               <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                   <div>
-                    <h3 class="h6 mb-1">Permisos por rol</h3>
-                    <p class="text-muted mb-0">
+                    <h3 class="h6 mb-1" data-tx="html_admin.permisosPorRol">Permisos por rol</h3>
+                    <p class="text-muted mb-0" data-tx="html_admin.administraQueTabsY">
                       Administrá qué tabs y secciones puede ver cada rol.
                     </p>
                   </div>
@@ -732,7 +747,7 @@
                     class="btn btn-outline-secondary btn-sm"
                     type="button"
                   >
-                    <i class="bi bi-arrow-clockwise me-1"></i>Recargar roles
+                    <i class="bi bi-arrow-clockwise me-1"></i><span data-tx="html_admin.recargarRoles">Recargar roles</span>
                   </button>
                 </div>
 
@@ -740,19 +755,19 @@
                   <table class="table align-middle mb-0">
                     <thead>
                       <tr>
-                        <th>Rol</th>
-                        <th class="text-center">Tab Admin</th>
-                        <th class="text-center">Tab Association</th>
-                        <th class="text-center">Tab Accountability</th>
-                        <th class="text-center">Users</th>
-                        <th class="text-center">Landing</th>
-                        <th class="text-center">Register</th>
-                        <th class="text-end">Acción</th>
+                        <th data-tx="html_admin.rol">Rol</th>
+                        <th class="text-center" data-tx="html_admin.tabAdmin">Tab Admin</th>
+                        <th class="text-center" data-tx="html_admin.tabAssociation">Tab Association</th>
+                        <th class="text-center" data-tx="html_admin.tabAccountability">Tab Accountability</th>
+                        <th class="text-center" data-tx="html_admin.users">Users</th>
+                        <th class="text-center" data-tx="html_admin.landing">Landing</th>
+                        <th class="text-center" data-tx="html_admin.register">Register</th>
+                        <th class="text-end" data-tx="html_admin.accion">Acción</th>
                       </tr>
                     </thead>
                     <tbody id="rolesPermissionsTableBody">
                       <tr>
-                        <td colspan="8" class="text-muted">Cargando roles…</td>
+                        <td colspan="8" class="text-muted" data-tx="html_admin.cargandoRoles">Cargando roles…</td>
                       </tr>
                     </tbody>
                   </table>
@@ -764,8 +779,8 @@
               <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                   <div>
-                    <h3 class="h6 mb-1">Tabla de usuarios</h3>
-                    <p class="text-muted mb-0">Vista consolidada de users + players + estados clave.</p>
+                    <h3 class="h6 mb-1" data-tx="html_admin.tablaDeUsuarios">Tabla de usuarios</h3>
+                    <p class="text-muted mb-0" data-tx="html_admin.vistaConsolidadaDeUsers">Vista consolidada de users + players + estados clave.</p>
                   </div>
                 </div>
 
@@ -773,20 +788,20 @@
                   <table class="table align-middle mb-0" id="usersAdminTable">
                     <thead>
                       <tr>
-                        <th>Usuario</th>
-                        <th>Rol</th>
-                        <th>Acceso</th>
-                        <th>Player</th>
-                        <th>Asociación</th>
-                        <th>Membresía</th>
-                        <th>Pickups</th>
-                        <th>Último login</th>
-                        <th>Acciones</th>
+                        <th data-tx="html_admin.usuario">Usuario</th>
+                        <th data-tx="html_admin.rol">Rol</th>
+                        <th data-tx="html_admin.acceso">Acceso</th>
+                        <th data-tx="html_admin.player">Player</th>
+                        <th data-tx="html_admin.asociacion">Asociación</th>
+                        <th data-tx="html_admin.membresia">Membresía</th>
+                        <th data-tx="html_admin.pickups">Pickups</th>
+                        <th data-tx="html_admin.ultimoLogin">Último login</th>
+                        <th data-tx="html_admin.acciones">Acciones</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr>
-                        <td colspan="9" class="text-muted">Cargando…</td>
+                        <td colspan="9" class="text-muted" data-tx="html_admin.cargando">Cargando…</td>
                       </tr>
                     </tbody>
                   </table>
@@ -804,8 +819,8 @@
             tabindex="0"
           >
             <div class="admin-tab-intro mb-4">
-              <h2 class="h5 mb-1">Register settings</h2>
-              <p class="text-muted mb-0">
+              <h2 class="h5 mb-1" data-tx="html_admin.registerSettings">Register settings</h2>
+              <p class="text-muted mb-0" data-tx="html_admin.configuracionDelRegistroPublico">
                 Configuración del registro público, textos legales y bloque de asociación.
               </p>
             </div>
@@ -813,15 +828,15 @@
             <section class="card shadow-sm border-0 admin-inner-card mb-4">
               <div class="card-body">
                 <div class="mb-3">
-                  <h3 class="h6 mb-1">Configuración funcional</h3>
-                  <p class="text-muted mb-0">Controla qué requisitos aparecen en el flujo de registro.</p>
+                  <h3 class="h6 mb-1" data-tx="html_admin.configuracionFuncional">Configuración funcional</h3>
+                  <p class="text-muted mb-0" data-tx="html_admin.controlaQueRequisitosAparecen">Controla qué requisitos aparecen en el flujo de registro.</p>
                 </div>
 
                 <form id="registerSettingsForm" class="row g-3">
                   <div class="col-md-6">
                     <div class="form-check form-switch">
                       <input class="form-check-input" type="checkbox" id="regEnableMembershipPayment" />
-                      <label class="form-check-label" for="regEnableMembershipPayment">
+                      <label class="form-check-label" for="regEnableMembershipPayment" data-tx="html_admin.habilitarPagoDeMembresia">
                         Habilitar pago de membresía
                       </label>
                     </div>
@@ -830,7 +845,7 @@
                   <div class="col-md-6">
                     <div class="form-check form-switch">
                       <input class="form-check-input" type="checkbox" id="regRequireInfoDeclaration" />
-                      <label class="form-check-label" for="regRequireInfoDeclaration">
+                      <label class="form-check-label" for="regRequireInfoDeclaration" data-tx="html_admin.requerirDeclaracionInformativa">
                         Requerir declaración informativa
                       </label>
                     </div>
@@ -839,7 +854,7 @@
                   <div class="col-md-6">
                     <div class="form-check form-switch">
                       <input class="form-check-input" type="checkbox" id="regRequireAssociationTerms" />
-                      <label class="form-check-label" for="regRequireAssociationTerms">
+                      <label class="form-check-label" for="regRequireAssociationTerms" data-tx="html_admin.requerirTerminosDeAsociacion">
                         Requerir términos de asociación
                       </label>
                     </div>
@@ -848,14 +863,14 @@
                   <div class="col-md-6">
                     <div class="form-check form-switch">
                       <input class="form-check-input" type="checkbox" id="regRequireTerms" />
-                      <label class="form-check-label" for="regRequireTerms">
+                      <label class="form-check-label" for="regRequireTerms" data-tx="html_admin.requerirTerminosGenerales">
                         Requerir términos generales
                       </label>
                     </div>
                   </div>
 
                   <div class="col-12">
-                    <label class="form-label">URL de términos</label>
+                    <label class="form-label" data-tx="html_admin.urlDeTerminos">URL de términos</label>
                     <input
                       id="regTermsUrl"
                       class="form-control"
@@ -865,7 +880,7 @@
                   </div>
 
                   <div class="col-12">
-                    <label class="form-label">URL de términos de la Asociación</label>
+                    <label class="form-label" data-tx="html_admin.urlDeTerminosDe">URL de términos de la Asociación</label>
                     <input
                       id="regAssocTermsUrl"
                       class="form-control"
@@ -875,18 +890,18 @@
                   </div>
 
                   <div class="col-12">
-                    <label class="form-label">Texto de declaración informativa</label>
+                    <label class="form-label" data-tx="html_admin.textoDeDeclaracionInformativa">Texto de declaración informativa</label>
                     <textarea
                       id="regInfoDeclarationText"
                       class="form-control"
                       rows="4"
                       placeholder="Texto mostrado al usuario antes de aceptar..."
-                    ></textarea>
+                    ></textarea data-tx-placeholder="html_admin.textoMostradoAlUsuario">
                   </div>
 
                   <div class="col-12">
                     <button class="btn btn-primary" type="submit">
-                      <i class="bi bi-save me-1"></i>Guardar register settings
+                      <i class="bi bi-save me-1"></i><span data-tx="html_admin.guardarRegisterSettings">Guardar register settings</span>
                     </button>
                   </div>
                 </form>
@@ -896,8 +911,8 @@
             <section class="card shadow-sm border-0 admin-inner-card">
               <div class="card-body">
                 <div class="mb-3">
-                  <h3 class="h6 mb-1">Association details</h3>
-                  <p class="text-muted mb-0">
+                  <h3 class="h6 mb-1" data-tx="html_admin.associationDetails">Association details</h3>
+                  <p class="text-muted mb-0" data-tx="html_admin.contenidoEditableDelBloque">
                     Contenido editable del bloque institucional/association mostrado en registro.
                   </p>
                 </div>
@@ -906,80 +921,91 @@
                   <div class="col-md-6">
                     <div class="form-check form-switch mt-2">
                       <input class="form-check-input" type="checkbox" id="associationDetailsEnabled" />
-                      <label class="form-check-label" for="associationDetailsEnabled">
+                      <label class="form-check-label" for="associationDetailsEnabled" data-tx="html_admin.mostrarBloqueDeAssociation">
                         Mostrar bloque de association details
                       </label>
                     </div>
                   </div>
 
                   <div class="col-md-6">
-                    <label class="form-label">Título</label>
+                    <label class="form-label" data-tx="html_admin.titulo">Título</label>
                     <input
                       id="associationDetailsTitle"
                       class="form-control"
                       type="text"
-                      placeholder="ASOVOCA"
+                      placeholder="ASOVOCA" data-tx-placeholder="html_admin.asovoca"
                     />
                   </div>
 
                   <div class="col-12">
-                    <label class="form-label">Intro HTML</label>
+                    <label class="form-label" data-tx="html_admin.introHtml">Intro HTML</label>
                     <textarea
                       id="associationDetailsIntroHtml"
                       class="form-control"
                       rows="6"
                       placeholder="<p>Texto introductorio...</p>"
-                    ></textarea>
+                    ></textarea data-tx-placeholder="html_admin.pTextoIntroductorioP">
                   </div>
 
                   <div class="col-12">
-                    <label class="form-label">Título de montos / vigencia</label>
+                    <label class="form-label" data-tx="html_admin.tituloDeMontosVigencia">Título de montos / vigencia</label>
                     <input
                       id="associationDetailsFeesTitle"
                       class="form-control"
                       type="text"
-                      placeholder="Montos y vigencia:"
+                      placeholder="Montos y vigencia:" data-tx-placeholder="html_admin.montosYVigencia"
                     />
                   </div>
 
                   <div class="col-12">
-                    <label class="form-label">Párrafo 1</label>
+                    <label class="form-label" data-tx="html_admin.parrafo1">Párrafo 1</label>
                     <textarea
                       id="associationDetailsFeeParagraph1"
                       class="form-control"
                       rows="5"
                       placeholder="Texto del primer bloque de cuotas..."
-                    ></textarea>
+                    ></textarea data-tx-placeholder="html_admin.textoDelPrimerBloque">
                   </div>
 
                   <div class="col-12">
-                    <label class="form-label">Párrafo 2</label>
+                    <label class="form-label" data-tx="html_admin.parrafo2">Párrafo 2</label>
                     <textarea
                       id="associationDetailsFeeParagraph2"
                       class="form-control"
                       rows="4"
                       placeholder="Texto del segundo bloque..."
-                    ></textarea>
+                    ></textarea data-tx-placeholder="html_admin.textoDelSegundoBloque">
                   </div>
 
                   <div class="col-12">
-                    <label class="form-label">Texto de excepciones</label>
+                    <label class="form-label" data-tx="html_admin.textoDeExcepciones">Texto de excepciones</label>
                     <textarea
                       id="associationDetailsExceptionsText"
                       class="form-control"
                       rows="4"
                       placeholder="Casos especiales, exoneraciones, etc."
-                    ></textarea>
+                    ></textarea data-tx-placeholder="html_admin.casosEspecialesExoneracionesEtc">
                   </div>
 
                   <div class="col-12">
                     <button class="btn btn-primary" type="submit">
-                      <i class="bi bi-save me-1"></i>Guardar association details
+                      <i class="bi bi-save me-1"></i><span data-tx="html_admin.guardarAssociationDetails">Guardar association details</span>
                     </button>
                   </div>
                 </form>
               </div>
             </section>
+          </div>
+
+          <!-- TEXTS TAB -->
+          <div
+            class="tab-pane fade"
+            id="texts-pane"
+            role="tabpanel"
+            aria-labelledby="texts-tab"
+            tabindex="0"
+          >
+            <div id="textsEditorMount"></div>
           </div>
 
         </div>
@@ -992,7 +1018,7 @@
       <div class="modal-content">
         <form id="approveUserForm">
           <div class="modal-header">
-            <h5 class="modal-title">Aprobar usuario</h5>
+            <h5 class="modal-title" data-tx="html_admin.aprobarUsuario">Aprobar usuario</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
 
@@ -1001,12 +1027,12 @@
 
             <div class="row g-3">
               <div class="col-md-6">
-                <label class="form-label">Email</label>
+                <label class="form-label" data-tx="html_admin.email">Email</label>
                 <input id="approveEmail" class="form-control" type="text" readonly />
               </div>
 
               <div class="col-md-6">
-                <label class="form-label">Rol del sistema</label>
+                <label class="form-label" data-tx="html_admin.rolDelSistema">Rol del sistema</label>
                 <select id="approveSystemRole" class="form-select"></select>
               </div>
             </div>
@@ -1014,20 +1040,20 @@
             <hr />
 
             <div class="mb-3">
-              <label class="form-label">Modo de vínculo</label>
+              <label class="form-label" data-tx="html_admin.modoDeVinculo">Modo de vínculo</label>
               <select id="approveLinkMode" class="form-select">
-                <option value="existing">Ligar a jugador existente</option>
-                <option value="new">Crear jugador nuevo</option>
-                <option value="none">Activar sin jugador</option>
+                <option value="existing" data-tx="html_admin.ligarAJugadorExistente">Ligar a jugador existente</option>
+                <option value="new" data-tx="html_admin.crearJugadorNuevo">Crear jugador nuevo</option>
+                <option value="none" data-tx="html_admin.activarSinJugador">Activar sin jugador</option>
               </select>
             </div>
 
             <div id="existingPlayerWrap" class="mb-3">
-              <label class="form-label">Jugador existente</label>
+              <label class="form-label" data-tx="html_admin.jugadorExistente">Jugador existente</label>
               <select id="approveExistingPlayerId" class="form-select">
-                <option value="">Seleccionar…</option>
+                <option value="" data-tx="html_admin.seleccionar">Seleccionar…</option>
               </select>
-              <div class="form-text">
+              <div class="form-text" data-tx="html_admin.soloSeMuestranJugadores">
                 Solo se muestran jugadores sin usuario ligado, o ligados a este mismo usuario.
               </div>
             </div>
@@ -1035,22 +1061,22 @@
             <div id="newPlayerWrap" class="border rounded p-3 d-none">
               <div class="row g-3">
                 <div class="col-md-6">
-                  <label class="form-label">Nombre</label>
+                  <label class="form-label" data-tx="html_admin.nombre">Nombre</label>
                   <input id="newPlayerFirstName" class="form-control" type="text" />
                 </div>
 
                 <div class="col-md-6">
-                  <label class="form-label">Apellido</label>
+                  <label class="form-label" data-tx="html_admin.apellido">Apellido</label>
                   <input id="newPlayerLastName" class="form-control" type="text" />
                 </div>
 
                 <div class="col-md-6">
-                  <label class="form-label">Fecha de nacimiento</label>
+                  <label class="form-label" data-tx="html_admin.fechaDeNacimiento">Fecha de nacimiento</label>
                   <input id="newPlayerBirthday" class="form-control" type="date" />
                 </div>
 
                 <div class="col-md-6">
-                  <label class="form-label">Perfil en cancha</label>
+                  <label class="form-label" data-tx="html_admin.perfilEnCancha">Perfil en cancha</label>
                   <select id="newPlayerFieldRole" class="form-select"></select>
                 </div>
               </div>
@@ -1058,10 +1084,10 @@
           </div>
 
           <div class="modal-footer">
-            <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">
+            <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal" data-tx="html_admin.cancelar">
               Cancelar
             </button>
-            <button id="approveSubmitBtn" class="btn btn-primary" type="submit">
+            <button id="approveSubmitBtn" class="btn btn-primary" type="submit" data-tx="html_admin.aprobarCuenta">
               Aprobar cuenta
             </button>
           </div>

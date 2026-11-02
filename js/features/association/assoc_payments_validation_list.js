@@ -23,6 +23,7 @@ import {
   serverTimestamp,
   where,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { TX, txf } from "/js/strings/screens/assoc_payments.js";
 
 /* =========================
    Collections
@@ -99,23 +100,23 @@ function badge(text, cls = "gray") {
 function statusBadge(st) {
   const s = (st || "pending").toString().toLowerCase();
 
-  if (s === "active") return badge("Activa", "green");
-  if (s === "validated" || s === "approved") return badge("Validado", "green");
-  if (s === "rejected") return badge("Rechazado", "red");
-  if (s === "paid") return badge("Pagado", "yellow");
-  if (s === "submitted") return badge("En revisión", "yellow");
-  if (s === "partial") return badge("Parcial", "yellow");
-  if (s === "error") return badge("Error", "red");
+  if (s === "active") return badge(TX.activa, "green");
+  if (s === "validated" || s === "approved") return badge(TX.validado, "green");
+  if (s === "rejected") return badge(TX.rechazado, "red");
+  if (s === "paid") return badge(TX.pagado, "yellow");
+  if (s === "submitted") return badge(TX.enRevision, "yellow");
+  if (s === "partial") return badge(TX.parcial, "yellow");
+  if (s === "error") return badge(TX.error, "red");
 
-  return badge("Pendiente", "gray");
+  return badge(TX.pendiente, "gray");
 }
 
 function methodLabel(m) {
   const s = (m || "").toString().toLowerCase();
-  if (s === "sinpe") return "SINPE";
-  if (s === "transfer" || s === "transferencia") return "Transferencia";
-  if (s === "cash" || s === "efectivo") return "Efectivo";
-  if (s === "card" || s === "tarjeta") return "Tarjeta";
+  if (s === "sinpe") return TX.sinpe;
+  if (s === "transfer" || s === "transferencia") return TX.transferencia;
+  if (s === "cash" || s === "efectivo") return TX.efectivo;
+  if (s === "card" || s === "tarjeta") return TX.tarjeta;
   return m ? String(m) : "—";
 }
 
@@ -376,7 +377,7 @@ async function syncUserCurrentMembership(membership, plan = null) {
         membershipId: membership.id,
         season: membership.season || null,
         planId: membership.planId || plan?.id || null,
-        label: `${plan?.name || "Membresía"} ${membership.season || ""}`.trim(),
+        label: `${plan?.name || TX.membresia} ${membership.season || ""}`.trim(),
         status: normalizedStatus,
         installmentsTotal: membership.installmentsTotal ?? 0,
         installmentsSettled: membership.installmentsSettled ?? 0,
@@ -431,33 +432,33 @@ async function syncUserAssociationStatus(membership, decision) {
 function renderShell(container) {
   container.innerHTML = `
     <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap mb-2">
-      <div class="text-muted small">Pagos recibidos por usuarios</div>
+      <div class="text-muted small">${TX.pagosRecibidosPorUsuarios}</div>
       <div class="d-flex gap-2">
         <button id="btnRefresh" class="btn btn-outline-secondary btn-sm">
-          <i class="bi bi-arrow-clockwise me-1"></i> Refrescar
+          <i class="bi bi-arrow-clockwise me-1"></i> ${TX.refrescar}
         </button>
       </div>
     </div>
 
     <div class="row g-2">
       <div class="col-12 col-md-5">
-        <input id="searchInput" class="form-control" placeholder="Buscar por nombre, email, phone, membershipId..." />
+        <input id="searchInput" class="form-control" placeholder="${TX.buscarPorNombreEmail}" />
       </div>
 
       <div class="col-6 col-md-3">
         <select id="seasonFilter" class="form-select">
-          <option value="all">Todas las temporadas</option>
+          <option value="all">${TX.todasLasTemporadas}</option>
         </select>
       </div>
 
       <div class="col-6 col-md-4">
         <select id="statusFilter" class="form-select">
-          <option value="all">Todos los estados</option>
-          <option value="pending">Pendiente</option>
-          <option value="submitted">En revisión</option>
-          <option value="validated">Validado</option>
-          <option value="rejected">Rechazado</option>
-          <option value="error">Error</option>
+          <option value="all">${TX.todosLosEstados}</option>
+          <option value="pending">${TX.pendiente}</option>
+          <option value="submitted">${TX.enRevision}</option>
+          <option value="validated">${TX.validado}</option>
+          <option value="rejected">${TX.rechazado}</option>
+          <option value="error">${TX.error}</option>
         </select>
       </div>
     </div>
@@ -471,18 +472,18 @@ function renderShell(container) {
       <table class="table align-middle">
         <thead>
           <tr>
-            <th style="width:170px;">Fecha</th>
-            <th>Usuario</th>
-            <th>Membresía</th>
-            <th>Estado</th>
-            <th>Método</th>
-            <th>Comprobante</th>
-            <th>Monto</th>
-            <th class="text-end">Acciones</th>
+            <th style="width:170px;">${TX.fecha}</th>
+            <th>${TX.usuario}</th>
+            <th>${TX.membresia}</th>
+            <th>${TX.estado}</th>
+            <th>${TX.metodo}</th>
+            <th>${TX.comprobante}</th>
+            <th>${TX.monto}</th>
+            <th class="text-end">${TX.acciones}</th>
           </tr>
         </thead>
         <tbody id="subsTbody">
-          <tr><td colspan="8" class="text-muted">Cargando…</td></tr>
+          <tr><td colspan="8" class="text-muted">${TX.cargando}</td></tr>
         </tbody>
       </table>
     </div>
@@ -498,10 +499,10 @@ function renderModalHtml() {
       <div class="modal-content">
         <div class="modal-header">
           <div>
-            <div class="small text-muted">Submission</div>
-            <h5 class="modal-title mb-0" id="submissionModalTitle">Detalle</h5>
+            <div class="small text-muted">${TX.submission}</div>
+            <h5 class="modal-title mb-0" id="submissionModalTitle">${TX.detalle}</h5>
           </div>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="${TX.cerrar}"></button>
         </div>
 
         <div class="modal-body">
@@ -509,12 +510,12 @@ function renderModalHtml() {
 
           <div class="card border-0 bg-light">
             <div class="card-body">
-              <label class="form-label mb-1">Nota admin</label>
-              <textarea id="adminNoteInput" class="form-control" rows="2" placeholder="Opcional: comentario interno o razón de rechazo..."></textarea>
+              <label class="form-label mb-1">${TX.notaAdmin}</label>
+              <textarea id="adminNoteInput" class="form-control" rows="2" placeholder="${TX.opcionalComentarioInternoO}"></textarea>
               <div class="d-flex justify-content-between align-items-center mt-2">
                 <div class="small text-muted" id="membershipSyncHint">—</div>
                 <button id="btnSaveNote" class="btn btn-sm btn-outline-secondary" type="button">
-                  Guardar nota
+                  ${TX.guardarNota}
                 </button>
               </div>
             </div>
@@ -524,12 +525,12 @@ function renderModalHtml() {
         </div>
 
         <div class="modal-footer">
-          <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cerrar</button>
+          <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">${TX.cerrar}</button>
           <button id="btnReject" class="btn btn-outline-danger" type="button">
-            <i class="bi bi-x-circle me-1"></i> Rechazar
+            <i class="bi bi-x-circle me-1"></i> ${TX.rechazar}
           </button>
           <button id="btnApprove" class="btn btn-success" type="button">
-            <i class="bi bi-check-circle me-1"></i> Validar
+            <i class="bi bi-check-circle me-1"></i> ${TX.validar}
           </button>
         </div>
       </div>
@@ -571,7 +572,7 @@ function cacheDom(container) {
    Data loading
 ========================= */
 async function loadSubmissions() {
-  showLoader?.("Cargando pagos…");
+  showLoader?.(TX.cargandoPagos);
 
   let snap;
   try {
@@ -601,7 +602,7 @@ function fillSeasonFilterFromData() {
   const seasons = Array.from(new Set(allSubs.map(getSeason).filter((x) => x && x !== "—")))
     .sort((a, b) => String(b).localeCompare(String(a), "es"));
 
-  const opts = ['<option value="all">Todas las temporadas</option>'].concat(
+  const opts = [TX.todasLasTemporadas2].concat(
     seasons.map((s) => `<option value="${esc(String(s))}">${esc(String(s))}</option>`)
   );
 
@@ -656,10 +657,10 @@ function render() {
   const sum = list.reduce((acc, s) => acc + (Number(getAmount(s)) || 0), 0);
 
   $.countLabel.textContent = `${list.length} submissions`;
-  $.sumLabel.textContent = `Suma lista: ${fmtMoney(sum, "CRC")}`;
+  $.sumLabel.textContent = txf(TX.sumaLista, { value: fmtMoney(sum, "CRC") });
 
   if (!list.length) {
-    $.tbody.innerHTML = `<tr><td colspan="8" class="text-muted">No hay submissions con esos filtros.</td></tr>`;
+    $.tbody.innerHTML = `<tr><td colspan="8" class="text-muted">${TX.noHaySubmissionsCon}</td></tr>`;
     return;
   }
 
@@ -675,14 +676,14 @@ function render() {
 
       const fileUrl = getFileUrl(s);
       const proof = fileUrl
-        ? `<a href="${fileUrl}" target="_blank" rel="noopener noreferrer">Abrir</a>`
+        ? `<a href="${fileUrl}" target="_blank" rel="noopener noreferrer">${TX.abrir}</a>`
         : "—";
 
       const amt = fmtMoney(getAmount(s), getCurrency(s));
 
       const viewBtn = `
         <button class="btn btn-sm btn-outline-primary" type="button" data-action="view" data-id="${s.id}">
-          <i class="bi bi-eye-fill me-1"></i><span>Ver</span>
+          <i class="bi bi-eye-fill me-1"></i><span>${TX.ver}</span>
         </button>
       `;
 
@@ -693,7 +694,7 @@ function render() {
       const quickApprove = canQuickApprove
         ? `
         <button class="btn btn-sm btn-success ms-2" type="button" data-action="approve" data-id="${s.id}">
-          <i class="bi bi-check2 me-1"></i><span>Validar</span>
+          <i class="bi bi-check2 me-1"></i><span>${TX.validar}</span>
         </button>
       `
         : "";
@@ -728,7 +729,7 @@ async function applyDecision(sub, decision /* "validated" | "rejected" */) {
   const note = ($.adminNoteInput?.value || "").trim() || null;
 
   setBusy(true);
-  showLoader?.(decision === "validated" ? "Validando pago…" : "Rechazando pago…");
+  showLoader?.(decision === "validated" ? TX.validandoPago : TX.rechazandoPago);
 
   try {
     await updateDoc(doc(db, COL_SUBMISSIONS, sid), {
@@ -756,7 +757,7 @@ async function applyDecision(sub, decision /* "validated" | "rejected" */) {
     const membership = { id: mSnap.id, ...mSnap.data() };
     const plan = await loadPlanById(membership.planId);
     if (!plan) {
-      throw new Error(`No se encontró subscription_plans/${membership.planId}`);
+      throw new Error(txf(TX.noSeEncontroSubscription, { planId: membership.planId }));
     }
 
     const installmentIds = getAllInstallmentIdsFromSubmission(sub);
@@ -791,7 +792,7 @@ async function applyDecision(sub, decision /* "validated" | "rejected" */) {
     if (decision === "validated") {
       const enableAgain = shouldEnablePayLinkFromInstallments(inst);
       payLinkEnabled = enableAgain;
-      payLinkDisabledReason = enableAgain ? null : "Pago(s) validado(s).";
+      payLinkDisabledReason = enableAgain ? null : TX.pagoSValidadoS;
     } else if (decision === "rejected") {
       payLinkEnabled = true;
       payLinkDisabledReason = null;
@@ -884,7 +885,7 @@ async function saveAdminNoteOnly(sub) {
   const note = ($.adminNoteInput?.value || "").trim() || null;
 
   setBusy(true);
-  showLoader?.("Guardando nota…");
+  showLoader?.(TX.guardandoNota);
   try {
     await updateDoc(doc(db, COL_SUBMISSIONS, sid), {
       adminNote: note,
@@ -921,9 +922,9 @@ function openView(id, opts = {}) {
   const instIds = getAllInstallmentIdsFromSubmission(s);
   const instHint =
     instIds.length === 0
-      ? "General (sin cuota)"
+      ? TX.generalSinCuota
       : instIds.length === 1
-        ? "1 cuota vinculada"
+        ? TX.t1CuotaVinculada
         : `${instIds.length} cuotas vinculadas`;
 
   if ($.modalTitle) {
@@ -935,8 +936,8 @@ function openView(id, opts = {}) {
   if ($.membershipSyncHint) {
     const hasMid = !!pick(s, ["membershipId"], null);
     const hint = hasMid
-      ? `Al validar/rechazar se sincroniza memberships/${membershipId} (${instHint})`
-      : "⚠️ Este submission no tiene membershipId; no se puede sincronizar la membresía.";
+      ? txf(TX.alValidarRechazarSe, { membershipId, instHint })
+      : TX.esteSubmissionNoTiene;
     $.membershipSyncHint.textContent = hint;
   }
 
@@ -944,29 +945,29 @@ function openView(id, opts = {}) {
     $.modalQuick.innerHTML = `
       <div class="row g-2">
         <div class="col-12 col-md-6">
-          <div class="small text-muted">Membresía</div>
+          <div class="small text-muted">${TX.membresia}</div>
           <div class="mono">${membershipId !== "—" ? `#${esc(membershipId)}` : "—"}</div>
-          <div class="small text-muted mt-1">Cuotas: <span class="mono">${esc(instHint)}</span></div>
+          <div class="small text-muted mt-1">${TX.cuotas} <span class="mono">${esc(instHint)}</span></div>
         </div>
         <div class="col-12 col-md-6">
-          <div class="small text-muted">Plan</div>
+          <div class="small text-muted">${TX.plan}</div>
           <div class="mono">#${esc(planId)}</div>
         </div>
         <div class="col-6 col-md-3">
-          <div class="small text-muted">Monto</div>
+          <div class="small text-muted">${TX.monto}</div>
           <div class="fw-bold">${amount}</div>
         </div>
         <div class="col-6 col-md-3">
-          <div class="small text-muted">Método</div>
+          <div class="small text-muted">${TX.metodo}</div>
           <div>${esc(method)}</div>
         </div>
         <div class="col-6 col-md-3">
-          <div class="small text-muted">Estado</div>
+          <div class="small text-muted">${TX.estado}</div>
           <div>${statusBadge(status)}</div>
         </div>
         <div class="col-6 col-md-3">
-          <div class="small text-muted">Comprobante</div>
-          <div>${proof ? `<a href="${proof}" target="_blank" rel="noopener noreferrer">Abrir</a>` : "—"}</div>
+          <div class="small text-muted">${TX.comprobante}</div>
+          <div>${proof ? `<a href="${proof}" target="_blank" rel="noopener noreferrer">${TX.abrir}</a>` : "—"}</div>
         </div>
       </div>
     `;
@@ -1061,7 +1062,7 @@ export async function mount(container, cfg) {
     if (!ok) {
       console.warn("[assoc_payments_validation_list] No es admin según users");
       $.tbody.innerHTML = `<tr><td colspan="8" class="text-danger p-3">
-        No tenés permisos de admin.
+        ${TX.noTenesPermisosDe}
       </td></tr>`;
       return;
     }

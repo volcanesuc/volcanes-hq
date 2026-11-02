@@ -6,14 +6,14 @@
       <form id="drillEditorForm" class="h-100 d-flex flex-column">
         <div class="modal-header app-modal__header">
           <div>
-            <h5 class="modal-title mb-0" id="drillEditorTitle">Editar drill</h5>
-            <div class="small app-modal__subtitle">Actualizá la información del drill.</div>
+            <h5 class="modal-title mb-0" id="drillEditorTitle" data-tx="html_drill_editor_modal.editarDrill">Editar drill</h5>
+            <div class="small app-modal__subtitle" data-tx="html_drill_editor_modal.actualizaLaInformacionDel">Actualizá la información del drill.</div>
           </div>
           <button
             type="button"
             class="btn-close btn-close-white"
             data-bs-dismiss="modal"
-            aria-label="Cerrar"
+            aria-label="Cerrar" data-tx-aria-label="html_drill_editor_modal.cerrar"
           ></button>
         </div>
 
@@ -23,65 +23,65 @@
               <div class="row g-3">
 
                 <div class="col-12 col-lg-6">
-                  <label class="form-label" for="deName">Nombre *</label>
+                  <label class="form-label" for="deName" data-tx="html_drill_editor_modal.nombre">Nombre *</label>
                   <input class="form-control" id="deName" required maxlength="120" />
                 </div>
 
                 <div class="col-12 col-lg-6">
-                  <label class="form-label" for="deAuthor">Autor *</label>
+                  <label class="form-label" for="deAuthor" data-tx="html_drill_editor_modal.autor">Autor *</label>
                   <input class="form-control" id="deAuthor" required maxlength="80" />
                 </div>
 
                 <div class="col-12 col-lg-6">
-                  <label class="form-label" for="deTactical">Link Tactical Board</label>
+                  <label class="form-label" for="deTactical" data-tx="html_drill_editor_modal.linkTacticalBoard">Link Tactical Board</label>
                   <input class="form-control" id="deTactical" type="url" placeholder="https://..." />
                 </div>
 
                 <div class="col-12 col-lg-6">
-                  <label class="form-label" for="deVideo">Link video del equipo (opcional)</label>
+                  <label class="form-label" for="deVideo" data-tx="html_drill_editor_modal.linkVideoDelEquipo">Link video del equipo (opcional)</label>
                   <input class="form-control" id="deVideo" type="url" placeholder="https://..." />
                 </div>
 
                 <div class="col-12">
-                  <label class="form-label" for="deObjective">Objetivo</label>
+                  <label class="form-label" for="deObjective" data-tx="html_drill_editor_modal.objetivo">Objetivo</label>
                   <textarea class="form-control" id="deObjective" rows="2"></textarea>
                 </div>
 
                 <div class="col-12 col-md-4">
-                  <label class="form-label" for="deVolume">Volumen</label>
-                  <input class="form-control" id="deVolume" maxlength="60" placeholder="Ej: 6 reps / 10 min" />
+                  <label class="form-label" for="deVolume" data-tx="html_drill_editor_modal.volumen">Volumen</label>
+                  <input class="form-control" id="deVolume" maxlength="60" placeholder="Ej: 6 reps / 10 min" data-tx-placeholder="html_drill_editor_modal.ej6Reps10" />
                 </div>
 
                 <div class="col-12 col-md-4">
-                  <label class="form-label" for="deRest">Descanso post-drill</label>
-                  <input class="form-control" id="deRest" maxlength="60" placeholder="Ej: 90s" />
+                  <label class="form-label" for="deRest" data-tx="html_drill_editor_modal.descansoPostDrill">Descanso post-drill</label>
+                  <input class="form-control" id="deRest" maxlength="60" placeholder="Ej: 90s" data-tx-placeholder="html_drill_editor_modal.ej90s" />
                 </div>
 
                 <div class="col-12 col-md-4">
-                  <label class="form-label" for="deMinPlayers">Cantidad mínima de personas</label>
-                  <input class="form-control" id="deMinPlayers" type="number" min="1" step="1" placeholder="Ej: 6" />
+                  <label class="form-label" for="deMinPlayers" data-tx="html_drill_editor_modal.cantidadMinimaDePersonas">Cantidad mínima de personas</label>
+                  <input class="form-control" id="deMinPlayers" type="number" min="1" step="1" placeholder="Ej: 6" data-tx-placeholder="html_drill_editor_modal.ej6" />
                 </div>
 
                 <div class="col-12">
-                  <label class="form-label" for="deRecs">Recomendaciones</label>
+                  <label class="form-label" for="deRecs" data-tx="html_drill_editor_modal.recomendaciones">Recomendaciones</label>
                   <textarea class="form-control" id="deRecs" rows="3"></textarea>
                 </div>
 
                 <div class="col-12">
-                  <label class="form-label" for="deTags">Tags</label>
+                  <label class="form-label" for="deTags" data-tx="html_drill_editor_modal.tags">Tags</label>
                   <input
                     class="form-control"
                     id="deTags"
                     maxlength="240"
-                    placeholder="Ej: Finalización, Transición ofensiva, 1v1"
+                    placeholder="Ej: Finalización, Transición ofensiva, 1v1" data-tx-placeholder="html_drill_editor_modal.ejFinalizacionTransicionOfensiva"
                   />
-                  <div class="form-text">Separalos por coma.</div>
+                  <div class="form-text" data-tx="html_drill_editor_modal.separalosPorComa">Separalos por coma.</div>
                 </div>
 
                 <div class="col-12">
                   <div class="form-check form-switch">
                     <input class="form-check-input" type="checkbox" id="deIsPublic">
-                    <label class="form-check-label" for="deIsPublic">Público</label>
+                    <label class="form-check-label" for="deIsPublic" data-tx="html_drill_editor_modal.publico">Público</label>
                   </div>
                 </div>
 
@@ -91,8 +91,8 @@
         </div>
 
         <div class="modal-footer app-modal__footer">
-          <button class="btn btn-outline-secondary" data-bs-dismiss="modal" type="button">Cancelar</button>
-          <button class="btn btn-primary" id="saveDrillEditorBtn" type="button">Guardar cambios</button>
+          <button class="btn btn-outline-secondary" data-bs-dismiss="modal" type="button" data-tx="html_drill_editor_modal.cancelar">Cancelar</button>
+          <button class="btn btn-primary" id="saveDrillEditorBtn" type="button" data-tx="html_drill_editor_modal.guardarCambios">Guardar cambios</button>
         </div>
       </form>
 

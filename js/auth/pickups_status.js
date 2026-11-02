@@ -15,6 +15,7 @@ import {
   setDoc,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { TX } from "/js/strings/screens/pickups_status.js";
 
 const COL = APP_CONFIG.collections;
 const COL_USERS = COL.users;
@@ -48,13 +49,13 @@ function hideAlert() {
 function fmtDate(v) {
   try {
     const d = typeof v?.toDate === "function" ? v.toDate() : new Date(v);
-    if (Number.isNaN(d.getTime())) return "Fecha por definir";
+    if (Number.isNaN(d.getTime())) return TX.fechaPorDefinir;
     return new Intl.DateTimeFormat("es-CR", {
       dateStyle: "medium",
       timeStyle: "short",
     }).format(d);
   } catch {
-    return "Fecha por definir";
+    return TX.fechaPorDefinir;
   }
 }
 
@@ -77,12 +78,12 @@ async function getUserState(uid) {
   return snap.exists() ? snap.data() : null;
 }
 
-function renderEmptyPickups(message = "No hay pickups activos en este momento") {
+function renderEmptyPickups(message = TX.noHayPickupsActivos) {
   $.pickupsList.innerHTML = `
     <div class="col-12">
       <div class="pickup-card">
         <div class="fw-bold mb-1">${message}</div>
-        <div class="muted-help">Cuando publiquen nuevos pickups, los verás aquí.</div>
+        <div class="muted-help">${TX.cuandoPubliquenNuevosPickups}</div>
       </div>
     </div>
   `;
@@ -95,10 +96,10 @@ function renderPickups(items = []) {
   }
 
   $.pickupsList.innerHTML = items.map((p) => {
-    const title = p.title || p.name || "Pickup";
+    const title = p.title || p.name || TX.pickup;
     const when = fmtDate(p.startAt);
     const endWhen = fmtDate(p.endAt);
-    const venueName = p.venueName || "Ubicación por confirmar";
+    const venueName = p.venueName || TX.ubicacionPorConfirmar;
     const venueAddress = p.venueAddress || "";
     const description = p.notes || p.description || "";
     const mapsUrl = p.mapsUrl || "";
@@ -116,18 +117,18 @@ function renderPickups(items = []) {
         <div class="pickup-card">
           <div class="fw-bold mb-2">${title}</div>
 
-          <div class="pickup-meta mb-1"><strong>Inicio:</strong> ${when}</div>
-          <div class="pickup-meta mb-1"><strong>Fin:</strong> ${endWhen}</div>
-          <div class="pickup-meta mb-1"><strong>Lugar:</strong> ${venueName}</div>
+          <div class="pickup-meta mb-1"><strong>${TX.inicio}</strong> ${when}</div>
+          <div class="pickup-meta mb-1"><strong>${TX.fin}</strong> ${endWhen}</div>
+          <div class="pickup-meta mb-1"><strong>${TX.lugar}</strong> ${venueName}</div>
           ${venueAddress ? `<div class="muted-help mb-2">${venueAddress}</div>` : ""}
-          ${capacity > 0 ? `<div class="pickup-meta mb-1"><strong>Cupo:</strong> ${capacity}</div>` : ""}
-          ${pricing ? `<div class="pickup-meta mb-2"><strong>Tarifas:</strong> ${pricing}</div>` : ""}
+          ${capacity > 0 ? `<div class="pickup-meta mb-1"><strong>${TX.cupo}</strong> ${capacity}</div>` : ""}
+          ${pricing ? `<div class="pickup-meta mb-2"><strong>${TX.tarifas}</strong> ${pricing}</div>` : ""}
           ${description ? `<div class="muted-help mb-3">${description}</div>` : ""}
 
           ${
             mapsUrl
-              ? `<a class="btn btn-sm btn-outline-primary" href="${mapsUrl}" target="_blank" rel="noopener">Ver ubicación</a>`
-              : `<button class="btn btn-sm btn-secondary" type="button" disabled>Sin enlace</button>`
+              ? `<a class="btn btn-sm btn-outline-primary" href="${mapsUrl}" target="_blank" rel="noopener">${TX.verUbicacion}</a>`
+              : `<button class="btn btn-sm btn-secondary" type="button" disabled>${TX.sinEnlace}</button>`
           }
         </div>
       </div>
@@ -182,8 +183,8 @@ async function loadActivePickups() {
     $.pickupsList.innerHTML = `
       <div class="col-12">
         <div class="pickup-card">
-          <div class="fw-bold mb-1">No se pudieron cargar los pickups</div>
-          <div class="muted-help">Revisa la colección de pickups o los permisos de lectura.</div>
+          <div class="fw-bold mb-1">${TX.noSePudieronCargar}</div>
+          <div class="muted-help">${TX.revisaLaColeccionDe}</div>
         </div>
       </div>
     `;
@@ -195,7 +196,7 @@ function bindActions(uid) {
   actionBound = true;
 
   $.btnBecomePlayer?.addEventListener("click", async () => {
-    showLoader("Actualizando solicitud…");
+    showLoader(TX.actualizandoSolicitud);
     try {
       await setDoc(doc(db, COL_USERS, uid), {
         registration: {
@@ -210,7 +211,7 @@ function bindActions(uid) {
       window.location.replace("/index.html?state=platform_pending");
     } catch (e) {
       console.error(e);
-      showAlert("No se pudo registrar tu interés como jugador.");
+      showAlert(TX.noSePudoRegistrar);
     } finally {
       hideLoader();
       releaseUI();
@@ -218,7 +219,7 @@ function bindActions(uid) {
   });
 
   $.btnBecomeMember?.addEventListener("click", async () => {
-    showLoader("Preparando afiliación…");
+    showLoader(TX.preparandoAfiliacion);
     try {
       await setDoc(doc(db, COL_USERS, uid), {
         registration: {
@@ -232,7 +233,7 @@ function bindActions(uid) {
       window.location.replace("/register.html?mode=upgrade_member");
     } catch (e) {
       console.error(e);
-      showAlert("No se pudo preparar el cambio a asociado.");
+      showAlert(TX.noSePudoPreparar);
     } finally {
       hideLoader();
       releaseUI();
@@ -241,7 +242,7 @@ function bindActions(uid) {
 }
 
 async function boot() {
-  showLoader("Cargando…");
+  showLoader(TX.cargando);
 
   try {
     const header = await loadHeader("home", { enabledTabs: {} });
@@ -260,7 +261,7 @@ async function boot() {
       return;
     }
 
-    showLoader("Validando acceso…");
+    showLoader(TX.validandoAcceso);
 
     try {
       const data = await getUserState(user.uid);
@@ -298,7 +299,7 @@ async function boot() {
       bindActions(user.uid);
     } catch (e) {
       console.error(e);
-      showAlert("No se pudo cargar tu información.");
+      showAlert(TX.noSePudoCargar);
     } finally {
       hideLoader();
       releaseUI();

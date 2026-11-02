@@ -15,6 +15,7 @@ import {
   uploadBytesResumable,
   getDownloadURL
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+import { TX, txf } from "/js/strings/screens/membership_pay.js";
 
 /* =========================
    Collections
@@ -201,7 +202,7 @@ function setPayDisabledUI(msg) {
   if (btnSubmit) btnSubmit.disabled = true;
   disableForm(true);
 
-  if (pagePill) pagePill.textContent = "En revisión";
+  if (pagePill) pagePill.textContent = TX.enRevision;
 }
 
 /* =========================
@@ -211,13 +212,13 @@ function setPayDisabledUI(msg) {
   if (midText) midText.textContent = mid || "—";
 
   if (!mid || !code) {
-    if (pagePill) pagePill.textContent = "Link inválido";
+    if (pagePill) pagePill.textContent = TX.linkInvalido;
     disableForm(true);
-    showAlert("Link inválido. Asegurate de abrir el enlace completo (mid y code).", "danger");
+    showAlert(TX.linkInvalidoAsegurateDe, "danger");
     return;
   }
 
-  if (pagePill) pagePill.textContent = "Cargando…";
+  if (pagePill) pagePill.textContent = TX.cargando;
   disableForm(true);
 
   try {
@@ -227,7 +228,7 @@ function setPayDisabledUI(msg) {
       fillSummaryOnly();
       const reason =
         paymentLink?.disabledReason ||
-        "Este link está deshabilitado mientras el admin revisa el comprobante.";
+        TX.esteLinkEstaDeshabilitado;
       setPayDisabledUI(reason);
       showAlert(reason, "warning");
       return;
@@ -236,18 +237,18 @@ function setPayDisabledUI(msg) {
     fillUI();
     wireOnce();
     disableForm(false);
-    if (pagePill) pagePill.textContent = "Listo";
+    if (pagePill) pagePill.textContent = TX.listo;
   } catch (e) {
     console.error(e);
-    if (pagePill) pagePill.textContent = "No disponible";
+    if (pagePill) pagePill.textContent = TX.noDisponible;
     disableForm(true);
 
     if (String(e?.message || e).includes("invalid_code")) {
-      showAlert("Código inválido.", "danger");
+      showAlert(TX.codigoInvalido, "danger");
     } else if (String(e?.message || e).includes("link_disabled")) {
-      showAlert("Este link está deshabilitado.", "warning");
+      showAlert(TX.esteLinkEstaDeshabilitado2, "warning");
     } else {
-      showAlert("No se pudo cargar la página de pago. Revisá el link o contactá al club.", "danger");
+      showAlert(TX.noSePudoCargar, "danger");
     }
   }
 })();
@@ -289,9 +290,9 @@ function fillSummaryOnly() {
 
   if (planName) planName.textContent = p.name || "—";
 
-  const totalTxt = p.allowCustomAmount ? "Monto editable" : fmtMoney(p.totalAmount, cur);
+  const totalTxt = p.allowCustomAmount ? TX.montoEditable : fmtMoney(p.totalAmount, cur);
   if (planMeta) {
-    planMeta.textContent = `${totalTxt} • ${p.allowPartial ? "Permite cuotas" : "Pago único"} • ${p.requiresValidation ? "Validación admin" : "Sin validación"}`;
+    planMeta.textContent = `${totalTxt} • ${p.allowPartial ? TX.permiteCuotas : TX.pagoUnico} • ${p.requiresValidation ? TX.validacionAdmin : TX.sinValidacion}`;
   }
 }
 
@@ -308,38 +309,38 @@ function fillUI() {
 
   if (amountHint) {
     amountHint.textContent = p.allowCustomAmount
-      ? "Este plan permite monto editable. Escribí el monto que pagaste."
-      : "Seleccioná cuotas (si aplica) para sugerir el monto, o escribilo manualmente.";
+      ? TX.estePlanPermiteMonto
+      : TX.seleccionaCuotasSiAplica;
   }
 
   const pending = installments.filter((x) => !isSettledInstallmentStatus(x.status));
 
   if (installmentsBox) {
     if (!p.allowPartial || installments.length === 0) {
-      installmentsBox.innerHTML = `<div class="text-muted">Este plan es pago único (sin cuotas).</div>`;
-      if (installmentsBoxHint) installmentsBoxHint.textContent = "Podés enviar un pago general.";
+      installmentsBox.innerHTML = `<div class="text-muted">${TX.estePlanEsPago}</div>`;
+      if (installmentsBoxHint) installmentsBoxHint.textContent = TX.podesEnviarUnPago;
     } else if (!pending.length) {
-      installmentsBox.innerHTML = `<div class="text-muted">No hay cuotas pendientes.</div>`;
-      if (installmentsBoxHint) installmentsBoxHint.textContent = "Si necesitás adjuntar otro comprobante, enviá un pago general.";
+      installmentsBox.innerHTML = `<div class="text-muted">${TX.noHayCuotasPendientes}</div>`;
+      if (installmentsBoxHint) installmentsBoxHint.textContent = TX.siNecesitasAdjuntarOtro;
     } else {
       installmentsBox.innerHTML = pending.map((it, idx) => {
         const due = it.dueDate || (it.dueMonthDay ? `${paymentLink.season}-${it.dueMonthDay}` : "—");
         const key = getInstallmentKey(it, idx);
-        const label = `Cuota #${it.n ?? key} • vence ${due} • ${fmtMoney(it.amount, cur)}`;
+        const label = txf(TX.cuotaVence, { key: it.n ?? key, due, cur: fmtMoney(it.amount, cur) });
 
         return `
           <label class="d-flex align-items-start gap-2 p-2 border rounded mb-2" style="cursor:pointer;">
             <input class="form-check-input mt-1" type="checkbox" name="installmentChk" value="${key}">
             <span>
               <div class="fw-bold">${label}</div>
-              <div class="small text-muted">Estado: ${it.status || "pending"}</div>
+              <div class="small text-muted">${txf(TX.estado, { value: it.status || "pending" })}</div>
             </span>
           </label>
         `;
       }).join("");
 
       if (installmentsBoxHint) {
-        installmentsBoxHint.textContent = "Podés marcar 1 o varias cuotas. El monto se sugiere como suma (podés editarlo).";
+        installmentsBoxHint.textContent = TX.podesMarcar1O;
       }
     }
   }
@@ -348,17 +349,17 @@ function fillUI() {
     const options = pending.map((x, idx) => {
       const due = x.dueDate || (x.dueMonthDay ? `${paymentLink.season}-${x.dueMonthDay}` : "—");
       const key = getInstallmentKey(x, idx);
-      const label = `Cuota #${x.n ?? key} • vence ${due} • ${fmtMoney(x.amount, cur)} • ${x.status || "pending"}`;
+      const label = txf(TX.cuotaVence2, { key: x.n ?? key, due, cur: fmtMoney(x.amount, cur), value: x.status || "pending" });
       return `<option value="${key}">${label}</option>`;
     }).join("");
 
     installmentSelect.innerHTML =
-      `<option value="">Pago general (sin cuota específica)</option>` +
+      `<option value="">${TX.pagoGeneralSinCuota}</option>` +
       (options || "");
 
     installmentHint.textContent = pending.length
-      ? "Podés elegir una cuota pendiente o dejarlo como pago general."
-      : "No hay cuotas pendientes (o este plan es pago único). Podés enviar pago general si aplica.";
+      ? TX.podesElegirUnaCuota
+      : TX.noHayCuotasPendientes2;
   }
 
   const syncAmountFromSelection = (opts = {}) => {
@@ -463,7 +464,7 @@ async function onSubmit(e) {
   if (paymentLink?.enabled === false) {
     const reason =
       paymentLink?.disabledReason ||
-      "Este link está deshabilitado mientras el admin revisa el comprobante.";
+      TX.esteLinkEstaDeshabilitado;
     setPayDisabledUI(reason);
     showAlert(reason, "warning");
     return;
@@ -473,28 +474,28 @@ async function onSubmit(e) {
   const p = paymentLink?.plan || {};
 
   const payer = safe(payerName.value);
-  if (!payer) return showAlert("Falta el nombre.", "warning");
+  if (!payer) return showAlert(TX.faltaElNombre, "warning");
 
   const amt = Number(amount.value);
   if (!amount.value || Number.isNaN(amt) || amt <= 0) {
-    return showAlert("Monto inválido.", "warning");
+    return showAlert(TX.montoInvalido, "warning");
   }
 
   const f = fileInput.files?.[0];
-  if (!f) return showAlert("Adjuntá un comprobante (imagen o PDF).", "warning");
+  if (!f) return showAlert(TX.adjuntaUnComprobanteImagen, "warning");
 
   const okType = f.type.startsWith("image/") || f.type === "application/pdf";
-  if (!okType) return showAlert("Tipo de archivo no permitido. Usá imagen o PDF.", "warning");
+  if (!okType) return showAlert(TX.tipoDeArchivoNo, "warning");
 
   const MAX_MB = 10;
   if (f.size > MAX_MB * 1024 * 1024) {
-    return showAlert(`Archivo muy grande. Máximo ${MAX_MB}MB.`, "warning");
+    return showAlert(txf(TX.archivoMuyGrandeMaximo, { MAX_MB }), "warning");
   }
 
   btnSubmit.disabled = true;
   disableForm(true);
   clearProgress();
-  setProgress(5, "Preparando subida…");
+  setProgress(5, TX.preparandoSubida);
 
   try {
     const selectedInstallmentNs = getSelectedInstallmentNsFromUI();
@@ -511,14 +512,14 @@ async function onSubmit(e) {
         "state_changed",
         (snap) => {
           const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
-          setProgress(Math.max(10, Math.min(90, pct)), `Subiendo… ${pct}%`);
+          setProgress(Math.max(10, Math.min(90, pct)), txf(TX.subiendo, { pct }));
         },
         (err) => reject(err),
         () => resolve()
       );
     });
 
-    setProgress(92, "Finalizando…");
+    setProgress(92, TX.finalizando);
 
     const url = await getDownloadURL(fileRef);
 
@@ -548,8 +549,8 @@ async function onSubmit(e) {
       updatedAt: serverTimestamp()
     });
 
-    setProgress(100, "✅ Enviado");
-    showAlert("✅ Comprobante enviado. Un admin lo revisará pronto.", "success");
+    setProgress(100, TX.enviado);
+    showAlert(TX.comprobanteEnviadoUnAdmin, "success");
 
     document.querySelectorAll('input[name="installmentChk"]').forEach((x) => {
       x.checked = false;
@@ -564,16 +565,16 @@ async function onSubmit(e) {
     const errCode = err?.code || "";
     const msg =
       errCode === "permission-denied"
-        ? "❌ Permisos insuficientes (Firestore Rules)."
+        ? TX.permisosInsuficientesFirestoreRules
         : errCode === "storage/unauthorized"
-          ? "❌ No tenés permiso para subir el archivo. Revisá las Storage Rules."
+          ? TX.noTenesPermisoPara
           : errCode === "storage/retry-limit-exceeded"
-            ? "❌ Falló la subida. Probá con otra red o un archivo más liviano."
+            ? TX.falloLaSubidaProba
             : errCode === "storage/canceled"
-              ? "❌ Subida cancelada."
+              ? TX.subidaCancelada
               : errCode === "storage/invalid-checksum"
-                ? "❌ El archivo se corrompió al subir. Intentá otra vez."
-                : "❌ Ocurrió un error subiendo el comprobante. Intentá de nuevo o contactá al club.";
+                ? TX.elArchivoSeCorrompio
+                : TX.ocurrioUnErrorSubiendo;
 
     showAlert(msg, "danger");
     clearProgress();

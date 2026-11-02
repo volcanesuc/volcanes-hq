@@ -25,6 +25,7 @@ import {
   doc,
   getDoc,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { TX, txf } from "/js/strings/screens/gym_routine.js";
 
 /* =========================
    Params
@@ -45,8 +46,8 @@ const $ = {
 };
 
 if (!routineId) {
-  showAlert("Falta parámetro id en el link.", "warning");
-  throw new Error("Missing id");
+  showAlert(TX.faltaParametroIdEn, "warning");
+  throw new Error(TX.missingId);
 }
 
 /* =========================
@@ -69,17 +70,17 @@ async function boot() {
 
     setPublicHeaderMode(routine.isPublic === true);
 
-    $.title.textContent = routine.name || "Rutina de gimnasio";
+    $.title.textContent = routine.name || TX.rutinaDeGimnasio;
     $.dates.textContent = routine.description || "—";
 
     if (routine.isPublic === true) {
       $.badge.className = "badge text-bg-success";
-      $.badge.textContent = "PUBLIC";
+      $.badge.textContent = TX.public;
       clearAlert();
     } else {
       $.badge.className = "badge text-bg-warning";
-      $.badge.textContent = "PRIVATE";
-      showAlert("Esta rutina es privada.", "warning");
+      $.badge.textContent = TX.private;
+      showAlert(TX.estaRutinaEsPrivada, "warning");
     }
 
     wireShareButton();
@@ -87,7 +88,7 @@ async function boot() {
     injectRoutineViewStyles();
   } catch (e) {
     console.error("[gym_routine] boot error:", e);
-    showAlert("Error cargando rutina. Ver consola.", "danger");
+    showAlert(TX.errorCargandoRutinaVer, "danger");
     $.acc.innerHTML = "";
   } finally {
     hideLoaderSafe();
@@ -119,7 +120,7 @@ function fmtToStringOrNull(v) {
 
 async function loadRoutineResolved({ routineId }) {
   const rSnap = await getDoc(doc(db, "gym_routines", routineId));
-  if (!rSnap.exists()) throw new Error("Rutina no existe");
+  if (!rSnap.exists()) throw new Error(TX.rutinaNoExiste);
 
   const routine = { id: rSnap.id, ...rSnap.data() };
 
@@ -181,8 +182,8 @@ function wireShareButton() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: document.title || "Rutina",
-          text: $.title?.textContent || "Rutina",
+          title: document.title || TX.rutina,
+          text: $.title?.textContent || TX.rutina,
           url,
         });
         return;
@@ -193,9 +194,9 @@ function wireShareButton() {
 
     try {
       await navigator.clipboard.writeText(url);
-      toastShare("Link copiado ✅");
+      toastShare(TX.linkCopiado);
     } catch {
-      toastShare("No pude copiar el link.", true);
+      toastShare(TX.noPudeCopiarEl, true);
     }
   });
 }
@@ -223,7 +224,7 @@ function renderAccordion(items) {
   if (!items.length) {
     $.acc.innerHTML = `
       <div class="text-muted small">
-        No hay ejercicios en esta rutina.
+        ${TX.noHayEjerciciosEn}
       </div>
     `;
     return;
@@ -239,14 +240,14 @@ function renderAccordion(items) {
       <button
         class="btn btn-sm routine-media-btn ${hasMedia ? "btn-outline-primary" : "btn-outline-secondary"}"
         type="button"
-        ${hasMedia ? `data-open-media="${escapeHtml(it.mediaUrl)}" data-media-title="${escapeHtml(it.name || "Media")}"` : "disabled"}
+        ${hasMedia ? `data-open-media="${escapeHtml(it.mediaUrl)}" data-media-title="${escapeHtml(it.name || TX.media)}"` : "disabled"}
       >
-        Ver
+        ${TX.ver}
       </button>
     `;
 
     const missing = it._exerciseMissing
-      ? `<span class="badge text-bg-warning ms-2">Ejercicio no existe</span>`
+      ? `<span class="badge text-bg-warning ms-2">${TX.ejercicioNoExiste}</span>`
       : "";
 
     const bodyPartsHtml = it.bodyParts?.length
@@ -289,12 +290,12 @@ function renderAccordion(items) {
       >
         <div class="accordion-body">
           <div class="mb-2">
-            <div class="small text-muted mb-1">Partes del cuerpo</div>
+            <div class="small text-muted mb-1">${TX.partesDelCuerpo}</div>
             <div>${bodyPartsHtml}</div>
           </div>
 
           <div>
-            <div class="small text-muted mb-1">Notas</div>
+            <div class="small text-muted mb-1">${TX.notas}</div>
             ${notesHtml}
           </div>
         </div>
@@ -314,14 +315,14 @@ function fmtSeriesLine(it) {
   if (st === "distance") {
     const dist = it.distance ?? "—";
     const unit = it.distanceUnit ?? "";
-    parts.push(`Distancia: ${dist} ${unit}`.trim());
+    parts.push(txf(TX.distancia, { dist, unit }).trim());
   } else {
-    parts.push(`Sets: ${it.sets ?? "—"}`);
-    parts.push(`Reps: ${it.reps ?? "—"}`);
+    parts.push(txf(TX.sets, { value: it.sets ?? "—" }));
+    parts.push(txf(TX.reps, { value: it.reps ?? "—" }));
   }
 
   if (it.restSec !== null && it.restSec !== undefined) {
-    parts.push(`Descanso: ${it.restSec}s`);
+    parts.push(txf(TX.descansoS, { restSec: it.restSec }));
   }
 
   return parts.join(" · ");
@@ -336,7 +337,7 @@ function bindRoutineMediaButtons() {
       e.stopPropagation();
 
       const rawUrl = btn.getAttribute("data-open-media");
-      const title = btn.getAttribute("data-media-title") || "Media";
+      const title = btn.getAttribute("data-media-title") || TX.media;
       if (!rawUrl) return;
 
       openMediaViewerModal(rawUrl, { title });

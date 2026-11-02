@@ -17,6 +17,7 @@ import {
   clearProofStatus,
   setProofStatus,
 } from "./register_ui.js";
+import { TX, txf } from "/js/strings/screens/register_plans.js";
 
 const COL = APP_CONFIG.collections;
 const COL_PLANS = COL.subscriptionPlans;
@@ -30,11 +31,11 @@ export async function loadPlans() {
 
   if ($.planId) {
     $.planId.innerHTML =
-      `<option value="">Seleccionar…</option>` +
+      `<option value="">${TX.seleccionar}</option>` +
       activePlans
         .map((p) => {
           const amt = planAmount(p);
-          const label = `${p.name || "Plan"} — ${fmtMoney(amt, p.currency || "CRC")}`;
+          const label = `${p.name || TX.plan} — ${fmtMoney(amt, p.currency || "CRC")}`;
           return `<option value="${esc(p.id)}">${esc(label)}</option>`;
         })
         .join("");
@@ -57,7 +58,7 @@ export function bindPlanUI(plansByIdRef) {
     if (p.description) parts.push(p.description);
 
     const amt = planAmount(p);
-    if (amt != null) parts.push(`Monto: ${fmtMoney(amt, p.currency || "CRC")}`);
+    if (amt != null) parts.push(txf(TX.monto, { value: fmtMoney(amt, p.currency || "CRC") }));
 
     if ($.planMeta) $.planMeta.textContent = parts.join(" • ");
     updateSubmitState();
@@ -75,9 +76,9 @@ export function bindPlanUI(plansByIdRef) {
     try {
       validateProofFile(file);
       const kb = Math.round(file.size / 1024);
-      setProofStatus(`Archivo listo: ${file.name} (${kb} KB)`, "muted", false);
+      setProofStatus(txf(TX.archivoListoKb, { name: file.name, kb }), "muted", false);
     } catch (e) {
-      setProofStatus(e.message || "Archivo inválido.", "danger", false);
+      setProofStatus(e.message || TX.archivoInvalido, "danger", false);
     }
 
     updateSubmitState();

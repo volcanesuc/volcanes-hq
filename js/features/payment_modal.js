@@ -8,6 +8,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 import { showLoader, hideLoader } from "../ui/loader.js";
+import { TX } from "/js/strings/screens/payment_modal.js";
 
 function clean(v) {
   return (v || "").toString().trim();
@@ -87,7 +88,7 @@ export function createPaymentModal() {
     if (el.payPath) el.payPath.value = collectionPath || "";
     if (el.payDocId) el.payDocId.value = docId || "";
 
-    if (el.title) el.title.textContent = title || "Agregar pago";
+    if (el.title) el.title.textContent = title || TX.agregarPago;
     if (el.subtitle) el.subtitle.textContent = subtitle || "—";
 
     if (el.amount) {
@@ -117,19 +118,19 @@ export function createPaymentModal() {
     const docId = clean(el.payDocId?.value);
 
     if (!collectionPath || !docId) {
-      alert("Falta el destino del pago.");
+      alert(TX.faltaElDestinoDel);
       return;
     }
 
     const amount = Number(el.amount?.value);
     if (!Number.isFinite(amount) || amount <= 0) {
-      alert("Monto inválido.");
+      alert(TX.montoInvalido);
       return;
     }
 
     const date = clean(el.date?.value);
     if (!date) {
-      alert("Fecha requerida.");
+      alert(TX.fechaRequerida);
       return;
     }
 
@@ -142,7 +143,7 @@ export function createPaymentModal() {
       ..._extraPaymentData
     };
 
-    showLoader("Guardando pago…");
+    showLoader(TX.guardandoPago);
     try {
       const parts = collectionPath.split("/").filter(Boolean);
       const ref = doc(db, ...parts, docId);
@@ -157,7 +158,7 @@ export function createPaymentModal() {
       resetForm();
     } catch (err) {
       console.error(err);
-      alert("Error guardando pago.");
+      alert(TX.errorGuardandoPago);
     } finally {
       hideLoader();
     }

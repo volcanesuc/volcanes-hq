@@ -7,6 +7,7 @@ import { openModal } from "/js/ui/modal_host.js";
 import { APP_CONFIG } from "/js/config/config.js";
 
 import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { TX, txf } from "/js/strings/screens/assoc_memberships_list.js";
 
 /* =========================
    Collections
@@ -79,11 +80,11 @@ function normalizeMembershipStatus(status) {
 function statusBadgeHtml(st) {
   const s = normalizeMembershipStatus(st);
 
-  if (s === "active") return badge("Activa", "green");
-  if (s === "partial") return badge("Validando", "yellow");
-  if (s === "expired") return badge("Vencida", "red");
-  if (s === "rejected") return badge("Rechazada", "red");
-  return badge("Pendiente", "gray");
+  if (s === "active") return badge(TX.activa, "green");
+  if (s === "partial") return badge(TX.validando, "yellow");
+  if (s === "expired") return badge(TX.vencida, "red");
+  if (s === "rejected") return badge(TX.rechazada, "red");
+  return badge(TX.pendiente, "gray");
 }
 
 function statusRank(st) {
@@ -337,7 +338,7 @@ function renderShell(container) {
         </div>
         <div class="d-flex gap-2">
           <button id="btnNewMembership" class="btn btn-primary btn-sm" type="button">
-            <i class="bi bi-plus-lg me-1"></i> ${STR.actions?.newMembership || "Nueva membresía"}
+            <i class="bi bi-plus-lg me-1"></i> ${STR.actions?.newMembership || TX.nuevaMembresia}
           </button>
           <button id="btnRefresh" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-arrow-clockwise me-1"></i> ${STR.actions.refresh}
@@ -362,11 +363,11 @@ function renderShell(container) {
         <div class="col-6 col-md-2">
           <select id="statusFilter" class="form-select">
             <option value="all">${STR.filters.allStatus}</option>
-            <option value="active">Activa</option>
-            <option value="partial">Validando</option>
-            <option value="pending">Pendiente</option>
-            <option value="expired">Vencida</option>
-            <option value="rejected">Rechazada</option>
+            <option value="active">${TX.activa}</option>
+            <option value="partial">${TX.validando}</option>
+            <option value="pending">${TX.pendiente}</option>
+            <option value="expired">${TX.vencida}</option>
+            <option value="rejected">${TX.rechazada}</option>
           </select>
         </div>
         <div class="col-6 col-md-2">
@@ -387,19 +388,19 @@ function renderShell(container) {
         </div>
         <div class="col-6 col-md-3">
           <div class="kpi-box">
-            <div class="text-muted small">Validando</div>
+            <div class="text-muted small">${TX.validando}</div>
             <div class="fs-4 fw-bold" id="kpiPartial">0</div>
           </div>
         </div>
         <div class="col-6 col-md-3">
           <div class="kpi-box">
-            <div class="text-muted small">Activas</div>
+            <div class="text-muted small">${TX.activas}</div>
             <div class="fs-4 fw-bold" id="kpiActive">0</div>
           </div>
         </div>
         <div class="col-6 col-md-3">
           <div class="kpi-box">
-            <div class="text-muted small">Vencidas / Rechazadas</div>
+            <div class="text-muted small">${TX.vencidasRechazadas}</div>
             <div class="fs-4 fw-bold" id="kpiRejected">0</div>
           </div>
         </div>
@@ -436,7 +437,7 @@ function renderShellWithoutHeader(container) {
       <div id="countLabel" class="text-muted small">${STR.count(0)}</div>
       <div class="d-flex gap-2">
         <button id="btnNewMembership" class="btn btn-primary btn-sm" type="button">
-          <i class="bi bi-plus-circle me-1"></i> ${STR.actions?.newMembership || "Nueva membresía"}
+          <i class="bi bi-plus-circle me-1"></i> ${STR.actions?.newMembership || TX.nuevaMembresia}
         </button>
         <button id="btnRefresh" class="btn btn-outline-secondary btn-sm">
           <i class="bi bi-arrow-clockwise me-1"></i> ${STR.actions.refresh}
@@ -461,11 +462,11 @@ function renderShellWithoutHeader(container) {
       <div class="col-6 col-md-2">
         <select id="statusFilter" class="form-select">
           <option value="all">${STR.filters.allStatus}</option>
-          <option value="active">Activa</option>
-          <option value="partial">Validando</option>
-          <option value="pending">Pendiente</option>
-          <option value="expired">Vencida</option>
-          <option value="rejected">Rechazada</option>
+          <option value="active">${TX.activa}</option>
+          <option value="partial">${TX.validando}</option>
+          <option value="pending">${TX.pendiente}</option>
+          <option value="expired">${TX.vencida}</option>
+          <option value="rejected">${TX.rechazada}</option>
         </select>
       </div>
       <div class="col-6 col-md-2">
@@ -486,19 +487,19 @@ function renderShellWithoutHeader(container) {
       </div>
       <div class="col-6 col-md-3">
         <div class="kpi-box">
-          <div class="text-muted small">Validando</div>
+          <div class="text-muted small">${TX.validando}</div>
           <div class="fs-4 fw-bold" id="kpiPartial">0</div>
         </div>
       </div>
       <div class="col-6 col-md-3">
         <div class="kpi-box">
-          <div class="text-muted small">Activas</div>
+          <div class="text-muted small">${TX.activas}</div>
           <div class="fs-4 fw-bold" id="kpiActive">0</div>
         </div>
       </div>
       <div class="col-6 col-md-3">
         <div class="kpi-box">
-          <div class="text-muted small">Vencidas / Rechazadas</div>
+          <div class="text-muted small">${TX.vencidasRechazadas}</div>
           <div class="fs-4 fw-bold" id="kpiRejected">0</div>
         </div>
       </div>
@@ -736,7 +737,7 @@ function render() {
     const p = getPlanForMembership(m) || {};
     const cur = m.currency || p.currency || "CRC";
     const coverageText = fmtCoverageRange(m);
-    const dupBadge = m._hasDup ? badge(`Duplicado x${m._dupCount}`, "orange") : "";
+    const dupBadge = m._hasDup ? badge(txf(TX.duplicadoX, { dupCount: m._dupCount }), "orange") : "";
 
     const associateCell = `
       <div class="fw-bold tight">${getOwnerName(m)}</div>
@@ -744,7 +745,7 @@ function render() {
         ${[getOwnerEmail(m), getOwnerPhone(m)].filter(Boolean).join(" • ") || STR.common.dash}
       </div>
       <div class="small text-muted mono tight">${STR.table.idPrefix} ${m.id}</div>
-      ${m.userId ? `<div class="small text-muted mono tight">UID: ${m.userId}</div>` : ""}
+      ${m.userId ? `<div class="small text-muted mono tight">${txf(TX.uid, { userId: m.userId })}</div>` : ""}
       ${dupBadge ? `<div class="mt-1">${dupBadge}</div>` : ""}
     `;
 
@@ -756,13 +757,13 @@ function render() {
         }
       </div>
       <div class="small text-muted tight">
-        Inicio: ${fmtShortDate(m.coverageStartDate) || "—"}
+        ${txf(TX.inicio, { value: fmtShortDate(m.coverageStartDate) || "—" })}
       </div>
       <div class="small text-muted tight">
-        Fin: ${fmtShortDate(m.coverageEndDate) || "—"}
+        ${txf(TX.fin, { value: fmtShortDate(m.coverageEndDate) || "—" })}
       </div>
       <div class="small text-muted tight">
-        Cobertura: ${coverageText}
+        ${txf(TX.cobertura, { coverageText })}
       </div>
     `;
 

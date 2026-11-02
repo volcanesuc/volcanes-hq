@@ -4,6 +4,8 @@ import { guardPage } from "./page-guard.js";
 import { loadHeader } from "./components/header.js";
 import { loadAdminEditUserModal } from "./components/admin-edit-user-modal.js";
 import { showLoader, hideLoader } from "./ui/loader.js";
+import { mountTextsEditor } from "./components/texts_editor.js";
+import { loadPickupSettings } from "./features/pickups/pickups_settings.js";
 
 import {
   collection,
@@ -21,6 +23,7 @@ import {
   uploadBytes,
   getDownloadURL
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+import { TX, txf } from "/js/strings/screens/admin.js";
 
 const COL = APP_CONFIG.collections;
 const COL_USERS = COL.users;
@@ -473,10 +476,10 @@ async function loadRolesCatalog() {
 
   if (!availableRoles.length) {
     availableRoles = [
-      normalizeRoleDefinition({ id: "admin", label: "Admin" }),
-      normalizeRoleDefinition({ id: "coach", label: "Coach" }),
-      normalizeRoleDefinition({ id: "staff", label: "Staff" }),
-      normalizeRoleDefinition({ id: "viewer", label: "Viewer" }),
+      normalizeRoleDefinition({ id: "admin", label: TX.admin }),
+      normalizeRoleDefinition({ id: "coach", label: TX.coach }),
+      normalizeRoleDefinition({ id: "staff", label: TX.staff }),
+      normalizeRoleDefinition({ id: "viewer", label: TX.viewer }),
     ];
   }
 }
@@ -511,7 +514,7 @@ function renderRolePermissionsTable() {
   if (!roles.length) {
     $.rolesPermissionsTableBody.innerHTML = `
       <tr>
-        <td colspan="8" class="text-muted">No hay roles configurados.</td>
+        <td colspan="8" class="text-muted">${TX.noHayRolesConfigurados}</td>
       </tr>
     `;
     return;
@@ -593,7 +596,7 @@ function renderRolePermissionsTable() {
             class="btn btn-sm btn-primary"
             data-save-role-permissions="${esc(role.id)}"
           >
-            Guardar
+            ${TX.guardar}
           </button>
         </td>
       </tr>
@@ -606,7 +609,7 @@ async function loadRolesPermissionsAdmin() {
 
   $.rolesPermissionsTableBody.innerHTML = `
     <tr>
-      <td colspan="8" class="text-muted">Cargando roles…</td>
+      <td colspan="8" class="text-muted">${TX.cargandoRoles}</td>
     </tr>
   `;
 
@@ -618,7 +621,7 @@ async function loadRolesPermissionsAdmin() {
     console.error("loadRolesPermissionsAdmin error:", err);
     $.rolesPermissionsTableBody.innerHTML = `
       <tr>
-        <td colspan="8" class="text-danger">No se pudo cargar la matriz de permisos.</td>
+        <td colspan="8" class="text-danger">${TX.noSePudoCargar}</td>
       </tr>
     `;
   }
@@ -627,13 +630,13 @@ async function loadRolesPermissionsAdmin() {
 async function saveRolePermissions(roleId) {
   const normalizedRoleId = String(roleId || "").trim();
   if (!normalizedRoleId) {
-    showAlert("No se encontró el rol a guardar.");
+    showAlert(TX.noSeEncontroEl);
     return;
   }
 
   const role = getRolesForSelect().find((item) => String(item.id) === normalizedRoleId);
   if (!role) {
-    showAlert("No se encontró la definición del rol.");
+    showAlert(TX.noSeEncontroLa);
     return;
   }
 
@@ -659,7 +662,7 @@ async function saveRolePermissions(roleId) {
     }),
   });
 
-  showLoader(`Guardando permisos de ${nextRole.label || nextRole.id}…`);
+  showLoader(txf(TX.guardandoPermisosDe, { value: nextRole.label || nextRole.id }));
 
   try {
     const merged = getRolesForSelect().map((item) =>
@@ -678,10 +681,10 @@ async function saveRolePermissions(roleId) {
     availableRoles = merged;
     fillStaticOptions();
     renderRolePermissionsTable();
-    showAlert(`Permisos del rol ${nextRole.label || nextRole.id} guardados correctamente.`, "success");
+    showAlert(txf(TX.permisosDelRolGuardados, { value: nextRole.label || nextRole.id }), "success");
   } catch (err) {
     console.error("saveRolePermissions error:", err);
-    showAlert(err?.message || "No se pudieron guardar los permisos del rol.");
+    showAlert(err?.message || TX.noSePudieronGuardar);
   } finally {
     hideLoader();
   }
@@ -716,7 +719,7 @@ function fillStaticOptions() {
 
   if ($.usersRoleFilter) {
     $.usersRoleFilter.innerHTML =
-      `<option value="">Todos</option>` +
+      `<option value="">${TX.todos}</option>` +
       roles
         .map((r) => `<option value="${esc(r.id)}">${esc(r.label)}</option>`)
         .join("");
@@ -827,7 +830,7 @@ function renderUsersAdminTable() {
   if (!filtered.length) {
     $.usersAdminTableBody.innerHTML = `
       <tr>
-        <td colspan="9" class="text-muted">No hay usuarios para mostrar.</td>
+        <td colspan="9" class="text-muted">${TX.noHayUsuariosPara}</td>
       </tr>
     `;
     return;
@@ -851,7 +854,7 @@ function renderUsersAdminTable() {
             <div class="d-flex flex-column">
               <strong>${esc(fullName)}</strong>
               <span class="small text-muted">${esc(u.email || "—")}</span>
-              <span class="small text-muted">UID: ${esc(u.id || "—")}</span>
+              <span class="small text-muted">${txf(TX.uid, { value: esc(u.id || "—") })}</span>
             </div>
           </td>
 
@@ -860,18 +863,18 @@ function renderUsersAdminTable() {
           <td>
             ${
               u.isPlayerActive === true
-                ? renderStatusBadge("Activo", "success")
+                ? renderStatusBadge(TX.activo, "success")
                 : pending
-                ? renderStatusBadge("Pendiente", "warning")
-                : renderStatusBadge("Sin acceso", "neutral")
+                ? renderStatusBadge(TX.pendiente, "warning")
+                : renderStatusBadge(TX.sinAcceso, "neutral")
             }
           </td>
 
           <td>
             ${
               u.playerId
-                ? renderStatusBadge("Ligado", "success")
-                : renderStatusBadge("Sin player", "neutral")
+                ? renderStatusBadge(TX.ligado, "success")
+                : renderStatusBadge(TX.sinPlayer, "neutral")
             }
           </td>
 
@@ -894,8 +897,8 @@ function renderUsersAdminTable() {
           <td>
             ${
               u.canUsePickups === true
-                ? renderStatusBadge("Sí", "success")
-                : renderStatusBadge("No", "neutral")
+                ? renderStatusBadge(TX.si, "success")
+                : renderStatusBadge(TX.no, "neutral")
             }
           </td>
 
@@ -908,7 +911,7 @@ function renderUsersAdminTable() {
                 type="button"
                 data-edit-user="${esc(u.id)}"
               >
-                Editar
+                ${TX.editar}
               </button>
 
               ${
@@ -919,14 +922,14 @@ function renderUsersAdminTable() {
                       type="button"
                       data-approve-user="${esc(u.id)}"
                     >
-                      Aprobar
+                      ${TX.aprobar}
                     </button>
                     <button
                       class="btn btn-sm btn-outline-danger"
                       type="button"
                       data-deny-user="${esc(u.id)}"
                     >
-                      Denegar
+                      ${TX.denegar}
                     </button>
                   `
                   : ""
@@ -943,7 +946,7 @@ async function loadUsersAdminTable() {
   if ($.usersAdminTableBody) {
     $.usersAdminTableBody.innerHTML = `
       <tr>
-        <td colspan="9" class="text-muted">Cargando…</td>
+        <td colspan="9" class="text-muted">${TX.cargando}</td>
       </tr>
     `;
   }
@@ -957,11 +960,11 @@ async function loadUsersAdminTable() {
     if ($.usersAdminTableBody) {
       $.usersAdminTableBody.innerHTML = `
         <tr>
-          <td colspan="9" class="text-danger">No se pudo cargar la tabla de usuarios.</td>
+          <td colspan="9" class="text-danger">${TX.noSePudoCargar2}</td>
         </tr>
       `;
     }
-    showAlert("No se pudo cargar la tabla de usuarios.");
+    showAlert(TX.noSePudoCargar2);
   }
 }
 
@@ -988,7 +991,7 @@ function fillExistingPlayersSelect(currentUid = null, currentEmail = "") {
   });
 
   $.approveExistingPlayerId.innerHTML =
-    `<option value="">Seleccionar…</option>` +
+    `<option value="">${TX.seleccionar}</option>` +
     availablePlayers
       .map((p) => {
         const name = getPlayerFullName(p) || p.id;
@@ -1021,7 +1024,7 @@ function fillEditExistingPlayersSelect(currentUid = null, currentEmail = "", cur
   });
 
   $.editExistingPlayerId.innerHTML =
-    `<option value="">Seleccionar…</option>` +
+    `<option value="">${TX.seleccionar}</option>` +
     availablePlayers
       .map((p) => {
         const name = getPlayerFullName(p) || p.id;
@@ -1099,7 +1102,7 @@ function syncApproveModeUI() {
 
 async function openApproveModal(uid) {
   if (!approveModal) {
-    showAlert("El modal de aprobación no está disponible.");
+    showAlert(TX.elModalDeAprobacion);
     return;
   }
 
@@ -1147,13 +1150,13 @@ async function openApproveModal(uid) {
 
 function openEditUserModal(uid) {
   if (!editUserModal) {
-    showAlert("El modal de edición no está disponible.");
+    showAlert(TX.elModalDeEdicion);
     return;
   }
 
   const user = allUsers.find((u) => u.id === uid);
   if (!user) {
-    showAlert("No se encontró el usuario.");
+    showAlert(TX.noSeEncontroEl2);
     return;
   }
 
@@ -1185,11 +1188,11 @@ async function saveUserEditFlow(ev) {
 
   const uid = $.editUid?.value;
   if (!uid) {
-    showAlert("No se encontró el usuario a editar.");
+    showAlert(TX.noSeEncontroEl3);
     return;
   }
 
-  showLoader("Guardando usuario…");
+  showLoader(TX.guardandoUsuario);
 
   try {
     const user = allUsers.find((u) => u.id === uid) || null;
@@ -1206,7 +1209,7 @@ async function saveUserEditFlow(ev) {
     if (playerMode === "existing") {
       const selectedPlayerId = $.editExistingPlayerId?.value || null;
       if (!selectedPlayerId) {
-        throw new Error("Selecciona un jugador existente.");
+        throw new Error(TX.seleccionaUnJugadorExistente);
       }
 
       await assertPlayerCanBeLinked(selectedPlayerId, uid);
@@ -1226,7 +1229,7 @@ async function saveUserEditFlow(ev) {
       const fieldRole = ($.editNewPlayerFieldRole?.value || "").trim() || null;
 
       if (!firstName || !lastName) {
-        throw new Error("Completa nombre y apellido para crear el jugador.");
+        throw new Error(TX.completaNombreYApellido);
       }
 
       if (currentPlayerId) {
@@ -1268,26 +1271,26 @@ async function saveUserEditFlow(ev) {
 
     editUserModal?.hide();
     await loadUsersAdminTable();
-    showAlert("Usuario actualizado correctamente.", "success");
+    showAlert(TX.usuarioActualizadoCorrectamente, "success");
   } catch (err) {
     console.error("saveUserEditFlow error:", err);
-    showAlert(err?.message || "No se pudo actualizar el usuario.");
+    showAlert(err?.message || TX.noSePudoActualizar);
   } finally {
     hideLoader();
   }
 }
 
 async function assertPlayerCanBeLinked(playerId, uid) {
-  if (!playerId) throw new Error("Selecciona un jugador válido.");
+  if (!playerId) throw new Error(TX.seleccionaUnJugadorValido);
 
   const snap = await getDoc(doc(db, COL_PLAYERS, playerId));
-  if (!snap.exists()) throw new Error("El jugador seleccionado no existe.");
+  if (!snap.exists()) throw new Error(TX.elJugadorSeleccionadoNo);
 
   const data = snap.data() || {};
   const currentUserId = data.userId || data.uid || null;
 
   if (currentUserId && currentUserId !== uid) {
-    throw new Error("Ese jugador ya está ligado a otro usuario.");
+    throw new Error(TX.eseJugadorYaEsta);
   }
 
   return data;
@@ -1295,13 +1298,13 @@ async function assertPlayerCanBeLinked(playerId, uid) {
 
 async function getRequiredUserProfile(uid) {
   const snap = await getDoc(doc(db, COL_USERS, uid));
-  if (!snap.exists()) throw new Error("El usuario no existe.");
+  if (!snap.exists()) throw new Error(TX.elUsuarioNoExiste);
 
   const user = snap.data() || {};
   const profile = getUserProfile(user);
 
   if (!profile.firstName || !profile.lastName) {
-    throw new Error("El usuario no tiene nombre y apellido en su perfil.");
+    throw new Error(TX.elUsuarioNoTiene);
   }
 
   return { user, profile };
@@ -1337,18 +1340,18 @@ async function approveUserFlow(ev) {
   const mode = $.approveLinkMode?.value || "none";
 
   if (!uid) {
-    showAlert("No se encontró el usuario a aprobar.");
+    showAlert(TX.noSeEncontroEl4);
     return;
   }
 
-  showLoader("Aprobando cuenta…");
+  showLoader(TX.aprobandoCuenta);
 
   try {
     let playerId = null;
 
     if (mode === "existing") {
       playerId = $.approveExistingPlayerId?.value || null;
-      if (!playerId) throw new Error("Selecciona un jugador existente.");
+      if (!playerId) throw new Error(TX.seleccionaUnJugadorExistente);
 
       await assertPlayerCanBeLinked(playerId, uid);
       await linkExistingPlayer({ playerId, uid });
@@ -1370,10 +1373,10 @@ async function approveUserFlow(ev) {
 
     approveModal?.hide();
     await loadUsersAdminTable();
-    showAlert("Cuenta aprobada correctamente.", "success");
+    showAlert(TX.cuentaAprobadaCorrectamente, "success");
   } catch (err) {
     console.error(err);
-    showAlert(err?.message || "No se pudo aprobar la cuenta.");
+    showAlert(err?.message || TX.noSePudoAprobar);
   } finally {
     hideLoader();
   }
@@ -1381,14 +1384,14 @@ async function approveUserFlow(ev) {
 
 async function denyUserFlow(uid) {
   if (!uid) {
-    showAlert("No se encontró el usuario a denegar.");
+    showAlert(TX.noSeEncontroEl5);
     return;
   }
 
-  const ok = window.confirm("¿Seguro que deseas denegar el ingreso a la plataforma para este usuario?");
+  const ok = window.confirm(TX.seguroQueDeseasDenegar);
   if (!ok) return;
 
-  showLoader("Denegando ingreso…");
+  showLoader(TX.denegandoIngreso);
   hideAlert();
 
   try {
@@ -1401,10 +1404,10 @@ async function denyUserFlow(uid) {
     });
 
     await loadUsersAdminTable();
-    showAlert("Ingreso a la plataforma denegado correctamente.", "success");
+    showAlert(TX.ingresoALaPlataforma, "success");
   } catch (err) {
     console.error(err);
-    showAlert(err?.message || "No se pudo denegar el ingreso.");
+    showAlert(err?.message || TX.noSePudoDenegar);
   } finally {
     hideLoader();
   }
@@ -1427,7 +1430,7 @@ async function loadIndexSettingsAdmin() {
     if ($.idxShowFeaturedActivity) $.idxShowFeaturedActivity.checked = data.show_featured_activity !== false;
   } catch (err) {
     console.error("loadIndexSettingsAdmin error:", err);
-    showAlert("No se pudo cargar la visibilidad del landing.");
+    showAlert(TX.noSePudoCargar3);
   }
 }
 
@@ -1449,10 +1452,10 @@ async function saveIndexSettings(ev) {
 
     await setDoc(doc(db, COL_CLUB_CONFIG, "index_settings"), payload, { merge: true });
     await refreshIndexToggleAvailability(false);
-    showAlert("Visibilidad del landing guardada.", "success");
+    showAlert(TX.visibilidadDelLandingGuardada, "success");
   } catch (err) {
     console.error("saveIndexSettings error:", err);
-    showAlert("No se pudo guardar la visibilidad del landing.");
+    showAlert(TX.noSePudoGuardar);
   }
 }
 
@@ -1530,24 +1533,24 @@ async function saveHeroSettings(ev) {
 
     if ($.heroImageFileInput) $.heroImageFileInput.value = "";
 
-    showAlert("Hero guardado correctamente.", "success");
+    showAlert(TX.heroGuardadoCorrectamente, "success");
     await loadHeroAdmin();
   } catch (err) {
     console.error("saveHeroSettings error:", err);
-    showAlert(err?.message || "No se pudo guardar el hero.");
+    showAlert(err?.message || TX.noSePudoGuardar2);
   }
 }
 
 async function loadTrainingsAdmin() {
   if (!$.trainingsTableBody || !$.trainingsTitle) return;
 
-  $.trainingsTableBody.innerHTML = `<tr><td colspan="5" class="text-muted">Cargando…</td></tr>`;
+  $.trainingsTableBody.innerHTML = `<tr><td colspan="5" class="text-muted">${TX.cargando}</td></tr>`;
 
   try {
     const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "trainings"));
     const data = snap.exists() ? (snap.data() || {}) : {};
 
-    $.trainingsTitle.value = data.title || "Entrenamientos y Juegos";
+    $.trainingsTitle.value = data.title || TX.entrenamientosYJuegos;
     trainingsBlocks = Array.isArray(data.blocks) ? [...data.blocks] : [];
 
     const rows = trainingsBlocks.flatMap((block, blockIndex) => {
@@ -1563,7 +1566,7 @@ async function loadTrainingsAdmin() {
             <td>
               <button class="btn btn-outline-danger btn-sm" type="button"
                 data-delete-training-row="${blockIndex}:empty">
-                Eliminar bloque vacío
+                ${TX.eliminarBloqueVacio}
               </button>
             </td>
           </tr>
@@ -1579,7 +1582,7 @@ async function loadTrainingsAdmin() {
           <td>
             <button class="btn btn-outline-danger btn-sm" type="button"
               data-delete-training-row="${blockIndex}:${scheduleIndex}">
-              Eliminar
+              ${TX.eliminar}
             </button>
           </td>
         </tr>
@@ -1588,10 +1591,10 @@ async function loadTrainingsAdmin() {
 
     $.trainingsTableBody.innerHTML = rows.length
       ? rows.join("")
-      : `<tr><td colspan="5" class="text-muted">No hay horarios registrados.</td></tr>`;
+      : `<tr><td colspan="5" class="text-muted">${TX.noHayHorariosRegistrados}</td></tr>`;
   } catch (err) {
     console.error("loadTrainingsAdmin error:", err);
-    $.trainingsTableBody.innerHTML = `<tr><td colspan="5" class="text-danger">No se pudo cargar la sección.</td></tr>`;
+    $.trainingsTableBody.innerHTML = `<tr><td colspan="5" class="text-danger">${TX.noSePudoCargar4}</td></tr>`;
   }
 }
 
@@ -1602,17 +1605,17 @@ async function saveTrainingsTitle(ev) {
     await setDoc(
       doc(db, COL_CLUB_CONFIG, "trainings"),
       {
-        title: ($.trainingsTitle?.value || "").trim() || "Entrenamientos y Juegos",
+        title: ($.trainingsTitle?.value || "").trim() || TX.entrenamientosYJuegos,
         updatedAt: serverTimestamp(),
       },
       { merge: true }
     );
     await refreshIndexToggleAvailability(true);
-    showAlert("Título de entrenamientos guardado.", "success");
+    showAlert(TX.tituloDeEntrenamientosGuardado, "success");
     await loadTrainingsAdmin();
   } catch (err) {
     console.error("saveTrainingsTitle error:", err);
-    showAlert("No se pudo guardar el título.");
+    showAlert(TX.noSePudoGuardar3);
   }
 }
 
@@ -1625,7 +1628,7 @@ async function addTrainingRow(ev) {
   const time = ($.trainingTime?.value || "").trim();
 
   if (!blockId || !blockName || !day || !time) {
-    showAlert("Completa bloque, nombre, día y hora.");
+    showAlert(TX.completaBloqueNombreDia);
     return;
   }
 
@@ -1635,7 +1638,7 @@ async function addTrainingRow(ev) {
     const data = snap.exists() ? (snap.data() || {}) : {};
 
     const currentBlocks = Array.isArray(data.blocks) ? [...data.blocks] : [];
-    const title = ($.trainingsTitle?.value || "").trim() || data.title || "Entrenamientos y Juegos";
+    const title = ($.trainingsTitle?.value || "").trim() || data.title || TX.entrenamientosYJuegos;
 
     const idx = currentBlocks.findIndex((b) => b.id === blockId);
 
@@ -1673,10 +1676,10 @@ async function addTrainingRow(ev) {
 
     await loadTrainingsAdmin();
     await refreshIndexToggleAvailability(true);
-    showAlert("Horario agregado.", "success");
+    showAlert(TX.horarioAgregado, "success");
   } catch (err) {
     console.error("addTrainingRow error:", err);
-    showAlert("No se pudo agregar el horario.");
+    showAlert(TX.noSePudoAgregar);
   }
 }
 
@@ -1716,7 +1719,7 @@ async function deleteTrainingRow(pointer) {
     await setDoc(
       ref,
       {
-        title: ($.trainingsTitle?.value || "").trim() || data.title || "Entrenamientos y Juegos",
+        title: ($.trainingsTitle?.value || "").trim() || data.title || TX.entrenamientosYJuegos,
         blocks: currentBlocks,
         updatedAt: serverTimestamp(),
       },
@@ -1726,10 +1729,10 @@ async function deleteTrainingRow(pointer) {
     trainingsBlocks = currentBlocks;
     await loadTrainingsAdmin();
     await refreshIndexToggleAvailability(true);
-    showAlert("Horario eliminado.", "success");
+    showAlert(TX.horarioEliminado, "success");
   } catch (err) {
     console.error("deleteTrainingRow error:", err);
-    showAlert("No se pudo eliminar el horario.");
+    showAlert(TX.noSePudoEliminar);
   }
 }
 
@@ -1745,7 +1748,7 @@ async function loadSocialLinks() {
   $.socialYoutube.value = data.youtube || "";
   $.socialX.value = data.x || "";
   $.socialWhatsapp.value = data.whatsappUrl || data.whatsapp || "";
-  $.socialWhatsappLabel.value = data.whatsappLabel || "WhatsApp";
+  $.socialWhatsappLabel.value = data.whatsappLabel || TX.whatsapp;
 }
 
 async function saveSocialLinks(ev) {
@@ -1762,16 +1765,16 @@ async function saveSocialLinks(ev) {
         youtube: safeUrl($.socialYoutube?.value),
         x: safeUrl($.socialX?.value),
         whatsappUrl: safeUrl($.socialWhatsapp?.value),
-        whatsappLabel: ($.socialWhatsappLabel?.value || "").trim() || "WhatsApp",
+        whatsappLabel: ($.socialWhatsappLabel?.value || "").trim() || TX.whatsapp,
         updatedAt: serverTimestamp(),
       },
       { merge: true }
     );
 
-    showAlert("Redes sociales guardadas.", "success");
+    showAlert(TX.redesSocialesGuardadas, "success");
   } catch (err) {
     console.error(err);
-    showAlert("No se pudieron guardar las redes sociales.");
+    showAlert(TX.noSePudieronGuardar2);
   }
 }
 
@@ -1807,11 +1810,11 @@ async function saveFeaturedActivitySettings(ev) {
     );
 
     await refreshIndexToggleAvailability(true);
-    showAlert("Actividad destacada guardada.", "success");
+    showAlert(TX.actividadDestacadaGuardada, "success");
     await loadFeaturedActivityAdmin();
   } catch (err) {
     console.error("saveFeaturedActivitySettings error:", err);
-    showAlert("No se pudo guardar la actividad destacada.");
+    showAlert(TX.noSePudoGuardar4);
   }
 }
 
@@ -1856,30 +1859,30 @@ async function saveEventsSettings(ev) {
       { merge: true }
     );
     await refreshIndexToggleAvailability(true);
-    showAlert("Torneo guardado.", "success");
+    showAlert(TX.torneoGuardado, "success");
     await loadEventsAdmin();
   } catch (err) {
     console.error("saveEventsSettings error:", err);
-    showAlert("No se pudo guardar la sección de torneo.");
+    showAlert(TX.noSePudoGuardar5);
   }
 }
 
 async function loadHonorsAdmin() {
   if (!$.honorsTableBody || !$.honorsTitle) return;
 
-  $.honorsTableBody.innerHTML = `<tr><td colspan="4" class="text-muted">Cargando…</td></tr>`;
+  $.honorsTableBody.innerHTML = `<tr><td colspan="4" class="text-muted">${TX.cargando}</td></tr>`;
 
   try {
     const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "honors"));
     const data = snap.exists() ? (snap.data() || {}) : {};
 
-    $.honorsTitle.value = data.title || "Palmarés";
+    $.honorsTitle.value = data.title || TX.palmares;
 
     honorsItems = Array.isArray(data.items) ? [...data.items] : [];
     honorsItems.sort((a, b) => Number(b.year || 0) - Number(a.year || 0));
 
     if (!honorsItems.length) {
-      $.honorsTableBody.innerHTML = `<tr><td colspan="4" class="text-muted">No hay logros registrados.</td></tr>`;
+      $.honorsTableBody.innerHTML = `<tr><td colspan="4" class="text-muted">${TX.noHayLogrosRegistrados}</td></tr>`;
       return;
     }
 
@@ -1891,7 +1894,7 @@ async function loadHonorsAdmin() {
           <td>${esc(item.year || "—")}</td>
           <td>
             <button class="btn btn-outline-danger btn-sm" type="button" data-delete-honor="${index}">
-              Eliminar
+              ${TX.eliminar}
             </button>
           </td>
         </tr>
@@ -1899,7 +1902,7 @@ async function loadHonorsAdmin() {
       .join("");
   } catch (err) {
     console.error("loadHonorsAdmin error:", err);
-    $.honorsTableBody.innerHTML = `<tr><td colspan="4" class="text-danger">No se pudo cargar el palmarés.</td></tr>`;
+    $.honorsTableBody.innerHTML = `<tr><td colspan="4" class="text-danger">${TX.noSePudoCargar5}</td></tr>`;
   }
 }
 
@@ -1910,18 +1913,18 @@ async function saveHonorSettings(ev) {
     await setDoc(
       doc(db, COL_CLUB_CONFIG, "honors"),
       {
-        title: ($.honorsTitle?.value || "").trim() || "Palmarés",
+        title: ($.honorsTitle?.value || "").trim() || TX.palmares,
         updatedAt: serverTimestamp(),
       },
       { merge: true }
     );
 
     await refreshIndexToggleAvailability(true);
-    showAlert("Título de palmarés guardado.", "success");
+    showAlert(TX.tituloDePalmaresGuardado, "success");
     await loadHonorsAdmin();
   } catch (err) {
     console.error("saveHonorSettings error:", err);
-    showAlert("No se pudo guardar el título del palmarés.");
+    showAlert(TX.noSePudoGuardar6);
   }
 }
 
@@ -1933,7 +1936,7 @@ async function addHonor(ev) {
   const year = Number($.honorYear?.value || 0);
 
   if (!position || !tournament || !year) {
-    showAlert("Completa posición, torneo y año.");
+    showAlert(TX.completaPosicionTorneoY);
     return;
   }
 
@@ -1949,7 +1952,7 @@ async function addHonor(ev) {
     await setDoc(
       ref,
       {
-        title: ($.honorsTitle?.value || "").trim() || data.title || "Palmarés",
+        title: ($.honorsTitle?.value || "").trim() || data.title || TX.palmares,
         items: nextItems,
         updatedAt: serverTimestamp(),
       },
@@ -1960,10 +1963,10 @@ async function addHonor(ev) {
     $.honorForm?.reset();
     await loadHonorsAdmin();
     await refreshIndexToggleAvailability(true);
-    showAlert("Logro agregado.", "success");
+    showAlert(TX.logroAgregado, "success");
   } catch (err) {
     console.error("addHonor error:", err);
-    showAlert(err?.message || "No se pudo agregar el logro.");
+    showAlert(err?.message || TX.noSePudoAgregar2);
   }
 }
 
@@ -1984,7 +1987,7 @@ async function deleteHonor(index) {
     await setDoc(
       ref,
       {
-        title: ($.honorsTitle?.value || "").trim() || data.title || "Palmarés",
+        title: ($.honorsTitle?.value || "").trim() || data.title || TX.palmares,
         items: nextItems,
         updatedAt: serverTimestamp(),
       },
@@ -1994,24 +1997,24 @@ async function deleteHonor(index) {
     honorsItems = nextItems;
     await loadHonorsAdmin();
     await refreshIndexToggleAvailability(true);
-    showAlert("Logro eliminado.", "success");
+    showAlert(TX.logroEliminado, "success");
   } catch (err) {
     console.error("deleteHonor error:", err);
-    showAlert(err?.message || "No se pudo eliminar el logro.");
+    showAlert(err?.message || TX.noSePudoEliminar2);
   }
 }
 
 async function loadUniformsAdmin() {
   if (!$.uniformsTableBody || !$.uniformsTitle) return;
 
-  $.uniformsTableBody.innerHTML = `<tr><td colspan="4" class="text-muted">Cargando…</td></tr>`;
+  $.uniformsTableBody.innerHTML = `<tr><td colspan="4" class="text-muted">${TX.cargando}</td></tr>`;
 
   const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "uniforms")).catch(() => null);
   const data = snap?.exists?.() ? (snap.data() || {}) : {};
 
-  $.uniformsTitle.value = data.title || "Uniformes del Equipo";
-  $.uniformsSubtitle.value = data.subtitle || "Compra tu indumentaria oficial del club";
-  $.uniformsCtaLabel.value = data.ctaLabel || "Comprar";
+  $.uniformsTitle.value = data.title || TX.uniformesDelEquipo;
+  $.uniformsSubtitle.value = data.subtitle || TX.compraTuIndumentariaOficial;
+  $.uniformsCtaLabel.value = data.ctaLabel || TX.comprar;
   $.uniformsOrderUrl.value = data.orderUrl || "";
 
   uniformsItems = Array.isArray(data.items) ? [...data.items] : [];
@@ -2020,7 +2023,7 @@ async function loadUniformsAdmin() {
   );
 
   if (!uniformsItems.length) {
-    $.uniformsTableBody.innerHTML = `<tr><td colspan="4" class="text-muted">No hay uniformes registrados.</td></tr>`;
+    $.uniformsTableBody.innerHTML = `<tr><td colspan="4" class="text-muted">${TX.noHayUniformesRegistrados}</td></tr>`;
     return;
   }
 
@@ -2032,7 +2035,7 @@ async function loadUniformsAdmin() {
         <td class="text-truncate" style="max-width:240px">${esc(item.image || "—")}</td>
         <td>
           <button class="btn btn-outline-danger btn-sm" type="button" data-delete-uniform="${index}">
-            Eliminar
+            ${TX.eliminar}
           </button>
         </td>
       </tr>
@@ -2047,9 +2050,9 @@ async function saveUniformSettings(ev) {
     await setDoc(
       doc(db, COL_CLUB_CONFIG, "uniforms"),
       {
-        title: ($.uniformsTitle?.value || "").trim() || "Uniformes del Equipo",
+        title: ($.uniformsTitle?.value || "").trim() || TX.uniformesDelEquipo,
         subtitle: ($.uniformsSubtitle?.value || "").trim() || "",
-        ctaLabel: ($.uniformsCtaLabel?.value || "").trim() || "Comprar",
+        ctaLabel: ($.uniformsCtaLabel?.value || "").trim() || TX.comprar,
         orderUrl: safeUrl($.uniformsOrderUrl?.value),
         items: uniformsItems,
         updatedAt: serverTimestamp(),
@@ -2058,10 +2061,10 @@ async function saveUniformSettings(ev) {
     );
 
     await refreshIndexToggleAvailability(true);
-    showAlert("Configuración de uniformes guardada.", "success");
+    showAlert(TX.configuracionDeUniformesGuardada, "success");
   } catch (err) {
     console.error(err);
-    showAlert("No se pudo guardar la configuración de uniformes.");
+    showAlert(TX.noSePudoGuardar7);
   }
 }
 
@@ -2073,7 +2076,7 @@ async function addUniform(ev) {
   const image = ($.uniformImage?.value || "").trim();
 
   if (!name || !image) {
-    showAlert("Completa al menos nombre e imagen.");
+    showAlert(TX.completaAlMenosNombre);
     return;
   }
 
@@ -2088,9 +2091,9 @@ async function addUniform(ev) {
     await setDoc(
       doc(db, COL_CLUB_CONFIG, "uniforms"),
       {
-        title: ($.uniformsTitle?.value || "").trim() || "Uniformes del Equipo",
+        title: ($.uniformsTitle?.value || "").trim() || TX.uniformesDelEquipo,
         subtitle: ($.uniformsSubtitle?.value || "").trim() || "",
-        ctaLabel: ($.uniformsCtaLabel?.value || "").trim() || "Comprar",
+        ctaLabel: ($.uniformsCtaLabel?.value || "").trim() || TX.comprar,
         orderUrl: safeUrl($.uniformsOrderUrl?.value),
         items: nextItems,
         updatedAt: serverTimestamp(),
@@ -2102,10 +2105,10 @@ async function addUniform(ev) {
     $.uniformForm?.reset();
     await loadUniformsAdmin();
     await refreshIndexToggleAvailability(true);
-    showAlert("Uniforme agregado.", "success");
+    showAlert(TX.uniformeAgregado, "success");
   } catch (err) {
     console.error("addUniform error:", err);
-    showAlert("No se pudo agregar el uniforme.");
+    showAlert(TX.noSePudoAgregar3);
   }
 }
 
@@ -2119,9 +2122,9 @@ async function deleteUniform(index) {
     await setDoc(
       doc(db, COL_CLUB_CONFIG, "uniforms"),
       {
-        title: ($.uniformsTitle?.value || "").trim() || "Uniformes del Equipo",
+        title: ($.uniformsTitle?.value || "").trim() || TX.uniformesDelEquipo,
         subtitle: ($.uniformsSubtitle?.value || "").trim() || "",
-        ctaLabel: ($.uniformsCtaLabel?.value || "").trim() || "Comprar",
+        ctaLabel: ($.uniformsCtaLabel?.value || "").trim() || TX.comprar,
         orderUrl: safeUrl($.uniformsOrderUrl?.value),
         items: nextItems,
         updatedAt: serverTimestamp(),
@@ -2132,10 +2135,10 @@ async function deleteUniform(index) {
     uniformsItems = nextItems;
     await loadUniformsAdmin();
     await refreshIndexToggleAvailability(true);
-    showAlert("Uniforme eliminado.", "success");
+    showAlert(TX.uniformeEliminado, "success");
   } catch (err) {
     console.error("deleteUniform error:", err);
-    showAlert("No se pudo eliminar el uniforme.");
+    showAlert(TX.noSePudoEliminar3);
   }
 }
 
@@ -2207,7 +2210,7 @@ async function loadRegisterSettingsAdmin() {
     }
   } catch (err) {
     console.error("loadRegisterSettingsAdmin error:", err);
-    showAlert("No se pudo cargar la configuración de registro.");
+    showAlert(TX.noSePudoCargar6);
   }
 }
 
@@ -2231,10 +2234,10 @@ async function saveRegisterSettings(ev) {
       { merge: true }
     );
 
-    showAlert("Configuración de registro guardada.", "success");
+    showAlert(TX.configuracionDeRegistroGuardada, "success");
   } catch (err) {
     console.error("saveRegisterSettings error:", err);
-    showAlert("No se pudo guardar la configuración de registro.");
+    showAlert(TX.noSePudoGuardar8);
   }
 }
 
@@ -2260,10 +2263,10 @@ async function saveAssociationDetails(ev) {
       { merge: true }
     );
 
-    showAlert("Association details guardado correctamente.", "success");
+    showAlert(TX.associationDetailsGuardadoCorrectamente, "success");
   } catch (err) {
     console.error("saveAssociationDetails error:", err);
-    showAlert("No se pudo guardar association details.");
+    showAlert(TX.noSePudoGuardar9);
   }
 }
 
@@ -2278,7 +2281,7 @@ function setToggleAvailability(inputEl, stateEl, ok, checked, message) {
   inputEl.title = ok ? "" : message;
 
   if (stateEl) {
-    stateEl.textContent = ok ? "Listo" : message;
+    stateEl.textContent = ok ? TX.listo : message;
     stateEl.className = ok ? "ms-2 small text-success" : "ms-2 small text-danger";
   }
 }
@@ -2305,61 +2308,61 @@ async function getLandingSectionAvailability() {
   const uniformsData = uniformsSnap?.exists?.() ? (uniformsSnap.data() || {}) : {};
 
   const featuredActivityMissing = [];
-  if (!(featuredActivityData.title || "").trim()) featuredActivityMissing.push("falta título");
-  if (!(featuredActivityData.subtitle || "").trim()) featuredActivityMissing.push("falta subtítulo");
+  if (!(featuredActivityData.title || "").trim()) featuredActivityMissing.push(TX.faltaTitulo);
+  if (!(featuredActivityData.subtitle || "").trim()) featuredActivityMissing.push(TX.faltaSubtitulo);
   if (featuredActivityData.ctaEnabled === true) {
-    if (!(featuredActivityData.ctaText || "").trim()) featuredActivityMissing.push("falta texto CTA");
-    if (!safeUrl(featuredActivityData.ctaUrl || "")) featuredActivityMissing.push("falta URL CTA");
+    if (!(featuredActivityData.ctaText || "").trim()) featuredActivityMissing.push(TX.faltaTextoCta);
+    if (!safeUrl(featuredActivityData.ctaUrl || "")) featuredActivityMissing.push(TX.faltaUrlCta);
   }
 
   const eventImages = Array.isArray(eventsData.images) ? eventsData.images.filter(Boolean) : [];
   const eventsMissing = [];
-  if (!(eventsData.title || "").trim()) eventsMissing.push("falta título");
-  if (!(eventsData.subtitle || "").trim()) eventsMissing.push("falta subtítulo");
-  if (eventImages.length < 3) eventsMissing.push("faltan 3 imágenes");
+  if (!(eventsData.title || "").trim()) eventsMissing.push(TX.faltaTitulo);
+  if (!(eventsData.subtitle || "").trim()) eventsMissing.push(TX.faltaSubtitulo);
+  if (eventImages.length < 3) eventsMissing.push(TX.faltan3Imagenes);
 
   const trainingBlocks = Array.isArray(trainingsData.blocks) ? trainingsData.blocks : [];
   const hasTrainingRows = trainingBlocks.some(
     (b) => Array.isArray(b.schedule) && b.schedule.some((row) => (row?.day || "").trim() && (row?.time || "").trim())
   );
   const trainingsMissing = [];
-  if (!(trainingsData.title || "").trim()) trainingsMissing.push("falta título");
+  if (!(trainingsData.title || "").trim()) trainingsMissing.push(TX.faltaTitulo);
   if (!hasTrainingRows) trainingsMissing.push("faltan horarios");
 
   const honorItems = Array.isArray(honorsData.items) ? honorsData.items : [];
   const honorsMissing = [];
-  if (!(honorsData.title || "").trim()) honorsMissing.push("falta título");
+  if (!(honorsData.title || "").trim()) honorsMissing.push(TX.faltaTitulo);
   if (!honorItems.length) honorsMissing.push("faltan logros");
 
   const uniformItems = Array.isArray(uniformsData.items) ? uniformsData.items : [];
   const validUniforms = uniformItems.filter((x) => (x?.name || "").trim() && (x?.image || "").trim());
   const uniformsMissing = [];
-  if (!(uniformsData.title || "").trim()) uniformsMissing.push("falta título");
-  if (!(uniformsData.subtitle || "").trim()) uniformsMissing.push("falta subtítulo");
-  if (!(uniformsData.ctaLabel || "").trim()) uniformsMissing.push("falta texto CTA");
-  if (!safeUrl(uniformsData.orderUrl || "")) uniformsMissing.push("falta order URL");
+  if (!(uniformsData.title || "").trim()) uniformsMissing.push(TX.faltaTitulo);
+  if (!(uniformsData.subtitle || "").trim()) uniformsMissing.push(TX.faltaSubtitulo);
+  if (!(uniformsData.ctaLabel || "").trim()) uniformsMissing.push(TX.faltaTextoCta);
+  if (!safeUrl(uniformsData.orderUrl || "")) uniformsMissing.push(TX.faltaOrderUrl);
   if (!validUniforms.length) uniformsMissing.push("faltan uniformes");
 
   return {
     featuredActivity: {
       ok: featuredActivityMissing.length === 0,
-      message: featuredActivityMissing.length ? featuredActivityMissing.join(" · ") : "Listo",
+      message: featuredActivityMissing.length ? featuredActivityMissing.join(" · ") : TX.listo,
     },
     events: {
       ok: eventsMissing.length === 0,
-      message: eventsMissing.length ? eventsMissing.join(" · ") : "Listo",
+      message: eventsMissing.length ? eventsMissing.join(" · ") : TX.listo,
     },
     trainings: {
       ok: trainingsMissing.length === 0,
-      message: trainingsMissing.length ? trainingsMissing.join(" · ") : "Listo",
+      message: trainingsMissing.length ? trainingsMissing.join(" · ") : TX.listo,
     },
     honors: {
       ok: honorsMissing.length === 0,
-      message: honorsMissing.length ? honorsMissing.join(" · ") : "Listo",
+      message: honorsMissing.length ? honorsMissing.join(" · ") : TX.listo,
     },
     uniforms: {
       ok: uniformsMissing.length === 0,
-      message: uniformsMissing.length ? uniformsMissing.join(" · ") : "Listo",
+      message: uniformsMissing.length ? uniformsMissing.join(" · ") : TX.listo,
     },
   };
 }
@@ -2441,10 +2444,26 @@ async function refreshIndexToggleAvailability(syncToFirestore = true) {
 }
 
 // =========================
+// TEXTS (Ajustes > Textos)
+// =========================
+function bindTextsTab() {
+  const tab = document.getElementById("texts-tab");
+  const mount = document.getElementById("textsEditorMount");
+  if (!tab || !mount) return;
+  let mounted = false;
+  tab.addEventListener("shown.bs.tab", async () => {
+    if (mounted) return;
+    mounted = true;
+    const pickups = await loadPickupSettings();
+    await mountTextsEditor(mount, { legacy: { pickups: pickups.strings } });
+  });
+}
+
+// =========================
 // BOOT
 // =========================
 async function boot() {
-  showLoader("Cargando administración…");
+  showLoader(TX.cargandoAdministracion);
 
   try {
     const { cfg, redirected } = await guardPage("admin");
@@ -2496,6 +2515,8 @@ async function boot() {
     $.eventsSettingsForm?.addEventListener("submit", saveEventsSettings);
     $.uniformSettingsForm?.addEventListener("submit", saveUniformSettings);
     $.uniformForm?.addEventListener("submit", addUniform);
+
+    bindTextsTab();
 
     $.approveLinkMode?.addEventListener("change", syncApproveModeUI);
     $.approveUserForm?.addEventListener("submit", approveUserFlow);
@@ -2558,7 +2579,7 @@ async function boot() {
     });
   } catch (err) {
     console.error(err);
-    showAlert(err?.message || "No se pudo cargar la pantalla de administración.");
+    showAlert(err?.message || TX.noSePudoCargar7);
   } finally {
     hideLoader();
     document.body.classList.remove("loading");

@@ -6,6 +6,7 @@ import { showLoader, hideLoader } from "/js/ui/loader.js";
 
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { TX, txf } from "/js/strings/screens/member_status.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -34,7 +35,7 @@ function releaseUI() {
 function showAlert(msg, type = "warning") {
   if (!els.statusAlert) return;
   els.statusAlert.className = `alert alert-${type} mt-4 mb-0`;
-  els.statusAlert.textContent = msg || "Ocurrió un error.";
+  els.statusAlert.textContent = msg || TX.ocurrioUnError;
   els.statusAlert.classList.remove("d-none");
 }
 
@@ -141,7 +142,7 @@ function fillMembershipFields({ membership, currentMembership, plan }) {
 
   setText(
     els.membershipCode,
-    membership?.payCode || "Pendiente"
+    membership?.payCode || TX.pendiente
   );
 
   setText(
@@ -171,17 +172,17 @@ function setPendingUI({ membership, currentMembership, plan }) {
   }
 
   if (els.statusTitle) {
-    els.statusTitle.textContent = "Pago en validación";
+    els.statusTitle.textContent = TX.pagoEnValidacion;
   }
 
   if (els.statusBadge) {
     els.statusBadge.className = "badge text-bg-warning";
-    els.statusBadge.textContent = "Pendiente";
+    els.statusBadge.textContent = TX.pendiente;
   }
 
   if (els.statusMessage) {
     els.statusMessage.textContent =
-      "Ya recibimos tu solicitud y tu comprobante de pago. Estamos validando la información antes de activar tu membresía.";
+      TX.yaRecibimosTuSolicitud;
   }
 
   fillMembershipFields({ membership, currentMembership, plan });
@@ -189,18 +190,18 @@ function setPendingUI({ membership, currentMembership, plan }) {
   if (els.membershipSummaryText) {
     const submittedAt = membership?.createdAt || null;
     els.membershipSummaryText.textContent = submittedAt
-      ? `Tu solicitud fue registrada el ${fmtDate(submittedAt)}. La cobertura se mostrará cuando la membresía sea aprobada.`
-      : "Tu solicitud fue recibida. La cobertura se mostrará cuando la membresía sea aprobada.";
+      ? txf(TX.tuSolicitudFueRegistrada, { submittedAt: fmtDate(submittedAt) })
+      : TX.tuSolicitudFueRecibida;
   }
 
   const coverage = getMembershipCoverageDates(currentMembership);
 
   if (!coverage.startDate) {
-    setText(els.membershipStart, "Se asignará al aprobarse");
+    setText(els.membershipStart, TX.seAsignaraAlAprobarse);
   }
 
   if (!coverage.endDate) {
-    setText(els.membershipEnd, "Se asignará al aprobarse");
+    setText(els.membershipEnd, TX.seAsignaraAlAprobarse);
   }
 }
 
@@ -216,25 +217,25 @@ function setActiveUI({ membership, currentMembership, plan }) {
   }
 
   if (els.statusTitle) {
-    els.statusTitle.textContent = "Membresía activa";
+    els.statusTitle.textContent = TX.membresiaActiva;
   }
 
   if (els.statusBadge) {
     els.statusBadge.className = "badge text-bg-success";
-    els.statusBadge.textContent = "Activa";
+    els.statusBadge.textContent = TX.activa;
   }
 
   if (els.statusMessage) {
     if (endDate && daysLeft !== null && daysLeft >= 0) {
       els.statusMessage.textContent =
         daysLeft === 0
-          ? `Tu membresía está activa y vence hoy, ${fmtDate(endDate)}.`
-          : `Tu membresía está activa hasta el ${fmtDate(endDate)}.`;
+          ? txf(TX.tuMembresiaEstaActiva, { endDate: fmtDate(endDate) })
+          : txf(TX.tuMembresiaEstaActiva2, { endDate: fmtDate(endDate) });
     } else if (endDate) {
-      els.statusMessage.textContent = `Tu membresía fue activada y su cobertura llegó hasta el ${fmtDate(endDate)}.`;
+      els.statusMessage.textContent = txf(TX.tuMembresiaFueActivada, { endDate: fmtDate(endDate) });
     } else {
       els.statusMessage.textContent =
-        "Tu pago fue validado correctamente y tu membresía ya se encuentra activa.";
+        TX.tuPagoFueValidado;
     }
   }
 
@@ -242,10 +243,10 @@ function setActiveUI({ membership, currentMembership, plan }) {
 
   if (els.membershipSummaryText) {
     if (coverage.startDate && coverage.endDate) {
-      els.membershipSummaryText.textContent = `Tu membresía cubre del ${fmtDate(coverage.startDate)} al ${fmtDate(coverage.endDate)}.`;
+      els.membershipSummaryText.textContent = txf(TX.tuMembresiaCubreDel, { startDate: fmtDate(coverage.startDate), endDate: fmtDate(coverage.endDate) });
     } else {
       els.membershipSummaryText.textContent =
-        "Tu membresía está activa. La cobertura detallada todavía no está disponible.";
+        TX.tuMembresiaEstaActiva3;
     }
   }
 }
@@ -258,24 +259,24 @@ function setRejectedUI({ membership, currentMembership, plan }) {
   }
 
   if (els.statusTitle) {
-    els.statusTitle.textContent = "Solicitud observada";
+    els.statusTitle.textContent = TX.solicitudObservada;
   }
 
   if (els.statusBadge) {
     els.statusBadge.className = "badge text-bg-danger";
-    els.statusBadge.textContent = "Requiere revisión";
+    els.statusBadge.textContent = TX.requiereRevision;
   }
 
   if (els.statusMessage) {
     els.statusMessage.textContent =
-      "No pudimos validar tu solicitud con la información actual. Comunícate con el club para más detalle.";
+      TX.noPudimosValidarTu;
   }
 
   fillMembershipFields({ membership, currentMembership, plan });
 
   if (els.membershipSummaryText) {
     els.membershipSummaryText.textContent =
-      "Tu pago o tu comprobante requieren revisión administrativa antes de poder activar la membresía.";
+      TX.tuPagoOTu;
   }
 }
 
@@ -287,24 +288,24 @@ function setFallbackUI({ membership, currentMembership, plan }) {
   }
 
   if (els.statusTitle) {
-    els.statusTitle.textContent = "Estado de membresía";
+    els.statusTitle.textContent = TX.estadoDeMembresia;
   }
 
   if (els.statusBadge) {
     els.statusBadge.className = "badge text-bg-secondary";
-    els.statusBadge.textContent = "Sin confirmar";
+    els.statusBadge.textContent = TX.sinConfirmar;
   }
 
   if (els.statusMessage) {
     els.statusMessage.textContent =
-      "Todavía no pudimos determinar con claridad el estado actual de tu membresía.";
+      TX.todaviaNoPudimosDeterminar;
   }
 
   fillMembershipFields({ membership, currentMembership, plan });
 
   if (els.membershipSummaryText) {
     els.membershipSummaryText.textContent =
-      "Estamos mostrando la información disponible actualmente en tu cuenta.";
+      TX.estamosMostrandoLaInformacion;
   }
 }
 
@@ -348,7 +349,7 @@ async function loadPlan(planId) {
 async function loadMemberStatus(uid) {
   const userSnap = await getDoc(doc(db, "users", uid));
   if (!userSnap.exists()) {
-    throw new Error("No se encontró la cuenta del usuario.");
+    throw new Error(TX.noSeEncontroLa);
   }
 
   const userData = userSnap.data() || {};
@@ -365,7 +366,7 @@ async function loadMemberStatus(uid) {
     setFallbackUI({ membership: null, currentMembership, plan: null });
 
     showAlert(
-      "Todavía no encontramos una membresía asociada a esta cuenta. Si acabas de registrarte, vuelve a intentarlo en unos segundos.",
+      TX.todaviaNoEncontramosUna,
       "warning"
     );
     return;
@@ -376,7 +377,7 @@ async function loadMemberStatus(uid) {
     clearMembershipFields();
     setFallbackUI({ membership: null, currentMembership, plan: null });
 
-    showAlert("No se encontró el detalle de la membresía asociada a tu cuenta.", "warning");
+    showAlert(TX.noSeEncontroEl, "warning");
     return;
   }
 
@@ -401,14 +402,14 @@ async function loadMemberStatus(uid) {
 
   setFallbackUI({ membership, currentMembership, plan });
   showAlert(
-    "El estado actual de tu membresía todavía no está completamente definido en el sistema.",
+    TX.elEstadoActualDe,
     "warning"
   );
 }
 
 async function init() {
   document.body.dataset.status = "loading";
-  showLoader("Cargando estado de membresía…");
+  showLoader(TX.cargandoEstadoDeMembresia);
   hideAlert();
 
   try {
@@ -424,7 +425,7 @@ async function init() {
         await loadMemberStatus(user.uid);
       } catch (e) {
         console.error("member_status init error", e);
-        showAlert(e?.message || "No se pudo cargar el estado de tu membresía.", "danger");
+        showAlert(e?.message || TX.noSePudoCargar, "danger");
       } finally {
         hideLoader();
         releaseUI();
@@ -432,7 +433,7 @@ async function init() {
     });
   } catch (e) {
     console.error(e);
-    showAlert("No se pudo inicializar la página.", "danger");
+    showAlert(TX.noSePudoInicializar, "danger");
     hideLoader();
     releaseUI();
   }
@@ -442,7 +443,7 @@ els.refreshBtn?.addEventListener("click", () => window.location.reload());
 
 els.logoutBtn?.addEventListener("click", async () => {
   try {
-    showLoader("Cerrando sesión…");
+    showLoader(TX.cerrandoSesion);
     await logout();
     window.location.replace("/index.html");
   } catch (e) {

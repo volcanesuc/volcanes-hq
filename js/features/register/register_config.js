@@ -10,6 +10,7 @@ import {
   refreshMembershipPaymentUI,
   updateSubmitState,
 } from "./register_ui.js";
+import { TX } from "/js/strings/screens/register_config.js";
 
 const CFG_DOC = doc(db, "club_config", "public_registration");
 
@@ -29,7 +30,7 @@ export function renderAssociationDetails(container, data) {
   container.innerHTML = `
     <div class="intro-box">
       <h3 class="mb-3" style="color: var(--theme-primary); font-weight: 900;">
-        ${esc(details.title || "Asociación")}
+        ${esc(details.title || TX.asociacion)}
       </h3>
 
       <div class="mb-3">${details.introHtml || ""}</div>

@@ -1,3 +1,4 @@
+import { TX, txf } from "/js/strings/screens/trainings_ui.js";
 export function renderPlaybookSelectors({
   pbTrainings,
   pbDrills,
@@ -49,7 +50,7 @@ export function renderPlaybookSelectors({
       <input class="form-check-input mt-1" type="checkbox" ${checked ? "checked" : ""} data-id="${d.id}">
       <div>
         <div class="fw-semibold">${escapeHtml(d.name || "—")}</div>
-        <div class="text-muted small">Autor: ${escapeHtml(d.authorName || "—")}</div>
+        <div class="text-muted small">${txf(TX.autor, { value: escapeHtml(d.authorName || "—") })}</div>
       </div>
     `;
     el.querySelector("input").addEventListener("change", () => onToggleDrill(d.id));

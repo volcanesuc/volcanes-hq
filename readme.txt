@@ -58,3 +58,12 @@ Pickups (v2):
   La página convierte sola los pickups e inscripciones anteriores al formato nuevo
   (mueve correo/teléfono/comprobante a /private y agrega la hora límite)
 - Textos: js/strings/pickups_strings.js (default) + Ajustes > Textos (por club)
+
+Textos de toda la app (por club)
+- Admin > Textos (o Pickups > Ajustes): cambiá cualquier texto; se guarda en club_config/texts
+  (las reglas de club_config ya permiten leer a todos y escribir a admins, no hay que cambiar nada)
+- Defaults: HTML con data-tx="html_<pagina>.<llave>" (el texto del HTML es el default)
+  y JS en js/strings/screens/<pantalla>.js (TX.llave, txf(TX.llave, { variables }))
+- Pantalla nueva: importar su archivo de textos en js/strings/all_strings.js y, si tiene data-tx,
+  agregar el HTML a HTML_SOURCES
+- Los textos se guardan en cache 10 min en el navegador; después de guardar, recargá la página

@@ -5,10 +5,10 @@
       <form class="h-100 d-flex flex-column">
         <div class="modal-header app-modal__header">
           <div>
-            <h5 class="modal-title mb-0" id="gymRoutineModalTitle">Rutina</h5>
-            <div class="small app-modal__subtitle">Armá la rutina y ordená sus ejercicios.</div>
+            <h5 class="modal-title mb-0" id="gymRoutineModalTitle" data-tx="html_gym_routine_editor.rutina">Rutina</h5>
+            <div class="small app-modal__subtitle" data-tx="html_gym_routine_editor.armaLaRutinaY">Armá la rutina y ordená sus ejercicios.</div>
           </div>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar" data-tx-aria-label="html_gym_routine_editor.cerrar"></button>
         </div>
 
         <div class="modal-body app-modal__body">
@@ -19,18 +19,18 @@
               <div class="card app-form-card h-100">
                 <div class="card-body">
                   <div class="mb-3">
-                    <label class="form-label">Nombre</label>
-                    <input class="form-control" id="grName" placeholder="Rutina Lunes PM - Pierna" />
+                    <label class="form-label" data-tx="html_gym_routine_editor.nombre">Nombre</label>
+                    <input class="form-control" id="grName" placeholder="Rutina Lunes PM - Pierna" data-tx-placeholder="html_gym_routine_editor.rutinaLunesPmPierna" />
                   </div>
 
                   <div class="mb-3">
-                    <label class="form-label">Descripción</label>
-                    <input class="form-control" id="grDescription" placeholder="Fuerza base + accesorios" />
+                    <label class="form-label" data-tx="html_gym_routine_editor.descripcion">Descripción</label>
+                    <input class="form-control" id="grDescription" placeholder="Fuerza base + accesorios" data-tx-placeholder="html_gym_routine_editor.fuerzaBaseAccesorios" />
                   </div>
 
                   <div class="form-check form-switch">
                     <input class="form-check-input" type="checkbox" id="grIsPublic" checked>
-                    <label class="form-check-label" for="grIsPublic">Pública</label>
+                    <label class="form-check-label" for="grIsPublic" data-tx="html_gym_routine_editor.publica">Pública</label>
                   </div>
                 </div>
               </div>
@@ -40,14 +40,14 @@
               <div class="card app-form-card">
                 <div class="card-body">
                   <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
-                    <div class="fw-semibold">Ejercicios de la rutina</div>
+                    <div class="fw-semibold" data-tx="html_gym_routine_editor.ejerciciosDeLaRutina">Ejercicios de la rutina</div>
 
                     <div class="d-flex gap-2 flex-wrap align-items-end">
                       <div style="min-width:260px;">
-                        <label class="form-label small text-muted mb-1">Agregar ejercicio</label>
+                        <label class="form-label small text-muted mb-1" data-tx="html_gym_routine_editor.agregarEjercicio">Agregar ejercicio</label>
                         <select class="form-select" id="grAddExerciseSelect"></select>
                       </div>
-                      <button class="btn btn-outline-primary btn-sm" id="grAddExerciseBtn" type="button">+ Agregar</button>
+                      <button class="btn btn-outline-primary btn-sm" id="grAddExerciseBtn" type="button" data-tx="html_gym_routine_editor.agregar">+ Agregar</button>
                     </div>
                   </div>
 
@@ -56,12 +56,12 @@
                       <thead class="table-light">
                         <tr>
                           <th style="width:40px;">#</th>
-                          <th>Ejercicio</th>
-                          <th style="width:90px;">Sets</th>
-                          <th style="width:90px;">Reps</th>
-                          <th style="width:120px;">Dist</th>
-                          <th style="width:100px;">Desc (s)</th>
-                          <th>Notas</th>
+                          <th data-tx="html_gym_routine_editor.ejercicio">Ejercicio</th>
+                          <th style="width:90px;" data-tx="html_gym_routine_editor.sets">Sets</th>
+                          <th style="width:90px;" data-tx="html_gym_routine_editor.reps">Reps</th>
+                          <th style="width:120px;" data-tx="html_gym_routine_editor.dist">Dist</th>
+                          <th style="width:100px;" data-tx="html_gym_routine_editor.descS">Desc (s)</th>
+                          <th data-tx="html_gym_routine_editor.notas">Notas</th>
                           <th style="width:120px;"></th>
                         </tr>
                       </thead>
@@ -69,7 +69,7 @@
                     </table>
                   </div>
 
-                  <div class="text-muted small">
+                  <div class="text-muted small" data-tx="html_gym_routine_editor.tipRepsODistancia">
                     Tip: Reps o Distancia (uno u otro). Si el ejercicio es por distancia, usa “Dist”.
                   </div>
                 </div>
@@ -79,8 +79,8 @@
         </div>
 
         <div class="modal-footer app-modal__footer">
-          <button class="btn btn-outline-secondary" data-bs-dismiss="modal" type="button">Cancelar</button>
-          <button class="btn btn-primary" id="saveGymRoutineBtn" type="button">Guardar rutina</button>
+          <button class="btn btn-outline-secondary" data-bs-dismiss="modal" type="button" data-tx="html_gym_routine_editor.cancelar">Cancelar</button>
+          <button class="btn btn-primary" id="saveGymRoutineBtn" type="button" data-tx="html_gym_routine_editor.guardarRutina">Guardar rutina</button>
         </div>
       </form>
 

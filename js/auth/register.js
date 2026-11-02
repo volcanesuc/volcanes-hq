@@ -27,6 +27,7 @@ import {
 import { loadPlans, bindPlanUI } from "../features/register/register_plans.js";
 import { getPlansById } from "../features/register/register_state.js";
 import { bindRegisterSubmit } from "../features/register/register_submit.js";
+import { TX } from "/js/strings/screens/register_auth.js";
 
 /* =========================
    UI boot safety
@@ -63,7 +64,7 @@ applyPrefillFromSession();
 ========================= */
 $.logoutBtn?.addEventListener("click", async () => {
   try {
-    showLoader("Cargando…");
+    showLoader(TX.cargando);
     await logout();
   } finally {
     hideLoader();
@@ -71,7 +72,7 @@ $.logoutBtn?.addEventListener("click", async () => {
 });
 
 onAuthStateChanged(auth, async (user) => {
-  showLoader("Cargando…");
+  showLoader(TX.cargando);
 
   try {
     if (!user) {
@@ -203,8 +204,8 @@ onAuthStateChanged(auth, async (user) => {
    Init
 ========================= */
 async function init() {
-  showLoader("Procesando registro…");
-  setSubmittingState(true, "Cargando...");
+  showLoader(TX.procesandoRegistro);
+  setSubmittingState(true, TX.cargando2);
   try {
     fillProvinceCanton();
     wireUpFormCompleteness();
@@ -216,7 +217,7 @@ async function init() {
     updateSubmitState();
   } catch (e) {
     console.warn(e);
-    showAlert("No se pudo cargar la configuración. Refresca la página.");
+    showAlert(TX.noSePudoCargar);
   } finally {
     setSubmittingState(false);
     hideLoader();

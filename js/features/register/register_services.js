@@ -23,6 +23,7 @@ import {
   safeSeasonFromToday,
   setProofStatus,
 } from "./register_ui.js";
+import { TX, txf } from "/js/strings/screens/register_services.js";
 
 const COL = APP_CONFIG.collections;
 const COL_USERS = COL.users;
@@ -67,37 +68,37 @@ export function normalizeAssociationStatus(data) {
 ========================= */
 export function firebaseErrMsg(e) {
   const code = e?.code ? String(e.code) : "";
-  const raw = e?.message ? String(e.message) : "Error desconocido.";
+  const raw = e?.message ? String(e.message) : TX.errorDesconocido;
 
   if (code.includes("storage/unauthorized")) {
-    return "No tienes permiso para subir el comprobante. Revisa las Storage Rules para membership_submissions/{uid}/...";
+    return TX.noTienesPermisoPara;
   }
   if (code.includes("storage/canceled")) {
-    return "La subida del comprobante fue cancelada.";
+    return TX.laSubidaDelComprobante;
   }
   if (code.includes("storage/retry-limit-exceeded")) {
-    return "La subida tardó demasiado o falló por conexión. Intenta con una red más estable o un archivo más liviano.";
+    return TX.laSubidaTardoDemasiado;
   }
   if (code.includes("storage/invalid-checksum")) {
-    return "El archivo subido llegó corrupto. Intenta subirlo otra vez.";
+    return TX.elArchivoSubidoLlego;
   }
   if (code.includes("storage/quota-exceeded")) {
-    return "El bucket de Storage superó su cuota.";
+    return TX.elBucketDeStorage;
   }
   if (code.includes("storage/object-not-found")) {
-    return "No se encontró el archivo en Storage.";
+    return TX.noSeEncontroEl;
   }
   if (code.includes("permission-denied")) {
-    return "Permisos insuficientes (rules).";
+    return TX.permisosInsuficientesRules;
   }
   if (code.includes("unauthenticated")) {
-    return "No hay sesión activa.";
+    return TX.noHaySesionActiva;
   }
   if (code.includes("failed-precondition")) {
-    return "Falta un índice o una precondición de Firestore.";
+    return TX.faltaUnIndiceO;
   }
   if (code.includes("invalid-argument")) {
-    return "Hay un dato inválido en la solicitud.";
+    return TX.hayUnDatoInvalido;
   }
 
   return raw;
@@ -327,7 +328,7 @@ export async function createMembership({
     status: "pending",
     payCode,
     payLinkEnabled: false,
-    payLinkDisabledReason: "Pendiente de validación.",
+    payLinkDisabledReason: TX.pendienteDeValidacion,
     installmentsTotal: 0,
     installmentsPending: 0,
     installmentsSettled: 0,
@@ -401,7 +402,7 @@ export async function syncUserMembershipSummary({
   plan,
   season,
 }) {
-  const label = `${plan?.name || "Membresía"} ${season || ""}`.trim();
+  const label = `${plan?.name || TX.membresia} ${season || ""}`.trim();
 
   await updateDoc(doc(db, COL_USERS, uid), {
     membershipIds: arrayUnion(membershipId),
@@ -497,14 +498,14 @@ export async function markUserOnboardingComplete({
 ========================= */
 export function validateProofFile(file) {
   if (!file) {
-    throw new Error("No seleccionaste ningún comprobante.");
+    throw new Error(TX.noSeleccionasteNingunComprobante);
   }
 
   const maxMb = 10;
   const maxBytes = maxMb * 1024 * 1024;
 
   if (file.size > maxBytes) {
-    throw new Error(`El comprobante pesa demasiado. Máximo permitido: ${maxMb} MB.`);
+    throw new Error(txf(TX.elComprobantePesaDemasiado, { maxMb }));
   }
 
   const allowed = [
@@ -515,7 +516,7 @@ export function validateProofFile(file) {
   ];
 
   if (file.type && !allowed.includes(file.type)) {
-    throw new Error("Formato no permitido. Usa JPG, PNG, WEBP o PDF.");
+    throw new Error(TX.formatoNoPermitidoUsa);
   }
 }
 
@@ -531,7 +532,7 @@ export async function uploadProofFile({ uid, file }) {
     contentType: file.type || "application/octet-stream",
   });
 
-  setProofStatus("Subiendo comprobante: 0%", "muted", true);
+  setProofStatus(TX.subiendoComprobante0, "muted", true);
 
   await new Promise((resolve, reject) => {
     task.on(
@@ -540,7 +541,7 @@ export async function uploadProofFile({ uid, file }) {
         const total = snapshot.totalBytes || 0;
         const transferred = snapshot.bytesTransferred || 0;
         const pct = total > 0 ? Math.round((transferred / total) * 100) : 0;
-        setProofStatus(`Subiendo comprobante: ${pct}%`, "muted", true);
+        setProofStatus(txf(TX.subiendoComprobante, { pct }), "muted", true);
       },
       (error) => {
         console.error("uploadProofFile error:", error);
@@ -553,7 +554,7 @@ export async function uploadProofFile({ uid, file }) {
 
   const fileUrl = await getDownloadURL(task.snapshot.ref);
 
-  setProofStatus("Comprobante subido correctamente.", "success", false);
+  setProofStatus(TX.comprobanteSubidoCorrectamente, "success", false);
 
   return {
     filePath: path,

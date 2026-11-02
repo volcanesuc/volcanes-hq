@@ -15,6 +15,7 @@ import {
   serverTimestamp,
   query,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { TX, txf } from "/js/strings/screens/subscription_plans.js";
 
 /* =========================
    Const / State
@@ -48,9 +49,9 @@ function badge(text, cls = "") {
 }
 
 function planStateLabel(p) {
-  if (p.archived) return badge("Archivado", "gray");
-  if (!p.active) return badge("Inactivo", "gray");
-  return badge("Activo", "yellow");
+  if (p.archived) return badge(TX.archivado, "gray");
+  if (!p.active) return badge(TX.inactivo, "gray");
+  return badge(TX.activo, "yellow");
 }
 
 function validateMonthDay(mmdd) {
@@ -124,49 +125,49 @@ function distributeAmounts(total, n) {
  */
 function startPolicyLabel(plan) {
   const sp = (plan.startPolicy || "jan").toLowerCase();
-  if (sp === "paid_date") return "Día de pago";
-  return "Ene";
+  if (sp === "paid_date") return TX.diaDePago;
+  return TX.ene;
 }
 
 function durationLabel(plan) {
   const dm = Number(plan.durationMonths || 0);
   if (!dm) return "—";
-  if (dm === 12) return "12 meses (anual)";
-  if (dm === 6) return "6 meses (semestral)";
-  if (dm === 1) return "1 mes (mensual)";
+  if (dm === 12) return TX.t12MesesAnual;
+  if (dm === 6) return TX.t6MesesSemestral;
+  if (dm === 1) return TX.t1MesMensual;
   return `${dm} meses`;
 }
 
 function validatePlanPayload(p) {
-  if (!p.name) return "Falta el nombre del plan.";
+  if (!p.name) return TX.faltaElNombreDel;
 
   const season = Number(p.season);
   if (!Number.isInteger(season) || season < 2000 || season > 2100) {
-    return "La temporada debe ser un año válido (ej: 2026).";
+    return TX.laTemporadaDebeSer;
   }
 
   const dm = Number(p.durationMonths);
   if (!Number.isInteger(dm) || dm < 1 || dm > 12) {
-    return "Duración inválida. Usá un número entre 1 y 12.";
+    return TX.duracionInvalidaUsaUn;
   }
 
   const sp = (p.startPolicy || "").toLowerCase();
   if (!["jan", "paid_date"].includes(sp)) {
-    return "Política de inicio inválida.";
+    return TX.politicaDeInicioInvalida;
   }
 
   if (
     !p.allowCustomAmount &&
     (p.totalAmount === null || p.totalAmount === undefined || p.totalAmount === "")
   ) {
-    return "Falta el monto total (o marcá Monto editable).";
+    return TX.faltaElMontoTotal;
   }
 
   if (p.allowPartial) {
     const inst = p.installmentsTemplate || [];
-    if (!inst.length) return "Marcaste “Permite cuotas” pero no definiste cuotas.";
+    if (!inst.length) return TX.marcastePermiteCuotasPero;
     const bad = inst.find((x) => x.dueMonthDay && !validateMonthDay(x.dueMonthDay));
-    if (bad) return "Formato de fecha inválido en cuotas. Usá MM-DD (ej: 02-15).";
+    if (bad) return TX.formatoDeFechaInvalido;
   }
 
   return null;
@@ -196,24 +197,24 @@ function renderShell(container, { inAssociation }) {
   container.innerHTML = inAssociation
     ? `
       <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap mb-2">
-        <div class="text-muted small">Administración de planes</div>
+        <div class="text-muted small">${TX.administracionDePlanes}</div>
         <div class="d-flex gap-2">
           <button id="btnNewPlan" class="btn btn-primary btn-sm">
-            <i class="bi bi-plus-lg me-1"></i> Nuevo
+            <i class="bi bi-plus-lg me-1"></i> ${TX.nuevo}
           </button>
           <button id="btnRefresh" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-clockwise me-1"></i> Refrescar
+            <i class="bi bi-arrow-clockwise me-1"></i> ${TX.refrescar}
           </button>
         </div>
       </div>
 
       <div class="row g-2">
         <div class="col-12 col-md-5">
-          <input id="searchInput" class="form-control" placeholder="Buscar por nombre o tags..." />
+          <input id="searchInput" class="form-control" placeholder="${TX.buscarPorNombreO}" />
         </div>
         <div class="col-6 col-md-3">
           <select id="seasonFilter" class="form-select">
-            <option value="all">Todas las temporadas</option>
+            <option value="all">${TX.todasLasTemporadas}</option>
             <option value="${seasonNow - 1}">${seasonNow - 1}</option>
             <option value="${seasonNow}">${seasonNow}</option>
             <option value="${seasonNow + 1}">${seasonNow + 1}</option>
@@ -222,10 +223,10 @@ function renderShell(container, { inAssociation }) {
         </div>
         <div class="col-6 col-md-4">
           <select id="statusFilter" class="form-select">
-            <option value="all">Todos los estados</option>
-            <option value="active">Activos</option>
-            <option value="inactive">Inactivos</option>
-            <option value="archived">Archivados</option>
+            <option value="all">${TX.todosLosEstados}</option>
+            <option value="active">${TX.activos}</option>
+            <option value="inactive">${TX.inactivos}</option>
+            <option value="archived">${TX.archivados}</option>
           </select>
         </div>
       </div>
@@ -234,16 +235,16 @@ function renderShell(container, { inAssociation }) {
         <table class="table align-middle">
           <thead>
             <tr>
-              <th>Plan</th>
-              <th>Temporada</th>
-              <th>Monto</th>
-              <th>Cuotas</th>
-              <th>Estado</th>
-              <th class="text-end">Acciones</th>
+              <th>${TX.plan}</th>
+              <th>${TX.temporada}</th>
+              <th>${TX.monto}</th>
+              <th>${TX.cuotas}</th>
+              <th>${TX.estado}</th>
+              <th class="text-end">${TX.acciones}</th>
             </tr>
           </thead>
           <tbody id="plansTbody">
-            <tr><td colspan="6" class="text-muted">Cargando…</td></tr>
+            <tr><td colspan="6" class="text-muted">${TX.cargando}</td></tr>
           </tbody>
         </table>
       </div>
@@ -254,26 +255,26 @@ function renderShell(container, { inAssociation }) {
       <section class="card">
         <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
           <div>
-            <h2 class="h5 mb-1">Planes de suscripción</h2>
-            <div class="text-muted small">Crear/editar planes, duración e inicio permitido</div>
+            <h2 class="h5 mb-1">${TX.planesDeSuscripcion}</h2>
+            <div class="text-muted small">${TX.crearEditarPlanesDuracion}</div>
           </div>
           <div class="d-flex gap-2">
             <button id="btnNewPlan" class="btn btn-primary btn-sm">
-              <i class="bi bi-plus-lg me-1"></i> Nuevo
+              <i class="bi bi-plus-lg me-1"></i> ${TX.nuevo}
             </button>
             <button id="btnRefresh" class="btn btn-outline-secondary btn-sm">
-              <i class="bi bi-arrow-clockwise me-1"></i> Refrescar
+              <i class="bi bi-arrow-clockwise me-1"></i> ${TX.refrescar}
             </button>
           </div>
         </div>
 
         <div class="row g-2 mt-3">
           <div class="col-12 col-md-5">
-            <input id="searchInput" class="form-control" placeholder="Buscar por nombre o tags..." />
+            <input id="searchInput" class="form-control" placeholder="${TX.buscarPorNombreO}" />
           </div>
           <div class="col-6 col-md-3">
             <select id="seasonFilter" class="form-select">
-              <option value="all">Todas las temporadas</option>
+              <option value="all">${TX.todasLasTemporadas}</option>
               <option value="${seasonNow - 1}">${seasonNow - 1}</option>
               <option value="${seasonNow}">${seasonNow}</option>
               <option value="${seasonNow + 1}">${seasonNow + 1}</option>
@@ -282,10 +283,10 @@ function renderShell(container, { inAssociation }) {
           </div>
           <div class="col-6 col-md-4">
             <select id="statusFilter" class="form-select">
-              <option value="all">Todos los estados</option>
-              <option value="active">Activos</option>
-              <option value="inactive">Inactivos</option>
-              <option value="archived">Archivados</option>
+              <option value="all">${TX.todosLosEstados}</option>
+              <option value="active">${TX.activos}</option>
+              <option value="inactive">${TX.inactivos}</option>
+              <option value="archived">${TX.archivados}</option>
             </select>
           </div>
         </div>
@@ -294,16 +295,16 @@ function renderShell(container, { inAssociation }) {
           <table class="table align-middle">
             <thead>
               <tr>
-                <th>Plan</th>
-                <th>Temporada</th>
-                <th>Monto</th>
-                <th>Cuotas</th>
-                <th>Estado</th>
-                <th class="text-end">Acciones</th>
+                <th>${TX.plan}</th>
+                <th>${TX.temporada}</th>
+                <th>${TX.monto}</th>
+                <th>${TX.cuotas}</th>
+                <th>${TX.estado}</th>
+                <th class="text-end">${TX.acciones}</th>
               </tr>
             </thead>
             <tbody id="plansTbody">
-              <tr><td colspan="6" class="text-muted">Cargando…</td></tr>
+              <tr><td colspan="6" class="text-muted">${TX.cargando}</td></tr>
             </tbody>
           </table>
         </div>
@@ -323,10 +324,10 @@ function renderModalHtml() {
 
         <div class="modal-header">
           <div>
-            <div class="small text-muted">Plan</div>
-            <h5 class="modal-title mb-0" id="planModalTitle">Nuevo plan</h5>
+            <div class="small text-muted">${TX.plan}</div>
+            <h5 class="modal-title mb-0" id="planModalTitle">${TX.nuevoPlan}</h5>
           </div>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="${TX.cerrar}"></button>
         </div>
 
         <div class="modal-body">
@@ -345,7 +346,7 @@ function renderModalHtml() {
                     role="tab"
                     aria-controls="panel-general"
                     aria-selected="true">
-                    General
+                    ${TX.general}
                   </button>
                 </li>
 
@@ -359,7 +360,7 @@ function renderModalHtml() {
                     role="tab"
                     aria-controls="panel-installments"
                     aria-selected="false">
-                    Cuotas
+                    ${TX.cuotas}
                   </button>
                 </li>
               </ul>
@@ -373,12 +374,12 @@ function renderModalHtml() {
 
                   <div class="row g-2">
                     <div class="col-12 col-md-7">
-                      <label class="form-label">Nombre</label>
-                      <input id="planName" class="form-control" placeholder="Membresía 2026" />
+                      <label class="form-label">${TX.nombre}</label>
+                      <input id="planName" class="form-control" placeholder="${TX.membresia2026}" />
                     </div>
 
                     <div class="col-6 col-md-3">
-                      <label class="form-label">Temporada</label>
+                      <label class="form-label">${TX.temporada}</label>
                       <input
                         id="planSeason"
                         class="form-control"
@@ -391,7 +392,7 @@ function renderModalHtml() {
                     </div>
 
                     <div class="col-6 col-md-2">
-                      <label class="form-label">Moneda</label>
+                      <label class="form-label">${TX.moneda}</label>
                       <select id="planCurrency" class="form-select">
                         <option value="CRC">CRC</option>
                         <option value="USD">USD</option>
@@ -401,7 +402,7 @@ function renderModalHtml() {
 
                   <div class="row g-2 mt-2">
                     <div class="col-12 col-md-4">
-                      <label class="form-label">Duración (meses)</label>
+                      <label class="form-label">${TX.duracionMeses}</label>
                       <input
                         id="planDurationMonths"
                         class="form-control"
@@ -411,58 +412,58 @@ function renderModalHtml() {
                         step="1"
                         placeholder="12"
                         value="12" />
-                      <div class="small text-muted mt-1">Ej: 12=anual, 6=semestral, 1=mensual</div>
+                      <div class="small text-muted mt-1">${TX.ej12Anual6}</div>
                     </div>
 
                     <div class="col-12 col-md-8 d-none" id="startPolicyWrap">
-                      <label class="form-label">Política de inicio</label>
+                      <label class="form-label">${TX.politicaDeInicio}</label>
                       <select id="planStartPolicy" class="form-select">
-                        <option value="paid_date">Desde la fecha de pago</option>
-                        <option value="jan">Desde Enero</option>
+                        <option value="paid_date">${TX.desdeLaFechaDe}</option>
+                        <option value="jan">${TX.desdeEnero}</option>
                       </select>
                       <div class="small text-muted mt-1">
-                        Define desde cuándo inicia la cobertura del plan y cómo se calcula su próxima renovación.
+                        ${TX.defineDesdeCuandoInicia}
                       </div>
                     </div>
                   </div>
 
                   <div class="row g-2 mt-2">
                     <div class="col-12 col-md-4">
-                      <label class="form-label">Monto total</label>
+                      <label class="form-label">${TX.montoTotal}</label>
                       <input id="planTotal" class="form-control" type="number" placeholder="45000" />
                     </div>
                   </div>
 
                   <div class="card border-0 bg-light mt-3">
                     <div class="card-body py-3">
-                      <div class="fw-semibold mb-2">Opciones</div>
+                      <div class="fw-semibold mb-2">${TX.opciones}</div>
                       <div class="row g-2">
 
                         <div class="col-12 col-md-3">
                           <label class="form-check">
                             <input class="form-check-input" type="checkbox" id="planActive" checked>
-                            <span class="form-check-label">Activo</span>
+                            <span class="form-check-label">${TX.activo}</span>
                           </label>
                         </div>
 
                         <div class="col-12 col-md-3">
                           <label class="form-check">
                             <input class="form-check-input" type="checkbox" id="planRequiresValidation" checked>
-                            <span class="form-check-label">Requiere validación</span>
+                            <span class="form-check-label">${TX.requiereValidacion}</span>
                           </label>
                         </div>
 
                         <div class="col-12 col-md-3">
                           <label class="form-check">
                             <input class="form-check-input" type="checkbox" id="planAllowCustomAmount">
-                            <span class="form-check-label">Monto editable</span>
+                            <span class="form-check-label">${TX.montoEditable}</span>
                           </label>
                         </div>
 
                         <div class="col-12 col-md-3">
                           <label class="form-check">
                             <input class="form-check-input" type="checkbox" id="planAllowPartial">
-                            <span class="form-check-label">Permite cuotas</span>
+                            <span class="form-check-label">${TX.permiteCuotas}</span>
                           </label>
                         </div>
 
@@ -472,16 +473,16 @@ function renderModalHtml() {
 
                   <div class="row g-2 mt-3">
                     <div class="col-12">
-                      <label class="form-label">Tags</label>
-                      <input id="planTags" class="form-control" placeholder="membresía, adulto, juvenil" />
+                      <label class="form-label">${TX.tags}</label>
+                      <input id="planTags" class="form-control" placeholder="${TX.membresiaAdultoJuvenil}" />
                     </div>
                   </div>
 
                   <div class="row g-2 mt-3">
                     <div class="col-12">
-                      <label class="form-label">Beneficios (1 por línea)</label>
+                      <label class="form-label">${TX.beneficios1PorLinea}</label>
                       <textarea id="planBenefits" class="form-control" rows="5"
-                        placeholder="Camiseta&#10;Cancha&#10;Torneos"></textarea>
+                        placeholder="${TX.camiseta10Cancha10}"></textarea>
                     </div>
                   </div>
 
@@ -490,15 +491,15 @@ function renderModalHtml() {
                 <!-- CUOTAS -->
                 <div class="tab-pane fade" id="panel-installments" role="tabpanel" aria-labelledby="tab-installments">
                   <div id="installmentsDisabledHint" class="alert alert-light border small d-none mb-2">
-                    Activá <b>“Permite cuotas”</b> en la pestaña General para habilitar esta sección.
+                    ${TX.activa} <b>${TX.permiteCuotas2}</b> ${TX.enLaPestanaGeneral}
                   </div>
 
                   <div class="d-flex justify-content-between align-items-center">
                     <div class="text-muted small">
-                      Formato de vencimiento: <span class="mono">MM-DD</span> (ej: 02-15)
+                      ${TX.formatoDeVencimiento} <span class="mono">MM-DD</span> ${TX.ej0215}
                     </div>
                     <button id="btnAddInstallment" class="btn btn-outline-secondary btn-sm" type="button">
-                      <i class="bi bi-plus-lg me-1"></i> Agregar cuota
+                      <i class="bi bi-plus-lg me-1"></i> ${TX.agregarCuota}
                     </button>
                   </div>
 
@@ -507,8 +508,8 @@ function renderModalHtml() {
                       <thead>
                         <tr>
                           <th style="width:64px;">#</th>
-                          <th style="width:160px;">Vence (MM-DD)</th>
-                          <th style="width:200px;">Monto</th>
+                          <th style="width:160px;">${TX.venceMmDd}</th>
+                          <th style="width:200px;">${TX.monto}</th>
                           <th class="text-end"></th>
                         </tr>
                       </thead>
@@ -517,7 +518,7 @@ function renderModalHtml() {
                   </div>
 
                   <div class="alert alert-warning small mt-2 mb-0">
-                    Si NO es “Monto editable” y dejás “Monto total” vacío, se calcula sumando las cuotas.
+                    ${TX.siNoEsMonto}
                   </div>
                 </div>
 
@@ -529,12 +530,12 @@ function renderModalHtml() {
 
         <div class="modal-footer d-flex justify-content-between">
           <button id="btnArchivePlan" class="btn btn-outline-danger" type="button" style="display:none;">
-            <i class="bi bi-archive me-1"></i> Archivar
+            <i class="bi bi-archive me-1"></i> ${TX.archivar}
           </button>
           <div class="d-flex gap-2 ms-auto">
-            <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancelar</button>
+            <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">${TX.cancelar}</button>
             <button id="btnSavePlan" class="btn btn-primary" type="button">
-              <i class="bi bi-check-lg me-1"></i> Guardar
+              <i class="bi bi-check-lg me-1"></i> ${TX.guardar}
             </button>
           </div>
         </div>
@@ -724,7 +725,7 @@ function clearModal() {
   const seasonNow = currentSeasonYear();
 
   $.planIdEl.value = "";
-  if ($.planModalTitle) $.planModalTitle.textContent = "Nuevo plan";
+  if ($.planModalTitle) $.planModalTitle.textContent = TX.nuevoPlan;
 
   $.planName.value = "";
   $.planSeason.value = String(seasonNow);
@@ -800,7 +801,7 @@ function renderPlans() {
   });
 
   if (!list.length) {
-    $.tbody.innerHTML = `<tr><td colspan="6" class="text-muted">No hay planes con esos filtros.</td></tr>`;
+    $.tbody.innerHTML = `<tr><td colspan="6" class="text-muted">${TX.noHayPlanesCon}</td></tr>`;
     return;
   }
 
@@ -809,8 +810,8 @@ function renderPlans() {
       const season = Number(p.season) || "—";
       const cur = p.currency || "CRC";
       const cuotas = (p.installmentsTemplate || []).length || 0;
-      const monto = p.allowCustomAmount ? "Editable" : fmtMoney(p.totalAmount, cur);
-      const meta = [`Cubre: ${durationLabel(p)}`, `Inicio: ${startPolicyLabel(p)}`].join(" · ");
+      const monto = p.allowCustomAmount ? TX.editable : fmtMoney(p.totalAmount, cur);
+      const meta = [txf(TX.cubre, { value: durationLabel(p) }), txf(TX.inicio, { value: startPolicyLabel(p) })].join(" · ");
 
       return `
         <tr>
@@ -825,7 +826,7 @@ function renderPlans() {
           <td>${planStateLabel(p)}</td>
           <td class="text-end">
             <button class="btn btn-sm btn-outline-primary" type="button" data-action="edit" data-id="${p.id}">
-              <i class="bi bi-pencil me-1"></i> Editar
+              <i class="bi bi-pencil me-1"></i> ${TX.editar}
             </button>
           </td>
         </tr>
@@ -838,7 +839,7 @@ function renderPlans() {
    Data
 ========================= */
 async function loadPlans() {
-  showLoader?.("Cargando planes…");
+  showLoader?.(TX.cargandoPlanes);
   const qRef = query(collection(db, COL));
   const snap = await getDocs(qRef);
 
@@ -859,14 +860,14 @@ async function loadPlans() {
    CRUD
 ========================= */
 async function openEdit(id) {
-  showLoader?.("Cargando plan…");
+  showLoader?.(TX.cargandoPlan);
 
   const ref = doc(db, COL, id);
   const snap = await getDoc(ref);
 
   if (!snap.exists()) {
     hideLoader?.();
-    alert("No se encontró el plan.");
+    alert(TX.noSeEncontroEl);
     return;
   }
 
@@ -879,7 +880,7 @@ async function openEdit(id) {
 
   clearModal();
   $.planIdEl.value = p.id;
-  $.planModalTitle.textContent = "Editar plan";
+  $.planModalTitle.textContent = TX.editarPlan;
 
   $.planName.value = p.name || "";
   $.planSeason.value = String(p.season || currentSeasonYear());
@@ -957,7 +958,7 @@ async function savePlan() {
     );
   }
 
-  showLoader?.("Guardando…");
+  showLoader?.(TX.guardando);
 
   try {
     if (!id) {
@@ -984,10 +985,10 @@ async function savePlan() {
     }
 
     $.planModal?.hide();
-    alert("✅ Plan guardado");
+    alert(TX.planGuardado);
   } catch (e) {
     console.error(e);
-    alert("❌ Error guardando el plan: " + (e?.message || e));
+    alert(TX.errorGuardandoElPlan + (e?.message || e));
   } finally {
     hideLoader?.();
   }
@@ -997,9 +998,9 @@ async function archivePlan() {
   const id = $.planIdEl?.value;
   if (!id) return;
 
-  if (!confirm("¿Archivar este plan? No se borrará, solo se ocultará por defecto.")) return;
+  if (!confirm(TX.archivarEstePlanNo)) return;
 
-  showLoader?.("Archivando…");
+  showLoader?.(TX.archivando);
 
   try {
     await updateDoc(doc(db, COL, id), {
@@ -1012,7 +1013,7 @@ async function archivePlan() {
     $.planModal?.hide();
   } catch (e) {
     console.error(e);
-    alert("❌ Error archivando el plan: " + (e?.message || e));
+    alert(TX.errorArchivandoElPlan + (e?.message || e));
   } finally {
     hideLoader?.();
   }

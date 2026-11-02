@@ -18,6 +18,7 @@ import {
   doc,
   arrayUnion,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { TX, txf } from "/js/strings/screens/membership_assign.js";
 
 /* =========================
    Collections
@@ -127,10 +128,10 @@ function mmddToIsoDate(season, mmdd) {
 
 function planDisplay(p) {
   const cur = p.currency || "CRC";
-  const base = p.allowCustomAmount ? "Monto editable" : fmtMoney(p.totalAmount, cur);
+  const base = p.allowCustomAmount ? TX.montoEditable : fmtMoney(p.totalAmount, cur);
   const cuotas = (p.installmentsTemplate || []).length;
-  const cuotasTxt = p.allowPartial ? ` • ${cuotas} cuota(s)` : "";
-  return `${p.name || "Plan"} — ${base}${cuotasTxt}`;
+  const cuotasTxt = p.allowPartial ? txf(TX.cuotaS, { cuotas }) : "";
+  return `${p.name || TX.plan} — ${base}${cuotasTxt}`;
 }
 
 function setResultLink(mid, code) {
@@ -157,14 +158,14 @@ function durationHint(p) {
   if (!dm) return "";
 
   const dur =
-    dm === 12 ? "12 meses"
-    : dm === 6 ? "6 meses"
-    : dm === 1 ? "1 mes"
+    dm === 12 ? TX.t12Meses
+    : dm === 6 ? TX.t6Meses
+    : dm === 1 ? TX.t1Mes
     : `${dm} meses`;
 
-  const start = sp === "jan" ? "enero" : "fecha de pago";
+  const start = sp === "jan" ? "enero" : TX.fechaDePago;
 
-  return `Cubre ${dur}. Inicio: ${start}.`;
+  return txf(TX.cubreInicio, { dur, start });
 }
 
 function setCreating(on) {
@@ -239,7 +240,7 @@ watchAuth(async (user) => {
 });
 
 async function boot() {
-  showLoader?.("Cargando…");
+  showLoader?.(TX.cargando);
   try {
     await Promise.all([loadUsers(), loadPlans()]);
     wireUI();
@@ -279,7 +280,7 @@ async function loadPlans() {
     });
 
   planSelect.innerHTML =
-    `<option value="">Seleccioná un plan…</option>` +
+    `<option value="">${TX.seleccionaUnPlan}</option>` +
     plans.map((p) => `<option value="${p.id}">${planDisplay(p)}</option>`).join("");
 }
 
@@ -291,7 +292,7 @@ function openMenu(items) {
     const email = getUserEmail(u) ? `<div class="text-muted small">${getUserEmail(u)}</div>` : "";
     const phone = getUserPhone(u) ? `<div class="text-muted small">${getUserPhone(u)}</div>` : "";
     const profile = getUserProfile(u);
-    const idn = profile.idNumber ? `<div class="text-muted small">ID: ${profile.idNumber}</div>` : "";
+    const idn = profile.idNumber ? `<div class="text-muted small">${txf(TX.id, { idNumber: profile.idNumber })}</div>` : "";
 
     return `
       <div class="picklist-item" data-id="${u.id}">
@@ -299,7 +300,7 @@ function openMenu(items) {
         <div>${email}${phone}${idn}</div>
       </div>
     `;
-  }).join("") || `<div class="p-3 text-muted">No hay resultados.</div>`;
+  }).join("") || `<div class="p-3 text-muted">${TX.noHayResultados}</div>`;
 
   associateMenu.style.display = "block";
 }
@@ -314,7 +315,7 @@ function selectUserById(id) {
 
   selectedUser = u;
   associateSearch.value = getUserDisplayName(u);
-  associateSelected.textContent = `Seleccionado: ${getUserDisplayName(u)}`;
+  associateSelected.textContent = txf(TX.seleccionado, { value: getUserDisplayName(u) });
   closeMenu();
   renderPreview();
 }
@@ -327,7 +328,7 @@ function wireUI() {
   btnCancel?.addEventListener("click", close);
 
   btnNewAssociate?.addEventListener("click", () => {
-    alert("Ahora las membresías se crean sobre usuarios existentes. Primero crea/aprueba el usuario en Admin.");
+    alert(TX.ahoraLasMembresiasSe);
   });
 
   associateSearch.addEventListener("input", () => {
@@ -378,7 +379,7 @@ function wireUI() {
     selectedUser = null;
     selectedPlan = null;
     associateSearch.value = "";
-    associateSelected.textContent = "Ninguno seleccionado";
+    associateSelected.textContent = TX.ningunoSeleccionado;
     planSelect.value = "";
     seasonEl.value = String(new Date().getFullYear());
     clearResultLink();
@@ -391,9 +392,9 @@ function wireUI() {
 
     try {
       await navigator.clipboard.writeText(txt);
-      alert("✅ Link copiado");
+      alert(TX.linkCopiado);
     } catch {
-      prompt("Copiá el link:", txt);
+      prompt(TX.copiaElLink, txt);
     }
   });
 
@@ -432,10 +433,10 @@ function renderPreview() {
   if (selectedPlan) {
     previewPlan.textContent = selectedPlan.name || "—";
     const cur = selectedPlan.currency || "CRC";
-    const total = selectedPlan.allowCustomAmount ? "Monto editable" : fmtMoney(selectedPlan.totalAmount, cur);
+    const total = selectedPlan.allowCustomAmount ? TX.montoEditable : fmtMoney(selectedPlan.totalAmount, cur);
     const flags = [
-      selectedPlan.allowPartial ? "Permite cuotas" : "Pago único",
-      selectedPlan.requiresValidation ? "Requiere validación" : "Sin validación",
+      selectedPlan.allowPartial ? TX.permiteCuotas : TX.pagoUnico,
+      selectedPlan.requiresValidation ? TX.requiereValidacion : TX.sinValidacion,
     ];
     previewPlanMeta.textContent = `${total} • ${flags.join(" • ")}`;
     planHint.textContent = durationHint(selectedPlan);
@@ -464,11 +465,11 @@ function renderPreview() {
   }
 
   previewTotal.textContent = selectedPlan.allowCustomAmount
-    ? "Editable"
+    ? TX.editable
     : fmtMoney(totalAmount, cur);
 
   if (!selectedPlan.allowPartial || installments.length === 0) {
-    previewInstallments.innerHTML = `<tr><td colspan="3" class="text-muted">Sin cuotas (pago único)</td></tr>`;
+    previewInstallments.innerHTML = `<tr><td colspan="3" class="text-muted">${TX.sinCuotasPagoUnico}</td></tr>`;
     return;
   }
 
@@ -544,14 +545,14 @@ async function createMembership() {
   const season = normalizeSeasonString(seasonEl.value);
 
   if (!season) {
-    return alert("Temporada inválida. Usá un año válido, por ejemplo 2026.");
+    return alert(TX.temporadaInvalidaUsaUn);
   }
 
-  if (!selectedUser) return alert("Seleccioná un usuario.");
-  if (!selectedPlan) return alert("Seleccioná un plan.");
+  if (!selectedUser) return alert(TX.seleccionaUnUsuario);
+  if (!selectedPlan) return alert(TX.seleccionaUnPlan2);
 
   setCreating(true);
-  showLoader?.("Verificando…");
+  showLoader?.(TX.verificando);
 
   try {
     const userId = selectedUser.uid || selectedUser.id;
@@ -566,10 +567,10 @@ async function createMembership() {
       else clearResultLink();
 
       alert(
-        `⚠️ Ya existe una membresía para este usuario en ${season}.\n\n` +
-        `Se usará la existente: ${existing.id}\n` +
-        `Estado: ${existing.status || "pending"}\n\n` +
-        `Si necesitás cambiar plan o corregir datos, abrí el detalle.`
+        txf(TX.yaExisteUnaMembresia, { season }) +
+        txf(TX.seUsaraLaExistente, { id: existing.id }) +
+        txf(TX.estado, { value: existing.status || "pending" }) +
+        TX.siNecesitasCambiarPlan
       );
 
       const baseDir = window.location.href.replace(/\/[^/]+$/, "/");
@@ -589,7 +590,7 @@ async function createMembership() {
       return;
     }
 
-    showLoader?.("Creando membresía…");
+    showLoader?.(TX.creandoMembresia);
 
     const userSnap = buildUserSnapshot(selectedUser);
     const installmentsTemplate = Array.isArray(selectedPlan.installmentsTemplate)
@@ -666,7 +667,7 @@ async function createMembership() {
           membershipId: mid,
           season,
           planId: selectedPlan.id,
-          label: `${selectedPlan.name || "Membresía"} ${season}`,
+          label: `${selectedPlan.name || TX.membresia} ${season}`,
           status: "pending",
         },
         associationStatus: "pending",
@@ -678,13 +679,13 @@ async function createMembership() {
 
     hideLoader?.();
 
-    alert("✅ Membresía creada");
+    alert(TX.membresiaCreada);
     setResultLink(mid, payCode);
 
     post("membership:created", { id: mid, userId, season });
   } catch (e) {
     console.error(e);
-    alert("❌ Error: " + (e?.message || e));
+    alert(TX.error + (e?.message || e));
   } finally {
     hideLoader?.();
     setCreating(false);

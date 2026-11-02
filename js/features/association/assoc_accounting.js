@@ -9,6 +9,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 import { APP_CONFIG } from "/js/config/config.js";
+import { TX, txf } from "/js/strings/screens/assoc_accounting.js";
 
 const COL = APP_CONFIG.collections;
 const COL_MOVEMENTS = COL.finance_movements;
@@ -81,11 +82,11 @@ function getSubmissionDescription(p) {
   //const membershipId = String(p?.membershipId || "").trim();
 
   const bits = [];
-  bits.push("Pago de membresía");
+  bits.push(TX.pagoDeMembresia);
   if (payer) bits.push(`— ${payer}`);
-  if (season) bits.push(`• Temp. ${season}`);
+  if (season) bits.push(txf(TX.temp, { season }));
   //if (membershipId) bits.push(`• Membresía ${membershipId}`);
-  else if (planId) bits.push(`• Plan ${planId}`);
+  else if (planId) bits.push(txf(TX.plan, { planId }));
 
   return bits.join(" ");
 }
@@ -101,8 +102,8 @@ export async function mount(root, cfg) {
     <div class="card shadow-sm mb-3">
       <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div>
-          <h3 class="mb-0">Contabilidad</h3>
-          <div class="text-muted small">Resumen y movimientos financieros del club</div>
+          <h3 class="mb-0">${TX.contabilidad}</h3>
+          <div class="text-muted small">${TX.resumenYMovimientosFinancieros}</div>
         </div>
         <button
           class="btn btn-sm btn-outline-secondary"
@@ -112,7 +113,7 @@ export async function mount(root, cfg) {
           aria-expanded="true"
           aria-controls="fxSummaryCollapse"
         >
-          Mostrar / ocultar
+          ${TX.mostrarOcultar}
         </button>
       </div>
 
@@ -121,25 +122,25 @@ export async function mount(root, cfg) {
           <div class="row g-3 mb-4">
             <div class="col-md-3">
               <div class="border rounded p-3 h-100">
-                <div class="small text-muted">Membresías recaudadas</div>
+                <div class="small text-muted">${TX.membresiasRecaudadas}</div>
                 <div class="fs-4 fw-bold" id="fxMembershipIncome">₡0</div>
               </div>
             </div>
             <div class="col-md-3">
               <div class="border rounded p-3 h-100">
-                <div class="small text-muted">Otros ingresos</div>
+                <div class="small text-muted">${TX.otrosIngresos}</div>
                 <div class="fs-4 fw-bold text-success" id="fxOtherIncome">₡0</div>
               </div>
             </div>
             <div class="col-md-3">
               <div class="border rounded p-3 h-100">
-                <div class="small text-muted">Gastos</div>
+                <div class="small text-muted">${TX.gastos}</div>
                 <div class="fs-4 fw-bold text-danger" id="fxExpenses">₡0</div>
               </div>
             </div>
             <div class="col-md-3">
               <div class="border rounded p-3 h-100">
-                <div class="small text-muted">Balance neto</div>
+                <div class="small text-muted">${TX.balanceNeto}</div>
                 <div class="fs-4 fw-bold" id="fxBalance">₡0</div>
               </div>
             </div>
@@ -147,46 +148,46 @@ export async function mount(root, cfg) {
 
           <div class="row g-2 mb-3">
             <div class="col-md-3">
-              <label class="form-label">Buscar</label>
-              <input id="fxSearch" class="form-control" placeholder="Descripción, persona, plan, membresía..." />
+              <label class="form-label">${TX.buscar}</label>
+              <input id="fxSearch" class="form-control" placeholder="${TX.descripcionPersonaPlanMembresia}" />
             </div>
 
             <div class="col-md-2">
-              <label class="form-label">Tipo</label>
+              <label class="form-label">${TX.tipo}</label>
               <select id="fxFilterType" class="form-select">
-                <option value="all">Todos</option>
-                <option value="income">Ingreso</option>
-                <option value="expense">Gasto</option>
+                <option value="all">${TX.todos}</option>
+                <option value="income">${TX.ingreso}</option>
+                <option value="expense">${TX.gasto}</option>
               </select>
             </div>
 
             <div class="col-md-2">
-              <label class="form-label">Categoría</label>
+              <label class="form-label">${TX.categoria}</label>
               <select id="fxFilterCategory" class="form-select">
-                <option value="all">Todas</option>
+                <option value="all">${TX.todas}</option>
               </select>
             </div>
 
             <div class="col-md-2">
-              <label class="form-label">Origen</label>
+              <label class="form-label">${TX.origen}</label>
               <select id="fxFilterSource" class="form-select">
-                <option value="all">Todos</option>
+                <option value="all">${TX.todos}</option>
               </select>
             </div>
 
             <div class="col-md-1">
-              <label class="form-label">Monto mín.</label>
+              <label class="form-label">${TX.montoMin}</label>
               <input id="fxMinAmount" type="number" min="0" step="0.01" class="form-control" />
             </div>
 
             <div class="col-md-1">
-              <label class="form-label">Monto máx.</label>
+              <label class="form-label">${TX.montoMax}</label>
               <input id="fxMaxAmount" type="number" min="0" step="0.01" class="form-control" />
             </div>
 
             <div class="col-md-1 d-flex align-items-end">
               <button id="fxClearFilters" type="button" class="btn btn-outline-secondary w-100">
-                Limpiar
+                ${TX.limpiar}
               </button>
             </div>
           </div>
@@ -199,17 +200,17 @@ export async function mount(root, cfg) {
             <table class="table align-middle">
               <thead>
                 <tr>
-                  <th>Fecha</th>
-                  <th>Tipo</th>
-                  <th>Categoría</th>
-                  <th>Descripción</th>
-                  <th>Monto</th>
-                  <th>Origen</th>
-                  <th>Registrado por</th>
+                  <th>${TX.fecha}</th>
+                  <th>${TX.tipo}</th>
+                  <th>${TX.categoria}</th>
+                  <th>${TX.descripcion}</th>
+                  <th>${TX.monto}</th>
+                  <th>${TX.origen}</th>
+                  <th>${TX.registradoPor}</th>
                 </tr>
               </thead>
               <tbody id="fxTableBody">
-                <tr><td colspan="7" class="text-muted">Cargando…</td></tr>
+                <tr><td colspan="7" class="text-muted">${TX.cargando}</td></tr>
               </tbody>
             </table>
           </div>
@@ -220,8 +221,8 @@ export async function mount(root, cfg) {
     <div class="card shadow-sm mb-3">
       <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div>
-          <h4 class="mb-0">Agregar movimiento manual</h4>
-          <div class="text-muted small">Registrar ingresos y gastos no automáticos</div>
+          <h4 class="mb-0">${TX.agregarMovimientoManual}</h4>
+          <div class="text-muted small">${TX.registrarIngresosYGastos}</div>
         </div>
         <button
           class="btn btn-sm btn-outline-secondary"
@@ -231,7 +232,7 @@ export async function mount(root, cfg) {
           aria-expanded="false"
           aria-controls="fxFormCollapse"
         >
-          Mostrar / ocultar
+          ${TX.mostrarOcultar}
         </button>
       </div>
 
@@ -239,62 +240,62 @@ export async function mount(root, cfg) {
         <div class="card-body">
           <form id="fxForm" class="row g-3">
             <div class="col-md-2">
-              <label class="form-label">Tipo</label>
+              <label class="form-label">${TX.tipo}</label>
               <select id="fxType" class="form-select" required>
-                <option value="income">Ingreso</option>
-                <option value="expense">Gasto</option>
+                <option value="income">${TX.ingreso}</option>
+                <option value="expense">${TX.gasto}</option>
               </select>
             </div>
 
             <div class="col-md-3">
-              <label class="form-label">Categoría</label>
+              <label class="form-label">${TX.categoria}</label>
               <select id="fxCategory" class="form-select" required>
-                <option value="asociación">Asociación</option>
-                <option value="pickup">Pickups</option>
-                <option value="entrenamiento">Entrenamiento</option>
-                <option value="discos">Discos</option>
-                <option value="dominio">Dominio</option>
-                <option value="federacion">Federación</option>
-                <option value="torneo">Torneo</option>
-                <option value="uniformes">Uniformes</option>
-                <option value="patrocinio">Patrocinio</option>
-                <option value="otros">Otros</option>
+                <option value="asociación">${TX.asociacion}</option>
+                <option value="pickup">${TX.pickups}</option>
+                <option value="entrenamiento">${TX.entrenamiento}</option>
+                <option value="discos">${TX.discos}</option>
+                <option value="dominio">${TX.dominio}</option>
+                <option value="federacion">${TX.federacion}</option>
+                <option value="torneo">${TX.torneo}</option>
+                <option value="uniformes">${TX.uniformes}</option>
+                <option value="patrocinio">${TX.patrocinio}</option>
+                <option value="otros">${TX.otros}</option>
               </select>
             </div>
 
             <div class="col-md-3">
-              <label class="form-label">Descripción</label>
+              <label class="form-label">${TX.descripcion}</label>
               <input id="fxDescription" class="form-control" required />
             </div>
 
             <div class="col-md-2">
-              <label class="form-label">Monto</label>
+              <label class="form-label">${TX.monto}</label>
               <input id="fxAmount" type="number" min="0" step="0.01" class="form-control" required />
             </div>
 
             <div class="col-md-2">
-              <label class="form-label">Fecha</label>
+              <label class="form-label">${TX.fecha}</label>
               <input id="fxDate" type="date" class="form-control" required />
             </div>
 
             <div class="col-md-3">
-              <label class="form-label">Método</label>
+              <label class="form-label">${TX.metodo}</label>
               <select id="fxMethod" class="form-select">
-                <option value="sinpe">SINPE</option>
-                <option value="efectivo">Efectivo</option>
-                <option value="transferencia">Transferencia</option>
-                <option value="tarjeta">Tarjeta</option>
-                <option value="otro">Otro</option>
+                <option value="sinpe">${TX.sinpe}</option>
+                <option value="efectivo">${TX.efectivo}</option>
+                <option value="transferencia">${TX.transferencia}</option>
+                <option value="tarjeta">${TX.tarjeta}</option>
+                <option value="otro">${TX.otro}</option>
               </select>
             </div>
 
             <div class="col-md-7">
-              <label class="form-label">Notas</label>
+              <label class="form-label">${TX.notas}</label>
               <input id="fxNotes" class="form-control" />
             </div>
 
             <div class="col-md-2 d-flex align-items-end">
-              <button class="btn btn-success w-100" type="submit">Guardar movimiento</button>
+              <button class="btn btn-success w-100" type="submit">${TX.guardarMovimiento}</button>
             </div>
           </form>
         </div>
@@ -341,12 +342,12 @@ export async function mount(root, cfg) {
     const sources = uniqueSorted(rows.map((r) => r.source));
 
     $.filterCategory.innerHTML = [
-      `<option value="all">Todas</option>`,
+      `<option value="all">${TX.todas}</option>`,
       ...categories.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`),
     ].join("");
 
     $.filterSource.innerHTML = [
-      `<option value="all">Todos</option>`,
+      `<option value="all">${TX.todos}</option>`,
       ...sources.map((s) => `<option value="${esc(s)}">${esc(s)}</option>`),
     ].join("");
 
@@ -413,7 +414,7 @@ export async function mount(root, cfg) {
     $.countLabel.textContent = `${rows.length} registro(s)`;
 
     if (!rows.length) {
-      $.tableBody.innerHTML = `<tr><td colspan="7" class="text-muted">No hay resultados con esos filtros.</td></tr>`;
+      $.tableBody.innerHTML = `<tr><td colspan="7" class="text-muted">${TX.noHayResultadosCon}</td></tr>`;
       return;
     }
 
@@ -435,7 +436,7 @@ export async function mount(root, cfg) {
   }
 
   async function loadSummaryAndTable() {
-    $.tableBody.innerHTML = `<tr><td colspan="7" class="text-muted">Cargando…</td></tr>`;
+    $.tableBody.innerHTML = `<tr><td colspan="7" class="text-muted">${TX.cargando}</td></tr>`;
 
     const [movSnap, paymentsSnap] = await Promise.all([
       getDocs(query(collection(db, COL_MOVEMENTS), orderBy("createdAt", "desc"))),
@@ -474,7 +475,7 @@ export async function mount(root, cfg) {
         _sortTs: tsMillis(m.movementDate || m.createdAt),
         dateLabel: fmtDateShort(m.movementDate || m.createdAt),
         type: m.type === "expense" ? "expense" : "income",
-        typeLabel: m.type === "expense" ? "Gasto" : "Ingreso",
+        typeLabel: m.type === "expense" ? TX.gasto : TX.ingreso,
         category: m.category || "otros",
         description: m.description || "—",
         amount: Number(m.amount || 0),
@@ -490,11 +491,11 @@ export async function mount(root, cfg) {
       _sortTs: tsMillis(getSubmissionDisplayDate(p)),
       dateLabel: fmtDateShort(getSubmissionDisplayDate(p)),
       type: "income",
-      typeLabel: "Ingreso",
-      category: "membresía",
+      typeLabel: TX.ingreso,
+      category: TX.membresia,
       description: getSubmissionDescription(p),
       amount: Number(p.amountReported || 0),
-      source: "membresía",
+      source: TX.membresia,
       createdBy: p.payerName || p.email || p.userId || "—",
       membershipId: p.membershipId || "",
       planId: p.planId || "",
@@ -512,7 +513,7 @@ export async function mount(root, cfg) {
 
     const currentUser = auth.currentUser;
     if (!currentUser) {
-      throw new Error("No hay usuario autenticado.");
+      throw new Error(TX.noHayUsuarioAutenticado);
     }
 
     const payload = {
@@ -531,7 +532,7 @@ export async function mount(root, cfg) {
       relatedSubmissionId: null,
       notes: $.notes.value.trim() || null,
       createdByUid: currentUser?.uid || null,
-      createdByName: currentUser?.displayName || currentUser?.email || "Usuario",
+      createdByName: currentUser?.displayName || currentUser?.email || TX.usuario,
       isVoided: false,
       voidedAt: null,
       voidedByUid: null,
@@ -550,7 +551,7 @@ export async function mount(root, cfg) {
         movementId: ref.id,
       },
       changedByUid: currentUser?.uid || null,
-      changedByName: currentUser?.displayName || currentUser?.email || "Usuario",
+      changedByName: currentUser?.displayName || currentUser?.email || TX.usuario,
       changedAt: serverTimestamp(),
     });
 

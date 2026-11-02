@@ -10,6 +10,7 @@ import {
   updateDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { TX } from "/js/strings/screens/assoc_member_modal.js";
 
 const COL = APP_CONFIG.collections?.users || "users";
 
@@ -98,7 +99,7 @@ function buildPayload(existing = {}) {
 function disableCreateMode() {
   currentDoc = null;
 
-  if (modalTitle) modalTitle.textContent = "Editar miembro";
+  if (modalTitle) modalTitle.textContent = TX.editarMiembro;
   if (userId) userId.value = "";
 
   if (firstName) firstName.value = "";
@@ -111,7 +112,7 @@ function disableCreateMode() {
 
   if (btnSave) btnSave.disabled = true;
 
-  alert("Crear miembros manualmente desde este modal está deshabilitado por ahora.");
+  alert(TX.crearMiembrosManualmenteDesde);
   close();
 }
 
@@ -153,13 +154,13 @@ watchAuth(async (user) => {
 });
 
 async function loadUser(id) {
-  showLoader?.("Cargando usuario…");
+  showLoader?.(TX.cargandoUsuario);
 
   try {
     const snap = await getDoc(doc(db, COL, id));
 
     if (!snap.exists()) {
-      alert("No se encontró el usuario.");
+      alert(TX.noSeEncontroEl);
       return close();
     }
 
@@ -169,7 +170,7 @@ async function loadUser(id) {
     currentDoc = { id: snap.id, ...u };
 
     if (userId) userId.value = snap.id;
-    if (modalTitle) modalTitle.textContent = "Editar miembro";
+    if (modalTitle) modalTitle.textContent = TX.editarMiembro;
 
     if (firstName) firstName.value = profile.firstName || "";
     if (lastName) lastName.value = profile.lastName || "";
@@ -184,7 +185,7 @@ async function loadUser(id) {
     scheduleSize();
   } catch (e) {
     console.error(e);
-    alert("Error cargando usuario.");
+    alert(TX.errorCargandoUsuario);
     close();
   } finally {
     hideLoader?.();
@@ -197,7 +198,7 @@ async function loadUser(id) {
 ========================= */
 btnSave?.addEventListener("click", async () => {
   if (!uid) {
-    alert("Crear miembros manualmente desde este modal está deshabilitado por ahora.");
+    alert(TX.crearMiembrosManualmenteDesde);
     return;
   }
 
@@ -206,16 +207,16 @@ btnSave?.addEventListener("click", async () => {
   const mail = clean(email?.value);
 
   if (!firstNameVal && !lastNameVal && !mail) {
-    alert("Completa al menos nombre, apellido o correo.");
+    alert(TX.completaAlMenosNombre);
     return;
   }
 
   if (mail && !validateEmail(mail)) {
-    alert("Email inválido.");
+    alert(TX.emailInvalido);
     return;
   }
 
-  showLoader?.("Guardando…");
+  showLoader?.(TX.guardando);
   if (btnSave) btnSave.disabled = true;
 
   try {
@@ -234,7 +235,7 @@ btnSave?.addEventListener("click", async () => {
     close();
   } catch (e) {
     console.error(e);
-    alert("❌ Error guardando: " + (e?.message || e));
+    alert(TX.errorGuardando + (e?.message || e));
     scheduleSize();
   } finally {
     if (btnSave) btnSave.disabled = false;

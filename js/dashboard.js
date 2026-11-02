@@ -12,6 +12,7 @@ import { showLoader, hideLoader } from "./ui/loader.js";
 
 import { guardPage } from "./page-guard.js";
 import { loadHeader } from "./components/header.js";
+import { TX, txf } from "/js/strings/screens/dashboard.js";
 
 /* =========================================================
    INIT
@@ -32,7 +33,7 @@ watchAuth(async (user, access) => {
 
 function setNextTournamentLoading() {
   const dateEl = document.getElementById("nextTournamentDate");
-  if (dateEl) dateEl.textContent = "Cargando…";
+  if (dateEl) dateEl.textContent = TX.cargando;
 
   const nameEl = document.getElementById("nextTournamentName");
   if (nameEl) nameEl.textContent = "—";
@@ -42,7 +43,7 @@ function setNextTournamentError(msg) {
   const dateEl = document.getElementById("nextTournamentDate");
   const nameEl = document.getElementById("nextTournamentName");
   if (dateEl) dateEl.textContent = "—";
-  if (nameEl) nameEl.textContent = msg || "No se pudo cargar";
+  if (nameEl) nameEl.textContent = msg || TX.noSePudoCargar;
   setNextTournamentCardLink(null);
 }
 
@@ -322,7 +323,7 @@ async function loadDashboard({ user, access } = {}) {
     renderNextTournament(tournaments);
   } else {
     console.error("Error cargando torneos:", tournamentsRes.reason);
-    setNextTournamentError("Sin acceso a torneos");
+    setNextTournamentError(TX.sinAccesoATorneos);
   }
 
   renderBirthdays(players);
@@ -425,7 +426,7 @@ function renderNextTournament(tournaments) {
 
   if (!t) {
     dateEl.textContent = "—";
-    nameEl.textContent = "Sin torneos próximos";
+    nameEl.textContent = TX.sinTorneosProximos;
     setNextTournamentCardLink(null);
     return;
   }
@@ -433,7 +434,7 @@ function renderNextTournament(tournaments) {
   const range = formatTournamentRangePretty(t._ds, t._de);
 
   dateEl.textContent = range;
-  nameEl.textContent = t.name || "Torneo";
+  nameEl.textContent = t.name || TX.torneo;
   setNextTournamentCardLink(t.id);
 }
 
@@ -507,7 +508,7 @@ function renderBirthdays(players) {
     .sort((a, b) => a.day - b.day);
 
   if (!list.length) {
-    birthdaysList.textContent = "No hay cumpleañeros este mes";
+    birthdaysList.textContent = TX.noHayCumpleanerosEste;
     return;
   }
 
@@ -636,7 +637,7 @@ function calculateAlerts({ players, trainings }) {
   if (!recentTrainings.length) {
     alerts.push({
       type: "warning",
-      message: "No hay entrenamientos registrados en los últimos 30 días.",
+      message: TX.noHayEntrenamientosRegistrados,
       adminOnly: false,
     });
     return alerts;
@@ -669,7 +670,7 @@ function calculateAlerts({ players, trainings }) {
   if (inactive30.length) {
     alerts.push({
       type: "danger",
-      message: `${inactive30.length} jugadores activos no entrenaron en los últimos 30 días.`,
+      message: txf(TX.jugadoresActivosNoEntrenaron, { inactive30Count: inactive30.length }),
       adminOnly: true,
       mentionedUserIds: inactive30.map(p => p.userId).filter(Boolean)
     });
@@ -682,7 +683,7 @@ function calculateAlerts({ players, trainings }) {
   if (lowParticipation.length) {
     alerts.push({
       type: "warning",
-      message: `${lowParticipation.length} jugadores activos entrenaron 1 vez o menos en los últimos 30 días.`,
+      message: txf(TX.jugadoresActivosEntrenaron1, { lowParticipationCount: lowParticipation.length }),
       adminOnly: true,
       mentionedUserIds: lowParticipation.map(p => p.userId).filter(Boolean)
     });
@@ -696,14 +697,14 @@ function calculateAlerts({ players, trainings }) {
   if (pctActiveInLast < 35) {
     alerts.push({
       type: "warning",
-      message: `Baja participación: solo ${pctActiveInLast}% del roster activo asistió al último entreno (${fmt(lastTraining._d)}).`
+      message: txf(TX.bajaParticipacionSoloDel, { pctActiveInLast, date: fmt(lastTraining._d) })
     });
   }
 
   if (avgAtt >= 8 && lastAtt <= avgAtt * 0.6) {
     alerts.push({
       type: "warning",
-      message: `Asistencia cayó: último entreno (${lastAtt}) está ${Math.round((1 - lastAtt / avgAtt) * 100)}% por debajo del promedio 30 días (${avgAtt.toFixed(1)}).`
+      message: txf(TX.asistenciaCayoUltimoEntreno, { lastAtt, n: Math.round((1 - lastAtt / avgAtt) * 100), avgAtt: avgAtt.toFixed(1) })
     });
   }
 
@@ -749,7 +750,7 @@ function calculateAlerts({ players, trainings }) {
     const w = trainingsFewHandlers[0];
     alerts.push({
       type: "warning",
-      message: `Pocos handlers: ${fmt(w.t._d)} hubo ${w.handlerCount} handlers (mín recomendado ${w.minHandlers}).`
+      message: txf(TX.pocosHandlersHuboHandlers, { date: fmt(w.t._d), handlerCount: w.handlerCount, minHandlers: w.minHandlers })
     });
   }
 
@@ -772,7 +773,7 @@ function calculateAlerts({ players, trainings }) {
     if (min > 0 && max / min >= 2) {
       alerts.push({
         type: "warning",
-        message: `Desbalance de género en el último entreno (${fmt(lastTraining._d)}): ${lastGender.M} H vs ${lastGender.F} M.`
+        message: txf(TX.desbalanceDeGeneroEn, { date: fmt(lastTraining._d), M: lastGender.M, F: lastGender.F })
       });
     }
   }
@@ -785,7 +786,7 @@ function calculateAlerts({ players, trainings }) {
   if (incomplete.length >= 2) {
     alerts.push({
       type: "warning",
-      message: `${incomplete.length} entrenos en los últimos 30 días tienen asistencia vacía o no registrada.`
+      message: txf(TX.entrenosEnLosUltimos, { incompleteCount: incomplete.length })
     });
   }
 
@@ -797,7 +798,7 @@ function calculateAlerts({ players, trainings }) {
   if (inactive30.length && topAbsents.length) {
     alerts.push({
       type: "danger",
-      message: `Sin entrenar (30 días): ${topAbsents.join(", ")}${inactive30.length > topAbsents.length ? "…" : ""}`,
+      message: txf(TX.sinEntrenar30Dias, { topAbsents: topAbsents.join(", "), value: inactive30.length > topAbsents.length ? "…" : "" }),
       adminOnly: true,
       mentionedUserIds: inactive30.map(p => p.userId).filter(Boolean)
     });
@@ -831,7 +832,7 @@ function renderAlerts(alerts) {
     el.innerHTML = `
       <div class="alert-item">
         <span class="alert-icon">✅</span>
-        <div class="alert-text">Todo en orden</div>
+        <div class="alert-text">${TX.todoEnOrden}</div>
       </div>`;
     return;
   }

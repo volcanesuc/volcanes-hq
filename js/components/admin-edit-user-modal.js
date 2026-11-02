@@ -1,3 +1,4 @@
+import { TX } from "/js/strings/screens/admin_edit_user.js";
 export async function loadAdminEditUserModal() {
   if (document.getElementById("editUserModal")) return;
 
@@ -13,15 +14,15 @@ export async function loadAdminEditUserModal() {
         <form class="modal-content border-0 rounded-0" id="editUserForm">
           <div class="modal-header">
             <div class="d-flex flex-column">
-              <h5 class="modal-title mb-0">Editar usuario</h5>
-              <small class="text-muted">Actualiza rol, permisos base y vínculo con player</small>
+              <h5 class="modal-title mb-0">${TX.editarUsuario}</h5>
+              <small class="text-muted">${TX.actualizaRolPermisosBase}</small>
             </div>
 
             <button
               type="button"
               class="btn-close"
               data-bs-dismiss="modal"
-              aria-label="Cerrar"
+              aria-label="${TX.cerrar}"
             ></button>
           </div>
 
@@ -36,12 +37,12 @@ export async function loadAdminEditUserModal() {
                       <div class="row g-4">
                         <div class="col-12">
                           <h6 class="text-uppercase text-muted small mb-0">
-                            Datos del usuario
+                            ${TX.datosDelUsuario}
                           </h6>
                         </div>
 
                         <div class="col-12 col-md-6">
-                          <label for="editEmail" class="form-label">Email</label>
+                          <label for="editEmail" class="form-label">${TX.email}</label>
                           <input
                             type="email"
                             id="editEmail"
@@ -52,25 +53,25 @@ export async function loadAdminEditUserModal() {
                         </div>
 
                         <div class="col-12 col-md-6">
-                          <label for="editSystemRole" class="form-label">Rol</label>
+                          <label for="editSystemRole" class="form-label">${TX.rol}</label>
                           <select id="editSystemRole" class="form-select"></select>
                         </div>
 
                         <div class="col-12 col-md-6">
                           <label for="editAssociationStatus" class="form-label">
-                            Estado de asociación
+                            ${TX.estadoDeAsociacion}
                           </label>
                           <select id="editAssociationStatus" class="form-select">
-                            <option value="">Ninguno</option>
-                            <option value="active">Activa</option>
-                            <option value="inactive">Inactiva</option>
+                            <option value="">${TX.ninguno}</option>
+                            <option value="active">${TX.activa}</option>
+                            <option value="inactive">${TX.inactiva}</option>
                           </select>
                         </div>
 
                         <div class="col-12 col-md-6">
                           <div class="card border bg-white h-100">
                             <div class="card-body">
-                              <h6 class="mb-3">Permisos rápidos</h6>
+                              <h6 class="mb-3">${TX.permisosRapidos}</h6>
 
                               <div class="form-check mb-3">
                                 <input
@@ -79,7 +80,7 @@ export async function loadAdminEditUserModal() {
                                   id="editCanUsePickups"
                                 />
                                 <label class="form-check-label" for="editCanUsePickups">
-                                  Puede usar pickups
+                                  ${TX.puedeUsarPickups}
                                 </label>
                               </div>
 
@@ -90,7 +91,7 @@ export async function loadAdminEditUserModal() {
                                   id="editIsPlayerActive"
                                 />
                                 <label class="form-check-label" for="editIsPlayerActive">
-                                  Player activo
+                                  ${TX.playerActivo}
                                 </label>
                               </div>
                             </div>
@@ -103,25 +104,25 @@ export async function loadAdminEditUserModal() {
 
                         <div class="col-12">
                           <h6 class="text-uppercase text-muted small mb-0">
-                            Vincular con player
+                            ${TX.vincularConPlayer}
                           </h6>
                         </div>
 
                         <div class="col-12 col-md-6">
-                          <label for="editPlayerMode" class="form-label">Modo</label>
+                          <label for="editPlayerMode" class="form-label">${TX.modo}</label>
                           <select id="editPlayerMode" class="form-select">
-                            <option value="none">Sin player</option>
-                            <option value="existing">Ligar a player existente</option>
-                            <option value="new">Crear player nuevo</option>
+                            <option value="none">${TX.sinPlayer}</option>
+                            <option value="existing">${TX.ligarAPlayerExistente}</option>
+                            <option value="new">${TX.crearPlayerNuevo}</option>
                           </select>
                         </div>
 
                         <div class="col-12 d-none" id="editExistingPlayerWrap">
                           <label for="editExistingPlayerId" class="form-label">
-                            Player existente
+                            ${TX.playerExistente}
                           </label>
                           <select id="editExistingPlayerId" class="form-select">
-                            <option value="">Seleccionar…</option>
+                            <option value="">${TX.seleccionar}</option>
                           </select>
                         </div>
 
@@ -130,15 +131,15 @@ export async function loadAdminEditUserModal() {
                             <div class="card-body">
                               <div class="row g-3">
                                 <div class="col-12">
-                                  <h6 class="mb-1">Nuevo player</h6>
+                                  <h6 class="mb-1">${TX.nuevoPlayer}</h6>
                                   <p class="text-muted small mb-0">
-                                    Se crea un registro nuevo en club_players y se liga a este usuario.
+                                    ${TX.seCreaUnRegistro}
                                   </p>
                                 </div>
 
                                 <div class="col-12 col-md-6">
                                   <label for="editNewPlayerFirstName" class="form-label">
-                                    Nombre
+                                    ${TX.nombre}
                                   </label>
                                   <input
                                     type="text"
@@ -149,7 +150,7 @@ export async function loadAdminEditUserModal() {
 
                                 <div class="col-12 col-md-6">
                                   <label for="editNewPlayerLastName" class="form-label">
-                                    Apellido
+                                    ${TX.apellido}
                                   </label>
                                   <input
                                     type="text"
@@ -160,7 +161,7 @@ export async function loadAdminEditUserModal() {
 
                                 <div class="col-12 col-md-6">
                                   <label for="editNewPlayerBirthday" class="form-label">
-                                    Fecha de nacimiento
+                                    ${TX.fechaDeNacimiento}
                                   </label>
                                   <input
                                     type="date"
@@ -171,7 +172,7 @@ export async function loadAdminEditUserModal() {
 
                                 <div class="col-12 col-md-6">
                                   <label for="editNewPlayerFieldRole" class="form-label">
-                                    Posición / rol de cancha
+                                    ${TX.posicionRolDeCancha}
                                   </label>
                                   <select id="editNewPlayerFieldRole" class="form-select"></select>
                                 </div>
@@ -182,7 +183,7 @@ export async function loadAdminEditUserModal() {
 
                         <div class="col-12">
                           <div class="alert alert-secondary mb-0">
-                            <strong>Nota:</strong> si cambias el vínculo, este modal actualiza tanto
+                            <strong>${TX.nota}</strong> ${TX.siCambiasElVinculo}
                             <code>users/{uid}</code> como <code>club_players/{playerId}</code>.
                           </div>
                         </div>
@@ -200,11 +201,11 @@ export async function loadAdminEditUserModal() {
               class="btn btn-outline-secondary"
               data-bs-dismiss="modal"
             >
-              Cancelar
+              ${TX.cancelar}
             </button>
 
             <button type="submit" class="btn btn-primary">
-              Guardar cambios
+              ${TX.guardarCambios}
             </button>
           </div>
         </form>

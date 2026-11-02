@@ -1,5 +1,6 @@
 import { $ } from "./register_dom.js";
 import { PUBLIC_CFG } from "./register_state.js";
+import { TX } from "/js/strings/screens/register_ui.js";
 
 /* =========================
    Generic helpers
@@ -85,7 +86,7 @@ export function setSubmitEnabled(enabled) {
   $.submitBtn.classList.add(enabled ? "btn-success" : "btn-secondary");
 }
 
-export function setSubmittingState(isSubmitting, label = "Enviar registro") {
+export function setSubmittingState(isSubmitting, label = TX.enviarRegistro) {
   if (!$.submitBtn) return;
 
   $.submitBtn.disabled = isSubmitting;
@@ -318,12 +319,12 @@ export function fillProvinceCanton() {
 
   if ($.province) {
     $.province.innerHTML =
-      `<option value="">Seleccionar…</option>` +
+      `<option value="">${TX.seleccionar}</option>` +
       provinces.map((p) => `<option value="${esc(p)}">${esc(p)}</option>`).join("");
   }
 
   if ($.canton) {
-    $.canton.innerHTML = `<option value="">Seleccionar…</option>`;
+    $.canton.innerHTML = `<option value="">${TX.seleccionar}</option>`;
   }
 
   $.province?.addEventListener("change", () => {
@@ -332,7 +333,7 @@ export function fillProvinceCanton() {
 
     if ($.canton) {
       $.canton.innerHTML =
-        `<option value="">Seleccionar…</option>` +
+        `<option value="">${TX.seleccionar}</option>` +
         cantons.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("");
     }
   });

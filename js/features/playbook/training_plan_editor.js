@@ -10,6 +10,7 @@ import {
   setDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { TX } from "/js/strings/screens/training_plan_editor.js";
 
 const TRAININGS_COL = "playbook_trainings";
 const DRILLS_COL = "drills";
@@ -31,7 +32,7 @@ function norm(s) {
 
 export function createTrainingEditor() {
   const modalEl = $("trainingEditorModal");
-  if (!modalEl) throw new Error("Falta #trainingEditorModal (partial no montado)");
+  if (!modalEl) throw new Error(TX.faltaTrainingeditormodalPartialNo);
 
   const modal = new bootstrap.Modal(modalEl);
 
@@ -113,13 +114,13 @@ export function createTrainingEditor() {
               <div class="text-start">
                 <div class="fw-semibold">${escapeHtml(d.name)}</div>
                 <div class="text-muted small">
-                  ${escapeHtml(d.objective || "Sin descripción")}
+                  ${escapeHtml(d.objective || TX.sinDescripcion)}
                 </div>
                 <div class="text-muted small">
-                  ${escapeHtml(d.author || "—")}${d.isPublic ? " · Público" : ""}
+                  ${escapeHtml(d.author || "—")}${d.isPublic ? TX.publico : ""}
                 </div>
               </div>
-              <span class="btn btn-sm btn-outline-primary flex-shrink-0">Agregar</span>
+              <span class="btn btn-sm btn-outline-primary flex-shrink-0">${TX.agregar}</span>
             </button>
           `).join("")
         : "";
@@ -150,15 +151,15 @@ export function createTrainingEditor() {
           <div class="list-group-item d-flex justify-content-between align-items-center gap-2">
             <div class="flex-grow-1">
               <div class="fw-semibold">${escapeHtml(d.name)}</div>
-              <div class="text-muted small">${escapeHtml(d.objective || "Sin descripción")}</div>
-              <div class="text-muted small">${escapeHtml(d.author || "—")}${d.isPublic ? " · Público" : ""}</div>
+              <div class="text-muted small">${escapeHtml(d.objective || TX.sinDescripcion)}</div>
+              <div class="text-muted small">${escapeHtml(d.author || "—")}${d.isPublic ? TX.publico : ""}</div>
             </div>
 
             <div class="d-flex gap-1 flex-shrink-0">
               <button
                 type="button"
                 class="btn btn-sm btn-outline-secondary"
-                title="Subir"
+                title="${TX.subir}"
                 data-up="${escapeHtml(d.id)}"
                 ${idx === 0 ? "disabled" : ""}
               >
@@ -168,7 +169,7 @@ export function createTrainingEditor() {
               <button
                 type="button"
                 class="btn btn-sm btn-outline-secondary"
-                title="Bajar"
+                title="${TX.bajar}"
                 data-down="${escapeHtml(d.id)}"
                 ${idx === list.length - 1 ? "disabled" : ""}
               >
@@ -178,7 +179,7 @@ export function createTrainingEditor() {
               <button
                 type="button"
                 class="btn btn-sm btn-outline-danger"
-                title="Quitar"
+                title="${TX.quitar}"
                 data-remove="${escapeHtml(d.id)}"
               >
                 ✕
@@ -228,8 +229,8 @@ export function createTrainingEditor() {
     _id = null;
     setError("");
 
-    if (titleEl) titleEl.textContent = "Crear template de entrenamiento";
-    if (hintEl) hintEl.textContent = "Elegí los drills y guardá el template.";
+    if (titleEl) titleEl.textContent = TX.crearTemplateDeEntrenamiento;
+    if (hintEl) hintEl.textContent = TX.elegiLosDrillsY;
 
     formEl?.reset?.();
 
@@ -252,15 +253,15 @@ export function createTrainingEditor() {
     _id = id;
     setError("");
 
-    if (titleEl) titleEl.textContent = "Editar template de entrenamiento";
-    if (hintEl) hintEl.textContent = "Modificá nombre, visibilidad y drills.";
+    if (titleEl) titleEl.textContent = TX.editarTemplateDeEntrenamiento;
+    if (hintEl) hintEl.textContent = TX.modificaNombreVisibilidadY;
 
     showLoader();
     try {
       await loadAllDrills();
 
       const snap = await getDoc(doc(db, TRAININGS_COL, id));
-      if (!snap.exists()) throw new Error("No se encontró el entrenamiento.");
+      if (!snap.exists()) throw new Error(TX.noSeEncontroEl);
 
       const t = snap.data() || {};
 
@@ -286,7 +287,7 @@ export function createTrainingEditor() {
       modal.show();
     } catch (e) {
       console.error(e);
-      setError(e?.message || "Error abriendo editor.");
+      setError(e?.message || TX.errorAbriendoEditor);
     } finally {
       hideLoader();
     }
@@ -299,7 +300,7 @@ export function createTrainingEditor() {
     const notes = (teNotes?.value || "").trim();
     const isPublic = teIsPublic?.checked === true;
 
-    if (!name) return setError("Nombre requerido.");
+    if (!name) return setError(TX.nombreRequerido);
 
     const drillRefs = selectedIds.map((drillId, idx) => ({
       drillId,
@@ -333,7 +334,7 @@ export function createTrainingEditor() {
       modal.hide();
     } catch (e) {
       console.error(e);
-      setError("Error guardando. Ver consola.");
+      setError(TX.errorGuardandoVerConsola);
     } finally {
       hideLoader();
     }

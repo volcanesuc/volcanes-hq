@@ -1,6 +1,8 @@
 // js/strings/membership_strings.js
 
-export const STR = {
+import { defineStrings, fmt } from "/js/core/texts.js";
+
+export const STR = defineStrings("memberships", "Asociación: membresías", {
     title: "Membresías",
     subtitle: "Listado por temporada/plan/estado + acceso a detalle y link de pago.",
 
@@ -112,7 +114,8 @@ export const STR = {
   /* =========================
      Counter
   ========================= */
+  countLabel: "{n} membresía(s)",
   count(n) {
-    return `${n} membresía(s)`;
+    return fmt(this.countLabel, { n });
   }
-};
+});

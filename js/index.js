@@ -9,6 +9,7 @@ import {
   doc,
   getDoc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { TX, txf } from "/js/strings/screens/home.js";
 
 const COL = APP_CONFIG.collections;
 const COL_CLUB_CONFIG = COL.club_config;
@@ -144,7 +145,7 @@ function showPendingState(kind = "player") {
   if (footer) {
     footer.innerHTML = `
       <p>${CLUB_DATA.footer.copyright}</p>
-      <p>Fundados en el ${CLUB_DATA.club.foundedYear}</p>
+      <p>${txf(TX.fundadosEnEl, { foundedYear: CLUB_DATA.club.foundedYear })}</p>
     `;
   }
 
@@ -190,7 +191,7 @@ async function reevaluatePendingAccess() {
 }
 
 async function bootPendingMode() {
-  showLoader("Validando estado…");
+  showLoader(TX.validandoEstado);
 
   onAuthStateChanged(auth, async (user) => {
     try {
@@ -211,7 +212,7 @@ async function bootPendingMode() {
   });
 
   pendingRetryBtn?.addEventListener("click", async () => {
-    showLoader("Revisando estado…");
+    showLoader(TX.revisandoEstado);
     try {
       await reevaluatePendingAccess();
     } catch (err) {
@@ -223,7 +224,7 @@ async function bootPendingMode() {
   });
 
   associationRetryBtn?.addEventListener("click", async () => {
-    showLoader("Revisando estado…");
+    showLoader(TX.revisandoEstado);
     try {
       await reevaluatePendingAccess();
     } catch (err) {
@@ -236,7 +237,7 @@ async function bootPendingMode() {
 
   pendingLogoutBtn?.addEventListener("click", async () => {
     try {
-      showLoader("Cerrando sesión…");
+      showLoader(TX.cerrandoSesion);
       await logout({ redirectTo: "/index.html" });
     } finally {
       hideLoader();
@@ -245,7 +246,7 @@ async function bootPendingMode() {
 
   associationLogoutBtn?.addEventListener("click", async () => {
     try {
-      showLoader("Cerrando sesión…");
+      showLoader(TX.cerrandoSesion);
       await logout({ redirectTo: "/index.html" });
     } finally {
       hideLoader();
@@ -259,10 +260,10 @@ async function bootPendingMode() {
 
 async function init() {
   try {
-    showLoader("Validando sesión…");
+    showLoader(TX.validandoSesion);
     const { ready } = await loadHeader("home", { enabledTabs: {} });
     await ready;
-    updateLoaderMessage("Armando dashboard…");
+    updateLoaderMessage(TX.armandoDashboard);
     hideLoader();
   } catch (err) {
     console.error("Error inicializando index:", err);
@@ -375,12 +376,12 @@ function renderSocials(socials = {}) {
   if (!wrap || !container) return;
 
   const items = [
-    { key: "instagram", label: "Instagram", icon: "bi-instagram" },
-    { key: "facebook", label: "Facebook", icon: "bi-facebook" },
-    { key: "tiktok", label: "TikTok", icon: "bi-tiktok" },
-    { key: "youtube", label: "YouTube", icon: "bi-youtube" },
+    { key: "instagram", label: TX.instagram, icon: "bi-instagram" },
+    { key: "facebook", label: TX.facebook, icon: "bi-facebook" },
+    { key: "tiktok", label: TX.tiktok, icon: "bi-tiktok" },
+    { key: "youtube", label: TX.youtube, icon: "bi-youtube" },
     { key: "x", label: "X", icon: "bi-twitter-x" },
-    { key: "whatsappUrl", label: "WhatsApp", icon: "bi-whatsapp" },
+    { key: "whatsappUrl", label: TX.whatsapp, icon: "bi-whatsapp" },
   ].filter((item) => safeUrl(socials[item.key] || (item.key === "whatsappUrl" ? socials.whatsapp : "")));
 
   if (!items.length) {
@@ -435,7 +436,7 @@ function renderEvents(eventsData = {}) {
   const descEl = eventsSection.querySelector("p");
   const eventsContainer = eventsSection.querySelector(".events");
 
-  if (titleEl) titleEl.textContent = eventsData.title || "Evento";
+  if (titleEl) titleEl.textContent = eventsData.title || TX.evento;
   if (descEl) descEl.textContent = eventsData.subtitle || "";
 
   if (eventsContainer) {
@@ -444,7 +445,7 @@ function renderEvents(eventsData = {}) {
     (eventsData.images || []).forEach((src) => {
       const img = document.createElement("img");
       img.src = src;
-      img.alt = eventsData.title || "Evento";
+      img.alt = eventsData.title || TX.evento;
       eventsContainer.appendChild(img);
     });
   }
@@ -462,7 +463,7 @@ function renderEvents(eventsData = {}) {
   if (eventsData.ctaEnabled && safeUrl(eventsData.ctaUrl)) {
     ctaBtn.style.display = "";
     ctaBtn.href = safeUrl(eventsData.ctaUrl);
-    ctaBtn.textContent = eventsData.ctaText || "Ver más";
+    ctaBtn.textContent = eventsData.ctaText || TX.verMas;
   } else {
     ctaBtn.style.display = "none";
   }
@@ -514,7 +515,7 @@ function renderFeaturedActivity(featuredData = {}) {
     if (showCta) {
       ctaEl.classList.remove("d-none");
       ctaEl.href = ctaUrl;
-      ctaEl.textContent = featuredData.ctaText || "Ver más";
+      ctaEl.textContent = featuredData.ctaText || TX.verMas;
     } else {
       ctaEl.classList.add("d-none");
       ctaEl.removeAttribute("href");
@@ -532,7 +533,7 @@ async function loadTrainingsData() {
   const data = snap?.exists?.() ? (snap.data() || {}) : {};
 
   return {
-    title: data.title || "Entrenamientos y Juegos",
+    title: data.title || TX.entrenamientosYJuegos,
     blocks: Array.isArray(data.blocks) ? data.blocks : [],
   };
 }
@@ -549,7 +550,7 @@ function renderTrainings(trainingsData = {}, socials = {}) {
 
   trainingsSection.style.display = "";
   trainingsSection.querySelector("h2").textContent =
-    trainingsData.title || "Entrenamientos y Juegos";
+    trainingsData.title || TX.entrenamientosYJuegos;
 
   const container = trainingsSection.querySelector(".landing-cards");
   if (!container) return;
@@ -576,7 +577,7 @@ function renderTrainings(trainingsData = {}, socials = {}) {
     const waUrl = safeUrl(socials.whatsappUrl || socials.whatsapp || "");
     if (waUrl) {
       trainingsWhatsappCta.style.display = "";
-      trainingsWhatsappCta.textContent = socials.whatsappLabel || "WhatsApp";
+      trainingsWhatsappCta.textContent = socials.whatsappLabel || TX.whatsapp;
       trainingsWhatsappCta.href = waUrl;
       trainingsWhatsappCta.target = "_blank";
       trainingsWhatsappCta.rel = "noopener noreferrer";
@@ -595,7 +596,7 @@ async function loadHonorsData() {
   const data = snap?.exists?.() ? (snap.data() || {}) : {};
 
   return {
-    title: data.title || "Palmarés",
+    title: data.title || TX.palmares,
     items: Array.isArray(data.items) ? data.items : [],
   };
 }
@@ -611,7 +612,7 @@ function renderHonors(honorsData = {}) {
   }
 
   honorsSection.style.display = "";
-  honorsSection.querySelector("h2").textContent = honorsData.title || "Palmarés";
+  honorsSection.querySelector("h2").textContent = honorsData.title || TX.palmares;
 
   const container = honorsSection.querySelector(".landing-cards");
   if (!container) return;
@@ -661,9 +662,9 @@ async function loadUniformsData() {
   const data = snap?.exists?.() ? (snap.data() || {}) : {};
 
   return {
-    title: data.title || "Uniformes del Equipo",
-    subtitle: data.subtitle || "Compra tu indumentaria oficial del club",
-    ctaLabel: data.ctaLabel || "Comprar",
+    title: data.title || TX.uniformesDelEquipo,
+    subtitle: data.subtitle || TX.compraTuIndumentariaOficial,
+    ctaLabel: data.ctaLabel || TX.comprar,
     orderUrl: data.orderUrl || "",
     items: Array.isArray(data.items) ? data.items : [],
   };
@@ -683,10 +684,10 @@ function renderUniforms(uniformData = {}) {
   uniformsSection.style.display = "";
 
   uniformsSection.querySelector("h2").textContent =
-    uniformData.title || "Uniformes del Equipo";
+    uniformData.title || TX.uniformesDelEquipo;
 
   uniformsSection.querySelector("p").textContent =
-    uniformData.subtitle || "Compra tu indumentaria oficial del club";
+    uniformData.subtitle || TX.compraTuIndumentariaOficial;
 
   const carouselInner = document.querySelector("#uniformsCarousel .carousel-inner");
   if (!carouselInner) return;
@@ -712,7 +713,7 @@ function renderUniforms(uniformData = {}) {
 
       card.innerHTML = `
         <div class="uniform-img-wrapper">
-          <img src="${item.image || ""}" alt="${item.name || "Uniforme"}" />
+          <img src="${item.image || ""}" alt="${item.name || TX.uniforme}" />
         </div>
         <div class="uniform-info">
           <h3>${item.name || "—"}</h3>
@@ -722,7 +723,7 @@ function renderUniforms(uniformData = {}) {
             target="_blank"
             rel="noopener noreferrer"
           >
-            ${uniformData.ctaLabel || "Comprar"}
+            ${uniformData.ctaLabel || TX.comprar}
           </a>
         </div>
       `;
@@ -750,7 +751,7 @@ function renderFooter() {
 
   footer.innerHTML = `
     <p>${CLUB_DATA.footer.copyright}</p>
-    <p>Fundados en el ${CLUB_DATA.club.foundedYear}</p>
+    <p>${txf(TX.fundadosEnEl, { foundedYear: CLUB_DATA.club.foundedYear })}</p>
   `;
 }
 

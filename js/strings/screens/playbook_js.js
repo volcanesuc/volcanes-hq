@@ -1,0 +1,45 @@
+// /js/strings/screens/playbook_js.js
+// Textos de playbook.js (editables en Ajustes > Textos).
+import { defineStrings, fmt } from "/js/core/texts.js";
+
+export const TX = defineStrings("playbook_js", "Playbook (mensajes)", {
+  admin: "Admin",
+  viewer: "Viewer",
+  laPestanaGimnasioFallo: "La pestaña Gimnasio falló al cargar. Ver consola.",
+  adminEdit: "ADMIN (EDIT)",
+  viewOnly: "VIEW ONLY",
+  sinTagsTodavia: "Sin tags todavía.",
+  todos: "Todos",
+  errorCargandoEntrenamientosVer: "Error cargando entrenamientos. Ver consola.",
+  sinTags: "Sin tags",
+  tacticalBoard: "Tactical Board",
+  ver: "Ver",
+  sinTactical: "Sin Tactical",
+  video: "Video",
+  sinVideo: "Sin video",
+  activo: "Activo",
+  archivado: "Archivado",
+  archivar: "Archivar",
+  reactivar: "Reactivar",
+  objetivo: "Objetivo",
+  volumen: "Volumen",
+  descanso: "Descanso",
+  minimoDePersonas: "Mínimo de personas",
+  recomendaciones: "Recomendaciones",
+  vistaPrevia: "Vista previa",
+  publico: "🌐 Público",
+  privadoSoloLogueados: "🔒 Privado (solo logueados)",
+  copiarLink: "Copiar link",
+  editar: "Editar",
+  drillS: "{dateLbl} · {drillCount} drill(s)",
+  copiado: "Copiado ✅",
+  noPudeCopiarLink: "No pude copiar. Link:\n",
+  camposRequeridos: "Campos requeridos.",
+  drillCreado: "Drill creado.",
+  reactivado: "Reactivado.",
+  archivado2: "Archivado.",
+  editarDrill: "Editar drill",
+  drillActualizado: "Drill actualizado ✅",
+});
+
+export const txf = fmt;

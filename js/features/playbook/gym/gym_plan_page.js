@@ -4,6 +4,7 @@ import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-
 import { showLoader, hideLoader, updateLoaderMessage } from "/js/ui/loader.js";
 import { APP_CONFIG } from "/js/config/config.js";
 import { initPublicMinimalHeader } from "/js/components/public-minimal-header.js";
+import { TX, txf } from "/js/strings/screens/gym_plan.js";
 
 /* =========================
    DOM
@@ -30,7 +31,7 @@ let currentRoutinesById = new Map();
    BOOT
 ========================= */
 async function boot() {
-  showLoader("Cargando plan…");
+  showLoader(TX.cargandoPlan);
 
   try {
     await initPublicMinimalHeader({
@@ -42,17 +43,17 @@ async function boot() {
     const id = params.get("id");
 
     if (!id) {
-      showError("Falta ?id del plan.");
+      showError(TX.faltaIdDelPlan);
       return;
     }
 
     setupCopyLink();
 
-    updateLoaderMessage("Leyendo plan…");
+    updateLoaderMessage(TX.leyendoPlan);
     const snap = await getDoc(doc(db, COL_PLANS, id));
 
     if (!snap.exists()) {
-      showError("Este plan no existe.");
+      showError(TX.estePlanNoExiste);
       return;
     }
 
@@ -62,14 +63,14 @@ async function boot() {
     // Preferimos slots (nuevo modelo)
     const slots = Array.isArray(plan.slots) ? plan.slots.slice() : [];
     if (slots.length) {
-      $.sectionTitle && ($.sectionTitle.textContent = "Slots del plan");
+      $.sectionTitle && ($.sectionTitle.textContent = TX.slotsDelPlan);
       slots.sort((a, b) => Number(a.order ?? 0) - Number(b.order ?? 0));
 
       const routineIds = uniq(
         slots.map((s) => (s?.routineId || "").toString().trim()).filter(Boolean)
       );
 
-      updateLoaderMessage("Cargando rutinas…");
+      updateLoaderMessage(TX.cargandoRutinas);
       const routinesById = await fetchRoutinesById(routineIds);
 
       currentPlanSlots = slots;
@@ -81,9 +82,9 @@ async function boot() {
     // Fallback legacy: routineIds
     const routineIds = Array.isArray(plan.routineIds) ? plan.routineIds.filter(Boolean) : [];
     if (routineIds.length) {
-      $.sectionTitle && ($.sectionTitle.textContent = "Rutinas del plan");
+      $.sectionTitle && ($.sectionTitle.textContent = TX.rutinasDelPlan);
 
-      updateLoaderMessage("Cargando rutinas…");
+      updateLoaderMessage(TX.cargandoRutinas);
       const routinesById = await fetchRoutinesById(routineIds);
 
       renderRoutinesFlat(routineIds, routinesById);
@@ -93,7 +94,7 @@ async function boot() {
     $.emptyState?.classList.remove("d-none");
   } catch (e) {
     console.error(e);
-    showError("No pude cargar el plan (error inesperado).");
+    showError(TX.noPudeCargarEl);
   } finally {
     hideLoader(); // ✅ quita html.preload + overlay + body.loading
   }
@@ -108,7 +109,7 @@ function setupCopyLink() {
     try {
       await navigator.clipboard.writeText(window.location.href);
       const old = $.copyLinkBtn.textContent;
-      $.copyLinkBtn.textContent = "Copiado ✅";
+      $.copyLinkBtn.textContent = TX.copiado;
       setTimeout(() => ($.copyLinkBtn.textContent = old), 1200);
     } catch (e) {
       console.error(e);
@@ -120,13 +121,13 @@ function renderHeader(plan) {
   const title =
     plan.title ||
     plan.name ||
-    (plan.monthKey ? `Plan de Gimnasio – Mes ${plan.monthKey}` : "Plan de Gimnasio");
+    (plan.monthKey ? txf(TX.planDeGimnasioMes, { monthKey: plan.monthKey }) : TX.planDeGimnasio);
 
   if ($.planTitle) $.planTitle.textContent = title;
 
   const meta = [];
-  if (plan.monthKey) meta.push(`Mes: ${plan.monthKey}`);
-  if (plan.isPublic === true) meta.push("🌐 Público");
+  if (plan.monthKey) meta.push(txf(TX.mes, { monthKey: plan.monthKey }));
+  if (plan.isPublic === true) meta.push(TX.publico);
   if ($.planMeta) $.planMeta.textContent = meta.join(" · ");
 
   if ($.planDesc) $.planDesc.textContent = (plan.description || "").toString().trim() || "—";
@@ -173,7 +174,7 @@ function renderSlots(slots, routinesById) {
       const rid = (s?.routineId || "").toString();
       const r = routinesById.get(rid) || null;
 
-      const routineName = r?.name || (rid ? "Rutina (no accesible)" : "—");
+      const routineName = r?.name || (rid ? TX.rutinaNoAccesible : "—");
       const label = (s?.label || "").toString().trim() || "—";
       const order = Number(s?.order ?? 0) || "—";
       const isPublic = r?.isPublic === true;
@@ -192,8 +193,8 @@ function renderSlots(slots, routinesById) {
               isPublic
                 ? `<a class="btn btn-sm btn-outline-secondary" href="/gym_routine.html?id=${encodeURIComponent(
                     r.id
-                  )}" target="_blank" rel="noopener">Ver rutina</a>`
-                : `${r ? `<span class="text-muted small">🔒 Privada</span>` : ``}`
+                  )}" target="_blank" rel="noopener">${TX.verRutina}</a>`
+                : `${r ? `<span class="text-muted small">${TX.privada}</span>` : ``}`
             }
           </div>
 
@@ -203,7 +204,7 @@ function renderSlots(slots, routinesById) {
               ? `<div class="gym-slot-routine-desc text-muted small mt-1">${escapeHtml(r.description)}</div>`
               : ``
           }
-          ${!r && rid ? `<div class="text-muted small mt-1">ID: ${escapeHtml(rid)}</div>` : ``}
+          ${!r && rid ? `<div class="text-muted small mt-1">${txf(TX.id, { rid: escapeHtml(rid) })}</div>` : ``}
         </div>
       `;
 
@@ -222,8 +223,8 @@ function renderSlots(slots, routinesById) {
       <thead class="table-light">
         <tr>
           <th style="width:60px;">#</th>
-          <th style="width:220px;">Slot</th>
-          <th>Rutina</th>
+          <th style="width:220px;">${TX.slot}</th>
+          <th>${TX.rutina}</th>
           <th style="width:160px;"></th>
         </tr>
       </thead>
@@ -240,7 +241,7 @@ function renderSlots(slots, routinesById) {
     const rid = (s?.routineId || "").toString();
     const r = routinesById.get(rid) || null;
 
-    const routineName = r?.name || (rid ? "Rutina (no accesible)" : "—");
+    const routineName = r?.name || (rid ? TX.rutinaNoAccesible : "—");
     const label = (s?.label || "").toString().trim() || "—";
     const order = Number(s?.order ?? 0) || "";
     const isPublic = r?.isPublic === true;
@@ -252,15 +253,15 @@ function renderSlots(slots, routinesById) {
       <td>
         <div class="fw-semibold">${escapeHtml(routineName)}</div>
         ${r?.description ? `<div class="text-muted small">${escapeHtml(r.description)}</div>` : ``}
-        ${!r && rid ? `<div class="text-muted small">ID: ${escapeHtml(rid)}</div>` : ``}
+        ${!r && rid ? `<div class="text-muted small">${txf(TX.id, { rid: escapeHtml(rid) })}</div>` : ``}
       </td>
       <td class="text-end">
         ${
           isPublic
             ? `<a class="btn btn-sm btn-outline-secondary" href="/gym_routine.html?id=${encodeURIComponent(
                 r.id
-              )}" target="_blank" rel="noopener">Ver rutina</a>`
-            : `<span class="text-muted small">${r ? "🔒 Privada" : ""}</span>`
+              )}" target="_blank" rel="noopener">${TX.verRutina}</a>`
+            : `<span class="text-muted small">${r ? TX.privada : ""}</span>`
         }
       </td>
     `;
@@ -290,7 +291,7 @@ function renderRoutinesFlat(orderIds, routinesById) {
       <div class="d-flex justify-content-between gap-2 flex-wrap">
         <div>
           <div class="fw-semibold">${escapeHtml(r.name || "—")}</div>
-          <div class="text-muted small">${isPublic ? "🌐 Pública" : "🔒 Privada"}</div>
+          <div class="text-muted small">${isPublic ? TX.publica : TX.privada}</div>
           ${r.description ? `<div class="small mt-1">${escapeHtml(r.description)}</div>` : ``}
         </div>
         <div class="d-flex gap-2 flex-wrap">
@@ -298,7 +299,7 @@ function renderRoutinesFlat(orderIds, routinesById) {
             isPublic
               ? `<a class="btn btn-sm btn-outline-secondary" href="/gym_routine.html?id=${encodeURIComponent(
                   r.id
-                )}" target="_blank" rel="noopener">Ver rutina</a>`
+                )}" target="_blank" rel="noopener">${TX.verRutina}</a>`
               : ``
           }
         </div>

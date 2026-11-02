@@ -16,6 +16,7 @@ import {
   where,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { TX, txf } from "/js/strings/screens/membership_detail.js";
 
 loadHeader("admin");
 document.getElementById("logoutBtn")?.addEventListener("click", logout);
@@ -124,10 +125,10 @@ function normalizeMembershipStatus(status) {
 function statusBadgeHtml(st) {
   const s = normalizeMembershipStatus(st);
 
-  if (s === "active") return badge("Activa", "green");
-  if (s === "partial") return badge("Parcial", "yellow");
-  if (s === "rejected") return badge("Rechazada", "red");
-  return badge("Pendiente", "gray");
+  if (s === "active") return badge(TX.activa, "green");
+  if (s === "partial") return badge(TX.parcial, "yellow");
+  if (s === "rejected") return badge(TX.rechazada, "red");
+  return badge(TX.pendiente, "gray");
 }
 
 function toDateText(ts) {
@@ -196,7 +197,7 @@ function getMemberUid(m) {
 }
 
 function getPlanLabel() {
-  return `${plan?.name || "Membresía"} ${membership?.season || ""}`.trim();
+  return `${plan?.name || TX.membresia} ${membership?.season || ""}`.trim();
 }
 
 function getCoverageStartValue(m) {
@@ -471,15 +472,15 @@ function render() {
   planName.textContent = plan?.name || "—";
 
   const totalTxt = plan?.allowCustomAmount
-    ? "Monto editable"
+    ? TX.montoEditable
     : fmtMoney(membership.totalAmount ?? plan?.totalAmount ?? plan?.amount, cur);
 
   const coverageTxt = getCoverageText(membership);
   const metaBits = [
     totalTxt,
-    plan?.allowPartial ? "Cuotas" : "Pago único",
-    plan?.requiresValidation ? "Validación admin" : "Sin validación",
-    `Cobertura: ${coverageTxt}`,
+    plan?.allowPartial ? TX.cuotas : TX.pagoUnico,
+    plan?.requiresValidation ? TX.validacionAdmin : TX.sinValidacion,
+    txf(TX.cobertura, { coverageTxt }),
   ];
 
   planMeta.textContent = metaBits.join(" • ");
@@ -495,9 +496,9 @@ function render() {
     btnCopyPayLink.onclick = async () => {
       try {
         await navigator.clipboard.writeText(url);
-        alert("✅ Link copiado");
+        alert(TX.linkCopiado);
       } catch {
-        prompt("Copiá el link:", url);
+        prompt(TX.copiaElLink, url);
       }
     };
   }
@@ -515,7 +516,7 @@ function renderInstallments() {
   if (installmentsCount) installmentsCount.textContent = `${installments.length} cuota(s)`;
 
   if (!installments.length) {
-    installmentsTbody.innerHTML = `<tr><td colspan="4" class="text-muted">Este plan no tiene cuotas (pago único).</td></tr>`;
+    installmentsTbody.innerHTML = `<tr><td colspan="4" class="text-muted">${TX.estePlanNoTiene}</td></tr>`;
     return;
   }
 
@@ -538,10 +539,10 @@ function renderInstallments() {
 
 function renderSubmissions() {
   const cur = getCurrency();
-  if (subsCount) subsCount.textContent = `${submissions.length} envío(s)`;
+  if (subsCount) subsCount.textContent = txf(TX.envioS, { submissionsCount: submissions.length });
 
   if (!submissions.length) {
-    subsTbody.innerHTML = `<tr><td colspan="5" class="text-muted">Aún no hay comprobantes enviados.</td></tr>`;
+    subsTbody.innerHTML = `<tr><td colspan="5" class="text-muted">${TX.aunNoHayComprobantes}</td></tr>`;
     return;
   }
 
@@ -551,28 +552,28 @@ function renderSubmissions() {
       const when = toDateText(s.createdAt);
 
       const ids = getSubmissionInstallmentIds(s);
-      let itLabel = "General";
+      let itLabel = TX.general;
 
       if (ids.length === 1) {
         const it = getInstallmentById(ids[0]);
-        itLabel = it ? `Cuota #${it.n}` : "Cuota (1)";
+        itLabel = it ? txf(TX.cuota, { n: it.n }) : TX.cuota1;
       } else if (ids.length > 1) {
         const labels = ids
           .map((id) => getInstallmentById(id))
           .filter(Boolean)
           .map((it) => `#${it.n}`);
-        itLabel = labels.length ? `Cuotas ${labels.join(", ")}` : `Cuotas (${ids.length})`;
+        itLabel = labels.length ? txf(TX.cuotas2, { labels: labels.join(", ") }) : txf(TX.cuotas3, { idsCount: ids.length });
       }
 
       const fileLink = s.fileUrl
-        ? `<a class="btn btn-sm btn-outline-dark" href="${s.fileUrl}" target="_blank" rel="noreferrer">Ver</a>`
+        ? `<a class="btn btn-sm btn-outline-dark" href="${s.fileUrl}" target="_blank" rel="noreferrer">${TX.ver}</a>`
         : `<span class="text-muted">—</span>`;
 
       const detail = `
         <div class="fw-bold">${s.payerName || "—"}</div>
         <div class="small text-muted">${itLabel} • ${s.method || "—"}</div>
-        ${s.note ? `<div class="small text-muted">Nota: ${s.note}</div>` : ""}
-        ${s.adminNote ? `<div class="small text-danger">Admin: ${s.adminNote}</div>` : ""}
+        ${s.note ? `<div class="small text-muted">${txf(TX.nota, { note: s.note })}</div>` : ""}
+        ${s.adminNote ? `<div class="small text-danger">${txf(TX.admin, { adminNote: s.adminNote })}</div>` : ""}
         <div class="mt-1">${fileLink}</div>
       `;
 
@@ -580,10 +581,10 @@ function renderSubmissions() {
       const actions = `
         <div class="btn-group btn-group-sm" role="group">
           <button class="btn btn-outline-success" data-action="validated" data-sid="${s.id}" ${locked ? "disabled" : ""}>
-            Validar
+            ${TX.validar}
           </button>
           <button class="btn btn-outline-danger" data-action="reject" data-sid="${s.id}" ${locked ? "disabled" : ""}>
-            Rechazar
+            ${TX.rechazar}
           </button>
         </div>
       `;
@@ -635,7 +636,7 @@ btnConfirmReject?.addEventListener("click", async () => {
   if (!sub) return;
 
   const noteTxt = (rejectNote.value || "").trim();
-  await setSubmissionStatus(sub, "rejected", noteTxt || "Rechazado por admin");
+  await setSubmissionStatus(sub, "rejected", noteTxt || TX.rechazadoPorAdmin);
   rejectModal?.hide();
 });
 
@@ -645,10 +646,10 @@ btnConfirmReject?.addEventListener("click", async () => {
 async function setSubmissionStatus(sub, newStatus, adminNote = null) {
   const label =
     newStatus === "validated"
-      ? "Validando…"
+      ? TX.validando
       : newStatus === "rejected"
-        ? "Rechazando…"
-        : "Actualizando…";
+        ? TX.rechazando
+        : TX.actualizando;
 
   showLoader?.(label);
 
@@ -690,7 +691,7 @@ async function setSubmissionStatus(sub, newStatus, adminNote = null) {
         !!membership?.coverageStartDate && !!membership?.coverageEndDate;
 
       const enableAgain = shouldEnablePayLinkAfterDecision();
-      const reason = enableAgain ? null : "Pago(s) validado(s).";
+      const reason = enableAgain ? null : TX.pagoSValidadoS;
 
       const updates = {
         lastPaymentSubmissionId: sub.id,
@@ -734,10 +735,10 @@ async function setSubmissionStatus(sub, newStatus, adminNote = null) {
     await syncUserMembershipStatus();
 
     render();
-    alert("✅ Actualizado");
+    alert(TX.actualizado);
   } catch (e) {
     console.error(e);
-    alert("❌ Error actualizando: " + (e?.message || e));
+    alert(TX.errorActualizando + (e?.message || e));
   } finally {
     hideLoader?.();
   }
@@ -747,32 +748,32 @@ async function setSubmissionStatus(sub, newStatus, adminNote = null) {
    Pay link controls (ADMIN)
 ========================= */
 btnDisablePayLink?.addEventListener("click", async () => {
-  if (!confirm("¿Bloquear el link de pago?")) return;
+  if (!confirm(TX.bloquearElLinkDe)) return;
 
-  showLoader?.("Bloqueando…");
+  showLoader?.(TX.bloqueando);
   try {
     await updateDoc(doc(db, COL_MEMBERSHIPS, mid), {
       payLinkEnabled: false,
-      payLinkDisabledReason: "Link bloqueado por admin.",
+      payLinkDisabledReason: TX.linkBloqueadoPorAdmin,
       updatedAt: serverTimestamp(),
     });
 
     await loadMembership();
     await loadPlan();
     render();
-    alert("✅ Link bloqueado");
+    alert(TX.linkBloqueado);
   } catch (e) {
     console.error(e);
-    alert("❌ Error bloqueando link: " + (e?.message || e));
+    alert(TX.errorBloqueandoLink + (e?.message || e));
   } finally {
     hideLoader?.();
   }
 });
 
 btnEnablePayLink?.addEventListener("click", async () => {
-  if (!confirm("¿Habilitar el link de pago nuevamente?")) return;
+  if (!confirm(TX.habilitarElLinkDe)) return;
 
-  showLoader?.("Habilitando…");
+  showLoader?.(TX.habilitando);
   try {
     await updateDoc(doc(db, COL_MEMBERSHIPS, mid), {
       payLinkEnabled: true,
@@ -783,10 +784,10 @@ btnEnablePayLink?.addEventListener("click", async () => {
     await loadMembership();
     await loadPlan();
     render();
-    alert("✅ Link habilitado");
+    alert(TX.linkHabilitado);
   } catch (e) {
     console.error(e);
-    alert("❌ Error habilitando link: " + (e?.message || e));
+    alert(TX.errorHabilitandoLink + (e?.message || e));
   } finally {
     hideLoader?.();
   }
@@ -803,7 +804,7 @@ watchAuth(async (user) => {
   if (!user) return;
 
   if (!mid) {
-    showAlert("Falta el parámetro mid en la URL.", "danger");
+    showAlert(TX.faltaElParametroMid, "danger");
     return;
   }
 
@@ -811,7 +812,7 @@ watchAuth(async (user) => {
 });
 
 async function refreshAll() {
-  showLoader?.("Cargando membresía…");
+  showLoader?.(TX.cargandoMembresia);
   try {
     await loadMembership();
     await loadPlan();
@@ -828,7 +829,7 @@ async function refreshAll() {
     hideAlert();
   } catch (e) {
     console.error(e);
-    showAlert("No se pudo cargar la membresía.", "danger");
+    showAlert(TX.noSePudoCargar, "danger");
   } finally {
     hideLoader?.();
   }

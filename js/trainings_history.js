@@ -17,6 +17,7 @@ import { guardPage } from "./page-guard.js";
 import { loadHeader } from "./components/header.js";
 import { showLoader, hideLoader, updateLoaderMessage } from "./ui/loader.js";
 import { loadPartialOnce } from "/js/ui/loadPartial.js";
+import { TX, txf } from "/js/strings/screens/trainings_history.js";
 
 /* =========================
    CONFIG
@@ -58,29 +59,29 @@ let createDrillModalInstance = null;
    INIT
 ========================= */
 document.addEventListener("DOMContentLoaded", async () => {
-  showLoader("Cargando historial…");
+  showLoader(TX.cargandoHistorial);
 
   try {
     const { cfg, redirected } = await guardPage("trainings");
     if (redirected) return;
 
-    updateLoaderMessage("Cargando header…");
+    updateLoaderMessage(TX.cargandoHeader);
     await loadHeader("trainings", cfg);
 
-    updateLoaderMessage("Cargando modal…");
+    updateLoaderMessage(TX.cargandoModal);
     await ensureTrainingModalPartial();
     cacheDom();
 
     bindCollapseCarets();
     bindResponsiveUI();
 
-    updateLoaderMessage("Cargando jugadores…");
+    updateLoaderMessage(TX.cargandoJugadores);
     await loadPlayers();
 
-    updateLoaderMessage("Cargando playbook…");
+    updateLoaderMessage(TX.cargandoPlaybook);
     await loadPlaybookData();
 
-    updateLoaderMessage("Cargando lista…");
+    updateLoaderMessage(TX.cargandoLista);
     await loadTrainings();
 
     bindEvents();
@@ -355,8 +356,8 @@ function bindEvents() {
 function openNewTraining() {
   currentTrainingId = null;
 
-  $.modalTitle.textContent = "Nuevo entrenamiento";
-  $.modalSubtitle.textContent = "Registrar sesión realizada, asistencia y material trabajado";
+  $.modalTitle.textContent = TX.nuevoEntrenamiento;
+  $.modalSubtitle.textContent = TX.registrarSesionRealizadaAsistencia;
   if ($.quickTextInner) $.quickTextInner.style.display = "";
 
   sessionItems = [];
@@ -387,8 +388,8 @@ function openNewTraining() {
 function openEditTraining(training) {
   currentTrainingId = training.id;
 
-  $.modalTitle.textContent = "Editar entrenamiento";
-  $.modalSubtitle.textContent = "Ajusta asistencia, orden de la sesión y material realizado";
+  $.modalTitle.textContent = TX.editarEntrenamiento;
+  $.modalSubtitle.textContent = TX.ajustaAsistenciaOrdenDe;
 
   $.trainingId.value = training.id;
   $.trainingDate.value = training.date || "";
@@ -492,17 +493,17 @@ function renderSessionItems() {
                 item.source === "manual"
                   ? `
                     <div class="flex-grow-1" style="min-width: 220px;">
-                      <label class="form-label form-label-sm mb-1">Nombre</label>
+                      <label class="form-label form-label-sm mb-1">${TX.nombre}</label>
                       <input
                         class="form-control form-control-sm session-item-input"
                         data-field="name"
                         value="${escapeHtml(item.name || "")}"
-                        placeholder="Nombre de la actividad"
+                        placeholder="${TX.nombreDeLaActividad}"
                       />
                     </div>
                   `
                   : `
-                    <div class="session-item-title">${escapeHtml(item.name || "Actividad")}</div>
+                    <div class="session-item-title">${escapeHtml(item.name || TX.actividad)}</div>
                   `
               }
               ${sourceBadge}
@@ -510,33 +511,33 @@ function renderSessionItems() {
 
             ${item.parentTrainingName ? `
               <div class="small text-muted mb-2">
-                Plan de origen: ${escapeHtml(item.parentTrainingName)}
+                ${txf(TX.planDeOrigen, { parentTrainingName: escapeHtml(item.parentTrainingName) })}
               </div>
             ` : ""}
 
             <div class="mb-2">
-              <label class="form-label form-label-sm">Objetivo</label>
+              <label class="form-label form-label-sm">${TX.objetivo}</label>
               <textarea class="form-control form-control-sm session-item-input" data-field="objective" rows="2">${escapeHtml(item.objective || "")}</textarea>
             </div>
 
             <div class="row g-2">
               <div class="col-12 col-md-4">
-                <label class="form-label form-label-sm">Volumen</label>
-                <input class="form-control form-control-sm session-item-input" data-field="volume" value="${escapeHtml(item.volume || "")}" placeholder="Ej: 5 vueltas / 10 min" />
+                <label class="form-label form-label-sm">${TX.volumen}</label>
+                <input class="form-control form-control-sm session-item-input" data-field="volume" value="${escapeHtml(item.volume || "")}" placeholder="${TX.ej5Vueltas10}" />
               </div>
 
               <div class="col-12 col-md-4">
-                <label class="form-label form-label-sm">Duración estimada (min)</label>
+                <label class="form-label form-label-sm">${TX.duracionEstimadaMin}</label>
                 <input type="number" min="0" step="1" class="form-control form-control-sm session-item-input" data-field="estimatedMinutes" value="${escapeHtml(item.estimatedMinutes ?? "")}" placeholder="0" />
               </div>
 
               <div class="col-12 col-md-4">
-                <label class="form-label form-label-sm">Descanso después</label>
-                <input class="form-control form-control-sm session-item-input" data-field="restAfter" value="${escapeHtml(item.restAfter || "")}" placeholder="Ej: 2 minutos" />
+                <label class="form-label form-label-sm">${TX.descansoDespues}</label>
+                <input class="form-control form-control-sm session-item-input" data-field="restAfter" value="${escapeHtml(item.restAfter || "")}" placeholder="${TX.ej2Minutos}" />
               </div>
 
               <div class="col-12 col-md-4">
-                <label class="form-label form-label-sm">Descanso (min)</label>
+                <label class="form-label form-label-sm">${TX.descansoMin}</label>
                 <input type="number" min="0" step="1" class="form-control form-control-sm session-item-input" data-field="restMinutes" value="${escapeHtml(item.restMinutes ?? "")}" placeholder="0" />
               </div>
             </div>
@@ -613,12 +614,12 @@ function updateSessionSummaryStrip() {
 
 function getSessionItemSourceBadge(item) {
   if (item.source === "playbook_training") {
-    return `<span class="badge text-bg-primary-subtle text-primary-emphasis">Plan</span>`;
+    return `<span class="badge text-bg-primary-subtle text-primary-emphasis">${TX.plan}</span>`;
   }
   if (item.source === "playbook_drill") {
-    return `<span class="badge text-bg-success-subtle text-success-emphasis">Drill Playbook</span>`;
+    return `<span class="badge text-bg-success-subtle text-success-emphasis">${TX.drillPlaybook}</span>`;
   }
-  return `<span class="badge text-bg-secondary">Manual</span>`;
+  return `<span class="badge text-bg-secondary">${TX.manual}</span>`;
 }
 
 function createSessionItemFromDrill(drill, extra = {}) {
@@ -629,7 +630,7 @@ function createSessionItemFromDrill(drill, extra = {}) {
     sourceId: drill?.id || null,
     parentTrainingId: extra.parentTrainingId || null,
     parentTrainingName: extra.parentTrainingName || null,
-    name: drill?.name || "Drill",
+    name: drill?.name || TX.drill,
     objective: drill?.objective || "",
     volume: drill?.volume || "",
     estimatedMinutes: toNumberOrNull(drill?.estimatedMinutes ?? drill?.durationMinutes ?? null),
@@ -646,7 +647,7 @@ function createManualSessionItem(data = {}) {
     sourceId: null,
     parentTrainingId: null,
     parentTrainingName: null,
-    name: data.name || "Actividad manual",
+    name: data.name || TX.actividadManual,
     objective: data.objective || "",
     volume: data.volume || "",
     estimatedMinutes: toNumberOrNull(data.estimatedMinutes),
@@ -698,7 +699,7 @@ function renderPlaybookSelectors() {
 
         <button class="btn btn-outline-primary btn-sm flex-shrink-0 d-inline-flex align-items-center justify-content-center gap-1 pb-add-btn" type="button">
           <i class="bi bi-plus-lg"></i>
-          <span>Usar plan</span>
+          <span>${TX.usarPlan}</span>
         </button>
       </div>
     `;
@@ -725,7 +726,7 @@ function renderPlaybookSelectors() {
       ? `
         <div class="d-flex flex-wrap gap-1 mt-2">
           ${normalizedTags.map(tag => {
-            const label = typeof tag === "string" ? tag : (tag?.label || "Tag");
+            const label = typeof tag === "string" ? tag : (tag?.label || TX.tag);
             const key = typeof tag === "string" ? tag : (tag?.key || label);
             const color = typeof tag === "string"
               ? colorFromString(key)
@@ -752,13 +753,11 @@ function renderPlaybookSelectors() {
       <div class="d-flex justify-content-between align-items-start gap-3">
         <div class="min-w-0 flex-grow-1">
           <div class="fw-semibold">${escapeHtml(d.name || "—")}</div>
-          <div class="text-muted small mt-1">${escapeHtml(d.objective || "Sin objetivo")}</div>
+          <div class="text-muted small mt-1">${escapeHtml(d.objective || TX.sinObjetivo)}</div>
 
           <div class="small text-muted mt-2">
-            Volumen: ${escapeHtml(d.volume || "—")}
-            · Descanso: ${escapeHtml(d.restAfter || "—")}
-            · <span class="${minClass}">
-                Mín: ${hasMinPlayers ? escapeHtml(String(minPlayers)) : "—"} personas
+            ${txf(TX.volumenDescanso, { value: escapeHtml(d.volume || "—"), value2: escapeHtml(d.restAfter || "—") })} <span class="${minClass}">
+                ${TX.min} ${hasMinPlayers ? escapeHtml(String(minPlayers)) : "—"} personas
               </span>
           </div>
 
@@ -767,7 +766,7 @@ function renderPlaybookSelectors() {
 
         <button class="btn btn-outline-primary btn-sm flex-shrink-0 d-inline-flex align-items-center justify-content-center gap-1 pb-add-btn" type="button">
           <i class="bi bi-plus-lg"></i>
-          <span>Agregar</span>
+          <span>${TX.agregar}</span>
         </button>
       </div>
     `;
@@ -865,7 +864,7 @@ function onSubmitManualItem(e) {
 
   const name = ($.manualItemName?.value || "").trim();
   if (!name) {
-    alert("Ponle nombre a la actividad.");
+    alert(TX.ponleNombreALa);
     return;
   }
 
@@ -898,7 +897,7 @@ async function onSubmitCreatePlaybookDrill(e) {
   const objective = ($.newDrillObjective?.value || "").trim();
 
   if (!name) {
-    alert("El drill necesita nombre.");
+    alert(TX.elDrillNecesitaNombre);
     return;
   }
 
@@ -908,7 +907,7 @@ async function onSubmitCreatePlaybookDrill(e) {
     volume: ($.newDrillVolume?.value || "").trim(),
     estimatedMinutes: toNumberOrNull($.newDrillMinutes?.value),
     restAfter: ($.newDrillRestAfter?.value || "").trim(),
-    authorName: "Staff",
+    authorName: TX.staff,
     clubId: CLUB_ID,
     isActive: true,
     isPublic: false,
@@ -941,7 +940,7 @@ async function onSubmitCreatePlaybookDrill(e) {
     createDrillModalInstance?.hide();
   } catch (err) {
     console.error(err);
-    alert("No se pudo crear el drill.");
+    alert(TX.noSePudoCrear);
   }
 }
 
@@ -957,12 +956,12 @@ async function saveTraining() {
   const date = $.trainingDate?.value || "";
 
   if (!date) {
-    alert("Selecciona una fecha.");
+    alert(TX.seleccionaUnaFecha);
     return;
   }
 
   if (!sessionItems.length) {
-    alert("Agrega al menos un drill o actividad a la sesión.");
+    alert(TX.agregaAlMenosUn);
     return;
   }
 
@@ -1033,7 +1032,7 @@ async function saveTraining() {
     await loadTrainings();
   } catch (err) {
     console.error(err);
-    alert("Error guardando entrenamiento.");
+    alert(TX.errorGuardandoEntrenamiento);
   } finally {
     $.saveBtn.disabled = false;
   }
@@ -1067,10 +1066,10 @@ function renderTrainings(list) {
       <div class="card mb-2 training-card" data-id="${escapeHtml(t.id)}" style="cursor:pointer">
         <div class="card-body p-3">
           <div class="fw-semibold">${escapeHtml(label)}</div>
-          <div class="text-muted small">${detailsHtml || "Sesión"}</div>
+          <div class="text-muted small">${detailsHtml || TX.sesion}</div>
           <div class="d-flex justify-content-between mt-2">
-            <span class="small">👥 ${count} asistentes</span>
-            <span class="text-primary small">Abrir</span>
+            <span class="small">${txf(TX.asistentes, { count })}</span>
+            <span class="text-primary small">${TX.abrir}</span>
           </div>
         </div>
       </div>
@@ -1162,7 +1161,7 @@ function fillMonthOptions(list) {
   const months = [...counts.keys()].sort().reverse();
   const current = $.monthFilter.value;
 
-  $.monthFilter.innerHTML = `<option value="">Todos</option>`;
+  $.monthFilter.innerHTML = `<option value="">${TX.todos}</option>`;
 
   months.forEach(mm => {
     const opt = document.createElement("option");
@@ -1264,7 +1263,7 @@ function trainingDisplayText(t) {
 
 function trainingLabel(t, idx, total) {
   const n = total - idx;
-  return `Entreno #${n}: ${fmtHumanDayMonth(t.date)}`;
+  return txf(TX.entreno, { n, date: fmtHumanDayMonth(t.date) });
 }
 
 function monthLabel(yyyyMm) {
@@ -1304,9 +1303,9 @@ function daysAgo(iso) {
 function humanDaysAgo(n) {
   if (n == null) return "";
   if (n === 0) return "hoy";
-  if (n === 1) return "hace 1 día";
-  if (n < 0) return "próximo";
-  return `hace ${n} días`;
+  if (n === 1) return TX.hace1Dia;
+  if (n < 0) return TX.proximo;
+  return txf(TX.haceDias, { n });
 }
 
 function colorFromString(str) {

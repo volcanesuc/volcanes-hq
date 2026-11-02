@@ -6,14 +6,14 @@
       <form id="trainingEditorForm" class="h-100 d-flex flex-column">
         <div class="modal-header app-modal__header">
           <div>
-            <h5 class="modal-title mb-0" id="trainingEditorTitle">Template de entrenamiento</h5>
+            <h5 class="modal-title mb-0" id="trainingEditorTitle" data-tx="html_training_plan_editor.templateDeEntrenamiento">Template de entrenamiento</h5>
             <div class="small app-modal__subtitle" id="trainingEditorHint">—</div>
           </div>
           <button
             type="button"
             class="btn-close btn-close-white"
             data-bs-dismiss="modal"
-            aria-label="Cerrar"
+            aria-label="Cerrar" data-tx-aria-label="html_training_plan_editor.cerrar"
           ></button>
         </div>
 
@@ -25,29 +25,29 @@
               <div class="card app-form-card h-100">
                 <div class="card-body">
                   <div class="mb-3">
-                    <label class="form-label" for="teName">Nombre *</label>
+                    <label class="form-label" for="teName" data-tx="html_training_plan_editor.nombre">Nombre *</label>
                     <input
                       class="form-control"
                       id="teName"
                       required
                       maxlength="120"
-                      placeholder="Ej. Ofensiva de zona / Reset handler / Warmup rápido"
+                      placeholder="Ej. Ofensiva de zona / Reset handler / Warmup rápido" data-tx-placeholder="html_training_plan_editor.ejOfensivaDeZona"
                     />
                   </div>
 
                   <div class="mb-3">
-                    <label class="form-label" for="teNotes">Notas</label>
+                    <label class="form-label" for="teNotes" data-tx="html_training_plan_editor.notas">Notas</label>
                     <textarea
                       class="form-control"
                       id="teNotes"
                       rows="5"
                       placeholder="Notas generales del template"
-                    ></textarea>
+                    ></textarea data-tx-placeholder="html_training_plan_editor.notasGeneralesDelTemplate">
                   </div>
 
                   <div class="form-check form-switch">
                     <input class="form-check-input" type="checkbox" role="switch" id="teIsPublic">
-                    <label class="form-check-label" for="teIsPublic">
+                    <label class="form-check-label" for="teIsPublic" data-tx="html_training_plan_editor.publicoLinkCompartible">
                       Público (link compartible)
                     </label>
                   </div>
@@ -60,19 +60,19 @@
               <div class="card app-form-card mb-3">
                 <div class="card-body">
                   <div class="d-flex justify-content-between align-items-center mb-2">
-                    <div class="fw-semibold">Drills del entrenamiento</div>
+                    <div class="fw-semibold" data-tx="html_training_plan_editor.drillsDelEntrenamiento">Drills del entrenamiento</div>
                     <div class="text-muted small">
-                      <span id="teSelectedCount">0</span> seleccionado(s)
+                      <span id="teSelectedCount">0</span> <span data-tx="html_training_plan_editor.seleccionadoS">seleccionado(s)</span>
                     </div>
                   </div>
 
                   <div class="list-group app-list-scroll app-list-scroll--selected" id="teSelectedDrills"></div>
 
-                  <div class="text-muted small mt-2 d-none" id="teSelectedEmpty">
+                  <div class="text-muted small mt-2 d-none" id="teSelectedEmpty" data-tx="html_training_plan_editor.aunNoAgregasteDrills">
                     Aún no agregaste drills.
                   </div>
 
-                  <div class="small text-muted mt-2">
+                  <div class="small text-muted mt-2" data-tx="html_training_plan_editor.tipUsaParaOrdenar">
                     Tip: usá ↑/↓ para ordenar. El orden se respeta al compartir el link.
                   </div>
                 </div>
@@ -80,20 +80,20 @@
 
               <div class="card app-form-card">
                 <div class="card-body">
-                  <div class="fw-semibold mb-2">Agregar drills</div>
+                  <div class="fw-semibold mb-2" data-tx="html_training_plan_editor.agregarDrills">Agregar drills</div>
 
                   <div class="input-group mb-2">
                     <span class="input-group-text">🔎</span>
                     <input
                       class="form-control"
                       id="teDrillSearch"
-                      placeholder="Buscar drills por nombre, descripción o autor…"
+                      placeholder="Buscar drills por nombre, descripción o autor…" data-tx-placeholder="html_training_plan_editor.buscarDrillsPorNombre"
                     />
                   </div>
 
                   <div class="list-group app-list-scroll app-list-scroll--results" id="teDrillResults"></div>
 
-                  <div class="text-muted small mt-2 d-none" id="teDrillResultsEmpty">
+                  <div class="text-muted small mt-2 d-none" id="teDrillResultsEmpty" data-tx="html_training_plan_editor.noHayResultados">
                     No hay resultados.
                   </div>
                 </div>
@@ -104,8 +104,8 @@
         </div>
 
         <div class="modal-footer app-modal__footer">
-          <button class="btn btn-outline-secondary" data-bs-dismiss="modal" type="button">Cancelar</button>
-          <button class="btn btn-primary" id="teSaveBtn" type="button">Guardar</button>
+          <button class="btn btn-outline-secondary" data-bs-dismiss="modal" type="button" data-tx="html_training_plan_editor.cancelar">Cancelar</button>
+          <button class="btn btn-primary" id="teSaveBtn" type="button" data-tx="html_training_plan_editor.guardar">Guardar</button>
         </div>
       </form>
 

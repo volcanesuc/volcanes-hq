@@ -1,5 +1,6 @@
 // js/ui/loader.component.js
 import { APP_CONFIG } from "../config/config.js";
+import { TX } from "/js/strings/screens/loader.js";
 
 const OVERLAY_ID = "clubLoadingOverlay"; 
 const STYLE_ID = "loaderStyles";
@@ -137,7 +138,7 @@ function applyThemeVars() {
 
 function overlayMarkup() {
   return `
-    <div class="loader-card" role="status" aria-live="polite" aria-label="Cargando">
+    <div class="loader-card" role="status" aria-live="polite" aria-label="${TX.cargando}">
       <div class="loader" aria-hidden="true">
         <svg viewBox="0 0 64 64">
           <circle cx="32" cy="32" r="28" class="disc"></circle>
@@ -155,7 +156,7 @@ function overlayMarkup() {
                L28 27 Z"></path>
         </svg>
       </div>
-      <div class="loader-text" id="${OVERLAY_ID}Message">Cargando…</div>
+      <div class="loader-text" id="${OVERLAY_ID}Message">${TX.cargando2}</div>
     </div>
   `;
 }
@@ -179,14 +180,14 @@ export function mountLoader() {
   return ensureOverlay();
 }
 
-export function setLoaderMessage(message = "Cargando…") {
+export function setLoaderMessage(message = TX.cargando2) {
   const msg = document.getElementById(`${OVERLAY_ID}Message`);
   if (msg) msg.textContent = message;
 }
 /**
  * show: prende clase is-visible (fade-in)
  */
-export function showLoaderOverlay(message = "Cargando…") {
+export function showLoaderOverlay(message = TX.cargando2) {
   const ov = document.getElementById(OVERLAY_ID);
   if (!ov) return;
   ov.style.display = "";

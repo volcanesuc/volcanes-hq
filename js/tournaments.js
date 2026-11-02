@@ -11,6 +11,7 @@ import { TOURNAMENT_STRINGS } from "./strings.js";
 
 import { createTournamentEditor } from "./features/tournament_editor.js";
 import { loadPartialOnce } from "./ui/loadPartial.js";
+import { TX } from "/js/strings/screens/tournaments_list.js";
 
 /*************************************************
  * INIT
@@ -127,22 +128,22 @@ function renderDesktop(grouped) {
   desktopEl.innerHTML = `
     ${renderDesktopSection({
       key: "active",
-      title: "En curso",
-      subtitle: "Torneos que están activos ahora",
+      title: TX.enCurso,
+      subtitle: TX.torneosQueEstanActivos,
       countClass: "is-active",
       list: grouped.active,
     })}
     ${renderDesktopSection({
       key: "upcoming",
-      title: "Próximos",
-      subtitle: "Torneos que vienen más adelante",
+      title: TX.proximos,
+      subtitle: TX.torneosQueVienenMas,
       countClass: "is-upcoming",
       list: grouped.upcoming,
     })}
     ${renderDesktopSection({
       key: "past",
-      title: "Finalizados",
-      subtitle: "Torneos que ya terminaron",
+      title: TX.finalizados,
+      subtitle: TX.torneosQueYaTerminaron,
       countClass: "is-past",
       list: grouped.past,
     })}
@@ -207,7 +208,7 @@ function renderDesktopSection({ key, title, subtitle, countClass, list }) {
                     </div>
                   </div>
                 `
-                : `<div class="tournament-empty">No hay torneos en esta sección.</div>`
+                : `<div class="tournament-empty">${TX.noHayTorneosEn}</div>`
             }
           </div>
         </div>
@@ -230,14 +231,14 @@ function renderDesktopRow(t) {
       <td>${escapeHtml(fees)}</td>
       <td class="text-end">
         ${permissions?.canEditTournament ? `
-          <button class="btn btn-sm btn-outline-primary" data-edit="${t.id}" title="Editar">
+          <button class="btn btn-sm btn-outline-primary" data-edit="${t.id}" title="${TX.editar}">
             <i class="bi bi-pencil"></i>
           </button>
         ` : ""}
 
         <a class="btn btn-sm btn-outline-success ${permissions?.canEditTournament ? "ms-2" : ""}"
           href="${rosterUrl(t.id)}"
-          title="Roster">
+          title="${TX.roster}">
           <i class="bi bi-people"></i>
         </a>
 
@@ -247,7 +248,7 @@ function renderDesktopRow(t) {
                   href="${escapeHtml(official)}"
                   target="_blank"
                   rel="noopener noreferrer"
-                  title="Sitio oficial">
+                  title="${TX.sitioOficial}">
                   <i class="bi bi-box-arrow-up-right"></i>
               </a>`
             : ``
@@ -263,22 +264,22 @@ function renderCards(grouped) {
   cardsEl.innerHTML = `
     ${renderCardSection({
       key: "active",
-      title: "En curso",
-      subtitle: "Torneos activos ahora",
+      title: TX.enCurso,
+      subtitle: TX.torneosActivosAhora,
       countClass: "is-active",
       list: grouped.active,
     })}
     ${renderCardSection({
       key: "upcoming",
-      title: "Próximos",
-      subtitle: "Torneos que vienen",
+      title: TX.proximos,
+      subtitle: TX.torneosQueVienen,
       countClass: "is-upcoming",
       list: grouped.upcoming,
     })}
     ${renderCardSection({
       key: "past",
-      title: "Finalizados",
-      subtitle: "Torneos anteriores",
+      title: TX.finalizados,
+      subtitle: TX.torneosAnteriores,
       countClass: "is-past",
       list: grouped.past,
     })}
@@ -320,7 +321,7 @@ function renderCardSection({ key, title, subtitle, countClass, list }) {
             ${
               list.length
                 ? list.map(renderCard).join("")
-                : `<div class="tournament-empty">No hay torneos en esta sección.</div>`
+                : `<div class="tournament-empty">${TX.noHayTorneosEn}</div>`
             }
           </div>
         </div>
@@ -355,7 +356,7 @@ function renderCard(t) {
         <div class="d-flex gap-2 flex-shrink-0">
           <a class="btn btn-sm btn-outline-success"
             href="${rosterUrl(t.id)}"
-            title="Roster">
+            title="${TX.roster}">
             <i class="bi bi-people"></i>
           </a>
 
@@ -365,14 +366,14 @@ function renderCard(t) {
                     href="${escapeHtml(official)}"
                     target="_blank"
                     rel="noopener noreferrer"
-                    title="Sitio oficial">
+                    title="${TX.sitioOficial}">
                     <i class="bi bi-box-arrow-up-right"></i>
                 </a>`
               : ``
           }
 
           ${permissions?.canEditTournament ? `
-            <button class="btn btn-sm btn-outline-primary" data-edit="${t.id}" title="Editar">
+            <button class="btn btn-sm btn-outline-primary" data-edit="${t.id}" title="${TX.editar}">
               <i class="bi bi-pencil"></i>
             </button>
           ` : ""}
@@ -469,7 +470,7 @@ function applyStrings() {
   document.getElementById("pageHeading").textContent = S.page.title;
   document.getElementById("pageSubtitle").textContent = S.page.subtitle;
 
-  document.getElementById("searchLabel").textContent = S.search?.label || "Buscar";
+  document.getElementById("searchLabel").textContent = S.search?.label || TX.buscar;
   document.getElementById("tournamentSearch").placeholder = S.search?.placeholder || "";
 
   const btnText = document.querySelector("#addTournamentBtn span");
@@ -508,8 +509,8 @@ function formatFees(teamFee, playerFee, feeCurrency = "CRC") {
   const cur = feeCurrency === "USD" ? "$" : "₡";
   const locale = feeCurrency === "USD" ? "en-US" : "es-CR";
 
-  const tfLabel = S.fees?.team || "Team";
-  const pfLabel = S.fees?.player || "Player";
+  const tfLabel = S.fees?.team || TX.team;
+  const pfLabel = S.fees?.player || TX.player;
 
   const tf =
     teamFee != null ? `${tfLabel} ${cur}${Number(teamFee).toLocaleString(locale)}` : null;

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Estado de membresía</title>
+  <title data-tx="html_member_status.estadoDeMembresia">Estado de membresía</title>
 
   <script>document.documentElement.classList.add("preload");</script>
   <script src="/js/ui/loader.preload.js"></script>
@@ -38,11 +38,11 @@
 
           <div class="member-status-hero__content">
             <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-              <h1 id="statusTitle" class="member-status-title mb-0">Estado de membresía</h1>
-              <span id="statusBadge" class="badge text-bg-secondary">Cargando…</span>
+              <h1 id="statusTitle" class="member-status-title mb-0" data-tx="html_member_status.estadoDeMembresia">Estado de membresía</h1>
+              <span id="statusBadge" class="badge text-bg-secondary" data-tx="html_member_status.cargando">Cargando…</span>
             </div>
 
-            <p id="statusMessage" class="member-status-message mb-0">
+            <p id="statusMessage" class="member-status-message mb-0" data-tx="html_member_status.estamosCargandoElEstado">
                 Estamos cargando el estado actual de tu membresía.
             </p>
           </div>
@@ -51,42 +51,42 @@
         <div class="row g-3 mt-1">
           <div class="col-md-6 col-lg-4">
             <div class="member-info-box">
-              <div class="member-info-box__label">Plan</div>
+              <div class="member-info-box__label" data-tx="html_member_status.plan">Plan</div>
               <div id="membershipPlan" class="member-info-box__value">—</div>
             </div>
           </div>
 
           <div class="col-md-6 col-lg-4">
             <div class="member-info-box">
-              <div class="member-info-box__label">Temporada</div>
+              <div class="member-info-box__label" data-tx="html_member_status.temporada">Temporada</div>
               <div id="membershipSeason" class="member-info-box__value">—</div>
             </div>
           </div>
 
           <div class="col-md-6 col-lg-4">
             <div class="member-info-box">
-              <div class="member-info-box__label">Código</div>
+              <div class="member-info-box__label" data-tx="html_member_status.codigo">Código</div>
               <div id="membershipCode" class="member-info-box__value">—</div>
             </div>
           </div>
 
           <div class="col-md-6 col-lg-4">
             <div class="member-info-box">
-              <div class="member-info-box__label">Fecha de inicio</div>
+              <div class="member-info-box__label" data-tx="html_member_status.fechaDeInicio">Fecha de inicio</div>
               <div id="membershipStart" class="member-info-box__value">—</div>
             </div>
           </div>
 
           <div class="col-md-6 col-lg-4">
             <div class="member-info-box">
-              <div class="member-info-box__label">Fecha de vencimiento</div>
+              <div class="member-info-box__label" data-tx="html_member_status.fechaDeVencimiento">Fecha de vencimiento</div>
               <div id="membershipEnd" class="member-info-box__value">—</div>
             </div>
           </div>
 
           <div class="col-md-6 col-lg-4">
             <div class="member-info-box">
-              <div class="member-info-box__label">Monto</div>
+              <div class="member-info-box__label" data-tx="html_member_status.monto">Monto</div>
               <div id="membershipAmount" class="member-info-box__value">—</div>
             </div>
           </div>
@@ -97,15 +97,15 @@
             <i class="bi bi-stars"></i>
           </div>
           <div>
-            <div class="member-status-summary__title">Tu cuenta está al día</div>
-            <div id="membershipSummaryText" class="member-status-summary__text">
+            <div class="member-status-summary__title" data-tx="html_member_status.tuCuentaEstaAl">Tu cuenta está al día</div>
+            <div id="membershipSummaryText" class="member-status-summary__text" data-tx="html_member_status.estamosCargandoElDetalle">
               Estamos cargando el detalle de tu membresía.
             </div>
           </div>
         </div>
 
         <div class="text-center mt-4">
-          <button id="logoutBtn" class="landing-btn landing-btn-whatsapp" type="button">
+          <button id="logoutBtn" class="landing-btn landing-btn-whatsapp" type="button" data-tx="html_member_status.cerrarSesion">
             Cerrar sesión
           </button>
         </div>

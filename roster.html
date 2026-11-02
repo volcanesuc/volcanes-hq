@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Roster</title>
+  <title data-tx="html_roster.roster">Roster</title>
   <script>document.documentElement.classList.add("preload");</script>
   <style>
     html.preload, html.preload body { background: #0b0b0c; }
@@ -27,11 +27,11 @@
       <!-- TÍTULO -->
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h1 class="page-title mb-1">Roster</h1>
-          <small class="text-muted">Gestión de jugadores</small>
+          <h1 class="page-title mb-1" data-tx="html_roster.roster">Roster</h1>
+          <small class="text-muted" data-tx="html_roster.gestionDeJugadores">Gestión de jugadores</small>
         </div>
 
-        <button class="btn btn-primary" id="addPlayerBtn">
+        <button class="btn btn-primary" id="addPlayerBtn" data-tx="html_roster.nuevoJugador">
           + Nuevo jugador
         </button>
       </div>
@@ -42,10 +42,10 @@
         <div class="col-6 col-md-3">
           <div class="card h-100">
             <div class="card-body text-center">
-              <small class="text-muted">Jugadores Activos</small>
+              <small class="text-muted" data-tx="html_roster.jugadoresActivos">Jugadores Activos</small>
               <h3 id="statActive">–</h3>
               <div class="small">
-                <span class="text-muted" id="statInactive">– inactivos</span>
+                <span class="text-muted" id="statInactive" data-tx="html_roster.inactivos">– inactivos</span>
               </div>
             </div>
           </div>
@@ -55,7 +55,7 @@
         <div class="col-6 col-md-3">
           <div class="card h-100">
             <div class="card-body text-center">
-              <small class="text-muted">Género</small>
+              <small class="text-muted" data-tx="html_roster.genero">Género</small>
               <h3>
                 <span id="statMen">–</span> H ·
                 <span id="statWomen">–</span> M
@@ -68,7 +68,7 @@
         <div class="col-6 col-md-3">
           <div class="card h-100">
             <div class="card-body text-center">
-              <small class="text-muted">Master</small>
+              <small class="text-muted" data-tx="html_roster.master">Master</small>
               <h3>
                 <span id="statMasterH">–</span> H ·
                 <span id="statMasterM">–</span> M
@@ -106,7 +106,7 @@
           >
             <span class="d-inline-flex align-items-center gap-2">
               <i class="bi bi-funnel"></i>
-              Buscar y filtrar
+              <span data-tx="html_roster.buscarYFiltrar">Buscar y filtrar</span>
             </span>
             <i class="bi bi-chevron-down training-filters-chevron"></i>
           </button>
@@ -116,29 +116,29 @@
               <div class="row g-2 align-items-end">
 
                 <div class="col-12 col-lg-4">
-                  <label for="rosterSearch" class="form-label small text-muted mb-1">Buscar por nombre</label>
+                  <label for="rosterSearch" class="form-label small text-muted mb-1" data-tx="html_roster.buscarPorNombre">Buscar por nombre</label>
                   <div class="input-group">
                     <span class="input-group-text" aria-hidden="true">🔎</span>
                     <input
                       id="rosterSearch"
                       type="text"
                       class="form-control"
-                      placeholder="Buscar jugador"
+                      placeholder="Buscar jugador" data-tx-placeholder="html_roster.buscarJugador"
                     />
                   </div>
                 </div>
 
                 <div class="col-6 col-md-4 col-lg-3">
-                  <label for="rosterGenderFilter" class="form-label small text-muted mb-1">Género</label>
+                  <label for="rosterGenderFilter" class="form-label small text-muted mb-1" data-tx="html_roster.genero">Género</label>
                   <select id="rosterGenderFilter" class="form-select">
-                    <option value="">Todos</option>
+                    <option value="" data-tx="html_roster.todos">Todos</option>
                   </select>
                 </div>
 
                 <div class="col-6 col-md-4 col-lg-3">
-                  <label for="rosterRoleFilter" class="form-label small text-muted mb-1">Rol</label>
+                  <label for="rosterRoleFilter" class="form-label small text-muted mb-1" data-tx="html_roster.rol">Rol</label>
                   <select id="rosterRoleFilter" class="form-select">
-                    <option value="">Todos</option>
+                    <option value="" data-tx="html_roster.todos">Todos</option>
                   </select>
                 </div>
 
@@ -150,7 +150,7 @@
                   >
                     <span class="clear-desktop">✕</span>
                     <span class="clear-mobile">
-                      <i class="bi bi-x-lg"></i> Limpiar
+                      <i class="bi bi-x-lg"></i> <span data-tx="html_roster.limpiar">Limpiar</span>
                     </span>
                   </button>
                 </div>
@@ -171,12 +171,12 @@
             <table class="table table-hover align-middle mb-0">
               <thead class="table-light text-uppercase small">
                 <tr>
-                  <th data-sort="name" class="sortable">Jugador</th>
-                  <th data-sort="role" class="sortable">Rol</th>
+                  <th data-sort="name" class="sortable" data-tx="html_roster.jugador">Jugador</th>
+                  <th data-sort="role" class="sortable" data-tx="html_roster.rol">Rol</th>
                   <th data-sort="number" class="sortable">#</th>
-                  <th data-sort="gender" class="sortable">Género</th>
-                  <th data-sort="birthday" class="sortable">Cumpleaños</th>
-                  <th data-sort="active" class="sortable">Estado</th>
+                  <th data-sort="gender" class="sortable" data-tx="html_roster.genero">Género</th>
+                  <th data-sort="birthday" class="sortable" data-tx="html_roster.cumpleanos">Cumpleaños</th>
+                  <th data-sort="active" class="sortable" data-tx="html_roster.estado">Estado</th>
                 </tr>
               </thead>
               <tbody id="playersTable"></tbody>

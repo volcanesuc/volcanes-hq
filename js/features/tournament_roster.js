@@ -19,6 +19,7 @@ import {
   deleteDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { TX, txf } from "/js/strings/screens/tournament_roster.js";
 
 /* ==========================
    HEADER / AUTH
@@ -160,7 +161,7 @@ window.addEventListener("tournament:changed", async (e) => {
   const { id, deleted } = e.detail || {};
 
   if (deleted && id === tournamentId) {
-    alert("Este torneo fue eliminado.");
+    alert(TX.esteTorneoFueEliminado);
     window.location.href = "tournaments.html";
     return;
   }
@@ -177,7 +178,7 @@ window.addEventListener("tournament:changed", async (e) => {
       renderPlayers();
     } catch (err) {
       console.error(err);
-      alert("Error recargando el torneo.");
+      alert(TX.errorRecargandoElTorneo);
     } finally {
       hideLoader();
     }
@@ -195,16 +196,16 @@ watchAuth(async () => {
     if (appVersion) appVersion.textContent = `v${APP_CONFIG.version}`;
 
     const logoutBtn = document.getElementById("logoutBtn");
-    if (logoutBtn) logoutBtn.textContent = "Salir";
+    if (logoutBtn) logoutBtn.textContent = TX.salir;
 
     if (!tournamentId) {
-      showError("Falta el parámetro del torneo. Ej: tournament_roster.html?id=XXXX");
+      showError(TX.faltaElParametroDel);
       return;
     }
 
     tournament = await fetchTournament(tournamentId);
     if (!tournament) {
-      showError("No se encontró el torneo.");
+      showError(TX.noSeEncontroEl);
       return;
     }
 
@@ -220,7 +221,7 @@ watchAuth(async () => {
     renderPlayers();
   } catch (e) {
     console.error(e);
-    showError("Error cargando roster del torneo.");
+    showError(TX.errorCargandoRosterDel);
   } finally {
     hideLoader();
   }
@@ -461,7 +462,7 @@ async function loadPlayers() {
   if (playersSubtitle && permissions?.canManageRoster) {
     playersSubtitle.textContent = players.length
       ? `${players.length} jugador(es) activo(s)`
-      : "No hay jugadores activos disponibles.";
+      : TX.noHayJugadoresActivos;
   }
 }
 
@@ -473,7 +474,7 @@ async function loadGuests() {
     .map(g => ({
       id: g.id,
       name: (g.name || "").trim(),
-      nickname: g.loanFrom ? `Préstamo: ${g.loanFrom}` : "",
+      nickname: g.loanFrom ? txf(TX.prestamo, { loanFrom: g.loanFrom }) : "",
       role: g.role || getDefaultRoleId(),
       number: g.number ?? null,
       gender: g.gender ?? null,
@@ -514,19 +515,19 @@ function applyRoleUI() {
       ? `
         <div class="text-muted small d-flex align-items-center gap-2">
           <i class="bi bi-eye"></i>
-          Vista de solo lectura del roster del torneo
+          ${TX.vistaDeSoloLectura}
         </div>
       `
       : `
         <div class="text-muted small d-flex align-items-center gap-2">
           <i class="bi bi-people"></i>
-          Administra convocados, confirmados y abonos del fee
+          ${TX.administraConvocadosConfirmadosY}
         </div>
       `;
   }
 
   if (playersTitle) {
-    playersTitle.textContent = "Jugadores";
+    playersTitle.textContent = TX.jugadores;
   }
 
   if (playersSubtitle) {
@@ -594,7 +595,7 @@ function render() {
 
   if (rosterEmpty) {
     rosterEmpty.classList.toggle("d-none", list.length > 0);
-    rosterEmpty.textContent = S.roster?.empty || "No hay jugadores asignados a este torneo.";
+    rosterEmpty.textContent = S.roster?.empty || TX.noHayJugadoresAsignados;
   }
 
   renderRosterCounters(list);
@@ -629,7 +630,7 @@ function render() {
       modal.open({
         collectionPath: `${TOURNAMENTS_COL}/${tournamentId}/roster`,
         docId: r.id,
-        title: "Agregar abono",
+        title: TX.agregarAbono,
         subtitle: r.name || "—",
         suggestedAmount: suggested,
         onSaved: async () => {
@@ -657,14 +658,14 @@ function renderRosterCounters() {
 
   if (pageSubtitle) {
     pageSubtitle.textContent = permissions?.canManageRoster
-      ? (S.roster?.subtitle || "Jugadores convocados")
-      : "Vista ordenada del roster por posición";
+      ? (S.roster?.subtitle || TX.jugadoresConvocados)
+      : TX.vistaOrdenadaDelRoster;
   }
 
   if (rosterSubtitle) {
     rosterSubtitle.textContent = permissions?.canManageRoster
-      ? (S.roster?.subtitle || "Jugadores convocados")
-      : "Jugadores agrupados por posición";
+      ? (S.roster?.subtitle || TX.jugadoresConvocados)
+      : TX.jugadoresAgrupadosPorPosicion;
   }
 }
 
@@ -719,18 +720,18 @@ function renderPlayers() {
   if (playersEmpty) {
     playersEmpty.classList.toggle("d-none", list.length > 0);
     playersEmpty.textContent = q
-      ? "No hay coincidencias."
-      : "No hay jugadores disponibles (todos ya están en el roster).";
+      ? TX.noHayCoincidencias
+      : TX.noHayJugadoresDisponibles;
   }
 
   if (playersSubtitle) {
     const gCount = list.filter(x => x.isGuest).length;
     const pCount = list.length - gCount;
-    playersSubtitle.textContent = `Disponibles: ${list.length} · Club: ${pCount} · Invitados: ${gCount}`;
+    playersSubtitle.textContent = txf(TX.disponiblesClubInvitados, { listCount: list.length, pCount, gCount });
   }
 
   const addPanelState = document.getElementById("addPanelState");
-  if (addPanelState) addPanelState.textContent = `Disponibles: ${list.length}`;
+  if (addPanelState) addPanelState.textContent = txf(TX.disponibles, { listCount: list.length });
 
   playersList?.querySelectorAll("[data-add]")?.forEach(btn => {
     btn.addEventListener("click", async () => {
@@ -778,7 +779,7 @@ async function addToRoster(itemId) {
     renderPlayers();
   } catch (e) {
     console.error(e);
-    alert("Error agregando jugador al roster.");
+    alert(TX.errorAgregandoJugadorAl);
   } finally {
     hideLoader();
   }
@@ -787,7 +788,7 @@ async function addToRoster(itemId) {
 async function removeFromRoster(docId) {
   if (!permissions?.canManageRoster) return;
 
-  const ok = confirm("¿Quitar del roster?");
+  const ok = confirm(TX.quitarDelRoster);
   if (!ok) return;
 
   showLoader();
@@ -798,7 +799,7 @@ async function removeFromRoster(docId) {
     renderPlayers();
   } catch (e) {
     console.error(e);
-    alert("Error quitando jugador.");
+    alert(TX.errorQuitandoJugador);
   } finally {
     hideLoader();
   }
@@ -824,7 +825,7 @@ async function toggleStatus(docId) {
     renderPlayers();
   } catch (e) {
     console.error(e);
-    alert("Error actualizando estado.");
+    alert(TX.errorActualizandoEstado);
   } finally {
     hideLoader();
   }
@@ -847,7 +848,7 @@ async function toggleTeamFeePaid() {
     renderTeamFee();
   } catch (e) {
     console.error(e);
-    alert("Error actualizando team fee.");
+    alert(TX.errorActualizandoTeamFee);
   } finally {
     hideLoader();
   }
@@ -866,13 +867,13 @@ function nextStatus(s) {
 async function createGuestFlow() {
   if (!permissions?.canCreateGuests) return;
 
-  const name = prompt("Nombre del invitado:");
+  const name = prompt(TX.nombreDelInvitado);
   if (!name || !name.trim()) return;
 
-  const gender = (prompt("Género (M/F) (opcional):") || "").trim();
-  const role = (prompt("Rol (opcional):") || getDefaultRoleId()).trim();
-  const loanFrom = (prompt("¿Préstamo de qué club? (opcional):") || "").trim();
-  const numberRaw = (prompt("Número (opcional):") || "").trim();
+  const gender = (prompt(TX.generoMFOpcional) || "").trim();
+  const role = (prompt(TX.rolOpcional) || getDefaultRoleId()).trim();
+  const loanFrom = (prompt(TX.prestamoDeQueClub) || "").trim();
+  const numberRaw = (prompt(TX.numeroOpcional) || "").trim();
   const number = numberRaw ? Number(numberRaw) : null;
 
   showLoader();
@@ -892,7 +893,7 @@ async function createGuestFlow() {
     renderPlayers();
   } catch (e) {
     console.error(e);
-    alert("Error creando invitado.");
+    alert(TX.errorCreandoInvitado);
   } finally {
     hideLoader();
   }
@@ -908,11 +909,11 @@ function rosterRow(r) {
   const statusClass = status === "Confirmado" ? "pill pill--yellow" : "pill";
 
   const guestBadge = r.isGuest
-    ? `<span class="pill">${escapeHtml(r.loanFrom ? `Invitado · ${r.loanFrom}` : "Invitado")}</span>`
+    ? `<span class="pill">${escapeHtml(r.loanFrom ? txf(TX.invitado, { loanFrom: r.loanFrom }) : TX.invitado2)}</span>`
     : "";
 
   const missingBadge = r.missingSource
-    ? `<span class="pill">Fuente no encontrada</span>`
+    ? `<span class="pill">${TX.fuenteNoEncontrada}</span>`
     : "";
 
   const total = toNumberOrZero(r.feeTotal);
@@ -922,30 +923,30 @@ function rosterRow(r) {
   let feePill = "";
 
   if (total <= 0) {
-    feePill = `<span class="pill">Sin fee</span>`;
+    feePill = `<span class="pill">${TX.sinFee}</span>`;
   } else if (balance <= 0) {
-    feePill = `<span class="pill pill--good">Fee pagado</span>`;
+    feePill = `<span class="pill pill--good">${TX.feePagado}</span>`;
   } else {
-    feePill = `<span class="pill">Pagado ₡${paid.toLocaleString("es-CR")} | Debe ₡${balance.toLocaleString("es-CR")}</span>`;
+    feePill = `<span class="pill">${txf(TX.pagadoDebe, { paid: paid.toLocaleString("es-CR"), balance: balance.toLocaleString("es-CR") })}</span>`;
   }
 
   const actionsHtml = (permissions?.canManageRoster || permissions?.canManagePayments)
     ? `
       <div class="roster-row__actions">
         ${permissions?.canManageRoster ? `
-          <button class="btn btn-sm btn-outline-secondary" title="Cambiar estado" data-toggle-status="${escapeHtml(r.id)}">
+          <button class="btn btn-sm btn-outline-secondary" title="${TX.cambiarEstado}" data-toggle-status="${escapeHtml(r.id)}">
             <i class="bi bi-arrow-repeat"></i>
           </button>
         ` : ""}
 
         ${permissions?.canManagePayments && toNumberOrZero(r.feeTotal) > 0 ? `
-          <button class="btn btn-sm btn-outline-success" title="Agregar abono" data-pay="${escapeHtml(r.id)}">
+          <button class="btn btn-sm btn-outline-success" title="${TX.agregarAbono}" data-pay="${escapeHtml(r.id)}">
             <i class="bi bi-cash-coin"></i>
           </button>
         ` : ""}
 
         ${permissions?.canManageRoster ? `
-          <button class="btn btn-sm btn-outline-danger" title="Quitar" data-remove="${escapeHtml(r.id)}">
+          <button class="btn btn-sm btn-outline-danger" title="${TX.quitar}" data-remove="${escapeHtml(r.id)}">
             <i class="bi bi-x-lg"></i>
           </button>
         ` : ""}
@@ -979,10 +980,10 @@ function rosterRow(r) {
 
 function playerPickRow(p) {
   const sub = p.isGuest
-    ? (p.loanFrom ? `Invitado · ${p.loanFrom}` : "Invitado")
+    ? (p.loanFrom ? txf(TX.invitado, { loanFrom: p.loanFrom }) : TX.invitado2)
     : getRoleLabel(p.role);
 
-  const leftTag = p.isGuest ? `<span class="pill">Invitado</span>` : "";
+  const leftTag = p.isGuest ? `<span class="pill">${TX.invitado2}</span>` : "";
 
   return `
     <div class="player-pick">
@@ -996,7 +997,7 @@ function playerPickRow(p) {
 
       <button class="btn btn-sm btn-primary"
               data-add="${escapeHtml(p.id)}"
-              title="Agregar">
+              title="${TX.agregar}">
         <i class="bi bi-plus-lg"></i>
       </button>
     </div>
@@ -1016,7 +1017,7 @@ function getGroupedRoster(list) {
 
   const ungrouped = {
     id: "otros",
-    label: "Otros",
+    label: TX.otros,
     items: []
   };
 
@@ -1070,13 +1071,13 @@ function renderTeamFee() {
 
   const paid = !!tournament.teamFeePaid;
 
-  teamFeePill.textContent = `Team fee: ${amount} · ${paid ? "Pagado" : "Pendiente"}`;
+  teamFeePill.textContent = txf(TX.teamFee, { amount, value: paid ? TX.pagado : TX.pendiente });
   teamFeePill.className = `pill ${paid ? "pill--good" : "pill--warn"}`;
 
   if (permissions?.canManagePayments) {
     toggleTeamFeeBtn.innerHTML = paid
-      ? `<i class="bi bi-cash-coin"></i> Marcar pendiente`
-      : `<i class="bi bi-cash-coin"></i> Marcar pagado`;
+      ? `<i class="bi bi-cash-coin"></i> ${TX.marcarPendiente}`
+      : `<i class="bi bi-cash-coin"></i> ${TX.marcarPagado}`;
   }
 }
 
@@ -1084,17 +1085,17 @@ function renderTeamFee() {
    STRINGS
 ========================== */
 function applyStrings() {
-  pageTitle && (pageTitle.textContent = S.roster?.title || "Roster del torneo");
-  pageSubtitle && (pageSubtitle.textContent = S.roster?.subtitle || "Jugadores convocados");
+  pageTitle && (pageTitle.textContent = S.roster?.title || TX.rosterDelTorneo);
+  pageSubtitle && (pageSubtitle.textContent = S.roster?.subtitle || TX.jugadoresConvocados);
 
-  rosterTitle && (rosterTitle.textContent = S.roster?.title || "Roster del torneo");
-  rosterSubtitle && (rosterSubtitle.textContent = S.roster?.subtitle || "Jugadores convocados");
+  rosterTitle && (rosterTitle.textContent = S.roster?.title || TX.rosterDelTorneo);
+  rosterSubtitle && (rosterSubtitle.textContent = S.roster?.subtitle || TX.jugadoresConvocados);
 
   if (lblSearch) lblSearch.classList.add("d-none");
   if (searchInput) searchInput.classList.add("d-none");
 
-  playersTitle && (playersTitle.textContent = "Jugadores");
-  btnAddLabel && (btnAddLabel.textContent = "Agregar jugador");
+  playersTitle && (playersTitle.textContent = TX.jugadores);
+  btnAddLabel && (btnAddLabel.textContent = TX.agregarJugador);
 }
 
 /* ==========================
@@ -1176,8 +1177,8 @@ function syncLegendUI() {
 
   if (activeLegendFilters.size === 0) {
     filtersHintEl.innerHTML = permissions?.canManageRoster
-      ? `Tip: puedes combinar filtros (ej. <strong>Confirmado</strong> + <strong>Fee pendiente</strong>).`
-      : `Tip: usa filtros para ordenar mejor el roster por estado, fee o posición.`;
+      ? `${TX.tipPuedesCombinarFiltros} <strong>${TX.confirmado}</strong> + <strong>${TX.feePendiente}</strong>).`
+      : TX.tipUsaFiltrosPara;
     return;
   }
 
@@ -1186,29 +1187,29 @@ function syncLegendUI() {
     const [type, value] = f.split(":");
 
     if (type === "status") {
-      if (value === "confirmado") labels.push("Confirmado");
-      else if (value === "convocado") labels.push("Convocado");
-      else if (value === "tentative") labels.push("Por confirmar");
+      if (value === "confirmado") labels.push(TX.confirmado);
+      else if (value === "convocado") labels.push(TX.convocado);
+      else if (value === "tentative") labels.push(TX.porConfirmar);
       else labels.push(value);
     } else if (type === "fee") {
-      if (value === "pendiente") labels.push("Fee pendiente");
-      else if (value === "pagado") labels.push("Fee pagado");
+      if (value === "pendiente") labels.push(TX.feePendiente);
+      else if (value === "pagado") labels.push(TX.feePagado);
       else labels.push(value);
     } else if (type === "role") {
       labels.push(getRoleLabel(value));
     } else if (type === "gender") {
-      if (value === "m") labels.push("Masculino");
-      else if (value === "f") labels.push("Femenino");
+      if (value === "m") labels.push(TX.masculino);
+      else if (value === "f") labels.push(TX.femenino);
       else labels.push(value);
     } else if (type === "guest") {
-      if (value === "true") labels.push("Solo invitados");
+      if (value === "true") labels.push(TX.soloInvitados);
       else labels.push(f);
     } else {
       labels.push(f);
     }
   }
 
-  filtersHintEl.innerHTML = `Mostrando: <strong>${labels.join(" + ")}</strong>`;
+  filtersHintEl.innerHTML = `${TX.mostrando} <strong>${labels.join(" + ")}</strong>`;
 }
 
 /* ==========================
@@ -1216,9 +1217,9 @@ function syncLegendUI() {
 ========================== */
 function prettyStatus(s) {
   const v = (s || "").toLowerCase();
-  if (v === "confirmado") return "Confirmado";
-  if (v === "tentative") return "Por confirmar";
-  if (v === "convocado") return "Convocado";
+  if (v === "confirmado") return TX.confirmado;
+  if (v === "tentative") return TX.porConfirmar;
+  if (v === "convocado") return TX.convocado;
   return s || "—";
 }
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Registro</title>
+  <title data-tx="html_register.registro">Registro</title>
 
   <script>document.documentElement.classList.add("preload");</script>
   <style>
@@ -109,11 +109,11 @@
           <div>
             <h1
               class="page-title mb-1"
-              style="font-family: var(--font-title); color: var(--theme-primary); font-weight: 900;"
+              style="font-family: var(--font-title); color: var(--theme-primary); font-weight: 900;" data-tx="html_register.registro"
             >
               Registro
             </h1>
-            <div class="muted-help">
+            <div class="muted-help" data-tx="html_register.primeroSeleccionaElTipo">
               Primero selecciona el tipo de registro y luego completa únicamente los campos requeridos.
             </div>
           </div>
@@ -125,8 +125,8 @@
           <!-- Tipo -->
           <div class="row g-3">
             <div class="col-12">
-              <h3 class="mb-2 section-title">Tipo de registro</h3>
-              <div class="muted-help">Debes seleccionar solo una opción.</div>
+              <h3 class="mb-2 section-title" data-tx="html_register.tipoDeRegistro">Tipo de registro</h3>
+              <div class="muted-help" data-tx="html_register.debesSeleccionarSoloUna">Debes seleccionar solo una opción.</div>
             </div>
 
             <div class="col-md-4">
@@ -140,8 +140,8 @@
                     value="pickups"
                   />
                   <div>
-                    <div class="fw-bold">Pickups</div>
-                    <div class="muted-help">Acceso para participar en pickups.</div>
+                    <div class="fw-bold" data-tx="html_register.pickups">Pickups</div>
+                    <div class="muted-help" data-tx="html_register.accesoParaParticiparEn">Acceso para participar en pickups.</div>
                   </div>
                 </div>
               </label>
@@ -158,8 +158,8 @@
                     value="club_player"
                   />
                   <div>
-                    <div class="fw-bold">Jugador del club</div>
-                    <div class="muted-help">Solicitud para ingresar como jugador del club.</div>
+                    <div class="fw-bold" data-tx="html_register.jugadorDelClub">Jugador del club</div>
+                    <div class="muted-help" data-tx="html_register.solicitudParaIngresarComo">Solicitud para ingresar como jugador del club.</div>
                   </div>
                 </div>
               </label>
@@ -176,8 +176,8 @@
                     value="association_member"
                   />
                   <div>
-                    <div class="fw-bold">Miembro de asociación</div>
-                    <div class="muted-help">Registro para asociarte y gestionar tu membresía.</div>
+                    <div class="fw-bold" data-tx="html_register.miembroDeAsociacion">Miembro de asociación</div>
+                    <div class="muted-help" data-tx="html_register.registroParaAsociarteY">Registro para asociarte y gestionar tu membresía.</div>
                   </div>
                 </div>
               </label>
@@ -190,26 +190,26 @@
 
             <div class="row g-3">
               <div class="col-12">
-                <h3 class="mb-2 section-title">Datos personales</h3>
+                <h3 class="mb-2 section-title" data-tx="html_register.datosPersonales">Datos personales</h3>
               </div>
 
               <div class="col-md-6">
-                <label class="form-label" for="firstName">Nombre</label>
+                <label class="form-label" for="firstName" data-tx="html_register.nombre">Nombre</label>
                 <input id="firstName" class="form-control" />
               </div>
 
               <div class="col-md-6">
-                <label class="form-label" for="lastName">Apellido</label>
+                <label class="form-label" for="lastName" data-tx="html_register.apellido">Apellido</label>
                 <input id="lastName" class="form-control" />
               </div>
 
               <div class="col-md-6">
-                <label class="form-label" for="phone">Teléfono</label>
+                <label class="form-label" for="phone" data-tx="html_register.telefono">Teléfono</label>
                 <input
                   id="phone"
                   type="tel"
                   class="form-control"
-                  placeholder="Ej: 8888-8888"
+                  placeholder="Ej: 8888-8888" data-tx-placeholder="html_register.ej88888888"
                 />
               </div>
             </div>
@@ -218,15 +218,15 @@
 
             <div class="row g-3">
               <div class="col-12">
-                <h3 class="mb-2 section-title">Contacto de emergencia</h3>
+                <h3 class="mb-2 section-title" data-tx="html_register.contactoDeEmergencia">Contacto de emergencia</h3>
               </div>
 
               <div class="col-md-12">
-                <label class="form-label" for="emergencyContactName">Contacto de emergencia</label>
+                <label class="form-label" for="emergencyContactName" data-tx="html_register.contactoDeEmergencia">Contacto de emergencia</label>
                 <input
                   id="emergencyContactName"
                   class="form-control"
-                  placeholder="Nombre y teléfono de la persona de contacto"
+                  placeholder="Nombre y teléfono de la persona de contacto" data-tx-placeholder="html_register.nombreYTelefonoDe"
                 />
               </div>
             </div>
@@ -238,45 +238,45 @@
 
             <div class="row g-3">
               <div class="col-12">
-                <h3 class="mb-2 section-title">Información adicional</h3>
+                <h3 class="mb-2 section-title" data-tx="html_register.informacionAdicional">Información adicional</h3>
               </div>
 
               <div class="col-md-6">
-                <label class="form-label" for="email">Correo</label>
+                <label class="form-label" for="email" data-tx="html_register.correo">Correo</label>
                 <input
                   id="email"
                   type="email"
                   class="form-control"
-                  placeholder="Se llena si ingresas con Google"
+                  placeholder="Se llena si ingresas con Google" data-tx-placeholder="html_register.seLlenaSiIngresas"
                 />
-                <div class="muted-help mt-1">
+                <div class="muted-help mt-1" data-tx="html_register.siIngresasConGoogle">
                   Si ingresas con Google, lo precargamos.
                 </div>
               </div>
 
               <div class="col-md-3">
-                <label class="form-label" for="idType">Tipo de documento</label>
+                <label class="form-label" for="idType" data-tx="html_register.tipoDeDocumento">Tipo de documento</label>
                 <select id="idType" class="form-select">
-                  <option value="">Seleccionar…</option>
-                  <option value="cedula">Cédula</option>
-                  <option value="pasaporte">Pasaporte</option>
-                  <option value="dimex">DIMEX</option>
-                  <option value="otro">Otro</option>
+                  <option value="" data-tx="html_register.seleccionar">Seleccionar…</option>
+                  <option value="cedula" data-tx="html_register.cedula">Cédula</option>
+                  <option value="pasaporte" data-tx="html_register.pasaporte">Pasaporte</option>
+                  <option value="dimex" data-tx="html_register.dimex">DIMEX</option>
+                  <option value="otro" data-tx="html_register.otro">Otro</option>
                 </select>
               </div>
 
               <div class="col-md-3">
-                <label class="form-label" for="idNumber">Número de documento</label>
+                <label class="form-label" for="idNumber" data-tx="html_register.numeroDeDocumento">Número de documento</label>
                 <input id="idNumber" class="form-control" />
               </div>
 
               <div class="col-md-6">
-                <label class="form-label" for="province">Provincia</label>
+                <label class="form-label" for="province" data-tx="html_register.provincia">Provincia</label>
                 <select id="province" class="form-select"></select>
               </div>
 
               <div class="col-md-6">
-                <label class="form-label" for="canton">Cantón</label>
+                <label class="form-label" for="canton" data-tx="html_register.canton">Cantón</label>
                 <select id="canton" class="form-select"></select>
               </div>
             </div>
@@ -290,22 +290,22 @@
 
             <div id="paymentSection" class="row g-3 d-none">
               <div class="col-12">
-                <h3 class="mb-2 section-title">Pago de membresía</h3>
-                <div class="muted-help">
+                <h3 class="mb-2 section-title" data-tx="html_register.pagoDeMembresia">Pago de membresía</h3>
+                <div class="muted-help" data-tx="html_register.seleccionaUnPlanActivo">
                   Selecciona un plan activo, realiza el pago y adjunta el comprobante.
                 </div>
               </div>
 
               <div class="col-md-8">
-                <label class="form-label" for="planId">Plan de pago</label>
+                <label class="form-label" for="planId" data-tx="html_register.planDePago">Plan de pago</label>
                 <select id="planId" class="form-select">
-                  <option value="">Cargando planes…</option>
+                  <option value="" data-tx="html_register.cargandoPlanes">Cargando planes…</option>
                 </select>
                 <div id="planMeta" class="muted-help mt-2"></div>
               </div>
 
               <div class="col-md-4">
-                <label class="form-label" for="proofFile">Comprobante (imagen o PDF)</label>
+                <label class="form-label" for="proofFile" data-tx="html_register.comprobanteImagenOPdf">Comprobante (imagen o PDF)</label>
                 <input
                   id="proofFile"
                   type="file"
@@ -319,7 +319,7 @@
 
             <div class="form-check mb-3">
               <input class="form-check-input" type="checkbox" id="committeeInterest" />
-              <label class="form-check-label" for="committeeInterest">
+              <label class="form-check-label" for="committeeInterest" data-tx="html_register.meInteresaSerContactado">
                 Me interesa ser contactado/a para formar parte de algún comité de la asociación
               </label>
             </div>
@@ -327,14 +327,14 @@
             <div id="committeeFields" class="row g-3 d-none">
               <div class="col-md-6">
                 <label class="form-label" for="profession">
-                  Profesión u oficio <span class="muted-help">(opcional)</span>
+                  <span data-tx="html_register.profesionUOficio">Profesión u oficio</span> <span class="muted-help" data-tx="html_register.opcional">(opcional)</span>
                 </label>
                 <input id="profession" class="form-control" />
               </div>
 
               <div class="col-md-6">
                 <label class="form-label" for="skills">
-                  Competencias / destrezas <span class="muted-help">(opcional)</span>
+                  <span data-tx="html_register.competenciasDestrezas">Competencias / destrezas</span> <span class="muted-help" data-tx="html_register.opcional">(opcional)</span>
                 </label>
                 <input id="skills" class="form-control" />
               </div>
@@ -346,7 +346,7 @@
           <!-- Consentimientos -->
           <div id="declarationWrap" class="form-check mb-3 d-none">
             <input id="infoDeclaration" class="form-check-input" type="checkbox" />
-            <label id="infoDeclarationLabel" class="form-check-label" for="infoDeclaration">
+            <label id="infoDeclarationLabel" class="form-check-label" for="infoDeclaration" data-tx="html_register.declaroBajoJuramentoQue">
               Declaro bajo juramento que la información proporcionada es veraz y autorizo su uso para fines administrativos.
             </label>
           </div>
@@ -354,27 +354,27 @@
           <div id="termsWrap" class="form-check mb-3 d-none">
             <input id="termsAccepted" class="form-check-input" type="checkbox" />
             <label class="form-check-label" for="termsAccepted">
-              Acepto los términos y condiciones generales.
-              <a id="termsLink" href="#" target="_blank" rel="noopener">Ver</a>
+              <span data-tx="html_register.aceptoLosTerminosY">Acepto los términos y condiciones generales.</span>
+              <a id="termsLink" href="#" target="_blank" rel="noopener" data-tx="html_register.ver">Ver</a>
             </label>
           </div>
 
           <div id="associationTermsWrap" class="form-check mb-3 d-none">
             <input id="associationTermsAccepted" class="form-check-input" type="checkbox" />
             <label class="form-check-label" for="associationTermsAccepted">
-              Acepto los términos y condiciones de la asociación.
-              <a id="associationTermsLink" href="#" target="_blank" rel="noopener">Ver</a>
+              <span data-tx="html_register.aceptoLosTerminosY2">Acepto los términos y condiciones de la asociación.</span>
+              <a id="associationTermsLink" href="#" target="_blank" rel="noopener" data-tx="html_register.ver">Ver</a>
             </label>
           </div>
 
           <div class="d-flex flex-wrap gap-2 justify-content-end mt-4">
-            <button id="submitBtn" type="submit" class="btn btn-secondary px-4" disabled>
+            <button id="submitBtn" type="submit" class="btn btn-secondary px-4" disabled data-tx="html_register.enviarRegistro">
               Enviar registro
             </button>
           </div>
         </form>
 
-        <div class="muted-help mt-4">
+        <div class="muted-help mt-4" data-tx="html_register.siTeRegistrasComo">
           * Si te registras como miembro de asociación, tu registro queda en revisión hasta validar el comprobante.
         </div>
       </div>

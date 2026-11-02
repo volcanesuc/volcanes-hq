@@ -31,6 +31,7 @@ import {
   resolveSeason,
   firebaseErrMsg,
 } from "./register_services.js";
+import { TX } from "/js/strings/screens/register_submit.js";
 
 function getSelectedRegisterType() {
   const checked = [...$.registerTypeRadios].find((r) => r.checked);
@@ -104,43 +105,43 @@ function buildSubmitSnapshot() {
 
 function validateSubmitSnapshot(data, cfg) {
   if (!data.user?.uid) {
-    throw new Error("Primero ingresa con Google para completar el registro.");
+    throw new Error(TX.primeroIngresaConGoogle);
   }
 
   if (!data.registerType) {
-    throw new Error("Selecciona un tipo de registro.");
+    throw new Error(TX.seleccionaUnTipoDe);
   }
 
   if (!data.firstName || !data.lastName || !data.phone || !data.emergencyContactName) {
-    throw new Error("Completa nombre, apellido, teléfono y contacto de emergencia.");
+    throw new Error(TX.completaNombreApellidoTelefono);
   }
 
   if (needsIdentityFields()) {
     if (!data.email || !data.idType || !data.idNumber) {
-      throw new Error("Debes completar correo, tipo de documento y número de documento.");
+      throw new Error(TX.debesCompletarCorreoTipo);
     }
 
     if (!data.residence?.province || !data.residence?.canton) {
-      throw new Error("Debes seleccionar provincia y cantón.");
+      throw new Error(TX.debesSeleccionarProvinciaY);
     }
   }
 
   if (data.wantsMembershipPayment) {
     if (!data.planId || !data.plan) {
-      throw new Error("Selecciona un plan de pago válido.");
+      throw new Error(TX.seleccionaUnPlanDe);
     }
 
     if (!data.file) {
-      throw new Error("Adjunta el comprobante de pago.");
+      throw new Error(TX.adjuntaElComprobanteDe);
     }
   }
 
   if (cfg.requireInfoDeclaration && !$.infoDeclaration?.checked) {
-    throw new Error("Debes aceptar la declaración de veracidad/uso de información.");
+    throw new Error(TX.debesAceptarLaDeclaracion);
   }
 
   if (cfg.requireTerms && !$.termsAccepted?.checked) {
-    throw new Error("Debes aceptar los términos y condiciones generales.");
+    throw new Error(TX.debesAceptarLosTerminos);
   }
 
   if (
@@ -148,7 +149,7 @@ function validateSubmitSnapshot(data, cfg) {
     cfg.requireAssociationTerms &&
     !$.associationTermsAccepted?.checked
   ) {
-    throw new Error("Debes aceptar los términos y condiciones de la asociación.");
+    throw new Error(TX.debesAceptarLosTerminos2);
   }
 }
 
@@ -201,11 +202,11 @@ async function runRegisterSubmit() {
   const consents = buildConsents(cfg);
   const uid = snapshot.user.uid;
 
-  await step("Ensure users/{uid}", () =>
+  await step(TX.ensureUsers, () =>
     ensureUserDoc(uid, snapshot.email)
   );
 
-  const userSnapshot = await step("Save user profile + consents", () =>
+  const userSnapshot = await step(TX.saveUserProfileConsents, () =>
     saveUserProfileAndConsents({
       uid,
       email: needsIdentityFields() ? snapshot.email : (snapshot.user.email || null),
@@ -225,7 +226,7 @@ async function runRegisterSubmit() {
   );
 
   if (snapshot.wantsMembershipPayment) {
-    const proof = await step("Upload proof (Storage)", () =>
+    const proof = await step(TX.uploadProofStorage, () =>
       uploadProofFile({
         uid,
         file: snapshot.file,
@@ -234,7 +235,7 @@ async function runRegisterSubmit() {
 
     const season = resolveSeason(snapshot.plan);
 
-    const { membershipId } = await step("Create membership", () =>
+    const { membershipId } = await step(TX.createMembership, () =>
       createMembership({
         uid,
         userSnapshot,
@@ -244,7 +245,7 @@ async function runRegisterSubmit() {
       })
     );
 
-    await step("Maybe create installments", () =>
+    await step(TX.maybeCreateInstallments, () =>
       maybeCreateInstallments({
         membershipId,
         plan: { id: snapshot.planId, ...snapshot.plan },
@@ -252,7 +253,7 @@ async function runRegisterSubmit() {
       })
     );
 
-    await step("Create payment submission", () =>
+    await step(TX.createPaymentSubmission, () =>
       createPaymentSubmission({
         uid,
         email: snapshot.email,
@@ -267,7 +268,7 @@ async function runRegisterSubmit() {
       })
     );
 
-    await step("Sync user membership summary", () =>
+    await step(TX.syncUserMembershipSummary, () =>
       syncUserMembershipSummary({
         uid,
         membershipId,
@@ -277,7 +278,7 @@ async function runRegisterSubmit() {
     );
   }
 
-  await step("Mark onboarding complete (users/{uid})", () =>
+  await step(TX.markOnboardingCompleteUsers, () =>
     markUserOnboardingComplete({
       uid,
       email: snapshot.email || snapshot.user.email || null,
@@ -305,8 +306,8 @@ export function bindRegisterSubmit() {
     ev.preventDefault();
     hideAlert();
 
-    showLoader("Cargando…");
-    setSubmittingState(true, "Enviando...");
+    showLoader(TX.cargando);
+    setSubmittingState(true, TX.enviando);
 
     try {
       await runRegisterSubmit();
@@ -316,7 +317,7 @@ export function bindRegisterSubmit() {
       const msg =
         e instanceof Error
           ? e.message
-          : firebaseErrMsg(e) || "Ocurrió un error inesperado.";
+          : firebaseErrMsg(e) || TX.ocurrioUnErrorInesperado;
 
       showAlert(msg, "danger");
 

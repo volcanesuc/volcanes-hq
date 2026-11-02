@@ -40,6 +40,7 @@ import {
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { loadPartialOnce } from "/js/ui/loadPartial.js";
 import { APP_CONFIG } from "/js/config/config.js";
+import { TX, txf } from "/js/strings/screens/gym_editors.js";
 
 /* =========================
    Collections
@@ -114,8 +115,8 @@ function ensureExerciseModal() {
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="gymExerciseModalTitle">Ejercicio</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          <h5 class="modal-title" id="gymExerciseModalTitle">${TX.ejercicio}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="${TX.cerrar}"></button>
         </div>
 
         <form id="gymExerciseForm">
@@ -124,67 +125,67 @@ function ensureExerciseModal() {
 
             <div class="row g-3">
               <div class="col-12">
-                <label class="form-label">Nombre</label>
+                <label class="form-label">${TX.nombre}</label>
                 <input class="form-control" id="geName" required maxlength="120" />
               </div>
 
               <div class="col-12">
-                <label class="form-label">Partes del cuerpo (separadas por coma)</label>
-                <input class="form-control" id="geBodyParts" placeholder="Espalda, dorsales, bíceps" />
+                <label class="form-label">${TX.partesDelCuerpoSeparadas}</label>
+                <input class="form-control" id="geBodyParts" placeholder="${TX.espaldaDorsalesBiceps}" />
               </div>
 
               <div class="col-12 col-md-4">
-                <label class="form-label">Tipo</label>
+                <label class="form-label">${TX.tipo}</label>
                 <select class="form-select" id="geSeriesType">
-                  <option value="reps" selected>Reps</option>
-                  <option value="distance">Distancia</option>
+                  <option value="reps" selected>${TX.reps}</option>
+                  <option value="distance">${TX.distancia}</option>
                 </select>
               </div>
 
               <div class="col-12 col-md-4">
-                <label class="form-label">Sets</label>
+                <label class="form-label">${TX.sets}</label>
                 <input class="form-control" id="geSets" type="number" min="1" step="1" placeholder="4" />
               </div>
 
               <div class="col-12 col-md-4" id="geRepsWrap">
-                <label class="form-label">Reps</label>
+                <label class="form-label">${TX.reps}</label>
                 <input class="form-control" id="geReps" placeholder="6-10" />
               </div>
 
               <div class="col-12 col-md-6 d-none" id="geDistanceWrap">
-                <label class="form-label">Distancia</label>
+                <label class="form-label">${TX.distancia}</label>
                 <input class="form-control" id="geDistance" type="number" min="0" step="0.01" placeholder="2" />
               </div>
               <div class="col-12 col-md-6 d-none" id="geDistanceUnitWrap">
-                <label class="form-label">Unidad</label>
-                <input class="form-control" id="geDistanceUnit" placeholder="km / m" />
+                <label class="form-label">${TX.unidad}</label>
+                <input class="form-control" id="geDistanceUnit" placeholder="${TX.kmM}" />
               </div>
 
               <div class="col-12 col-md-4">
-                <label class="form-label">Descanso (seg)</label>
+                <label class="form-label">${TX.descansoSeg}</label>
                 <input class="form-control" id="geRest" type="number" min="0" step="1" placeholder="60" />
               </div>
 
               <div class="col-12 col-md-8">
-                <label class="form-label">Video URL</label>
+                <label class="form-label">${TX.videoUrl}</label>
                 <input class="form-control" id="geVideoUrl" placeholder="https://..." />
               </div>
 
               <div class="col-12">
-                <label class="form-label">Notas</label>
-                <textarea class="form-control" id="geNotes" rows="3" placeholder="Cues, técnica, etc."></textarea>
+                <label class="form-label">${TX.notas}</label>
+                <textarea class="form-control" id="geNotes" rows="3" placeholder="${TX.cuesTecnicaEtc}"></textarea>
               </div>
 
               <div class="col-12 form-check">
                 <input class="form-check-input" type="checkbox" id="geIsActive" checked />
-                <label class="form-check-label" for="geIsActive">Activo</label>
+                <label class="form-check-label" for="geIsActive">${TX.activo}</label>
               </div>
             </div>
           </div>
 
           <div class="modal-footer">
-            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-            <button type="submit" class="btn btn-primary" id="geSaveBtn">Guardar</button>
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">${TX.cancelar}</button>
+            <button type="submit" class="btn btn-primary" id="geSaveBtn">${TX.guardar}</button>
           </div>
         </form>
       </div>
@@ -201,8 +202,8 @@ function ensureRoutineModal() {
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="gymRoutineModalTitle">Rutina</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          <h5 class="modal-title" id="gymRoutineModalTitle">${TX.rutina}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="${TX.cerrar}"></button>
         </div>
 
         <form id="gymRoutineForm">
@@ -211,41 +212,40 @@ function ensureRoutineModal() {
 
             <div class="row g-3">
               <div class="col-12 col-lg-6">
-                <label class="form-label">Nombre</label>
+                <label class="form-label">${TX.nombre}</label>
                 <input class="form-control" id="grName" required maxlength="140" />
               </div>
               <div class="col-12 col-lg-6">
-                <label class="form-label">Descripción</label>
+                <label class="form-label">${TX.descripcion}</label>
                 <input class="form-control" id="grDescription" maxlength="200" />
               </div>
 
               <div class="col-12 d-flex gap-3 flex-wrap">
                 <div class="form-check">
                   <input class="form-check-input" type="checkbox" id="grIsPublic" />
-                  <label class="form-check-label" for="grIsPublic">Pública</label>
+                  <label class="form-check-label" for="grIsPublic">${TX.publica}</label>
                 </div>
                 <div class="form-check">
                   <input class="form-check-input" type="checkbox" id="grIsActive" checked />
-                  <label class="form-check-label" for="grIsActive">Activa</label>
+                  <label class="form-check-label" for="grIsActive">${TX.activa}</label>
                 </div>
               </div>
 
               <div class="col-12">
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                  <div class="fw-semibold">Ejercicios de la rutina</div>
-                  <button class="btn btn-sm btn-outline-primary" type="button" id="grAddItemBtn">+ Agregar ejercicio</button>
+                  <div class="fw-semibold">${TX.ejerciciosDeLaRutina}</div>
+                  <button class="btn btn-sm btn-outline-primary" type="button" id="grAddItemBtn">${TX.agregarEjercicio}</button>
                 </div>
 
                 <div class="border rounded p-2">
                   <div class="text-muted small mb-2">
-                    Seleccioná ejercicio y opcionalmente override de sets/reps/descanso/notas.
-                    Si dejás vacío, usa defaults del ejercicio.
+                    ${TX.seleccionaEjercicioYOpcionalmente}
                   </div>
 
                   <div id="grItems"></div>
 
                   <div class="text-muted small mt-2">
-                    Tip: reordená con “↑ ↓”.
+                    ${TX.tipReordenaCon}
                   </div>
                 </div>
               </div>
@@ -254,8 +254,8 @@ function ensureRoutineModal() {
           </div>
 
           <div class="modal-footer">
-            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-            <button type="submit" class="btn btn-primary" id="grSaveBtn">Guardar</button>
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">${TX.cancelar}</button>
+            <button type="submit" class="btn btn-primary" id="grSaveBtn">${TX.guardar}</button>
           </div>
         </form>
       </div>
@@ -365,9 +365,9 @@ function bindUIEvents() {
    Auth + Permissions
 ========================= */
 function requireEdit() {
-  if (!_ctx.canEdit) throw new Error("No tenés permisos para editar.");
+  if (!_ctx.canEdit) throw new Error(TX.noTenesPermisosPara);
   const uid = getAuth().currentUser?.uid;
-  if (!uid) throw new Error("Tenés que iniciar sesión para guardar.");
+  if (!uid) throw new Error(TX.tenesQueIniciarSesion);
   return uid;
 }
 
@@ -383,7 +383,7 @@ function openExerciseModal({ mode, id }) {
   else $?.exModal?.removeAttribute("data-edit-id");
 
   const titleEl = document.getElementById("gymExerciseModalTitle");
-  if (titleEl) titleEl.textContent = mode === "edit" ? "Editar ejercicio" : "Crear ejercicio";
+  if (titleEl) titleEl.textContent = mode === "edit" ? TX.editarEjercicio : TX.crearEjercicio;
 
   if (mode === "edit" && id) {
     loadExerciseToForm(id).then(() => showModal($?.exModal));
@@ -394,7 +394,7 @@ function openExerciseModal({ mode, id }) {
 
 async function loadExerciseToForm(id) {
   const snap = await getDoc(doc(_ctx.db, COL_EXERCISES, id));
-  if (!snap.exists()) throw new Error("Ejercicio no existe");
+  if (!snap.exists()) throw new Error(TX.ejercicioNoExiste);
 
   const ex = snap.data() || {};
   if ($?.geName) $.geName.value = ex.name || "";
@@ -441,7 +441,7 @@ async function onSaveExercise(ev) {
     const payload = readExercisePayload();
 
     if (!payload.name) {
-      showAlert($?.exAlert, "El nombre es requerido.", "warning");
+      showAlert($?.exAlert, TX.elNombreEsRequerido, "warning");
       return;
     }
 
@@ -467,7 +467,7 @@ async function onSaveExercise(ev) {
     window.dispatchEvent(new Event("gym:exercisesChanged"));
   } catch (e) {
     console.error("SAVE EXERCISE ERROR:", e);
-    showAlert($?.exAlert, e?.message || "Error guardando ejercicio.", "danger");
+    showAlert($?.exAlert, e?.message || TX.errorGuardandoEjercicio, "danger");
   }
 }
 
@@ -517,7 +517,7 @@ async function openRoutineModal({ mode, id }) {
   else $?.rtModal?.removeAttribute("data-edit-id");
 
   const titleEl = document.getElementById("gymRoutineModalTitle");
-  if (titleEl) titleEl.textContent = mode === "edit" ? "Editar rutina" : "Crear rutina";
+  if (titleEl) titleEl.textContent = mode === "edit" ? TX.editarRutina : TX.crearRutina;
 
   if (mode === "edit" && id) {
     await loadRoutineToForm(id);
@@ -537,7 +537,7 @@ function resetRoutineForm() {
 
 async function loadRoutineToForm(id) {
   const snap = await getDoc(doc(_ctx.db, COL_ROUTINES, id));
-  if (!snap.exists()) throw new Error("Rutina no existe");
+  if (!snap.exists()) throw new Error(TX.rutinaNoExiste);
   const r = snap.data() || {};
 
   if ($?.grName) $.grName.value = r.name || "";
@@ -571,37 +571,37 @@ function addRoutineItemRow(existing) {
         <div class="d-flex gap-2">
           <button class="btn btn-sm btn-outline-secondary" type="button" data-ri-up>↑</button>
           <button class="btn btn-sm btn-outline-secondary" type="button" data-ri-down>↓</button>
-          <button class="btn btn-sm btn-outline-danger" type="button" data-ri-del>Quitar</button>
+          <button class="btn btn-sm btn-outline-danger" type="button" data-ri-del>${TX.quitar}</button>
         </div>
       </div>
 
       <div class="row g-2">
         <div class="col-12 col-lg-5">
-          <label class="form-label small text-muted mb-1">Ejercicio</label>
+          <label class="form-label small text-muted mb-1">${TX.ejercicio}</label>
           <select class="form-select form-select-sm" data-ri-ex required>
-            <option value="">— Seleccioná —</option>
+            <option value="">${TX.selecciona}</option>
             ${exerciseOptions}
           </select>
         </div>
 
         <div class="col-6 col-lg-2">
-          <label class="form-label small text-muted mb-1">Sets</label>
-          <input class="form-control form-control-sm" data-ri-sets type="number" min="1" step="1" placeholder="(default)">
+          <label class="form-label small text-muted mb-1">${TX.sets}</label>
+          <input class="form-control form-control-sm" data-ri-sets type="number" min="1" step="1" placeholder="${TX.default}">
         </div>
 
         <div class="col-6 col-lg-2">
-          <label class="form-label small text-muted mb-1">Reps</label>
-          <input class="form-control form-control-sm" data-ri-reps placeholder="(default)">
+          <label class="form-label small text-muted mb-1">${TX.reps}</label>
+          <input class="form-control form-control-sm" data-ri-reps placeholder="${TX.default}">
         </div>
 
         <div class="col-6 col-lg-3">
-          <label class="form-label small text-muted mb-1">Descanso (s)</label>
-          <input class="form-control form-control-sm" data-ri-rest type="number" min="0" step="1" placeholder="(default)">
+          <label class="form-label small text-muted mb-1">${TX.descansoS}</label>
+          <input class="form-control form-control-sm" data-ri-rest type="number" min="0" step="1" placeholder="${TX.default}">
         </div>
 
         <div class="col-12">
-          <label class="form-label small text-muted mb-1">Notas (override)</label>
-          <input class="form-control form-control-sm" data-ri-notes placeholder="(default)">
+          <label class="form-label small text-muted mb-1">${TX.notasOverride}</label>
+          <input class="form-control form-control-sm" data-ri-notes placeholder="${TX.default}">
         </div>
       </div>
     </div>
@@ -625,24 +625,24 @@ function addRoutineItemRow(existing) {
     // Solo llenamos si está vacío, a menos que force=true
     if (setsEl && (force || !trim(setsEl.value))) {
       setsEl.value = ex.sets ?? "";
-      setsEl.placeholder = ex.sets ? String(ex.sets) : "(default)";
+      setsEl.placeholder = ex.sets ? String(ex.sets) : TX.default;
     }
 
     if (repsEl && (force || !trim(repsEl.value))) {
       repsEl.value = ex.reps ?? "";
-      repsEl.placeholder = ex.reps ? String(ex.reps) : "(default)";
+      repsEl.placeholder = ex.reps ? String(ex.reps) : TX.default;
     }
 
     if (restEl && (force || !trim(restEl.value))) {
       restEl.value = ex.restSec ?? "";
       restEl.placeholder = (ex.restSec !== null && ex.restSec !== undefined)
         ? String(ex.restSec)
-        : "(default)";
+        : TX.default;
     }
 
     if (notesEl && (force || !trim(notesEl.value))) {
       notesEl.value = ex.notes ?? "";
-      notesEl.placeholder = ex.notes ? String(ex.notes) : "(default)";
+      notesEl.placeholder = ex.notes ? String(ex.notes) : TX.default;
     }
   }
 
@@ -705,11 +705,11 @@ async function onSaveRoutine(ev) {
     const payload = readRoutinePayload();
 
     if (!payload.name) {
-      showAlert($?.rtAlert, "El nombre es requerido.", "warning");
+      showAlert($?.rtAlert, TX.elNombreEsRequerido, "warning");
       return;
     }
     if (!payload.exerciseItems.length) {
-      showAlert($?.rtAlert, "Agregá al menos 1 ejercicio.", "warning");
+      showAlert($?.rtAlert, TX.agregaAlMenos1, "warning");
       return;
     }
 
@@ -735,7 +735,7 @@ async function onSaveRoutine(ev) {
     window.dispatchEvent(new Event("gym:routinesChanged"));
   } catch (e) {
     console.error("SAVE ROUTINE ERROR:", e);
-    showAlert($?.rtAlert, e?.message || "Error guardando rutina.", "danger");
+    showAlert($?.rtAlert, e?.message || TX.errorGuardandoRutina, "danger");
   }
 }
 
@@ -802,7 +802,7 @@ async function openWeekModal({ mode, id }) {
   if (mode === "edit" && id) $?.wkModal?.setAttribute("data-edit-id", id);
   else $?.wkModal?.removeAttribute("data-edit-id");
 
-  if ($?.wkTitle) $.wkTitle.textContent = mode === "edit" ? "Editar plan" : "Crear plan";
+  if ($?.wkTitle) $.wkTitle.textContent = mode === "edit" ? TX.editarPlan : TX.crearPlan;
 
   if (mode === "edit" && id) {
     await loadPlanToForm(id);
@@ -819,13 +819,13 @@ function fillPlanRoutineSelect() {
     .join("");
 
   if (!_routinesCache.length) {
-    $.gwSlotRoutineSelect.innerHTML = `<option value="">(No hay rutinas)</option>`;
+    $.gwSlotRoutineSelect.innerHTML = `<option value="">${TX.noHayRutinas}</option>`;
   }
 }
 
 async function loadPlanToForm(id) {
   const snap = await getDoc(doc(_ctx.db, COL_PLANS, id));
-  if (!snap.exists()) throw new Error("Plan no existe");
+  if (!snap.exists()) throw new Error(TX.planNoExiste);
   const p = snap.data() || {};
 
   if ($?.gwName) $.gwName.value = p.title || p.name || "";
@@ -845,8 +845,8 @@ function onAddPlanSlot() {
   const label = trim($?.gwSlotLabel?.value);
   const routineId = trim($?.gwSlotRoutineSelect?.value);
 
-  if (!label) return showAlert($?.wkAlert, "Poné una etiqueta (ej: Lunes AM).", "warning");
-  if (!routineId) return showAlert($?.wkAlert, "Elegí una rutina.", "warning");
+  if (!label) return showAlert($?.wkAlert, TX.poneUnaEtiquetaEj, "warning");
+  if (!routineId) return showAlert($?.wkAlert, TX.elegiUnaRutina, "warning");
 
   _planSlots.push({ order: _planSlots.length + 1, label, routineId });
   if ($?.gwSlotLabel) $.gwSlotLabel.value = "";
@@ -861,7 +861,7 @@ function renderPlanSlots() {
   tbody.innerHTML = "";
 
   if (!_planSlots.length) {
-    tbody.innerHTML = `<tr><td colspan="4" class="text-muted small">Sin slots todavía.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" class="text-muted small">${TX.sinSlotsTodavia}</td></tr>`;
     return;
   }
 
@@ -877,7 +877,7 @@ function renderPlanSlots() {
       <td class="text-end">
         <button class="btn btn-sm btn-outline-secondary" type="button" data-ps-up="${escapeHtml(s.order)}">↑</button>
         <button class="btn btn-sm btn-outline-secondary" type="button" data-ps-down="${escapeHtml(s.order)}">↓</button>
-        <button class="btn btn-sm btn-outline-danger" type="button" data-ps-del="${escapeHtml(s.order)}">Quitar</button>
+        <button class="btn btn-sm btn-outline-danger" type="button" data-ps-del="${escapeHtml(s.order)}">${TX.quitar}</button>
       </td>
     `;
     tbody.appendChild(tr);
@@ -939,7 +939,7 @@ async function onSaveWeekPlan() {
 
     const monthKey = trim($?.gwMonth?.value); // YYYY-MM
     if (!monthKey) {
-      showAlert($?.wkAlert, "Elegí el mes del plan.", "warning");
+      showAlert($?.wkAlert, TX.elegiElMesDel, "warning");
       return;
     }
 
@@ -952,7 +952,7 @@ async function onSaveWeekPlan() {
     const endDate = toStringOrNull($?.gwEndDate?.value);
 
     if (!_planSlots.length) {
-      showAlert($?.wkAlert, "Agregá al menos 1 slot (ej: Lunes AM).", "warning");
+      showAlert($?.wkAlert, TX.agregaAlMenos12, "warning");
       return;
     }
 
@@ -995,18 +995,18 @@ async function onSaveWeekPlan() {
     window.dispatchEvent(new Event("gym:weeksChanged"));
   } catch (e) {
     console.error("SAVE PLAN ERROR:", e);
-    showAlert($?.wkAlert, e?.message || "Error guardando plan.", "danger");
+    showAlert($?.wkAlert, e?.message || TX.errorGuardandoPlan, "danger");
   }
 }
 
 function autoPlanTitle(monthKey) {
   const [y, m] = (monthKey || "").split("-");
   const months = {
-    "01":"Enero","02":"Febrero","03":"Marzo","04":"Abril","05":"Mayo","06":"Junio",
-    "07":"Julio","08":"Agosto","09":"Septiembre","10":"Octubre","11":"Noviembre","12":"Diciembre"
+    "01":TX.enero,"02":TX.febrero,"03":TX.marzo,"04":TX.abril,"05":TX.mayo,"06":TX.junio,
+    "07":TX.julio,"08":TX.agosto,"09":TX.septiembre,"10":TX.octubre,"11":TX.noviembre,"12":TX.diciembre
   };
-  const mm = months[m] || `Mes ${m || ""}`.trim();
-  return `Plan de Gimnasio – ${mm} ${y || ""}`.trim();
+  const mm = months[m] || txf(TX.mes, { value: m || "" }).trim();
+  return txf(TX.planDeGimnasio, { mm, value: y || "" }).trim();
 }
 
 /* =========================

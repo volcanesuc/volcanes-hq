@@ -10,6 +10,7 @@ import {
   query,
   orderBy,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { TX, txf } from "/js/strings/screens/assoc_members_list.js";
 
 const COL = APP_CONFIG.collections;
 const COL_USERS = COL.users;
@@ -33,9 +34,9 @@ function badge(text, cls = "") {
 function typeLabel(t) {
   const map = {
     player: "Jugador/a",
-    supporter: "Supporter",
+    supporter: TX.supporter,
     parent: "Encargado/a",
-    other: "Otro",
+    other: TX.otro,
   };
   return map[t] || "—";
 }
@@ -189,10 +190,10 @@ function membershipBadge(key, currentMembership) {
   const prog = progressText(currentMembership);
   const suffix = prog ? ` • ${prog}` : "";
 
-  if (key === "up_to_date") return badge(`Al día${suffix}`, "green");
+  if (key === "up_to_date") return badge(txf(TX.alDia, { suffix }), "green");
   if (key === "validating") return badge(`Validando${suffix}`, "yellow");
   if (key === "overdue") return badge(`Vencido${suffix}`, "red");
-  if (key === "inactive") return badge("Inactivo", "gray");
+  if (key === "inactive") return badge(TX.inactivo, "gray");
   return badge(`Pendiente${suffix}`, "orange");
 }
 
@@ -219,7 +220,7 @@ function renderShell(container) {
   container.innerHTML = `
     <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-2">
       <div>
-        <div class="text-muted small">Listado de miembros con filtros y acceso a edición.</div>
+        <div class="text-muted small">${TX.listadoDeMiembrosCon}</div>
       </div>
       <div class="d-flex gap-2">
         <button
@@ -227,44 +228,44 @@ function renderShell(container) {
           class="btn btn-outline-secondary btn-sm"
           type="button"
           disabled
-          title="Crear miembros manualmente está deshabilitado por ahora"
+          title="${TX.crearMiembrosManualmenteEsta}"
         >
-          <i class="bi bi-plus-lg me-1"></i> Nuevo
+          <i class="bi bi-plus-lg me-1"></i> ${TX.nuevo}
         </button>
 
         <button id="btnRefresh" class="btn btn-outline-secondary btn-sm" type="button">
-          <i class="bi bi-arrow-clockwise me-1"></i> Actualizar
+          <i class="bi bi-arrow-clockwise me-1"></i> ${TX.actualizar}
         </button>
       </div>
     </div>
 
     <div class="row g-2 align-items-end mb-3">
       <div class="col-12 col-md-4">
-        <label class="form-label mb-1">Buscar</label>
-        <input id="searchInput" class="form-control" placeholder="Nombre, email o teléfono…" />
+        <label class="form-label mb-1">${TX.buscar}</label>
+        <input id="searchInput" class="form-control" placeholder="${TX.nombreEmailOTelefono}" />
       </div>
 
       <div class="col-6 col-md-2">
-        <label class="form-label mb-1">Tipo</label>
+        <label class="form-label mb-1">${TX.tipo}</label>
         <select id="typeFilter" class="form-select">
-          <option value="all" selected>Todos</option>
+          <option value="all" selected>${TX.todos}</option>
           <option value="player">Jugador/a</option>
-          <option value="supporter">Supporter</option>
+          <option value="supporter">${TX.supporter}</option>
           <option value="parent">Encargado/a</option>
-          <option value="other">Otro</option>
+          <option value="other">${TX.otro}</option>
         </select>
       </div>
 
       <div class="col-6 col-md-3">
-        <label class="form-label mb-1">Asociación</label>
+        <label class="form-label mb-1">${TX.asociacion}</label>
         <select id="associationFilter" class="form-select">
-          <option value="all" selected>Todos</option>
-          <option value="up_to_date">Al día</option>
-          <option value="moroso">Morosos</option>
-          <option value="pending">Pendiente</option>
-          <option value="validating">Validando</option>
-          <option value="overdue">Vencido</option>
-          <option value="inactive">Inactivo</option>
+          <option value="all" selected>${TX.todos}</option>
+          <option value="up_to_date">${TX.alDia2}</option>
+          <option value="moroso">${TX.morosos}</option>
+          <option value="pending">${TX.pendiente}</option>
+          <option value="validating">${TX.validando}</option>
+          <option value="overdue">${TX.vencido}</option>
+          <option value="inactive">${TX.inactivo}</option>
         </select>
       </div>
 
@@ -280,17 +281,17 @@ function renderShell(container) {
           <table class="table align-middle mb-0">
             <thead>
               <tr>
-                <th>Miembro</th>
-                <th>Contacto</th>
-                <th>Tipo</th>
-                <th>Inicio</th>
-                <th>Fin</th>
-                <th>Estado</th>
-                <th class="text-end">Acciones</th>
+                <th>${TX.miembro}</th>
+                <th>${TX.contacto}</th>
+                <th>${TX.tipo}</th>
+                <th>${TX.inicio}</th>
+                <th>${TX.fin}</th>
+                <th>${TX.estado}</th>
+                <th class="text-end">${TX.acciones}</th>
               </tr>
             </thead>
             <tbody id="associatesTbody">
-              <tr><td colspan="7" class="text-muted">Cargando…</td></tr>
+              <tr><td colspan="7" class="text-muted">${TX.cargando}</td></tr>
             </tbody>
           </table>
         </div>
@@ -303,7 +304,7 @@ function renderShell(container) {
    Data
 ========================= */
 async function loadAssociates() {
-  showLoader?.("Cargando Miembros…");
+  showLoader?.(TX.cargandoMiembros);
   try {
     const q = query(collection(db, COL_USERS), orderBy("displayName", "asc"));
     const snap = await getDocs(q);
@@ -334,7 +335,7 @@ async function loadAssociates() {
     if ($.tbody) {
       $.tbody.innerHTML = `
         <tr><td colspan="7" class="text-danger">
-          Error cargando miembros: ${String(err?.message || err)}
+          ${txf(TX.errorCargandoMiembros, { err: String(err?.message || err) })}
         </td></tr>
       `;
     }
@@ -383,14 +384,14 @@ function render() {
   $.countLabel.textContent = `${list.length}`;
 
   if (!list.length) {
-    $.tbody.innerHTML = `<tr><td colspan="7" class="text-muted">No hay miembros con esos filtros.</td></tr>`;
+    $.tbody.innerHTML = `<tr><td colspan="7" class="text-muted">${TX.noHayMiembrosCon}</td></tr>`;
     return;
   }
 
   const waMsgFor = (payLink) =>
     payLink
-      ? `Hola! Recordatorio de pago a la asociación usando el siguiente link ${payLink}`
-      : `Hola! Recordatorio de pago a la asociación.`;
+      ? txf(TX.holaRecordatorioDePago, { payLink })
+      : TX.holaRecordatorioDePago2;
 
   $.tbody.innerHTML = list
     .map((u) => {
@@ -411,9 +412,9 @@ function render() {
       const phoneHtml = phoneVal
         ? (() => {
             const telHref = `tel:${String(phoneVal).replace(/\s+/g, "")}`;
-            const waQuick = whatsappLink(phoneVal, "Hola!");
+            const waQuick = whatsappLink(phoneVal, TX.hola);
             const waBtn = waQuick
-              ? `<a class="ms-2 small text-decoration-none" href="${waQuick}" target="_blank" rel="noreferrer" title="WhatsApp">
+              ? `<a class="ms-2 small text-decoration-none" href="${waQuick}" target="_blank" rel="noreferrer" title="${TX.whatsapp}">
                    <i class="bi bi-whatsapp"></i>
                  </a>`
               : "";
@@ -434,8 +435,8 @@ function render() {
 
       const waActionBtn =
         u._isMoroso && waHref
-          ? `<a class="btn btn-sm btn-outline-success" href="${waHref}" target="_blank" rel="noreferrer" title="Enviar WhatsApp">
-               <i class="bi bi-whatsapp me-1"></i> WhatsApp
+          ? `<a class="btn btn-sm btn-outline-success" href="${waHref}" target="_blank" rel="noreferrer" title="${TX.enviarWhatsapp}">
+               <i class="bi bi-whatsapp me-1"></i> ${TX.whatsapp}
              </a>`
           : "";
 
@@ -443,7 +444,7 @@ function render() {
         <tr>
           <td>
             <div class="fw-bold">${fullName || "—"}</div>
-            ${idNumber ? `<div class="text-muted small">Cédula: ${idNumber}</div>` : ""}
+            ${idNumber ? `<div class="text-muted small">${txf(TX.cedula, { idNumber })}</div>` : ""}
           </td>
 
           <td>${contactoHtml}</td>
@@ -456,7 +457,7 @@ function render() {
             <div class="d-inline-flex gap-2">
               ${waActionBtn}
               <button class="btn btn-sm btn-outline-primary btnEdit" data-id="${u.id}" type="button">
-                <i class="bi bi-pencil me-1"></i> Editar
+                <i class="bi bi-pencil me-1"></i> ${TX.editar}
               </button>
             </div>
           </td>

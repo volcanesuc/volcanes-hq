@@ -15,7 +15,7 @@
             type="button"
             class="btn-close btn-close-white"
             data-bs-dismiss="modal"
-            aria-label="Cerrar"
+            aria-label="Cerrar" data-tx-aria-label="html_tournament_editor.cerrar"
           ></button>
         </div>
 
@@ -61,23 +61,23 @@
                 </div>
 
                 <div class="col-md-6">
-                  <label class="form-label" for="officialUrl">Sitio oficial del torneo</label>
+                  <label class="form-label" for="officialUrl" data-tx="html_tournament_editor.sitioOficialDelTorneo">Sitio oficial del torneo</label>
                   <input
                     id="officialUrl"
                     type="url"
                     class="form-control"
                     placeholder="https://ejemplo.com"
                   />
-                  <div class="form-text">
+                  <div class="form-text" data-tx="html_tournament_editor.linkAlTorneoEn">
                     Link al torneo en Ultiworld, WFDF, Instagram o web oficial
                   </div>
                 </div>
 
                 <div class="col-md-3">
-                  <label id="lblFeeCurrency" class="form-label">Moneda</label>
+                  <label id="lblFeeCurrency" class="form-label" data-tx="html_tournament_editor.moneda">Moneda</label>
                   <select id="feeCurrency" class="form-select">
-                    <option value="CRC">Colones (₡)</option>
-                    <option value="USD">Dólares ($)</option>
+                    <option value="CRC" data-tx="html_tournament_editor.colones">Colones (₡)</option>
+                    <option value="USD" data-tx="html_tournament_editor.dolares">Dólares ($)</option>
                   </select>
                 </div>
 
@@ -114,7 +114,7 @@
             <button
               type="button"
               id="deleteTournamentBtn"
-              class="btn btn-outline-danger"
+              class="btn btn-outline-danger" data-tx="html_tournament_editor.eliminar"
             >
               Eliminar
             </button>
@@ -125,14 +125,14 @@
               type="button"
               id="btnCancel"
               class="btn btn-outline-secondary"
-              data-bs-dismiss="modal"
+              data-bs-dismiss="modal" data-tx="html_tournament_editor.cancelar"
             >
               Cancelar
             </button>
             <button
               type="submit"
               id="btnSave"
-              class="btn btn-primary"
+              class="btn btn-primary" data-tx="html_tournament_editor.guardar"
             >
               Guardar
             </button>

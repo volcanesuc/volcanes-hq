@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Plan de Entrenamiento</title>
+  <title data-tx="html_training_plan.planDeEntrenamiento">Plan de Entrenamiento</title>
   
   <script>document.documentElement.classList.add("preload");</script>
   <style>
@@ -25,11 +25,11 @@
     <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
       <div>
         <h1 class="page-title mb-1" id="tvTitle">—</h1>
-        <div class="text-muted" id="tvSubtitle">Plan de Entrenamiento</div>
+        <div class="text-muted" id="tvSubtitle" data-tx="html_training_plan.planDeEntrenamiento">Plan de Entrenamiento</div>
       </div>
 
       <div class="d-flex justify-content-end gap-2 mb-3">
-        <button class="btn btn-primary btn-sm" id="tvShareBtn" type="button">Compartir</button>
+        <button class="btn btn-primary btn-sm" id="tvShareBtn" type="button" data-tx="html_training_plan.compartir">Compartir</button>
       </div>
     </div>
 
@@ -39,20 +39,20 @@
       <div class="card-body">
         <div class="row g-2">
           <div class="col-12 col-md-6">
-            <div class="small text-muted">Estado</div>
+            <div class="small text-muted" data-tx="html_training_plan.estado">Estado</div>
             <div class="fw-semibold" id="tvPublicState">—</div>
           </div>
           <div class="col-12">
-            <div class="small text-muted">Resumen</div>
+            <div class="small text-muted" data-tx="html_training_plan.resumen">Resumen</div>
             <div class="text-muted" id="tvNotes">—</div>
           </div>
         </div>
       </div>
     </div>
 
-    <h2 class="h5 mb-2">Drills del plan de entrenamiento</h2>
+    <h2 class="h5 mb-2" data-tx="html_training_plan.drillsDelPlanDe">Drills del plan de entrenamiento</h2>
     <div class="row g-3" id="tvDrills"></div>
-    <div class="text-muted small mt-2 d-none" id="tvEmpty">No hay drills en este plan de entrenamiento.</div>
+    <div class="text-muted small mt-2 d-none" id="tvEmpty" data-tx="html_training_plan.noHayDrillsEn">No hay drills en este plan de entrenamiento.</div>
   </main>
   
   <script type="module" src="/js/public/training_plan_view.js"></script>

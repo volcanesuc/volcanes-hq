@@ -2,6 +2,7 @@ import { db } from "./auth/firebase.js";
 import { collection, addDoc, serverTimestamp } from
   "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { APP_CONFIG } from "./config/config.js";
+import { TX } from "/js/strings/screens/register_player.js";
 
 const COL = APP_CONFIG.collections;
 const CLUB_PLAYERS_COL = COL.club_players;
@@ -64,7 +65,7 @@ async function savePlayer() {
   const number = numberRaw === "" ? null : Number(numberRaw);
 
   if (!rawName || number == null || Number.isNaN(number)) {
-    showMessage("❌ Nombre y número son obligatorios", "danger");
+    showMessage(TX.nombreYNumeroSon, "danger");
     return;
   }
 
@@ -95,7 +96,7 @@ async function savePlayer() {
   try {
     await addDoc(collection(db, CLUB_PLAYERS_COL), player);
 
-    showMessage("Jugador guardado ✅", "success");
+    showMessage(TX.jugadorGuardado, "success");
 
     ["playerName", "playerNumber", "birthday", "playerRole", "playerGender"].forEach((id) => {
       const el = document.getElementById(id);
@@ -103,7 +104,7 @@ async function savePlayer() {
     });
   } catch (err) {
     console.error(err);
-    showMessage("Error guardando jugador ❌", "danger");
+    showMessage(TX.errorGuardandoJugador, "danger");
   }
 }
 

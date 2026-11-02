@@ -1,0 +1,24 @@
+// /js/strings/screens/dashboard.js
+// Textos de dashboard.js (editables en Ajustes > Textos).
+import { defineStrings, fmt } from "/js/core/texts.js";
+
+export const TX = defineStrings("dashboard", "Dashboard", {
+  cargando: "Cargando…",
+  noSePudoCargar: "No se pudo cargar",
+  sinAccesoATorneos: "Sin acceso a torneos",
+  sinTorneosProximos: "Sin torneos próximos",
+  torneo: "Torneo",
+  noHayCumpleanerosEste: "No hay cumpleañeros este mes",
+  noHayEntrenamientosRegistrados: "No hay entrenamientos registrados en los últimos 30 días.",
+  jugadoresActivosNoEntrenaron: "{inactive30Count} jugadores activos no entrenaron en los últimos 30 días.",
+  jugadoresActivosEntrenaron1: "{lowParticipationCount} jugadores activos entrenaron 1 vez o menos en los últimos 30 días.",
+  bajaParticipacionSoloDel: "Baja participación: solo {pctActiveInLast}% del roster activo asistió al último entreno ({date}).",
+  asistenciaCayoUltimoEntreno: "Asistencia cayó: último entreno ({lastAtt}) está {n}% por debajo del promedio 30 días ({avgAtt}).",
+  pocosHandlersHuboHandlers: "Pocos handlers: {date} hubo {handlerCount} handlers (mín recomendado {minHandlers}).",
+  desbalanceDeGeneroEn: "Desbalance de género en el último entreno ({date}): {M} H vs {F} M.",
+  entrenosEnLosUltimos: "{incompleteCount} entrenos en los últimos 30 días tienen asistencia vacía o no registrada.",
+  sinEntrenar30Dias: "Sin entrenar (30 días): {topAbsents}{value}",
+  todoEnOrden: "Todo en orden",
+});
+
+export const txf = fmt;

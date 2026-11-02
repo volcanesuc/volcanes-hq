@@ -8,6 +8,7 @@ import {
   setDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { TX } from "/js/strings/screens/role_routing.js";
 
 const COL = APP_CONFIG.collections;
 const USERS_COL = COL.users;
@@ -64,7 +65,7 @@ function goTo(url) {
 
 async function ensureUserDoc(firebaseUser) {
   const uid = firebaseUser?.uid;
-  if (!uid) throw new Error("No hay firebaseUser.uid");
+  if (!uid) throw new Error(TX.noHayFirebaseuserUid);
 
   const ref = doc(db, USERS_COL, uid);
   const snap = await getDoc(ref);

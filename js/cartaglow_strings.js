@@ -1,4 +1,6 @@
-export const CARTAGLOW_DATA = {
+import { defineStrings } from "/js/core/texts.js";
+
+export const CARTAGLOW_DATA = defineStrings("cartaglow", "Cartaglow (torneo)", {
   meta: {
     title: "Cartaglow",
     ogImage: "img/cartaglow/logo-cartaglow-dark.png"
@@ -133,4 +135,4 @@ export const CARTAGLOW_DATA = {
   footer: {
     text: "Cartaglow • Volcanes Ultimate"
   }
-};
+}, { skip: ["image", "images", "ogImage", "csvUrl"] });
