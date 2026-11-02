@@ -18,6 +18,7 @@ import { loadHeader } from "./components/header.js";
 import { showLoader, hideLoader, updateLoaderMessage } from "./ui/loader.js";
 import { loadPartialOnce } from "/js/ui/loadPartial.js";
 import { TX, txf } from "/js/strings/screens/trainings_history.js";
+import { syncTrainingPublic } from "/js/features/calendar/public_events.js";
 
 /* =========================
    CONFIG
@@ -1021,11 +1022,13 @@ async function saveTraining() {
   try {
     if (currentTrainingId) {
       await updateDoc(doc(db, COL_TRAININGS, currentTrainingId), payload);
+      await syncTrainingPublic(currentTrainingId, payload);
     } else {
-      await addDoc(collection(db, COL_TRAININGS), {
+      const ref = await addDoc(collection(db, COL_TRAININGS), {
         ...payload,
         createdAt: serverTimestamp(),
       });
+      await syncTrainingPublic(ref.id, payload);
     }
 
     bootstrap.Modal.getOrCreateInstance($.modal).hide();

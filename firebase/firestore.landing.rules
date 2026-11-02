@@ -5,6 +5,15 @@
    (club_config/landing y club_config/theme ya están cubiertos por tu regla
    "match /club_config/{docId}": lectura pública, escritura canEditClub()).
 ========================================================= */
+/* =========================================================
+   CALENDARIO DEL INICIO: copia pública de torneos y entrenamientos
+   (solo nombre, fecha, lugar, hora y link; sin fees ni asistencia)
+========================================================= */
+match /public_events/{eventId} {
+  allow read: if true;
+  allow write: if canEditClub();
+}
+
 match /landing_photos/{photoId} {
   // públicas solo las aprobadas; el que subió ve las suyas; admins ven todo
   allow read: if resource.data.status == "approved"

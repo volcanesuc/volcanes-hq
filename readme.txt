@@ -81,7 +81,10 @@ Landing (inicio) v2
   y clubs/{clubId}/landing/ ahora solo lo suben admins).
 - Galería: los usuarios con cuenta suben fotos desde el Dashboard ("Galería del club");
   quedan pendientes hasta que un admin las apruebe en Admin > Landing settings > Galería.
-- Calendario del inicio: pickups publicados + torneos. Si las reglas de "tournaments" no permiten
-  leer sin sesión, el inicio muestra solo pickups (un torneo con showOnLanding: false no se muestra).
+- Calendario del inicio: pickups publicados + public_events (copia pública de torneos y entrenamientos,
+  sin fees ni asistencia). Se actualiza sola al guardar un torneo o entrenamiento.
+  Primera vez: pegar las reglas de firebase/firestore.landing.rules (public_events) y tocar
+  Admin > Landing settings > Próximos eventos > "Sincronizar torneos y entrenamientos".
+  Un torneo con showOnLanding: false no se publica.
 - El landing guarda una copia en el navegador y la muestra al instante; después actualiza desde Firebase.
 - Vista previa al compartir (WhatsApp/Facebook): copiar las etiquetas de Admin > SEO dentro del <head> de index.html.

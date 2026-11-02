@@ -101,6 +101,9 @@ export const LA = defineStrings("landingAdmin", "Admin: secciones del landing", 
 
   calendarCard: "Próximos eventos (calendario)",
   calendarHint: "Muestra entrenamientos, pickups publicados y torneos.",
+  syncEvents: "Sincronizar torneos y entrenamientos",
+  syncHint: "El inicio muestra una copia pública (sin fees ni asistencia) que se actualiza sola al guardar. Usá este botón la primera vez o si algo no aparece.",
+  syncDone: "Listo: {n} eventos publicados.",
   calendarCtaTextLabel: "Texto del botón de pickups (al lado)",
   calendarCtaButtonLabel: "Botón a la página de pickups (\"-\" lo oculta)",
 

@@ -14,6 +14,7 @@ import { APP_CONFIG } from "../config/config.js";
 import { showLoader, hideLoader } from "../ui/loader.js";
 import { TOURNAMENT_STRINGS } from "../strings.js";
 import { TX, txf } from "/js/strings/screens/tournament_editor.js";
+import { removeTournamentPublic, syncTournamentPublic } from "/js/features/calendar/public_events.js";
 
 const S = TOURNAMENT_STRINGS;
 const COL = APP_CONFIG.collections;
@@ -176,11 +177,13 @@ export function createTournamentEditor() {
         await setDoc(doc(db, TOURNAMENTS_COL, f.id.value), payload, {
           merge: true
         });
+        await syncTournamentPublic(f.id.value, payload);
       } else {
-        await addDoc(collection(db, TOURNAMENTS_COL), {
+        const ref = await addDoc(collection(db, TOURNAMENTS_COL), {
           ...payload,
           createdAt: serverTimestamp()
         });
+        await syncTournamentPublic(ref.id, payload);
       }
 
       modal?.hide();
@@ -211,6 +214,7 @@ export function createTournamentEditor() {
     showLoader();
     try {
       await deleteDoc(doc(db, TOURNAMENTS_COL, id));
+      await removeTournamentPublic(id);
       modal?.hide();
 
       window.dispatchEvent(

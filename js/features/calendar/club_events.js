@@ -8,6 +8,7 @@ import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/f
 import { loadPickupSettings } from "/js/features/pickups/pickups_settings.js";
 import { calendarOptions, loadUpcomingPickupEvents } from "/js/features/pickups/pickups_events.js";
 import { CX } from "/js/strings/screens/club_events.js";
+import { loadPublicEvents } from "/js/features/calendar/public_events.js";
 
 const COL = APP_CONFIG.collections;
 
@@ -82,12 +83,14 @@ const readAll = (col) => getDocs(collection(db, col)).then((s) => s.docs.map((d)
  *   tournamentHref?: (t) => string,
  *   tournamentMeta?: (t) => string,
  *   tournamentBadge?: (t) => string,
- *   publicLanding?: boolean, // en el inicio se respeta showOnLanding de cada torneo
+ *   publicLanding?: boolean, // inicio: torneos y entrenamientos salen de public_events (lectura pública)
  * }} opts
  */
 export async function loadClubCalendarEvents(opts = {}) {
   await loadPickupSettings();
   const base = calendarOptions();
+
+  if (opts.publicLanding) return loadPublicCalendar(base, opts);
 
   const [pickups, tournamentsList, trainingsList] = await Promise.all([
     safe(loadUpcomingPickupEvents({ withSpots: false })),
@@ -95,8 +98,7 @@ export async function loadClubCalendarEvents(opts = {}) {
     opts.trainings ? Promise.resolve(opts.trainings) : safe(readAll(COL.trainings)),
   ]);
 
-  let tournaments = tournamentsList || [];
-  if (opts.publicLanding) tournaments = tournaments.filter((t) => t.showOnLanding !== false);
+  const tournaments = tournamentsList || [];
 
   const events = [
     ...(pickups || []).map((e) => ({ ...e, kindLabel: CX.kindPickup })),
@@ -104,12 +106,39 @@ export async function loadClubCalendarEvents(opts = {}) {
     ...trainingEvents(trainingsList || [], { href: opts.trainingHref || "" }),
   ];
 
+  return { base, events, legend: legendFor(events) };
+}
+
+// Inicio: pickups + public_events (sin fees ni asistencia)
+async function loadPublicCalendar(base, opts) {
+  const [pickups, published] = await Promise.all([
+    safe(loadUpcomingPickupEvents({ withSpots: false })),
+    safe(loadPublicEvents()),
+  ]);
+
+  const events = [
+    ...(pickups || []).map((e) => ({ ...e, kindLabel: CX.kindPickup })),
+    ...(published || []).map((p) => ({
+      id: p.id,
+      kind: p.kind === "training" ? "training" : "tournament",
+      kindLabel: p.kind === "training" ? CX.kindTraining : CX.kindTournament,
+      startDay: p.startDay,
+      endDay: p.endDay || p.startDay,
+      sortKey: p.time || "",
+      title: p.title || (p.kind === "training" ? CX.training : CX.tournament),
+      meta: [p.time, p.location].filter(Boolean).join(" · "),
+      href: p.kind === "tournament" && opts.tournamentHref ? opts.tournamentHref({ officialUrl: p.url }) : (p.kind === "training" ? opts.trainingHref || "" : ""),
+    })),
+  ].filter((e) => e.startDay);
+
+  return { base, events, legend: legendFor(events) };
+}
+
+function legendFor(events) {
   const kinds = new Set(events.map((e) => e.kind));
-  const legend = [
+  return [
     { kind: "training", label: CX.kindTraining },
     { kind: "pickup", label: CX.kindPickup },
     { kind: "tournament", label: CX.kindTournament },
   ].filter((l) => kinds.has(l.kind));
-
-  return { base, events, legend };
 }

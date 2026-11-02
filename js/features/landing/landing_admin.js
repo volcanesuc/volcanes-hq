@@ -19,6 +19,7 @@ import {
   uploadGalleryPhoto,
 } from "/js/features/landing/landing_data.js";
 import { heroTitleList, sectionConfig } from "/js/features/landing/landing_sections.js";
+import { rebuildPublicEvents } from "/js/features/calendar/public_events.js";
 
 const SECTION_LABEL = {
   hero: () => LA.sectionHero,
@@ -253,6 +254,12 @@ function calendarCard() {
       ${input("laCalCtaText", LA.calendarCtaTextLabel, sec("calendar").ctaText, { placeholder: LX.calendarCtaText })}
       ${input("laCalCtaBtn", LA.calendarCtaButtonLabel, sec("calendar").ctaButton, { placeholder: LX.calendarCtaButton })}
       ${saveRow("calendar")}
+      <div class="col-12"><hr class="my-1" /></div>
+      <div class="col-12 d-flex flex-wrap align-items-center gap-3">
+        <button type="button" class="btn btn-outline-primary" id="laSyncEvents"><i class="bi bi-arrow-repeat me-1"></i>${esc(LA.syncEvents)}</button>
+        <span class="small" data-status="sync"></span>
+      </div>
+      <div class="col-12"><div class="form-text mt-0">${esc(LA.syncHint)}</div></div>
     </div>`);
 }
 
@@ -619,6 +626,20 @@ export async function mountLandingAdmin(container) {
     } catch (err) {
       console.error(err);
       setStatus(id, false, `${LA.error} ${err?.code || ""}`);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  q("#laSyncEvents").addEventListener("click", async (ev) => {
+    const btn = ev.currentTarget;
+    btn.disabled = true;
+    try {
+      const { published } = await rebuildPublicEvents();
+      setStatus("sync", true, lxf(LA.syncDone, { n: published }));
+    } catch (err) {
+      console.error(err);
+      setStatus("sync", false, `${LA.error} ${err?.code || ""}`);
     } finally {
       btn.disabled = false;
     }
