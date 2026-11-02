@@ -27,6 +27,7 @@ import "/js/strings/screens/gym_routine.js";
 import "/js/strings/screens/header.js";
 import "/js/strings/screens/home.js";
 import "/js/strings/screens/landing.js";
+import "/js/strings/screens/club_events.js";
 import "/js/strings/screens/loader.js";
 import "/js/strings/screens/media_viewer.js";
 import "/js/strings/screens/member_status.js";

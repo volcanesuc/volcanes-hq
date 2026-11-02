@@ -53,6 +53,7 @@ export function mountEventsCalendar(root, opts) {
     labels = {},
     formatDay = (k) => k,
     legend = [],
+    phoneLimit = 4, // en teléfono (calendario arriba, lista abajo) se muestran estos primero
   } = opts;
 
   const upcoming = events
@@ -67,11 +68,12 @@ export function mountEventsCalendar(root, opts) {
     y: Number(startKey.slice(0, 4)),
     m: Number(startKey.slice(5, 7)) - 1,
     day: null,
+    expanded: false,
   };
 
   root.innerHTML = `
-    <div class="row g-4">
-      <div class="col-12 col-lg-6">
+    <div class="row g-4 align-items-start">
+      <div class="col-12 col-lg-6" data-ec-cal>
         <div class="d-flex justify-content-between align-items-center mb-2">
           <button class="btn btn-sm btn-outline-secondary" type="button" data-ec-prev aria-label="${esc(labels.prevMonth)}">‹</button>
           <div class="fw-semibold" data-ec-month>—</div>
@@ -83,12 +85,13 @@ export function mountEventsCalendar(root, opts) {
             ${legend.map((l) => `<span class="d-inline-flex align-items-center gap-1"><i class="ec-dot ec-dot--${esc(l.kind)}"></i>${esc(l.label)}</span>`).join("")}
           </div>` : ""}
       </div>
-      <div class="col-12 col-lg-6">
-        <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="col-12 col-lg-6 d-flex flex-column" data-ec-side>
+        <div class="d-flex justify-content-between align-items-center mb-2" data-ec-list-head>
           <div class="fw-semibold" data-ec-list-title></div>
           <button class="btn btn-sm btn-link d-none" type="button" data-ec-all>${esc(labels.showAll)}</button>
         </div>
-        <div class="d-grid gap-2" data-ec-list></div>
+        <div class="ec-list d-grid gap-2" data-ec-list></div>
+        <button class="btn btn-sm btn-outline-secondary w-100 mt-auto d-none" type="button" data-ec-more></button>
       </div>
     </div>`;
 
@@ -149,6 +152,51 @@ export function mountEventsCalendar(root, opts) {
       </${tag}>`;
   }
 
+  const isWide = () => window.matchMedia("(min-width: 992px)").matches;
+
+  // Muestra los más próximos que entran en el alto del calendario (en teléfono, los primeros N).
+  // "Ver más" pasa a una lista con scroll del mismo alto.
+  function fitList() {
+    const listEl = $("[data-ec-list]");
+    const moreBtn = $("[data-ec-more]");
+    const cards = [...listEl.querySelectorAll(":scope > .pk-session")];
+    cards.forEach((c) => c.classList.remove("d-none"));
+    listEl.style.maxHeight = "";
+    listEl.classList.remove("is-scroll");
+
+    const wide = isWide();
+    const btnSpace = 44;
+    // la columna de la lista mide lo mismo que el calendario (el botón queda abajo)
+    $("[data-ec-side]").style.minHeight = wide ? `${$("[data-ec-cal]").offsetHeight}px` : "";
+    const maxH = wide
+      ? Math.max(160, $("[data-ec-cal]").offsetHeight - $("[data-ec-list-head]").offsetHeight - btnSpace)
+      : 440;
+
+    if (state.expanded) {
+      listEl.style.maxHeight = `${maxH}px`;
+      listEl.classList.add("is-scroll");
+      moreBtn.textContent = labels.less || "−";
+      moreBtn.classList.remove("d-none");
+      return;
+    }
+
+    let hidden = 0;
+    cards.forEach((card, i) => {
+      const overflow = wide ? card.offsetTop + card.offsetHeight > maxH : i >= phoneLimit;
+      if (overflow || hidden) {
+        card.classList.add("d-none");
+        hidden++;
+      }
+    });
+    // siempre al menos uno
+    if (hidden === cards.length && cards.length) {
+      cards[0].classList.remove("d-none");
+      hidden--;
+    }
+    moreBtn.textContent = `${labels.more || "+"} (${hidden})`;
+    moreBtn.classList.toggle("d-none", hidden === 0);
+  }
+
   function renderList() {
     const list = state.day ? byDay.get(state.day) || [] : upcoming;
     $("[data-ec-all]").classList.toggle("d-none", !state.day);
@@ -156,17 +204,20 @@ export function mountEventsCalendar(root, opts) {
     $("[data-ec-list]").innerHTML = list.length
       ? list.map(cardHtml).join("")
       : `<div class="text-muted small">${esc(state.day ? labels.dayEmpty : labels.empty)}</div>`;
+    fitList();
   }
 
   $("[data-ec-prev]").onclick = () => {
     state.m -= 1;
     if (state.m < 0) { state.m = 11; state.y -= 1; }
     renderGrid();
+    fitList();
   };
   $("[data-ec-next]").onclick = () => {
     state.m += 1;
     if (state.m > 11) { state.m = 0; state.y += 1; }
     renderGrid();
+    fitList();
   };
   $("[data-ec-grid]").addEventListener("click", (ev) => {
     const btn = ev.target.closest("[data-day]");
@@ -176,6 +227,10 @@ export function mountEventsCalendar(root, opts) {
     renderGrid();
     renderList();
   });
+  $("[data-ec-more]").onclick = () => {
+    state.expanded = !state.expanded;
+    fitList();
+  };
   $("[data-ec-all]").onclick = () => {
     state.day = null;
     renderGrid();
@@ -184,4 +239,13 @@ export function mountEventsCalendar(root, opts) {
 
   renderGrid();
   renderList();
+
+  // el alto del calendario cambia con el ancho (y meses de 5 o 6 semanas)
+  if (typeof ResizeObserver !== "undefined") {
+    let raf = 0;
+    new ResizeObserver(() => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(fitList);
+    }).observe($("[data-ec-cal]"));
+  }
 }

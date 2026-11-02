@@ -10,8 +10,10 @@ export const LX = defineStrings("landing", "Inicio: secciones nuevas", {
 
   // calendario
   calendarTitle: "Próximos eventos",
-  calendarSubtitle: "Pickups abiertos y torneos del club. Tocá un día para ver qué hay.",
+  calendarSubtitle: "Entrenos, pickups abiertos y torneos del club. Tocá un día para ver qué hay.",
   calendarEmpty: "No hay eventos próximos por ahora.",
+  calendarCtaText: "¿Querés jugar? Los pickups están abiertos a todos.",
+  calendarCtaButton: "Ver pickups abiertos",
   kindPickup: "Pickup",
   kindTournament: "Torneo",
 
@@ -62,7 +64,10 @@ export const lxf = fmt;
 // Textos del editor (Admin > Landing)
 export const LA = defineStrings("landingAdmin", "Admin: secciones del landing", {
   orderTitle: "Secciones del landing",
-  heroCard: "Botones de la portada",
+  heroCard: "Portada",
+  heroTitles: "Títulos que rotan",
+  heroTitlesHint: "Un título por bloque; dejá una línea en blanco entre títulos. Un salto de línea dentro del título lo parte en dos renglones. Vacío = títulos por defecto del club.",
+  heroInterval: "Segundos entre títulos",
   heroCtaHint: "Dejá el texto en \"-\" para ocultar un botón. Links: /public/register.html, #calendarSection, https://…",
   ctaPrimary: "Botón principal",
   ctaSecondary: "Botón secundario",
@@ -95,7 +100,9 @@ export const LA = defineStrings("landingAdmin", "Admin: secciones del landing", 
   remove: "Quitar",
 
   calendarCard: "Próximos eventos (calendario)",
-  calendarHint: "Muestra los pickups publicados y los torneos.",
+  calendarHint: "Muestra entrenamientos, pickups publicados y torneos.",
+  calendarCtaTextLabel: "Texto del botón de pickups (al lado)",
+  calendarCtaButtonLabel: "Botón a la página de pickups (\"-\" lo oculta)",
 
   joinCard: "Cómo unirte",
   joinSteps: "Pasos",

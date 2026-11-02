@@ -6,6 +6,7 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/fi
 import { mountEventsCalendar } from "/js/components/events_calendar.js";
 import { openMediaViewerModal } from "/js/ui/media_viewer_modal.js";
 import { LX, lxf } from "/js/strings/screens/landing.js";
+import { CLUB_DATA } from "/js/strings.js";
 import { LEGACY_TOGGLES, sectionOrder } from "/js/features/landing/landing_data.js";
 import { countMyPendingPhotos, openGalleryUpload } from "/js/components/gallery_upload.js";
 
@@ -55,6 +56,65 @@ export function applySectionOrder(landing = {}) {
     const el = main.querySelector(`[data-section="${id}"]`);
     if (el) main.appendChild(el);
   });
+}
+
+/* =========================
+   Títulos que rotan en la portada
+========================= */
+// Firebase (Admin > Landing > Portada) > defaults del club (js/strings.js) > título del hero
+export function heroTitleList(landing = {}, heroTitle = "") {
+  const saved = (landing.sections?.hero?.titles || []).map((t) => String(t || "").trim()).filter(Boolean);
+  if (saved.length) return saved;
+  const defaults = (CLUB_DATA.landing?.hero?.rotatingTitles || []).map((t) => String(t || "").trim()).filter(Boolean);
+  if (defaults.length) return defaults;
+  return heroTitle ? [heroTitle] : [];
+}
+
+// "Más que un equipo,\nuna comunidad" -> dos renglones; sin salto, la primera coma parte el título
+function titleHtml(text) {
+  const t = String(text || "");
+  const lines = t.includes("\n") ? t.split("\n") : t.replace(",", ",\u0001").split("\u0001");
+  return lines.map((l) => esc(l.trim())).join("<br>");
+}
+
+let heroTimer = null;
+
+function renderHeroTitles(landing, heroTitle) {
+  const h2 = document.querySelector(".hero h2");
+  if (!h2) return;
+  const titles = heroTitleList(landing, heroTitle);
+  clearInterval(heroTimer);
+  if (!titles.length) return;
+
+  if (titles.length === 1) {
+    h2.classList.remove("hero-rotator");
+    h2.innerHTML = titleHtml(titles[0]);
+    return;
+  }
+
+  // todos apilados en la misma celda: el alto es el del título más largo (no salta el layout)
+  h2.classList.add("hero-rotator");
+  h2.setAttribute("aria-live", "polite");
+  h2.innerHTML = titles
+    .map((t, i) => `<span class="hero-rotator__item ${i === 0 ? "is-active" : ""}" ${i ? 'aria-hidden="true"' : ""}>${titleHtml(t)}</span>`)
+    .join("");
+
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  const seconds = Math.min(30, Math.max(2, Number(landing.sections?.hero?.intervalSec) || 4));
+  let current = 0;
+  heroTimer = setInterval(() => {
+    const items = h2.querySelectorAll(".hero-rotator__item");
+    if (!items.length) return clearInterval(heroTimer);
+    const prev = items[current];
+    current = (current + 1) % items.length;
+    prev.classList.remove("is-active");
+    prev.classList.add("is-leaving");
+    prev.setAttribute("aria-hidden", "true");
+    setTimeout(() => prev.classList.remove("is-leaving"), 600);
+    items[current].classList.add("is-active");
+    items[current].removeAttribute("aria-hidden");
+  }, seconds * 1000);
 }
 
 /* =========================
@@ -221,39 +281,36 @@ function bindGalleryUpload() {
 ========================= */
 let calendarStarted = false;
 
-async function renderCalendar(landing, { loadTournaments }) {
+async function renderCalendar(landing) {
   const cfg = sectionConfig(landing, "calendar");
   show($("calendarSection"), cfg.enabled);
   if (!cfg.enabled) return;
 
   $("calendarTitle").textContent = pick(cfg.title, LX.calendarTitle);
   $("calendarSubtitle").textContent = pick(cfg.subtitle, LX.calendarSubtitle);
+
+  // botón a la página pública de pickups
+  const ctaLabel = pick(cfg.ctaButton, LX.calendarCtaButton);
+  show($("calendarCta"), ctaLabel.trim() !== "-");
+  $("calendarCtaBtn").textContent = ctaLabel;
+  $("calendarCtaText").textContent = pick(cfg.ctaText, LX.calendarCtaText);
+
   if (calendarStarted) return;
   calendarStarted = true;
 
-  // se carga aparte: el resto del landing no espera a los pickups
-  const [{ loadPickupSettings }, { calendarOptions, loadUpcomingPickupEvents }] = await Promise.all([
-    import("/js/features/pickups/pickups_settings.js"),
-    import("/js/features/pickups/pickups_events.js"),
-  ]);
-  await loadPickupSettings();
+  // se carga aparte: el resto del landing no espera al calendario
+  const { loadClubCalendarEvents } = await import("/js/features/calendar/club_events.js");
+  const { base, events, legend } = await loadClubCalendarEvents({
+    publicLanding: true,
+    trainingHref: "",
+    tournamentHref: (t) => safeUrl(t.officialUrl || ""),
+  });
 
-  const [pickups, tournaments] = await Promise.all([
-    loadUpcomingPickupEvents({ withSpots: false }).catch(() => []),
-    loadTournaments().catch(() => []),
-  ]);
-
-  const base = calendarOptions();
   mountEventsCalendar($("landingCalendar"), {
     ...base,
-    events: [
-      ...pickups.map((ev) => ({ ...ev, kindLabel: LX.kindPickup })),
-      ...tournaments.map((ev) => ({ ...ev, kindLabel: LX.kindTournament })),
-    ],
+    events,
+    legend,
     labels: { ...base.labels, upcoming: pick(cfg.title, LX.calendarTitle), empty: LX.calendarEmpty },
-    legend: tournaments.length
-      ? [{ kind: "pickup", label: LX.kindPickup }, { kind: "tournament", label: LX.kindTournament }]
-      : [],
   });
 }
 
@@ -285,14 +342,15 @@ function applySeo(landing, fallbackDescription) {
 /* =========================
    Todo junto
 ========================= */
-export function renderNewSections(data, { loadTournaments, heroDescription } = {}) {
+export function renderNewSections(data, { heroDescription, heroTitle } = {}) {
   const landing = data.docs?.landing || {};
+  renderHeroTitles(landing, heroTitle);
   renderHeroActions(landing);
   renderJoin(landing);
   renderStats(landing);
   renderSponsors(landing);
   renderGallery(landing, data.photos || []);
-  renderCalendar(landing, { loadTournaments }).catch((err) => console.warn("[landing] calendario:", err));
+  renderCalendar(landing).catch((err) => console.warn("[landing] calendario:", err));
   applySectionOrder(landing);
   applySeo(landing, heroDescription);
 }

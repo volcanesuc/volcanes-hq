@@ -62,6 +62,9 @@ const $ = {
   trainingBlockName: document.getElementById("trainingBlockName"),
   trainingDay: document.getElementById("trainingDay"),
   trainingTime: document.getElementById("trainingTime"),
+  trainingLocation: document.getElementById("trainingLocation"),
+  trainingSubmitBtn: document.getElementById("trainingSubmitBtn"),
+  trainingCancelEditBtn: document.getElementById("trainingCancelEditBtn"),
   trainingsTableBody: document.getElementById("trainingsTableBody"),
 
   socialLinksForm: document.getElementById("socialLinksForm"),
@@ -1545,7 +1548,7 @@ async function saveHeroSettings(ev) {
 async function loadTrainingsAdmin() {
   if (!$.trainingsTableBody || !$.trainingsTitle) return;
 
-  $.trainingsTableBody.innerHTML = `<tr><td colspan="5" class="text-muted">${TX.cargando}</td></tr>`;
+  $.trainingsTableBody.innerHTML = `<tr><td colspan="6" class="text-muted">${TX.cargando}</td></tr>`;
 
   try {
     const snap = await getDoc(doc(db, COL_CLUB_CONFIG, "trainings"));
@@ -1564,6 +1567,7 @@ async function loadTrainingsAdmin() {
             <td>${esc(block.name || "—")}</td>
             <td>—</td>
             <td>—</td>
+            <td>—</td>
             <td>
               <button class="btn btn-outline-danger btn-sm" type="button"
                 data-delete-training-row="${blockIndex}:empty">
@@ -1580,7 +1584,12 @@ async function loadTrainingsAdmin() {
           <td>${esc(block.name || "—")}</td>
           <td>${esc(item.day || "—")}</td>
           <td>${esc(item.time || "—")}</td>
-          <td>
+          <td>${esc(item.location || "—")}</td>
+          <td class="text-nowrap">
+            <button class="btn btn-outline-secondary btn-sm" type="button"
+              data-edit-training-row="${blockIndex}:${scheduleIndex}">
+              <i class="bi bi-pencil"></i>
+            </button>
             <button class="btn btn-outline-danger btn-sm" type="button"
               data-delete-training-row="${blockIndex}:${scheduleIndex}">
               ${TX.eliminar}
@@ -1592,10 +1601,10 @@ async function loadTrainingsAdmin() {
 
     $.trainingsTableBody.innerHTML = rows.length
       ? rows.join("")
-      : `<tr><td colspan="5" class="text-muted">${TX.noHayHorariosRegistrados}</td></tr>`;
+      : `<tr><td colspan="6" class="text-muted">${TX.noHayHorariosRegistrados}</td></tr>`;
   } catch (err) {
     console.error("loadTrainingsAdmin error:", err);
-    $.trainingsTableBody.innerHTML = `<tr><td colspan="5" class="text-danger">${TX.noSePudoCargar4}</td></tr>`;
+    $.trainingsTableBody.innerHTML = `<tr><td colspan="6" class="text-danger">${TX.noSePudoCargar4}</td></tr>`;
   }
 }
 
@@ -1620,6 +1629,33 @@ async function saveTrainingsTitle(ev) {
   }
 }
 
+// Editar un horario: se cargan sus datos en el formulario y al guardar se reemplaza.
+let editingTrainingPointer = null;
+
+function startEditTrainingRow(pointer) {
+  const [b, s] = String(pointer).split(":").map(Number);
+  const block = trainingsBlocks[b];
+  const item = block?.schedule?.[s];
+  if (!item) return;
+  editingTrainingPointer = { blockIndex: b, scheduleIndex: s };
+  if ($.trainingBlockId) $.trainingBlockId.value = block.id || "trainings";
+  if ($.trainingBlockName) $.trainingBlockName.value = block.name || "";
+  if ($.trainingDay) $.trainingDay.value = item.day || "";
+  if ($.trainingTime) $.trainingTime.value = item.time || "";
+  if ($.trainingLocation) $.trainingLocation.value = item.location || "";
+  if ($.trainingSubmitBtn) $.trainingSubmitBtn.innerHTML = '<i class="bi bi-check-lg"></i>';
+  $.trainingCancelEditBtn?.classList.remove("d-none");
+  $.trainingBlockForm?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function stopEditTrainingRow() {
+  editingTrainingPointer = null;
+  $.trainingBlockForm?.reset();
+  if ($.trainingBlockId) $.trainingBlockId.value = "trainings";
+  if ($.trainingSubmitBtn) $.trainingSubmitBtn.innerHTML = '<i class="bi bi-plus-lg"></i>';
+  $.trainingCancelEditBtn?.classList.add("d-none");
+}
+
 async function addTrainingRow(ev) {
   ev.preventDefault();
 
@@ -1627,6 +1663,8 @@ async function addTrainingRow(ev) {
   const blockName = ($.trainingBlockName?.value || "").trim();
   const day = ($.trainingDay?.value || "").trim();
   const time = ($.trainingTime?.value || "").trim();
+  const location = ($.trainingLocation?.value || "").trim();
+  const entry = { day, time, location };
 
   if (!blockId || !blockName || !day || !time) {
     showAlert(TX.completaBloqueNombreDia);
@@ -1638,12 +1676,33 @@ async function addTrainingRow(ev) {
     const snap = await getDoc(ref);
     const data = snap.exists() ? (snap.data() || {}) : {};
 
-    const currentBlocks = Array.isArray(data.blocks) ? [...data.blocks] : [];
+    let currentBlocks = Array.isArray(data.blocks)
+      ? data.blocks.map((b) => ({ ...b, schedule: [...(b.schedule || [])] }))
+      : [];
     const title = ($.trainingsTitle?.value || "").trim() || data.title || TX.entrenamientosYJuegos;
+
+    // editando: el horario se reemplaza en su lugar (o se mueve si cambió de bloque)
+    let replaced = false;
+    const editing = editingTrainingPointer;
+    if (editing) {
+      const old = currentBlocks[editing.blockIndex];
+      if (old?.schedule?.[editing.scheduleIndex]) {
+        if (old.id === blockId) {
+          old.schedule[editing.scheduleIndex] = entry;
+          old.name = blockName;
+          replaced = true;
+        } else {
+          old.schedule.splice(editing.scheduleIndex, 1);
+        }
+      }
+      currentBlocks = currentBlocks.filter((b) => b.schedule.length);
+    }
 
     const idx = currentBlocks.findIndex((b) => b.id === blockId);
 
-    if (idx >= 0) {
+    if (replaced) {
+      // ya quedó en su lugar
+    } else if (idx >= 0) {
       const currentSchedule = Array.isArray(currentBlocks[idx].schedule)
         ? [...currentBlocks[idx].schedule]
         : [];
@@ -1651,13 +1710,13 @@ async function addTrainingRow(ev) {
       currentBlocks[idx] = {
         ...currentBlocks[idx],
         name: blockName,
-        schedule: [...currentSchedule, { day, time }],
+        schedule: [...currentSchedule, entry],
       };
     } else {
       currentBlocks.push({
         id: blockId,
         name: blockName,
-        schedule: [{ day, time }],
+        schedule: [entry],
       });
     }
 
@@ -1672,8 +1731,7 @@ async function addTrainingRow(ev) {
     );
 
     trainingsBlocks = currentBlocks;
-    $.trainingBlockForm?.reset();
-    if ($.trainingBlockId) $.trainingBlockId.value = "trainings";
+    stopEditTrainingRow();
 
     await loadTrainingsAdmin();
     await refreshIndexToggleAvailability(true);
@@ -2524,6 +2582,7 @@ async function boot() {
     $.heroSettingsForm?.addEventListener("submit", saveHeroSettings);
     $.trainingsSettingsForm?.addEventListener("submit", saveTrainingsTitle);
     $.trainingBlockForm?.addEventListener("submit", addTrainingRow);
+    $.trainingCancelEditBtn?.addEventListener("click", stopEditTrainingRow);
     $.socialLinksForm?.addEventListener("submit", saveSocialLinks);
     $.honorsSettingsForm?.addEventListener("submit", saveHonorSettings);
     $.honorForm?.addEventListener("submit", addHonor);
@@ -2580,6 +2639,12 @@ async function boot() {
       const deleteHonorBtn = ev.target.closest("[data-delete-honor]");
       if (deleteHonorBtn) {
         await deleteHonor(deleteHonorBtn.getAttribute("data-delete-honor"));
+        return;
+      }
+
+      const editTrainingBtn = ev.target.closest("[data-edit-training-row]");
+      if (editTrainingBtn) {
+        startEditTrainingRow(editTrainingBtn.getAttribute("data-edit-training-row"));
         return;
       }
 

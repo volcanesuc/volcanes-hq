@@ -254,7 +254,7 @@
                 </form>
 
                 <form id="trainingBlockForm" class="row g-3 mb-3">
-                  <div class="col-md-3">
+                  <div class="col-md-2">
                     <label class="form-label" data-tx="html_admin.bloque">Bloque</label>
                     <select id="trainingBlockId" class="form-select">
                       <option value="trainings" data-tx="html_admin.entrenamientos">Entrenamientos</option>
@@ -262,12 +262,12 @@
                     </select>
                   </div>
 
-                  <div class="col-md-3">
+                  <div class="col-md-2">
                     <label class="form-label" data-tx="html_admin.nombreVisible">Nombre visible</label>
                     <input id="trainingBlockName" class="form-control" type="text" placeholder="Entrenamientos" data-tx-placeholder="html_admin.entrenamientos" />
                   </div>
 
-                  <div class="col-md-3">
+                  <div class="col-md-2">
                     <label class="form-label" data-tx="html_admin.dia">Día</label>
                     <input id="trainingDay" class="form-control" type="text" placeholder="Domingos" data-tx-placeholder="html_admin.domingos" />
                   </div>
@@ -277,9 +277,17 @@
                     <input id="trainingTime" class="form-control" type="text" placeholder="8:00 am – 10:30 am" data-tx-placeholder="html_admin.t800Am10" />
                   </div>
 
-                  <div class="col-md-1 d-flex align-items-end">
-                    <button class="btn btn-primary w-100" type="submit">
+                  <div class="col-md-3">
+                    <label class="form-label" for="trainingLocation" data-tx="html_admin.lugarTraining">Lugar</label>
+                    <input id="trainingLocation" class="form-control" type="text" placeholder="Cancha El Silo" data-tx-placeholder="html_admin.lugarTrainingPlaceholder" />
+                  </div>
+
+                  <div class="col-md-1 d-flex align-items-end gap-1">
+                    <button class="btn btn-primary w-100" type="submit" id="trainingSubmitBtn">
                       <i class="bi bi-plus-lg"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary d-none" type="button" id="trainingCancelEditBtn" title="Cancelar">
+                      <i class="bi bi-x-lg"></i>
                     </button>
                   </div>
                 </form>
@@ -292,12 +300,13 @@
                         <th data-tx="html_admin.nombre">Nombre</th>
                         <th data-tx="html_admin.dia">Día</th>
                         <th data-tx="html_admin.hora">Hora</th>
+                        <th data-tx="html_admin.lugarTraining">Lugar</th>
                         <th data-tx="html_admin.acciones">Acciones</th>
                       </tr>
                     </thead>
                     <tbody id="trainingsTableBody">
                       <tr>
-                        <td colspan="5" class="text-muted" data-tx="html_admin.cargando">Cargando…</td>
+                        <td colspan="6" class="text-muted" data-tx="html_admin.cargando">Cargando…</td>
                       </tr>
                     </tbody>
                   </table>

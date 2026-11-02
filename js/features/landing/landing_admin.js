@@ -18,7 +18,7 @@ import {
   uploadClubAsset,
   uploadGalleryPhoto,
 } from "/js/features/landing/landing_data.js";
-import { sectionConfig } from "/js/features/landing/landing_sections.js";
+import { heroTitleList, sectionConfig } from "/js/features/landing/landing_sections.js";
 
 const SECTION_LABEL = {
   hero: () => LA.sectionHero,
@@ -223,8 +223,15 @@ function sec(id) {
 
 function heroCard() {
   const h = sec("hero");
+  const titles = heroTitleList(landing, "");
   return card("laHero", LA.heroCard, LA.heroCtaHint, `
     <div class="row g-3">
+      <div class="col-12 col-md-9">
+        <label class="form-label small" for="laHeroTitles">${esc(LA.heroTitles)}</label>
+        <textarea class="form-control" id="laHeroTitles" rows="7">${esc(titles.join("\n\n"))}</textarea>
+        <div class="form-text">${esc(LA.heroTitlesHint)}</div>
+      </div>
+      ${input("laHeroInterval", LA.heroInterval, h.intervalSec || "", { type: "number", placeholder: "4", col: "col-6 col-md-3" })}
       ${input("laHeroP1", `${LA.ctaPrimary} · ${LA.ctaLabel}`, h.ctaPrimaryLabel, { placeholder: LX.heroCtaPrimary })}
       ${input("laHeroP2", `${LA.ctaPrimary} · ${LA.ctaUrl}`, h.ctaPrimaryUrl, { placeholder: "/public/register.html" })}
       ${input("laHeroS1", `${LA.ctaSecondary} · ${LA.ctaLabel}`, h.ctaSecondaryLabel, { placeholder: LX.heroCtaSecondary })}
@@ -243,6 +250,8 @@ function calendarCard() {
   return card("laCalendar", LA.calendarCard, LA.calendarHint, `
     <div class="row g-3">
       ${titleFields("laCal", sec("calendar"), LX.calendarTitle, LX.calendarSubtitle)}
+      ${input("laCalCtaText", LA.calendarCtaTextLabel, sec("calendar").ctaText, { placeholder: LX.calendarCtaText })}
+      ${input("laCalCtaBtn", LA.calendarCtaButtonLabel, sec("calendar").ctaButton, { placeholder: LX.calendarCtaButton })}
       ${saveRow("calendar")}
     </div>`);
 }
@@ -511,12 +520,22 @@ async function saveSection(id, patch) {
 const SAVERS = {
   order: saveOrder,
   hero: () => saveSection("hero", {
+    titles: String(q("#laHeroTitles").value || "")
+      .split(/\n\s*\n/)
+      .map((t) => t.trim())
+      .filter(Boolean),
+    intervalSec: Math.min(30, Math.max(2, Number(val("laHeroInterval")) || 4)),
     ctaPrimaryLabel: val("laHeroP1"),
     ctaPrimaryUrl: val("laHeroP2"),
     ctaSecondaryLabel: val("laHeroS1"),
     ctaSecondaryUrl: val("laHeroS2"),
   }),
-  calendar: () => saveSection("calendar", { title: val("laCalTitle"), subtitle: val("laCalSubtitle") }),
+  calendar: () => saveSection("calendar", {
+    title: val("laCalTitle"),
+    subtitle: val("laCalSubtitle"),
+    ctaText: val("laCalCtaText"),
+    ctaButton: val("laCalCtaBtn"),
+  }),
   join: () => saveSection("join", {
     title: val("laJoinTitle"),
     subtitle: val("laJoinSubtitle"),

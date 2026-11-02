@@ -43,6 +43,12 @@ export const CLUB_DATA = defineStrings("club", "Club, menú e inicio", {
   landing: {
     hero: {
       title: "Más que un equipo, una comunidad",
+      // Títulos que rotan en la portada (salto de línea = \n)
+      rotatingTitles: [
+        "Más que un equipo,\nuna comunidad",
+        "Campeones nacionales,\nen el 2025.",
+        "5to lugar en el torneo\nCentroamericano 2026.",
+      ],
       image: "img/club/teamclub.jpg",
       description:
         "Como club queremos fortalecer la comunidad y promover el conocimiento y la práctica del deporte bajo el correcto espíritu de juego. Queremos crear espacios donde se practique de manera saludable el Ultimate.",

@@ -232,3 +232,35 @@ body.landing-loading .landing-footer { display: none; }
 /* ===== footer ===== */
 .landing-footer { padding: 36px 20px; }
 .landing-footer p { margin: .2rem 0; opacity: .9; }
+
+/* ===== entrenamientos: lugar ===== */
+.landing-card .training-slot { margin: .35rem 0 0; font-weight: 600; }
+.landing-card .training-location { margin: .1rem 0 .4rem; color: #5f6866; font-size: .92rem; }
+.landing-card .training-location i { color: var(--theme-primary); }
+
+/* ===== calendario: botón a pickups ===== */
+.calendar-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: .75rem 1rem;
+  margin-top: 1.2rem;
+  text-align: center;
+}
+.calendar-cta__text { color: #5f6866; font-weight: 600; }
+
+/* ===== títulos que rotan en la portada ===== */
+.hero h2.hero-rotator { display: grid; }
+.hero-rotator__item {
+  grid-area: 1 / 1;
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity .5s ease, transform .5s ease;
+  pointer-events: none;
+}
+.hero-rotator__item.is-active { opacity: 1; transform: none; pointer-events: auto; }
+.hero-rotator__item.is-leaving { opacity: 0; transform: translateY(-14px); }
+@media (prefers-reduced-motion: reduce) {
+  .hero-rotator__item { transition: none; }
+}
