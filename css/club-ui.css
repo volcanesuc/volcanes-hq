@@ -477,3 +477,165 @@ button.ui-chip{ cursor: pointer; }
   .ui-hero{ border-radius: 20px; padding: 1.15rem; }
   .nav-pills{ display: flex; }
 }
+
+/* =========================
+   EDITOR DE TEXTOS (Ajustes › Textos)
+========================= */
+.te-intro{ margin-bottom: 1rem; }
+
+.te-layout{
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.te-layout--locked{ grid-template-columns: minmax(0, 1fr); }
+
+.te-nav__list{
+  position: sticky;
+  top: 72px;
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: 18px;
+  padding: .5rem;
+  max-height: calc(100vh - 110px);
+  overflow: auto;
+}
+
+.te-nav__group{
+  padding: .6rem .6rem .25rem;
+  font-size: .7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--ui-muted);
+}
+
+.te-nav__item{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: .45rem .6rem;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: .9rem;
+  color: var(--ui-tab);
+}
+
+.te-nav__item:hover{ background: rgba(0, 0, 0, .04); color: var(--ui-text); }
+.te-nav__item.is-active{ background: var(--ui-ink); color: #fff; }
+.te-nav__item.is-active .ui-chip__n{ background: rgba(255, 255, 255, .25); }
+
+.te-results{
+  font-size: .78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--ui-muted);
+  margin-bottom: .5rem;
+}
+
+.te-card{
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: 18px;
+  box-shadow: var(--ui-shadow);
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+
+.te-card__head{
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: .9rem 1.1rem;
+  background: var(--ui-surface-2);
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.te-card__screen{
+  font-size: .72rem;
+  font-weight: 800;
+  color: var(--ui-main);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+.te-card__title{ font-size: 1rem; font-weight: 800; margin: 0; }
+.te-card__hint{ font-size: .82rem; color: var(--ui-muted); }
+.te-card__count{ font-size: .75rem; font-weight: 700; color: var(--ui-muted); white-space: nowrap; }
+
+.te-row{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem;
+  padding: .75rem 1.1rem;
+  border-left: 3px solid transparent;
+}
+
+.te-row + .te-row{ border-top: 1px solid var(--ui-border); }
+.te-row.is-changed{ border-left-color: var(--ui-accent); background: color-mix(in srgb, var(--ui-accent) 6%, #fff); }
+
+.te-row__label{
+  font-size: .68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--ui-muted);
+  margin-bottom: .15rem;
+}
+
+.te-row__text{ font-size: .92rem; overflow-wrap: anywhere; }
+.te-row__key{ font-size: .72rem; color: var(--ui-muted); margin-top: .15rem; overflow-wrap: anywhere; }
+
+.te-row__foot{
+  display: none;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: .3rem;
+}
+
+.te-row.is-changed .te-row__foot{ display: flex; }
+
+.te-row__badge{
+  font-size: .7rem;
+  font-weight: 800;
+  padding: .05rem .5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ui-accent) 30%, #fff);
+  color: color-mix(in srgb, var(--ui-accent) 35%, #2b2300);
+}
+
+.te-savebar{
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .75rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+  padding: .75rem 0;
+  background: linear-gradient(to top, var(--ui-bg) 70%, transparent);
+}
+
+.te-savebar [data-te-status]{ margin-right: auto; }
+
+@media (max-width: 991.98px){
+  .te-layout{ grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 575.98px){
+  .te-row{ grid-template-columns: minmax(0, 1fr); gap: .4rem; }
+}
+
+body.has-bottom-nav .te-savebar{ bottom: calc(68px + env(safe-area-inset-bottom)); }
+@media (min-width: 768px){ body.has-bottom-nav .te-savebar{ bottom: 0; } }
