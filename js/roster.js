@@ -475,7 +475,8 @@ let currentSort = {
 async function loadPlayers() {
   const [clubPlayersSnap, usersSnap] = await Promise.all([
     getDocs(collection(db, CLUB_PLAYERS_COL)),
-    getDocs(collection(db, USERS_COL)),
+    // Solo staff/admin pueden leer users (datos personales); el resto usa los nombres de la ficha.
+    getDocs(collection(db, USERS_COL)).catch(() => ({ docs: [], forEach() {} })),
   ]);
 
   usersById = new Map(

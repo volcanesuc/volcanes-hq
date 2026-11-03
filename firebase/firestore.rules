@@ -1,0 +1,627 @@
+rules_version = '2';
+
+// =====================================================================
+// Volcanes HQ: reglas de Firestore
+// Fuente única: este archivo. Se publica pegándolo en Firebase Console › Firestore › Reglas.
+//
+// Identidad: la persona es users/{uid}. Su ficha de jugador es club_players/{uid}
+// (o club_players/p_xxx si todavía no tiene cuenta).
+// Estados: users.status.player y users.status.association.
+// Roles (config.js): viewer, staff, coach, admin, accountability, content_editor.
+// Misma lógica que /js/core/me.js: si cambiás una, cambiá la otra.
+// =====================================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* =========================
+       QUIÉN SOY
+    ========================= */
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function myPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    function hasMe() {
+      return signedIn() && exists(myPath());
+    }
+
+    function me() {
+      return get(myPath()).data;
+    }
+
+    function myRole() {
+      return hasMe() ? me().get("role", "viewer") : "viewer";
+    }
+
+    // Formato nuevo (status.*) y, mientras existan datos viejos, isPlayerActive / associationStatus.
+    function myPlayerActive() {
+      return hasMe() && (
+        me().get("status", {}).get("player", "") == "active"
+        || me().get("isPlayerActive", false) == true
+      );
+    }
+
+    function myAssociationActive() {
+      return hasMe() && (
+        me().get("status", {}).get("association", "") == "active"
+        || me().get("associationStatus", "") in ["active", "associated_active"]
+      );
+    }
+
+    /* =========================
+       QUÉ PUEDO HACER (igual que capabilitiesFor en me.js)
+    ========================= */
+    // Usa la app: jugador activo, asociado activo o cualquier rol distinto de viewer.
+    function isMember() {
+      return myPlayerActive() || myAssociationActive() || myRole() != "viewer";
+    }
+
+    function isAdmin() {
+      return myRole() == "admin";
+    }
+
+    // Roster, entrenamientos, asistencia, torneos, invitados.
+    function canCoach() {
+      return myRole() in ["admin", "coach", "staff"];
+    }
+
+    // Playbook, drills, gimnasio.
+    function canPlaybook() {
+      return myRole() in ["admin", "coach", "staff", "content_editor"];
+    }
+
+    // Moderar Comunidad.
+    function canModerate() {
+      return myRole() in ["admin", "coach", "staff", "content_editor"];
+    }
+
+    // Membresías, pagos, contabilidad.
+    function canMoney() {
+      return myRole() in ["admin", "accountability"];
+    }
+
+    // Ver datos personales de otras personas.
+    function canSeePeople() {
+      return myRole() in ["admin", "coach", "staff", "accountability"];
+    }
+
+    function canUsePickups() {
+      return hasMe() && (me().get("canUsePickups", false) == true || isMember());
+    }
+
+    /* =========================
+       UTILIDADES
+    ========================= */
+    function hasOnlyKeys(allowed) {
+      return request.resource.data.keys().hasOnly(allowed);
+    }
+
+    function changedOnly(allowed) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowed);
+    }
+
+    // El correo guardado tiene que ser el de la cuenta de Google (tal cual o en minúsculas).
+    function emailOk() {
+      return request.resource.data.get("email", null) == null
+        || request.auth.token.email == null
+        || request.resource.data.email == request.auth.token.email
+        || request.resource.data.email == request.auth.token.email.lower();
+    }
+
+    function userExists(uid) {
+      return exists(/databases/$(database)/documents/users/$(uid));
+    }
+
+    function membershipPath(mid) {
+      return /databases/$(database)/documents/memberships/$(mid);
+    }
+
+    function membershipExists(mid) {
+      return exists(membershipPath(mid));
+    }
+
+    function membershipData(mid) {
+      return get(membershipPath(mid)).data;
+    }
+
+    function paymentLinkEnabled(mid) {
+      return exists(/databases/$(database)/documents/membership_payment_links/$(mid))
+        && get(/databases/$(database)/documents/membership_payment_links/$(mid)).data.enabled == true;
+    }
+
+    /* =========================
+       USUARIOS
+    ========================= */
+    match /users/{uid} {
+      allow read: if (signedIn() && request.auth.uid == uid) || canSeePeople();
+      allow delete: if false;
+
+      // Primer login: siempre viewer y sin estados.
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.role == "viewer"
+        && request.resource.data.get("status", {}).get("player", "") in ["", "pending"]
+        && request.resource.data.get("status", {}).get("association", "") in ["", "pending"]
+        && emailOk()
+        && hasOnlyKeys([
+          "uid", "email", "displayName", "photoURL",
+          "profile", "role", "status",
+          "onboardingComplete", "canUsePickups", "registration", "consents",
+          "membershipIds", "currentMembership",
+          "createdAt", "updatedAt", "lastSignInAt"
+        ]);
+
+      // La persona: su perfil, registro y consentimientos. Rol nunca; estados solo a "pending".
+      allow update: if (
+          signedIn()
+          && request.auth.uid == uid
+          && request.resource.data.uid == uid
+          && request.resource.data.get("role", "viewer") == resource.data.get("role", "viewer")
+          && (request.resource.data.get("status", {}).get("player", "")
+                == resource.data.get("status", {}).get("player", "")
+              || request.resource.data.get("status", {}).get("player", "") == "pending")
+          && (request.resource.data.get("status", {}).get("association", "")
+                == resource.data.get("status", {}).get("association", "")
+              || request.resource.data.get("status", {}).get("association", "") == "pending")
+          && emailOk()
+          // uid y role pueden aparecer en documentos viejos que no los tenían (sin cambiar de valor)
+          && changedOnly([
+            "uid", "role", "email", "displayName", "photoURL",
+            "profile", "status",
+            "onboardingComplete", "canUsePickups", "registration", "consents",
+            "membershipIds", "currentMembership",
+            "updatedAt", "lastSignInAt"
+          ])
+        )
+        // Admin: todo menos el uid. Contabilidad: estado de asociación y membresía actual.
+        || (isAdmin() && request.resource.data.uid == resource.data.uid)
+        || (canMoney() && changedOnly(["status", "currentMembership", "membershipIds", "updatedAt"])
+            && request.resource.data.get("status", {}).get("player", "")
+                 == resource.data.get("status", {}).get("player", ""));
+    }
+
+    /* =========================
+       JUGADORES E INVITADOS
+    ========================= */
+    match /club_players/{playerId} {
+      allow read: if isMember();
+      // admin liga/desliga fichas (claimPlayer crea {uid} y borra p_xxx)
+      allow create, update: if canCoach();
+      allow delete: if isAdmin();
+    }
+
+    match /guest_players/{docId} {
+      allow read: if isMember();
+      allow write: if canCoach();
+    }
+
+    /* =========================
+       CONFIGURACIÓN
+    ========================= */
+    match /config/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /club_config/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /system_config/{docId} {
+      // roles: me.js los lee para cualquier persona con sesión
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /subscription_plans/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    /* =========================
+       ENTRENAR / EQUIPO
+    ========================= */
+    match /trainings/{docId} {
+      allow read: if isMember();
+      allow write: if canCoach();
+    }
+
+    match /tournaments/{docId} {
+      allow read: if isMember();
+      allow write: if canCoach();
+
+      match /{subpath=**} {
+        allow read: if isMember();
+        allow write: if canCoach();
+      }
+    }
+
+    match /playbook_trainings/{docId} {
+      allow read: if resource.data.get("isPublic", false) == true || isMember();
+      allow write: if canPlaybook();
+    }
+
+    match /drills/{docId} {
+      allow read: if resource.data.get("isPublic", false) == true || isMember();
+      allow write: if canPlaybook();
+    }
+
+    match /gym_programs/{id} {
+      allow read: if resource.data.get("isPublic", false) == true || isMember();
+      allow write: if canPlaybook();
+    }
+
+    match /gym_routines/{id} {
+      allow get: if resource.data.get("isPublic", false) == true || isMember();
+      allow list: if isMember();
+      allow write: if canPlaybook();
+    }
+
+    match /gym_exercises/{id} {
+      allow read: if true;
+      allow write: if canPlaybook();
+    }
+
+    /* =========================
+       COMUNIDAD
+    ========================= */
+    match /community_posts/{postId} {
+      allow read: if isMember();
+
+      allow create: if isMember()
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.authorName is string
+        && request.resource.data.title is string
+        && request.resource.data.type is string
+        && request.resource.data.visibility in ["club", "staff"]
+        && request.resource.data.pinned is bool
+        && request.resource.data.tags is list
+        // destacar es de moderación
+        && (request.resource.data.pinned == false || canModerate())
+        && hasOnlyKeys([
+          "title", "summary", "body", "type",
+          "externalUrl", "youtubeUrl", "youtubeId", "mediaType", "mediaUrl",
+          "authorId", "authorName", "authorPhotoURL",
+          "visibility", "pinned", "tags",
+          "createdAt", "updatedAt"
+        ]);
+
+      allow update: if isMember() && (
+        canModerate()
+        || (
+          resource.data.authorId == request.auth.uid
+          && request.resource.data.authorId == resource.data.authorId
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.pinned == resource.data.pinned
+        )
+      );
+
+      allow delete: if isMember() && (canModerate() || resource.data.authorId == request.auth.uid);
+    }
+
+    match /landing_photos/{photoId} {
+      // públicas solo las aprobadas; el que subió ve las suyas; admins ven todo
+      allow read: if resource.data.status == "approved"
+        || isAdmin()
+        || (signedIn() && resource.data.uploaderUid == request.auth.uid);
+
+      allow create: if signedIn()
+        && request.auth.token.firebase.sign_in_provider != "anonymous"
+        && request.resource.data.uploaderUid == request.auth.uid
+        && hasOnlyKeys(["url", "storagePath", "caption", "uploaderUid", "uploaderName", "status", "createdAt", "reviewedAt"])
+        && request.resource.data.url is string
+        && request.resource.data.caption.size() <= 140
+        && (request.resource.data.status == "pending"
+            || (request.resource.data.status == "approved" && isAdmin()));
+
+      allow update, delete: if isAdmin();
+    }
+
+    // Calendario del inicio: copia pública de torneos y entrenamientos (sin fees ni asistencia).
+    match /public_events/{eventId} {
+      allow read: if true;
+      allow write: if canCoach();
+    }
+
+    /* =========================
+       MEMBRESÍAS Y PAGOS
+    ========================= */
+    match /memberships/{docId} {
+      allow get: if canMoney()
+        || (signedIn() && resource.data.userId == request.auth.uid)
+        || paymentLinkEnabled(docId);
+
+      allow list: if canMoney();
+
+      // La persona crea la suya al registrarse (pendiente); contabilidad/admin para cualquiera.
+      allow create: if (
+          (signedIn() && request.resource.data.userId == request.auth.uid)
+          || (canMoney() && request.resource.data.userId is string && userExists(request.resource.data.userId))
+        )
+        && request.resource.data.planId is string
+        && request.resource.data.season is string
+        && request.resource.data.status == "pending"
+        && hasOnlyKeys([
+          "userId", "userSnapshot", "planId", "planSnapshot", "currency", "totalAmount",
+          "season", "status", "payCode", "payLinkEnabled", "payLinkDisabledReason",
+          "installmentsTotal", "installmentsPending", "installmentsSettled",
+          "nextUnpaidDueDate", "nextUnpaidN", "consents",
+          "createdAt", "updatedAt", "lastPaymentSubmissionId", "lastPaymentAt", "validatedAt", "rejectedAt"
+        ]);
+
+      allow update: if canMoney()
+        // al registrarse, la persona completa el resumen de cuotas de su membresía pendiente
+        || (signedIn()
+            && resource.data.userId == request.auth.uid
+            && resource.data.status == "pending"
+            && changedOnly(["installmentsTotal", "installmentsPending", "installmentsSettled", "nextUnpaidDueDate", "nextUnpaidN", "updatedAt"]));
+
+      allow delete: if false;
+    }
+
+    match /membership_installments/{docId} {
+      allow get: if canMoney()
+        || (signedIn() && membershipData(resource.data.membershipId).userId == request.auth.uid)
+        || (resource.data.membershipId is string && paymentLinkEnabled(resource.data.membershipId));
+
+      allow list: if canMoney() || isMember();
+
+      allow create: if request.resource.data.membershipId is string
+        && membershipExists(request.resource.data.membershipId)
+        && (
+          canMoney()
+          || (signedIn()
+              && membershipData(request.resource.data.membershipId).userId == request.auth.uid
+              && request.resource.data.status == "pending")
+        );
+
+      allow update: if canMoney();
+      allow delete: if false;
+    }
+
+    match /membership_payment_links/{mid} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if canMoney()
+        && request.resource.data.membershipId is string
+        && request.resource.data.membershipId == mid;
+      allow delete: if false;
+    }
+
+    // Comprobante subido desde el link público (sin sesión).
+    match /public_membership_payment_submissions/{docId} {
+      allow create: if request.resource.data.membershipId is string
+        && paymentLinkEnabled(request.resource.data.membershipId)
+        && request.resource.data.code is string
+        && get(/databases/$(database)/documents/membership_payment_links/$(request.resource.data.membershipId)).data.code == request.resource.data.code
+        && request.resource.data.payerName is string
+        && request.resource.data.payerName.size() > 0
+        && request.resource.data.amountReported is number
+        && request.resource.data.amountReported > 0
+        && request.resource.data.currency is string
+        && request.resource.data.method is string
+        && request.resource.data.status == "pending"
+        && request.resource.data.fileUrl is string
+        && request.resource.data.filePath is string
+        && request.resource.data.fileType is string
+        && hasOnlyKeys([
+          "membershipId", "code", "season", "planId", "payerName", "email", "phone",
+          "amountReported", "currency", "method", "note", "selectedInstallmentNs",
+          "fileUrl", "filePath", "fileType", "status", "createdAt", "updatedAt"
+        ]);
+
+      allow read: if canMoney();
+      allow update, delete: if false;
+    }
+
+    // Comprobante subido con sesión.
+    match /membership_payment_submissions/{docId} {
+      allow read: if canMoney() || (signedIn() && resource.data.userId == request.auth.uid);
+
+      allow create: if signedIn()
+        && request.resource.data.membershipId is string
+        && membershipExists(request.resource.data.membershipId)
+        && request.resource.data.userId == membershipData(request.resource.data.membershipId).userId
+        && request.resource.data.submittedByUid == request.auth.uid
+        && (request.resource.data.userId == request.auth.uid || canMoney())
+        && request.resource.data.amountReported is number
+        && request.resource.data.amountReported > 0
+        && request.resource.data.status == "pending"
+        && request.resource.data.get("adminNote", null) == null
+        && hasOnlyKeys([
+          "membershipId", "userId", "submittedByUid", "installmentId", "selectedInstallmentIds",
+          "season", "planId", "payerName", "email", "phone",
+          "amountReported", "currency", "method", "note", "status", "adminNote",
+          "fileUrl", "filePath", "fileType", "createdAt", "updatedAt"
+        ]);
+
+      allow update: if canMoney() || (
+        signedIn()
+        && resource.data.userId == request.auth.uid
+        && resource.data.status in ["pending", "error"]
+        && changedOnly(["fileUrl", "filePath", "updatedAt", "status", "adminNote"])
+        && (request.resource.data.status == resource.data.status || request.resource.data.status == "error")
+      );
+
+      allow delete: if false;
+    }
+
+    /* =========================
+       CONTABILIDAD
+    ========================= */
+    match /finance_movements/{movementId} {
+      allow read: if canMoney();
+
+      allow create: if canMoney()
+        && hasOnlyKeys([
+          "type", "category", "subcategory", "description", "amount", "currency",
+          "movementDate", "method", "source", "sourceId",
+          "relatedUserId", "relatedMembershipId", "relatedSubmissionId", "notes",
+          "createdByUid", "createdByName", "isVoided", "voidedAt", "voidedByUid", "voidReason",
+          "createdAt", "updatedAt"
+        ])
+        && request.resource.data.type in ["income", "expense"]
+        && request.resource.data.amount is number
+        && request.resource.data.amount >= 0
+        && request.resource.data.currency is string
+        && request.resource.data.source is string
+        && request.resource.data.createdByUid == request.auth.uid
+        && request.resource.data.isVoided == false;
+
+      allow update: if canMoney() && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if false;
+    }
+
+    match /finance_movements_history/{historyId} {
+      allow read: if canMoney();
+      allow create: if canMoney()
+        && hasOnlyKeys(["movementId", "action", "snapshot", "changedByUid", "changedByName", "changedAt"])
+        && request.resource.data.movementId is string
+        && request.resource.data.action is string
+        && request.resource.data.changedByUid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    /* =========================================================
+       PICKUPS
+    ========================================================= */
+    function pkPickup(pid) {
+      return get(/databases/$(database)/documents/pickups/$(pid)).data;
+    }
+
+    function pkReg(regId) {
+      return get(/databases/$(database)/documents/pickup_registrations/$(regId)).data;
+    }
+
+    // dueño: quien la creó, el jugador con cuenta, o quien abrió el link privado
+    function pkCanManageReg(regId, data) {
+      return signedIn() && (
+        data.get("ownerUid", data.get("uid", null)) == request.auth.uid
+        || data.get("linkedUid", null) == request.auth.uid
+        || exists(/databases/$(database)/documents/pickup_reg_claims/$(regId + "_" + request.auth.uid))
+      );
+    }
+
+    match /pickups/{pickupId} {
+      allow read: if resource.data.isPublic == true || isMember() || canUsePickups();
+      allow create, update: if isAdmin()
+        && request.resource.data.title is string
+        && request.resource.data.slug is string
+        && request.resource.data.status in ["draft", "published", "closed", "finished", "cancelled"]
+        && request.resource.data.isPublic is bool
+        && request.resource.data.capacity is number
+        && request.resource.data.capacity >= 0
+        && request.resource.data.pricingTiers is list;
+      allow delete: if false;
+    }
+
+    match /pickup_registrations/{regId} {
+      // lista pública: nombre, tarifa y estado. Teléfono, cédula y comprobante van en /private
+      allow read: if true;
+
+      allow create: if isAdmin() || (
+        signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.linkedUid in [null, request.auth.uid]
+        && request.resource.data.pickupId is string
+        && request.resource.data.displayName is string
+        && request.resource.data.amountDue is number
+        && request.resource.data.registrationStatus == "active"
+        && request.resource.data.paymentStatus in ["pending", "submitted", "not_required"]
+        && request.resource.data.paidAmount == 0
+        && request.resource.data.attendance == null
+        && request.resource.data.financeMovementId == null
+        && request.resource.data.creditRefunded == false
+        && request.resource.data.createdAt == request.time
+        && pkPickup(request.resource.data.pickupId).status == "published"
+        && request.time < pkPickup(request.resource.data.pickupId).startAt
+      );
+
+      allow update: if isAdmin() || (
+        pkCanManageReg(regId, resource.data)
+        && resource.data.registrationStatus != "cancelled"
+        && (
+          // salirse: solo antes de la hora límite
+          (
+            changedOnly(["registrationStatus", "cancelledAt", "cancelledBy", "updatedAt"])
+            && request.resource.data.registrationStatus == "cancelled"
+            && request.resource.data.cancelledBy == "player"
+            && request.time < pkPickup(resource.data.pickupId).cancelDeadlineAt
+          )
+          ||
+          // subir / re-subir comprobante
+          (
+            changedOnly(["paymentStatus", "paymentMethod", "rejectReason", "updatedAt"])
+            && request.resource.data.paymentStatus == "submitted"
+            && resource.data.paymentStatus in ["pending", "rejected"]
+          )
+        )
+      );
+
+      allow delete: if false;
+
+      // teléfono, cédula, correo y comprobante
+      match /private/{docId} {
+        allow read: if isAdmin() || pkCanManageReg(regId, pkReg(regId));
+
+        // se crea en el mismo batch que la inscripción
+        allow create: if isAdmin() || (
+          signedIn()
+          && !exists(/databases/$(database)/documents/pickup_registrations/$(regId))
+          && getAfter(/databases/$(database)/documents/pickup_registrations/$(regId)).data.ownerUid == request.auth.uid
+        );
+
+        allow update: if isAdmin() || (
+          pkCanManageReg(regId, pkReg(regId))
+          && changedOnly(["proof"])
+        );
+
+        allow delete: if false;
+      }
+    }
+
+    // links privados de invitados: nadie los lee salvo admin
+    match /pickup_reg_keys/{key} {
+      allow read: if isAdmin();
+      allow create: if signedIn()
+        && !exists(/databases/$(database)/documents/pickup_registrations/$(request.resource.data.regId))
+        && getAfter(/databases/$(database)/documents/pickup_registrations/$(request.resource.data.regId)).data.ownerUid == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // "este dispositivo abrió el link privado"
+    match /pickup_reg_claims/{claimId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && claimId == request.resource.data.regId + "_" + request.auth.uid
+        && get(/databases/$(database)/documents/pickup_reg_keys/$(request.resource.data.key)).data.regId == request.resource.data.regId;
+      allow delete: if isAdmin();
+    }
+
+    /* =========================
+       RIFAS (páginas públicas de rifas)
+       Ojo: cualquiera puede escribir los números; conviene cerrarlo cuando no haya rifa activa.
+    ========================= */
+    match /raffles/{raffleId}/{numberId} {
+      allow read, write: if true;
+    }
+
+    match /raffles/{raffleId}/{numberId}/{subpath=**} {
+      allow read, write: if true;
+    }
+
+    /* =========================
+       TODO LO DEMÁS: CERRADO
+       (associates, rifa, live_games y club_attendance ya no se usan)
+    ========================= */
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

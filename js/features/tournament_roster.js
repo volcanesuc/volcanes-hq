@@ -395,7 +395,8 @@ async function loadRoster() {
 
 async function loadPlayers() {
   const [usersSnap, clubPlayersSnap] = await Promise.all([
-    getDocs(collection(db, USERS_COL)),
+    // Solo staff/admin pueden leer users (datos personales); el resto usa los nombres de la ficha.
+    getDocs(collection(db, USERS_COL)).catch(() => ({ docs: [], forEach() {} })),
     getDocs(collection(db, CLUB_PLAYERS_COL))
   ]);
 
