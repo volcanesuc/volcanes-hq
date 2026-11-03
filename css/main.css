@@ -84,7 +84,7 @@ body{
 
 body:not(.loading) .loading-overlay { display: none; }
 
-.spinner-border {
+.loading-overlay .spinner-border {
   color: var(--theme-accent);
   width: 3rem;
   height: 3rem;
@@ -249,7 +249,6 @@ body:not(.loading) .loading-overlay { display: none; }
 
 #app-header .hq-nav__me{ display: inline-flex; }
 
-/* el spinner global (.spinner-border) es grande: en la barra va chico */
 #app-header .hq-nav__cta .spinner-border{
   width: 1.1rem;
   height: 1.1rem;

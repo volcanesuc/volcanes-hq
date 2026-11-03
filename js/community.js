@@ -17,11 +17,16 @@ import {
   where,
   orderBy,
   serverTimestamp,
-  Timestamp,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 import { loadPartialOnce } from "/js/ui/loadPartial.js";
 import { TX, txf } from "/js/strings/screens/community.js";
+import {
+  avatarHtml,
+  extractYouTubeId,
+  normalizePost,
+  renderPostCard,
+} from "/js/features/community/post_card.js";
 
 const COL = APP_CONFIG.collections;
 const COMMUNITY_COL = COL.communityPosts || "community_posts";
@@ -31,24 +36,16 @@ const state = {
   role: "viewer",
   posts: [],
   filteredPosts: [],
+  type: "",
 };
 
 const $ = {
   feed: document.getElementById("communityFeed"),
-  featuredPosts: document.getElementById("featuredPosts"),
-  featuredSection: document.getElementById("featuredSection"),
   emptyState: document.getElementById("communityEmptyState"),
-  countLabel: document.getElementById("communityCountLabel"),
-
-  kpiPosts: document.getElementById("kpiPosts"),
-  kpiVideos: document.getElementById("kpiVideos"),
-  kpiResources: document.getElementById("kpiResources"),
-
+  typeChips: document.getElementById("communityTypeChips"),
   search: document.getElementById("communitySearch"),
-  typeFilter: document.getElementById("communityTypeFilter"),
-  pinnedFilter: document.getElementById("communityPinnedFilter"),
-  clearFiltersBtn: document.getElementById("clearCommunityFiltersBtn"),
 
+  composerAvatar: document.getElementById("composerAvatar"),
   newPostBtn: document.getElementById("newPostBtn"),
 
   form: null,
@@ -93,8 +90,10 @@ async function boot() {
 
     try {
       state.user = user || null;
+      renderComposer();
       await resolveUserRole();
       await loadPosts();
+      openFromUrl();
     } catch (err) {
       console.error("Error initializing community:", err);
     } finally {
@@ -143,21 +142,19 @@ function releaseUI() {
 
 function bindEvents() {
   $.search?.addEventListener("input", applyFilters);
-  $.typeFilter?.addEventListener("change", applyFilters);
-  $.pinnedFilter?.addEventListener("change", applyFilters);
 
-  $.clearFiltersBtn?.addEventListener("click", () => {
-    $.search.value = "";
-    $.typeFilter.value = "";
-    $.pinnedFilter.value = "";
+  $.typeChips?.addEventListener("click", (e) => {
+    const chip = e.target.closest("[data-type]");
+    if (!chip) return;
+    state.type = chip.dataset.type || "";
+    $.typeChips.querySelectorAll("[data-type]").forEach((el) => el.classList.toggle("is-active", el === chip));
     applyFilters();
   });
 
-  $.newPostBtn?.addEventListener("click", () => {
-    resetForm();
-    $.modalTitle.textContent = TX.nuevoPost;
-    $.modalSubtitle.textContent = TX.compartiIdeasSesionesGrabadas;
-    postModal?.show();
+  $.newPostBtn?.addEventListener("click", () => openComposer("opinion"));
+
+  document.querySelectorAll("[data-compose]").forEach((btn) => {
+    btn.addEventListener("click", () => openComposer(btn.dataset.compose));
   });
 
   $.type?.addEventListener("change", syncFormByType);
@@ -179,6 +176,45 @@ function bindEvents() {
       await handleDeletePost(id);
     }
   });
+}
+
+function firstName() {
+  const name = state.user?.displayName?.trim() || "";
+  return name.split(/\s+/)[0] || "";
+}
+
+function renderComposer() {
+  if ($.composerAvatar) {
+    $.composerAvatar.innerHTML = avatarHtml(state.user?.displayName || state.user?.email, state.user?.photoURL);
+  }
+  if ($.newPostBtn) {
+    const name = firstName();
+    $.newPostBtn.textContent = name ? txf(TX.composerPlaceholder, { name }) : TX.composerPlaceholderAnon;
+  }
+}
+
+// kind: opinion | video | photo | document | announcement
+function openComposer(kind = "opinion") {
+  resetForm();
+  if (kind === "photo") {
+    $.type.value = "media";
+    $.mediaType.value = "image";
+  } else if ($.type.querySelector(`option[value="${kind}"]`)) {
+    $.type.value = kind;
+  }
+  syncFormByType();
+  postModal?.show();
+}
+
+// community.html?new=1 (desde Mi perfil) abre el formulario; ?edit=<id> abre esa publicación.
+function openFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const editId = params.get("edit");
+  if (params.get("new")) openComposer("opinion");
+  else if (editId) openEditPost(editId);
+  if (params.has("new") || editId) {
+    history.replaceState({}, "", window.location.pathname);
+  }
 }
 
 async function resolveUserRole() {
@@ -213,40 +249,16 @@ async function loadPosts() {
     }));
 
     applyFilters();
-    renderKPIs();
   } catch (err) {
     console.error("Error loading community posts:", err);
     state.posts = [];
     applyFilters();
-    renderKPIs();
   }
 }
 
-function normalizePost(post) {
-  return {
-    title: post.title || TX.sinTitulo,
-    summary: post.summary || "",
-    body: post.body || "",
-    type: post.type || "opinion",
-    externalUrl: post.externalUrl || "",
-    youtubeUrl: post.youtubeUrl || "",
-    youtubeId: post.youtubeId || extractYouTubeId(post.youtubeUrl || ""),
-    mediaType: post.mediaType || "",
-    mediaUrl: post.mediaUrl || "",
-    authorId: post.authorId || "",
-    authorName: post.authorName || TX.miembroDelClub,
-    visibility: post.visibility || "club",
-    pinned: !!post.pinned,
-    tags: Array.isArray(post.tags) ? post.tags : [],
-    createdAt: post.createdAt || null,
-    updatedAt: post.updatedAt || null,
-  };
-}
-
 function applyFilters() {
-  const term = norm($.search?.value || "");
-  const type = $.typeFilter?.value || "";
-  const pinnedFilter = $.pinnedFilter?.value || "";
+  const term = norm($.search?.value || "").replace(/^#/, "");
+  const type = state.type;
 
   state.filteredPosts = state.posts.filter((post) => {
     const haystack = norm([
@@ -260,8 +272,6 @@ function applyFilters() {
 
     if (term && !haystack.includes(term)) return false;
     if (type && post.type !== type) return false;
-    if (pinnedFilter === "pinned" && !post.pinned) return false;
-    if (pinnedFilter === "not-pinned" && post.pinned) return false;
 
     if (post.visibility === "staff" && !canSeeStaffContent()) return false;
 
@@ -281,199 +291,22 @@ function canManagePost(post) {
   return post.authorId === state.user.uid;
 }
 
+// Feed único: destacados primero, después por fecha.
 function renderPosts() {
-  const featured = state.filteredPosts.filter((p) => p.pinned);
-  const normal = state.filteredPosts.filter((p) => !p.pinned);
+  const ordered = [
+    ...state.filteredPosts.filter((p) => p.pinned),
+    ...state.filteredPosts.filter((p) => !p.pinned),
+  ];
 
-  $.featuredPosts.innerHTML = "";
-  $.feed.innerHTML = "";
+  $.feed.innerHTML = ordered.map((post) => renderPostCard(post, { manage: canManagePost(post) })).join("");
 
-  $.featuredSection.hidden = featured.length === 0;
-  $.emptyState.hidden = state.filteredPosts.length > 0;
-
-  $.countLabel.textContent = `${state.filteredPosts.length} post${state.filteredPosts.length === 1 ? "" : "s"}`;
-
-  for (const post of featured) {
-    $.featuredPosts.insertAdjacentHTML("beforeend", renderPostCard(post));
+  const filtering = !!(state.type || ($.search?.value || "").trim());
+  $.emptyState.hidden = ordered.length > 0;
+  $.emptyState.querySelector("[data-empty-filter]")?.remove();
+  if (!ordered.length && filtering) {
+    $.emptyState.hidden = false;
+    $.emptyState.insertAdjacentHTML("beforeend", `<div class="small mt-2" data-empty-filter>${TX.sinResultados}</div>`);
   }
-
-  for (const post of normal) {
-    $.feed.insertAdjacentHTML("beforeend", renderPostCard(post));
-  }
-}
-
-function renderKPIs() {
-  const total = state.posts.length;
-  const videos = state.posts.filter((p) => p.type === "video" || p.type === "session").length;
-  const resources = state.posts.filter((p) => ["media", "document"].includes(p.type)).length;
-
-  $.kpiPosts.textContent = String(total);
-  $.kpiVideos.textContent = String(videos);
-  $.kpiResources.textContent = String(resources);
-}
-
-function renderPostCard(post) {
-  const typeMeta = getTypeMeta(post.type);
-  const created = formatDate(post.createdAt);
-  const youtubeId = post.youtubeId || extractYouTubeId(post.youtubeUrl);
-  const manage = canManagePost(post);
-
-  const tagsHtml = (post.tags || []).length
-    ? `
-      <div class="community-tags">
-        ${post.tags.map((tag) => `<span class="community-tag">#${escapeHtml(tag)}</span>`).join("")}
-      </div>
-    `
-    : "";
-
-  const bodyHtml = post.body
-    ? `<div class="community-card__text">${escapeHtml(post.body)}</div>`
-    : "";
-
-  const summaryHtml = post.summary
-    ? `<div class="community-card__summary">${escapeHtml(post.summary)}</div>`
-    : "";
-
-  const youtubeHtml = youtubeId
-    ? `
-      <div class="community-embed ratio ratio-16x9">
-        <iframe
-          src="https://www.youtube.com/embed/${youtubeId}"
-          title="${escapeHtml(post.title)}"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          referrerpolicy="strict-origin-when-cross-origin"
-          allowfullscreen
-        ></iframe>
-      </div>
-    `
-    : "";
-
-  let mediaHtml = "";
-
-  if (post.mediaType === "image" && post.mediaUrl) {
-    mediaHtml = `
-      <div class="community-media-preview">
-        <img
-          src="${escapeAttr(post.mediaUrl)}"
-          alt="${escapeAttr(post.title)}"
-          class="community-media-image"
-          loading="lazy"
-        />
-      </div>
-    `;
-  } else if (post.mediaUrl) {
-    mediaHtml = `
-      <div class="community-link-box">
-        <i class="bi bi-link-45deg me-1"></i>
-        <a href="${escapeAttr(post.mediaUrl)}" target="_blank" rel="noopener noreferrer">
-          ${TX.abrirRecurso}
-        </a>
-      </div>
-    `;
-  }
-
-  const externalHtml = post.externalUrl
-    ? `
-      <div class="community-link-box">
-        <i class="bi bi-box-arrow-up-right me-1"></i>
-        <a href="${escapeAttr(post.externalUrl)}" target="_blank" rel="noopener noreferrer">
-          ${TX.verLinkRelacionado}
-        </a>
-      </div>
-    `
-    : "";
-
-  return `
-    <article class="community-card ${post.pinned ? "community-card--pinned" : ""}">
-      <div class="community-card__body">
-        <div class="community-card__top">
-          <div class="community-card__meta">
-            <div class="community-card__badges">
-              <span class="community-type-badge">
-                <i class="bi ${typeMeta.icon}"></i>
-                ${typeMeta.label}
-              </span>
-              ${post.pinned ? `
-                <span class="community-pin-badge">
-                  <i class="bi bi-pin-angle-fill"></i>
-                  ${TX.destacado}
-                </span>
-              ` : ""}
-            </div>
-
-            <h3 class="community-card__title">${escapeHtml(post.title)}</h3>
-            ${summaryHtml}
-
-            <div class="community-card__author">
-              por <strong>${escapeHtml(post.authorName)}</strong>
-              ${created ? `· ${created}` : ""}
-            </div>
-          </div>
-
-          <div class="community-card__actions">
-            ${manage ? `
-              <button
-                type="button"
-                class="btn btn-sm btn-outline-primary"
-                data-action="edit-post"
-                data-id="${post.id}"
-              >
-                <i class="bi bi-pencil"></i> ${TX.editar}
-              </button>
-
-              <button
-                type="button"
-                class="btn btn-sm btn-outline-danger"
-                data-action="delete-post"
-                data-id="${post.id}"
-              >
-                <i class="bi bi-trash"></i> ${TX.eliminar}
-              </button>
-            ` : ""}
-          </div>
-        </div>
-
-        <div class="community-card__content">
-          ${bodyHtml}
-          ${youtubeHtml}
-          ${mediaHtml}
-          ${externalHtml}
-          ${tagsHtml}
-        </div>
-
-        <div class="community-footer">
-          <div class="community-footer__left">
-            <span><i class="bi bi-person-circle me-1"></i>${escapeHtml(post.authorName)}</span>
-            <span><i class="bi bi-eye me-1"></i>${post.visibility === "staff" ? TX.soloStaff : TX.club}</span>
-          </div>
-
-          <div class="community-footer__right">
-            ${post.youtubeUrl ? `
-              <a
-                class="btn btn-sm btn-outline-primary"
-                href="${escapeAttr(post.youtubeUrl)}"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <i class="bi bi-youtube"></i> ${TX.youtube}
-              </a>
-            ` : ""}
-
-            ${post.externalUrl ? `
-              <a
-                class="btn btn-sm btn-outline-primary"
-                href="${escapeAttr(post.externalUrl)}"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <i class="bi bi-box-arrow-up-right"></i> ${TX.abrir}
-              </a>
-            ` : ""}
-          </div>
-        </div>
-      </div>
-    </article>
-  `;
 }
 
 async function onSubmitForm(e) {
@@ -486,13 +319,8 @@ async function onSubmitForm(e) {
 
   const payload = buildFormPayload();
 
-  if (!payload.title) {
-    alert(TX.elTituloEsObligatorio);
-    return;
-  }
-
-  if (!payload.body && !payload.youtubeUrl && !payload.mediaUrl && !payload.externalUrl) {
-    alert(TX.agregaContenidoUnLink);
+  if (!payload.title && !payload.body && !payload.youtubeUrl && !payload.mediaUrl && !payload.externalUrl) {
+    alert(TX.agregaTituloOContenido);
     return;
   }
 
@@ -514,6 +342,7 @@ async function onSubmitForm(e) {
         ...payload,
         authorId: state.user.uid,
         authorName: resolveAuthorName(),
+        authorPhotoURL: state.user.photoURL || null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -627,57 +456,6 @@ function resolveAuthorName() {
   return email.split("@")[0];
 }
 
-function getTypeMeta(type) {
-  switch (type) {
-    case "video":
-      return { label: TX.video, icon: "bi-youtube" };
-    case "session":
-      return { label: TX.sesion, icon: "bi-camera-video-fill" };
-    case "media":
-      return { label: TX.media, icon: "bi-image" };
-    case "document":
-      return { label: TX.documento, icon: "bi-file-earmark-text" };
-    case "announcement":
-      return { label: TX.anuncio, icon: "bi-megaphone" };
-    case "opinion":
-    default:
-      return { label: TX.opinion, icon: "bi-chat-left-text" };
-  }
-}
-
-function extractYouTubeId(url) {
-  if (!url) return "";
-
-  try {
-    const u = new URL(url);
-
-    if (u.hostname.includes("youtu.be")) {
-      return u.pathname.replace("/", "").trim();
-    }
-
-    if (u.hostname.includes("youtube.com")) {
-      if (u.searchParams.get("v")) {
-        return u.searchParams.get("v").trim();
-      }
-
-      const parts = u.pathname.split("/").filter(Boolean);
-      const embedIdx = parts.indexOf("embed");
-      if (embedIdx >= 0 && parts[embedIdx + 1]) {
-        return parts[embedIdx + 1].trim();
-      }
-
-      const shortsIdx = parts.indexOf("shorts");
-      if (shortsIdx >= 0 && parts[shortsIdx + 1]) {
-        return parts[shortsIdx + 1].trim();
-      }
-    }
-  } catch (_) {
-    return "";
-  }
-
-  return "";
-}
-
 function parseTags(raw) {
   return [...new Set(
     String(raw || "")
@@ -687,42 +465,10 @@ function parseTags(raw) {
   )];
 }
 
-function formatDate(value) {
-  const d = firestoreDateToDate(value);
-  if (!d) return "";
-
-  return new Intl.DateTimeFormat("es-CR", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  }).format(d);
-}
-
-function firestoreDateToDate(value) {
-  if (!value) return null;
-  if (value instanceof Date) return value;
-  if (value instanceof Timestamp) return value.toDate();
-  if (typeof value?.toDate === "function") return value.toDate();
-  return null;
-}
-
 function norm(value) {
   return String(value || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim();
-}
-
-function escapeHtml(str) {
-  return String(str || "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
-function escapeAttr(str) {
-  return escapeHtml(str);
 }

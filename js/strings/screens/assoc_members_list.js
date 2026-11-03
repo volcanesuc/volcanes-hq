@@ -38,6 +38,13 @@ export const TX = defineStrings("assoc_members_list", "Asociación: asociados", 
   enviarWhatsapp: "Enviar WhatsApp",
   cedula: "Cédula: {idNumber}",
   editar: "Editar",
+  todosLosTipos: "Todos los tipos",
+  ordenar: "Ordenar",
+  ordenNombre: "Nombre (A–Z)",
+  ordenVencePronto: "Vence primero",
+  ordenInicioReciente: "Inicio más reciente",
+  limpiar: "Limpiar filtros",
+  nMiembros: "{n} miembros",
 });
 
 export const txf = fmt;

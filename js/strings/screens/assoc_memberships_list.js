@@ -16,6 +16,8 @@ export const TX = defineStrings("assoc_memberships_list", "Asociación: lista de
   inicio: "Inicio: {value}",
   fin: "Fin: {value}",
   cobertura: "Cobertura: {coverageText}",
+  todas: "Todas",
+  limpiar: "Limpiar filtros",
 });
 
 export const txf = fmt;

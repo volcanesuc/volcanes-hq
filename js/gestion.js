@@ -1,5 +1,5 @@
 // js/gestion.js
-// Gestión del club: Personas (miembros, membresías) y Dinero (pagos, contabilidad, pickups).
+// Gestión del club: Miembros (directorio, membresías) y Finanzas (pagos, contabilidad, pickups).
 // Ajustes vive en admin.html. Cada vista es un módulo con mount(container, cfg).
 import { guardPage } from "./page-guard.js";
 import { loadHeader } from "./components/header.js";
@@ -8,19 +8,19 @@ import { showLoader, hideLoader } from "./ui/loader.js";
 import { TX, txf } from "/js/strings/screens/gestion.js";
 
 const SECTIONS = {
-  personas: {
+  miembros: {
     navId: "people",
-    title: TX.personasTitulo,
-    subtitle: TX.personasSub,
+    title: TX.miembrosTitulo,
+    subtitle: TX.miembrosSub,
     views: [
-      { id: "miembros", label: TX.miembros, load: () => import("./features/association/assoc_members_list.js?v=1") },
+      { id: "directorio", label: TX.directorio, load: () => import("./features/association/assoc_members_list.js?v=1") },
       { id: "membresias", label: TX.membresias, load: () => import("./features/association/assoc_memberships_list.js?v=1") },
     ],
   },
-  dinero: {
+  finanzas: {
     navId: "money",
-    title: TX.dineroTitulo,
-    subtitle: TX.dineroSub,
+    title: TX.finanzasTitulo,
+    subtitle: TX.finanzasSub,
     views: [
       { id: "pagos", label: TX.pagos, load: () => import("./features/association/assoc_payments_validation_list.js?v=1") },
       { id: "contabilidad", label: TX.contabilidad, load: () => import("./features/association/assoc_accounting.js?v=1") },
@@ -33,12 +33,18 @@ const SECTIONS = {
   },
 };
 
+// Nombres anteriores, para links guardados.
+const SECTION_ALIASES = { personas: "miembros", dinero: "finanzas" };
+const VIEW_ALIASES = { miembros: "directorio" };
+
 function readState() {
   const params = new URLSearchParams(window.location.search);
-  const tab = String(params.get("tab") || "").toLowerCase();
-  const section = SECTIONS[tab] ? tab : "personas";
+  const rawTab = String(params.get("tab") || "").toLowerCase();
+  const tab = SECTION_ALIASES[rawTab] || rawTab;
+  const section = SECTIONS[tab] ? tab : "miembros";
   const views = SECTIONS[section].views;
-  const viewId = String(params.get("view") || "").toLowerCase();
+  const rawView = String(params.get("view") || "").toLowerCase();
+  const viewId = VIEW_ALIASES[rawView] || rawView;
   const view = views.find((v) => v.id === viewId) || views[0];
   return { section, view };
 }
@@ -110,7 +116,7 @@ if (redirected) {
     initModalHost();
 
     window.addEventListener("user:saved", async () => {
-      if (readState().view.id !== "miembros") return;
+      if (readState().view.id !== "directorio") return;
       showLoader();
       try {
         await render(cfg);

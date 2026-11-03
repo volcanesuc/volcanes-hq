@@ -229,13 +229,16 @@ export async function loadHeader(activeTab, cfgOverride) {
 
   // Remote Config y permisos se evalúan con `gate` (la llave de la página real),
   // así varios items pueden colgar del mismo permiso (ej. Personas y Dinero → association).
+  // `perm` exige además un permiso de rol distinto (ej. Pickups en Gestión → association).
   function getVisibleMenu(currentCfg) {
     const gated = MENU.map((item) => ({ ...item, id: item.gate || item.id, navId: item.id }));
     let visibleMenu = isOverride
       ? filterMenuStrict(gated, currentCfg)
       : filterMenuByConfig(gated, currentCfg);
 
-    visibleMenu = filterMenuByRolePermissions(visibleMenu, currentCfg);
+    visibleMenu = filterMenuByRolePermissions(visibleMenu, currentCfg).filter(
+      (item) => !item.perm || canSeeMenuItemByPermissions({ id: item.perm }, currentCfg)
+    );
     return visibleMenu.map((item) => ({ ...item, id: item.navId }));
   }
 
@@ -409,7 +412,7 @@ export async function loadHeader(activeTab, cfgOverride) {
       : `<span class="hq-nav__avatar hq-nav__avatar--empty">${escAttr((name.trim()[0] || "?").toUpperCase())}</span>`;
 
     cta.innerHTML = `
-      <span class="hq-nav__me" title="${escAttr(name)}">${avatar}</span>
+      <a class="hq-nav__me" href="/perfil.html" title="${escAttr(TX.miPerfil)}">${avatar}</a>
       <button id="logoutBtn" class="btn btn-sm btn-outline-light hq-nav__logout">${logoutLabel}</button>
     `;
 

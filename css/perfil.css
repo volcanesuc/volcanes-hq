@@ -1,0 +1,125 @@
+/* ======================================================
+   MI PERFIL (perfil.html)
+====================================================== */
+
+.pf-wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  display: grid;
+  gap: 1rem;
+}
+
+.pf-hero {
+  background: #fff;
+  border: 1px solid var(--ui-border, rgba(0, 0, 0, .08));
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .05);
+}
+
+.pf-hero__cover {
+  height: 110px;
+  background:
+    radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--theme-accent) 40%, transparent) 0%, transparent 55%),
+    linear-gradient(135deg, var(--ui-ink, #111), var(--theme-primary));
+}
+
+.pf-hero__body {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0 1.25rem 1.1rem;
+}
+
+.pf-hero__avatar {
+  margin-top: -48px;
+  flex: 0 0 auto;
+}
+
+.pf-hero__avatar .feed-avatar {
+  width: 96px !important;
+  height: 96px !important;
+  font-size: 2.2rem;
+  border: 4px solid #fff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .12);
+}
+
+.pf-hero__who {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.pf-hero__name {
+  font-weight: 900;
+  font-size: clamp(1.3rem, 3.5vw, 1.7rem);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.pf-hero__email {
+  color: rgba(0, 0, 0, .55);
+  font-size: .9rem;
+}
+
+.pf-hero__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  margin-top: .45rem;
+}
+
+.pf-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  font-size: .75rem;
+  font-weight: 700;
+  padding: .18rem .6rem;
+  border-radius: 999px;
+  background: #f3f1fa;
+  color: #4b4566;
+  white-space: nowrap;
+}
+
+.pf-pill--ok { background: #dcfce7; color: #166534; }
+.pf-pill--wait { background: #fef9c3; color: #854d0e; }
+.pf-pill--bad { background: #fee2e2; color: #b91c1c; }
+.pf-pill--role { background: color-mix(in srgb, var(--theme-primary) 12%, #fff); color: var(--theme-primary); }
+
+.pf-stats {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.pf-stats > div {
+  text-align: center;
+}
+
+.pf-stats b {
+  display: block;
+  font-size: 1.35rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.pf-stats span {
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: rgba(0, 0, 0, .55);
+  font-weight: 700;
+}
+
+.pf-section-title {
+  font-size: .78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: rgba(0, 0, 0, .55);
+  margin: 1.4rem 0 .75rem;
+}
+
+.pf-section-title:first-child {
+  margin-top: 0;
+}

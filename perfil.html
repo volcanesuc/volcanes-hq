@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title data-tx="html_perfil.miPerfil">Mi perfil</title>
+
+  <script>document.documentElement.classList.add("preload");</script>
+  <style>
+    html.preload, html.preload body { background: #f6f6f9; }
+    html.preload body { visibility: hidden; }
+    html.preload #clubLoadingOverlay { visibility: visible; }
+  </style>
+  <script src="/js/ui/loader.preload.js"></script>
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/img/apple-touch-icon.png">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+
+  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="/css/dashboard.css" />
+  <link rel="stylesheet" href="/css/community.css" />
+  <link rel="stylesheet" href="/css/perfil.css" />
+  <link rel="stylesheet" href="/css/club-ui.css" />
+</head>
+
+<body class="loading">
+
+  <div id="app-header"></div>
+
+  <main class="container py-4 ui-page">
+    <div class="pf-wrap">
+
+      <!-- Encabezado del perfil -->
+      <section class="pf-hero">
+        <div class="pf-hero__cover"></div>
+        <div class="pf-hero__body">
+          <div class="pf-hero__avatar" id="pfAvatar"></div>
+          <div class="pf-hero__who">
+            <h1 class="pf-hero__name" id="pfName">—</h1>
+            <div class="pf-hero__email" id="pfEmail"></div>
+            <div class="pf-hero__chips" id="pfChips"></div>
+          </div>
+          <div class="pf-stats">
+            <div><b id="pfPostsCount">0</b><span data-tx="html_perfil.publicaciones">Publicaciones</span></div>
+          </div>
+        </div>
+      </section>
+
+      <nav class="ui-seg" id="pfTabs" aria-label="Secciones del perfil">
+        <a href="#publicaciones" class="ui-seg__item is-active" data-pf-tab="posts" data-tx="html_perfil.publicaciones">Publicaciones</a>
+        <a href="#informacion" class="ui-seg__item" data-pf-tab="info" data-tx="html_perfil.miInformacion">Mi información</a>
+      </nav>
+
+      <!-- Publicaciones -->
+      <section id="pfPostsPanel">
+        <a class="feed-composer d-block text-decoration-none mb-3" href="/community.html?new=1">
+          <div class="feed-composer__row">
+            <span id="pfComposerAvatar"></span>
+            <span class="feed-composer__input" data-tx="html_perfil.publicarAlgo">Publicar algo en Comunidad…</span>
+          </div>
+        </a>
+        <div id="pfPostsEmpty" class="ui-empty" hidden>
+          <div class="fs-2 mb-1"><i class="bi bi-chat-square-text"></i></div>
+          <div class="fw-bold" data-tx="html_perfil.todaviaNoPublicaste">Todavía no publicaste nada.</div>
+          <div class="small" data-tx="html_perfil.tusPublicacionesAparecen">Tus publicaciones en Comunidad aparecen acá.</div>
+        </div>
+        <div id="pfPosts" class="feed-list"></div>
+      </section>
+
+      <!-- Mi información -->
+      <section id="pfInfoPanel" hidden>
+        <div class="alert d-none" id="pfAlert" role="alert"></div>
+
+        <form id="pfForm" class="card" novalidate>
+          <div class="card-body">
+            <h2 class="pf-section-title" data-tx="html_perfil.datosPersonales">Datos personales</h2>
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label" for="pfFirstName" data-tx="html_perfil.nombre">Nombre</label>
+                <input id="pfFirstName" class="form-control" maxlength="60" required />
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label" for="pfLastName" data-tx="html_perfil.apellidos">Apellidos</label>
+                <input id="pfLastName" class="form-control" maxlength="80" required />
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label" for="pfEmailInput" data-tx="html_perfil.correo">Correo</label>
+                <input id="pfEmailInput" class="form-control" disabled />
+                <div class="form-text" data-tx="html_perfil.correoDeGoogle">Es el de tu cuenta de Google.</div>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label" for="pfIdNumber" data-tx="html_perfil.identificacion">Identificación</label>
+                <input id="pfIdNumber" class="form-control" disabled />
+                <div class="form-text" data-tx="html_perfil.paraCambiarlaHablaCon">Para cambiarla hablá con un admin del club.</div>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label" for="pfPhone" data-tx="html_perfil.telefono">Teléfono</label>
+                <input id="pfPhone" class="form-control" type="tel" maxlength="20" />
+              </div>
+              <div class="col-6 col-md-3">
+                <label class="form-label" for="pfProvince" data-tx="html_perfil.provincia">Provincia</label>
+                <input id="pfProvince" class="form-control" maxlength="40" />
+              </div>
+              <div class="col-6 col-md-3">
+                <label class="form-label" for="pfCanton" data-tx="html_perfil.canton">Cantón</label>
+                <input id="pfCanton" class="form-control" maxlength="40" />
+              </div>
+            </div>
+
+            <h2 class="pf-section-title" data-tx="html_perfil.contactoDeEmergencia">Contacto de emergencia</h2>
+            <div class="row g-3">
+              <div class="col-12 col-md-5">
+                <label class="form-label" for="pfEmName" data-tx="html_perfil.nombre">Nombre</label>
+                <input id="pfEmName" class="form-control" maxlength="80" />
+              </div>
+              <div class="col-6 col-md-3">
+                <label class="form-label" for="pfEmRelation" data-tx="html_perfil.parentesco">Parentesco</label>
+                <input id="pfEmRelation" class="form-control" maxlength="40" />
+              </div>
+              <div class="col-6 col-md-4">
+                <label class="form-label" for="pfEmPhone" data-tx="html_perfil.telefono">Teléfono</label>
+                <input id="pfEmPhone" class="form-control" type="tel" maxlength="20" />
+              </div>
+            </div>
+
+            <h2 class="pf-section-title" data-tx="html_perfil.sobreVos">Sobre vos</h2>
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label" for="pfProfession" data-tx="html_perfil.profesion">Profesión u ocupación</label>
+                <input id="pfProfession" class="form-control" maxlength="80" />
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label" for="pfSkills" data-tx="html_perfil.habilidades">Habilidades que podés aportar al club</label>
+                <input id="pfSkills" class="form-control" maxlength="160" />
+              </div>
+            </div>
+          </div>
+          <div class="card-footer d-flex justify-content-end gap-2">
+            <button type="reset" class="btn btn-outline-secondary" data-tx="html_perfil.descartar">Descartar cambios</button>
+            <button type="submit" class="btn btn-primary" id="pfSaveBtn" data-tx="html_perfil.guardar">Guardar</button>
+          </div>
+        </form>
+      </section>
+
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module" src="/js/perfil.js"></script>
+</body>
+</html>

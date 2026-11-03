@@ -124,6 +124,61 @@ body{
   color: #fff;
 }
 
+button.ui-chip{ cursor: pointer; }
+
+/* contador dentro de un chip */
+.ui-chip__n{
+  display: inline-block;
+  min-width: 1.4em;
+  margin-left: .2rem;
+  padding: 0 .4rem;
+  border-radius: 999px;
+  font-size: .72rem;
+  font-weight: 800;
+  text-align: center;
+  background: rgba(0, 0, 0, .06);
+}
+
+.ui-chip.is-active .ui-chip__n{ background: rgba(255, 255, 255, .25); }
+
+/* barra de filtros: búsqueda con ícono + selects compactos */
+.ui-filterbar{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+}
+
+.ui-filterbar > .form-select{
+  width: auto;
+  min-width: 9.5rem;
+  flex: 0 1 auto;
+}
+
+.ui-search{
+  position: relative;
+  flex: 1 1 16rem;
+  min-width: 12rem;
+}
+
+.ui-search > .bi{
+  position: absolute;
+  left: .9rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ui-muted);
+  pointer-events: none;
+}
+
+.ui-search > .form-control{
+  padding-left: 2.4rem;
+  border-radius: 999px;
+}
+
+@media (max-width: 575.98px){
+  .ui-filterbar > .form-select{ flex: 1 1 calc(50% - .5rem); min-width: 0; }
+}
+
 /* Tabs internos de Bootstrap (pickups, playbook, ajustes): mismo look segmentado */
 .nav-pills{
   display: inline-flex;

@@ -1,7 +1,7 @@
 // js/strings.js
 import { defineStrings } from "/js/core/texts.js";
 
-const SKIP_KEYS = ["id", "gate", "href", "image", "images", "category", "type", "format"];
+const SKIP_KEYS = ["id", "gate", "perm", "href", "image", "images", "category", "type", "format"];
 export const CLUB_DATA = defineStrings("club", "Club, menú e inicio", {
   club: {
     id: "volcanes",
@@ -40,11 +40,13 @@ export const CLUB_DATA = defineStrings("club", "Club, menú e inicio", {
       ] },
       { id: "social", label: "Comunidad", items: [
         { id: "community", label: "Feed", href: "/community.html" },
-        { id: "pickups", label: "Pickups", href: "/pickups.html" }
+        { id: "profile", gate: "home", label: "Mi perfil", href: "/perfil.html" }
       ] },
+      // gate: llave de Remote Config (y de permiso si no hay perm); perm: permiso de rol que se exige.
       { id: "manage", label: "Gestión", items: [
-        { id: "people", gate: "association", label: "Personas", href: "/gestion.html?tab=personas" },
-        { id: "money", gate: "association", label: "Dinero", href: "/gestion.html?tab=dinero" },
+        { id: "people", gate: "association", label: "Miembros", href: "/gestion.html?tab=miembros" },
+        { id: "money", gate: "association", label: "Finanzas", href: "/gestion.html?tab=finanzas" },
+        { id: "pickups", perm: "association", label: "Pickups", href: "/pickups.html" },
         { id: "admin", label: "Ajustes", href: "/admin.html" }
       ] }
     ],

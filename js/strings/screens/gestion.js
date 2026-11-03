@@ -9,13 +9,13 @@ export const TX = defineStrings("gestion", "Gestión", {
   errorCargando: "Error cargando \"{view}\"",
   noExportaMount: "{view} no exporta mount()",
 
-  personasTitulo: "Personas",
-  personasSub: "Miembros de la asociación y sus membresías.",
-  miembros: "Miembros",
+  miembrosTitulo: "Miembros",
+  miembrosSub: "Directorio de la asociación y sus membresías.",
+  directorio: "Directorio",
   membresias: "Membresías",
 
-  dineroTitulo: "Dinero",
-  dineroSub: "Pagos por validar, contabilidad y finanzas de pickups.",
+  finanzasTitulo: "Finanzas",
+  finanzasSub: "Pagos por validar, contabilidad y finanzas de pickups.",
   pagos: "Pagos por validar",
   contabilidad: "Contabilidad",
   pickups: "Pickups",

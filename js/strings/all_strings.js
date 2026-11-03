@@ -19,6 +19,7 @@ import "/js/strings/screens/cartaglow_page.js";
 import "/js/strings/screens/community.js";
 import "/js/strings/screens/dashboard.js";
 import "/js/strings/screens/gestion.js";
+import "/js/strings/screens/perfil.js";
 import "/js/strings/screens/gym.js";
 import "/js/strings/screens/gym_editors.js";
 import "/js/strings/screens/gym_plan.js";
@@ -101,6 +102,7 @@ export const HTML_SOURCES = [
   "/community.html",
   "/dashboard.html",
   "/gestion.html",
+  "/perfil.html",
   "/gym_plan.html",
   "/gym_routine.html",
   "/gym_week.html",

@@ -301,6 +301,7 @@ function renderKpis() {
   if ($.kpiPartial) $.kpiPartial.textContent = counts.partial;
   if ($.kpiActive) $.kpiActive.textContent = counts.active;
   if ($.kpiRejected) $.kpiRejected.textContent = counts.expired + counts.rejected;
+  if ($.kpiAll) $.kpiAll.textContent = viewMemberships.length;
 }
 
 function cacheDom(container) {
@@ -316,9 +317,12 @@ function cacheDom(container) {
   $.planFilter = root.querySelector("#planFilter");
   $.statusFilter = root.querySelector("#statusFilter");
   $.actionFilter = root.querySelector("#actionFilter");
+  $.statusChips = root.querySelector("#statusChips");
+  $.btnClear = root.querySelector("#btnClearFilters");
   $.btnRefresh = root.querySelector("#btnRefresh");
   $.btnNewMembership = root.querySelector("#btnNewMembership");
 
+  $.kpiAll = root.querySelector("#kpiAll");
   $.kpiPending = root.querySelector("#kpiPending");
   $.kpiPartial = root.querySelector("#kpiPartial");
   $.kpiActive = root.querySelector("#kpiActive");
@@ -433,76 +437,40 @@ function renderShell(container) {
 
 function renderShellWithoutHeader(container) {
   container.innerHTML = `
-    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-2">
-      <div id="countLabel" class="text-muted small">${STR.count(0)}</div>
-      <div class="d-flex gap-2">
+    <div class="ui-filterbar mb-2">
+      <div class="ui-search">
+        <i class="bi bi-search"></i>
+        <input id="searchInput" type="search" class="form-control" placeholder="${STR.filters.searchPh}" />
+      </div>
+      <select id="seasonFilter" class="form-select" aria-label="${STR.filters.allSeasons}">
+        <option value="all">${STR.filters.allSeasons}</option>
+      </select>
+      <select id="planFilter" class="form-select" aria-label="${STR.filters.allPlans}">
+        <option value="all">${STR.filters.allPlans}</option>
+      </select>
+      <button id="btnClearFilters" type="button" class="btn btn-link btn-sm d-none">${TX.limpiar}</button>
+      <div class="ms-auto d-flex gap-2">
+        <button id="btnRefresh" class="btn btn-outline-secondary btn-sm" type="button" title="${STR.actions.refresh}">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
         <button id="btnNewMembership" class="btn btn-primary btn-sm" type="button">
-          <i class="bi bi-plus-circle me-1"></i> ${STR.actions?.newMembership || TX.nuevaMembresia}
-        </button>
-        <button id="btnRefresh" class="btn btn-outline-secondary btn-sm">
-          <i class="bi bi-arrow-clockwise me-1"></i> ${STR.actions.refresh}
+          <i class="bi bi-plus-lg me-1"></i> ${STR.actions?.newMembership || TX.nuevaMembresia}
         </button>
       </div>
     </div>
 
-    <div class="row g-2">
-      <div class="col-12 col-md-4">
-        <input id="searchInput" class="form-control" placeholder="${STR.filters.searchPh}" />
+    <!-- estado: chips con contadores (reemplazan los KPIs y los selects de estado/acción) -->
+    <input type="hidden" id="statusFilter" value="all" />
+    <input type="hidden" id="actionFilter" value="all" />
+    <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-1">
+      <div class="ui-chips" id="statusChips">
+        <button type="button" class="ui-chip is-active" data-status="all">${TX.todas} <span class="ui-chip__n" id="kpiAll">0</span></button>
+        <button type="button" class="ui-chip" data-status="pending">${STR.kpi.pending} <span class="ui-chip__n" id="kpiPending">0</span></button>
+        <button type="button" class="ui-chip" data-status="partial">${TX.validando} <span class="ui-chip__n" id="kpiPartial">0</span></button>
+        <button type="button" class="ui-chip" data-status="active">${TX.activas} <span class="ui-chip__n" id="kpiActive">0</span></button>
+        <button type="button" class="ui-chip" data-status="closed">${TX.vencidasRechazadas} <span class="ui-chip__n" id="kpiRejected">0</span></button>
       </div>
-      <div class="col-6 col-md-2">
-        <select id="seasonFilter" class="form-select">
-          <option value="all">${STR.filters.allSeasons}</option>
-        </select>
-      </div>
-      <div class="col-6 col-md-2">
-        <select id="planFilter" class="form-select">
-          <option value="all">${STR.filters.allPlans}</option>
-        </select>
-      </div>
-      <div class="col-6 col-md-2">
-        <select id="statusFilter" class="form-select">
-          <option value="all">${STR.filters.allStatus}</option>
-          <option value="active">${TX.activa}</option>
-          <option value="partial">${TX.validando}</option>
-          <option value="pending">${TX.pendiente}</option>
-          <option value="expired">${TX.vencida}</option>
-          <option value="rejected">${TX.rechazada}</option>
-        </select>
-      </div>
-      <div class="col-6 col-md-2">
-        <select id="actionFilter" class="form-select">
-          <option value="all">${STR.filters.allActions}</option>
-          <option value="needs_action">${STR.filters.needsAction}</option>
-          <option value="ok">${STR.filters.ok}</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="row g-2 mt-3">
-      <div class="col-6 col-md-3">
-        <div class="kpi-box">
-          <div class="text-muted small">${STR.kpi.pending}</div>
-          <div class="fs-4 fw-bold" id="kpiPending">0</div>
-        </div>
-      </div>
-      <div class="col-6 col-md-3">
-        <div class="kpi-box">
-          <div class="text-muted small">${TX.validando}</div>
-          <div class="fs-4 fw-bold" id="kpiPartial">0</div>
-        </div>
-      </div>
-      <div class="col-6 col-md-3">
-        <div class="kpi-box">
-          <div class="text-muted small">${TX.activas}</div>
-          <div class="fs-4 fw-bold" id="kpiActive">0</div>
-        </div>
-      </div>
-      <div class="col-6 col-md-3">
-        <div class="kpi-box">
-          <div class="text-muted small">${TX.vencidasRechazadas}</div>
-          <div class="fs-4 fw-bold" id="kpiRejected">0</div>
-        </div>
-      </div>
+      <div id="countLabel" class="text-muted small">${STR.count(0)}</div>
     </div>
 
     <div class="table-responsive mt-3">
@@ -550,6 +518,23 @@ export async function mount(container, cfg) {
 
   $.btnRefresh?.addEventListener("click", refreshAll);
   $.searchInput?.addEventListener("input", render);
+
+  $.statusChips?.addEventListener("click", (e) => {
+    const chip = e.target.closest("[data-status]");
+    if (!chip || !$.statusFilter) return;
+    $.statusFilter.value = chip.dataset.status;
+    $.statusChips.querySelectorAll("[data-status]").forEach((el) => el.classList.toggle("is-active", el === chip));
+    render();
+  });
+
+  $.btnClear?.addEventListener("click", () => {
+    if ($.searchInput) $.searchInput.value = "";
+    if ($.seasonFilter) $.seasonFilter.value = "all";
+    if ($.planFilter) $.planFilter.value = "all";
+    if ($.statusFilter) $.statusFilter.value = "all";
+    $.statusChips?.querySelectorAll("[data-status]").forEach((el) => el.classList.toggle("is-active", el.dataset.status === "all"));
+    render();
+  });
   $.seasonFilter?.addEventListener("change", render);
   $.planFilter?.addEventListener("change", render);
   $.statusFilter?.addEventListener("change", render);
@@ -684,9 +669,14 @@ function render() {
     });
   }
 
-  if (statusVal !== "all") {
+  if (statusVal === "closed") {
+    list = list.filter((m) => ["expired", "rejected"].includes(normalizeMembershipStatus(m.status)));
+  } else if (statusVal !== "all") {
     list = list.filter((m) => normalizeMembershipStatus(m.status) === statusVal);
   }
+
+  const filtering = !!qText || seasonVal !== "all" || planVal !== "all" || statusVal !== "all";
+  $.btnClear?.classList.toggle("d-none", !filtering);
 
   if (actionVal === "needs_action") {
     list = list.filter((m) => {

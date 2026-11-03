@@ -9,7 +9,7 @@
   <style>
     html.preload,
     html.preload body {
-      background: #0b0b0c;
+      background: #f6f6f9;
       margin: 0;
     }
 
@@ -54,147 +54,49 @@
   <div id="app-header"></div>
 
   <main class="container py-4 community-page">
-    <section class="community-page-head mb-3">
-      <div>
-        <h1 class="page-title mb-1" data-tx="html_community.comunidad">Comunidad</h1>
-        <div class="text-muted" data-tx="html_community.opinionesSesionesGrabadasRecursos">
-          Opiniones, sesiones grabadas, recursos y contenido del club.
+    <div class="feed-wrap">
+
+      <!-- Publicar -->
+      <section class="feed-composer">
+        <div class="feed-composer__row">
+          <span id="composerAvatar"></span>
+          <button id="newPostBtn" type="button" class="feed-composer__input" data-tx="html_community.queQuieresCompartir">¿Qué querés compartir?</button>
         </div>
-      </div>
-
-      <div class="community-actions">
-        <button id="newPostBtn" type="button" class="btn btn-primary community-add-btn">
-          <i class="bi bi-plus-lg"></i>
-          <span class="label-desktop" data-tx="html_community.nuevoPost">Nuevo post</span>
-          <span class="label-mobile" data-tx="html_community.crear">Crear</span>
-        </button>
-      </div>
-    </section>
-
-    <!-- KPIs -->
-    <section class="row g-3 mb-3">
-      <div class="col-12 col-md-4">
-        <div class="card kpi-card">
-          <div class="card-body">
-            <div class="kpi-value" id="kpiPosts">0</div>
-            <div class="kpi-label" data-tx="html_community.postsPublicados">Posts publicados</div>
-          </div>
+        <div class="feed-composer__actions">
+          <button type="button" data-compose="video"><i class="bi bi-youtube"></i><span data-tx="html_community.video">Video</span></button>
+          <button type="button" data-compose="photo"><i class="bi bi-image"></i><span data-tx="html_community.foto">Foto</span></button>
+          <button type="button" data-compose="document"><i class="bi bi-file-earmark-text"></i><span data-tx="html_community.documento">Documento</span></button>
+          <button type="button" data-compose="announcement"><i class="bi bi-megaphone"></i><span data-tx="html_community.anuncio">Anuncio</span></button>
         </div>
-      </div>
+      </section>
 
-      <div class="col-12 col-md-4">
-        <div class="card kpi-card">
-          <div class="card-body">
-            <div class="kpi-value" id="kpiVideos">0</div>
-            <div class="kpi-label" data-tx="html_community.videosSesiones">Videos / sesiones</div>
-          </div>
+      <!-- Filtros -->
+      <section class="feed-filters">
+        <div class="feed-search">
+          <i class="bi bi-search"></i>
+          <input id="communitySearch" type="search" class="form-control" placeholder="Buscar por texto, autor o #tag" data-tx-placeholder="html_community.buscarPorTextoAutor" />
         </div>
-      </div>
-
-      <div class="col-12 col-md-4">
-        <div class="card kpi-card">
-          <div class="card-body">
-            <div class="kpi-value" id="kpiResources">0</div>
-            <div class="kpi-label" data-tx="html_community.recursosYMedia">Recursos y media</div>
-          </div>
+        <div class="ui-chips" id="communityTypeChips">
+          <button type="button" class="ui-chip is-active" data-type="" data-tx="html_community.todo">Todo</button>
+          <button type="button" class="ui-chip" data-type="announcement" data-tx="html_community.anuncios">Anuncios</button>
+          <button type="button" class="ui-chip" data-type="opinion" data-tx="html_community.opiniones">Opiniones</button>
+          <button type="button" class="ui-chip" data-type="video" data-tx="html_community.videos">Videos</button>
+          <button type="button" class="ui-chip" data-type="session" data-tx="html_community.sesiones">Sesiones</button>
+          <button type="button" class="ui-chip" data-type="media" data-tx="html_community.fotosYMedia">Fotos y media</button>
+          <button type="button" class="ui-chip" data-type="document" data-tx="html_community.documentos">Documentos</button>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- filtros -->
-    <section class="card community-filters-panel mb-4">
-      <button
-        class="community-filters-toggle"
-        type="button"
-        data-bs-toggle="collapse"
-        data-bs-target="#communityFiltersCollapse"
-        aria-expanded="true"
-        aria-controls="communityFiltersCollapse"
-      >
-        <span class="fw-semibold">
-          <i class="bi bi-funnel me-2"></i><span data-tx="html_community.filtros">Filtros</span>
-        </span>
-        <i class="bi bi-chevron-down community-filters-chevron"></i>
-      </button>
-
-      <div id="communityFiltersCollapse" class="collapse show">
-        <div class="card-body community-filters-body">
-          <div class="row g-3 align-items-end">
-            <div class="col-12 col-md-4">
-              <label class="form-label" data-tx="html_community.buscar">Buscar</label>
-              <input
-                id="communitySearch"
-                type="search"
-                class="form-control"
-                placeholder="Buscar por título, texto, autor o tags" data-tx-placeholder="html_community.buscarPorTituloTexto"
-              />
-            </div>
-
-            <div class="col-12 col-md-3">
-              <label class="form-label" data-tx="html_community.tipo">Tipo</label>
-              <select id="communityTypeFilter" class="form-select">
-                <option value="" data-tx="html_community.todos">Todos</option>
-                <option value="opinion" data-tx="html_community.opinion">Opinión</option>
-                <option value="video" data-tx="html_community.video">Video</option>
-                <option value="session" data-tx="html_community.sesion">Sesión</option>
-                <option value="media" data-tx="html_community.media">Media</option>
-                <option value="document" data-tx="html_community.documento">Documento</option>
-                <option value="announcement" data-tx="html_community.anuncio">Anuncio</option>
-              </select>
-            </div>
-
-            <div class="col-12 col-md-3">
-              <label class="form-label" data-tx="html_community.destacados">Destacados</label>
-              <select id="communityPinnedFilter" class="form-select">
-                <option value="" data-tx="html_community.todos">Todos</option>
-                <option value="pinned" data-tx="html_community.soloDestacados">Solo destacados</option>
-                <option value="not-pinned" data-tx="html_community.noDestacados">No destacados</option>
-              </select>
-            </div>
-
-            <div class="col-12 col-md-2 d-grid">
-              <button
-                id="clearCommunityFiltersBtn"
-                type="button"
-                class="btn btn-outline-danger"
-              >
-                <i class="bi bi-x-circle"></i>
-                <span data-tx="html_community.limpiar">Limpiar</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- destacados -->
-    <section class="mb-4" id="featuredSection" hidden>
-      <div class="d-flex align-items-center gap-2 mb-2">
-        <h2 class="section-title mb-0" data-tx="html_community.destacados">Destacados</h2>
-        <span class="badge text-bg-warning" data-tx="html_community.pinned">Pinned</span>
-      </div>
-      <div id="featuredPosts" class="community-feed"></div>
-    </section>
-
-    <!-- feed -->
-    <section>
-      <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-        <h2 class="section-title mb-0" data-tx="html_community.feed">Feed</h2>
-        <small class="text-muted" id="communityCountLabel" data-tx="html_community.t0Posts">0 posts</small>
-      </div>
-
-      <div id="communityEmptyState" class="community-empty" hidden>
-        <div class="community-empty__icon">
-          <i class="bi bi-chat-square-text"></i>
-        </div>
-        <h3 class="community-empty__title" data-tx="html_community.todaviaNoHayPosts">Todavía no hay posts</h3>
-        <p class="community-empty__text mb-0" data-tx="html_community.publicaUnaOpinionUna">
+      <div id="communityEmptyState" class="ui-empty" hidden>
+        <div class="fs-2 mb-1"><i class="bi bi-chat-square-text"></i></div>
+        <div class="fw-bold" data-tx="html_community.todaviaNoHayPosts">Todavía no hay posts</div>
+        <div class="small" data-tx="html_community.publicaUnaOpinionUna">
           Publicá una opinión, una grabación de sesión, un documento o un recurso para el equipo.
-        </p>
+        </div>
       </div>
 
-      <div id="communityFeed" class="community-feed"></div>
-    </section>
+      <div id="communityFeed" class="feed-list"></div>
+    </div>
   </main>
 
   <div id="communityModalMount"></div>

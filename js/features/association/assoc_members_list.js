@@ -19,6 +19,24 @@ const COL_USERS = COL.users;
 let all = [];
 let $ = {};
 let _cfg = {};
+let assocVal = "all";
+
+// Chips de estado (orden en pantalla). "moroso" = pendientes + vencidos.
+const ASSOC_CHIPS = [
+  { id: "all", label: () => TX.todos },
+  { id: "up_to_date", label: () => TX.alDia2 },
+  { id: "moroso", label: () => TX.morosos },
+  { id: "validating", label: () => TX.validando },
+  { id: "pending", label: () => TX.pendiente },
+  { id: "overdue", label: () => TX.vencido },
+  { id: "inactive", label: () => TX.inactivo },
+];
+
+function matchesAssoc(u, key) {
+  if (key === "all") return true;
+  if (key === "moroso") return u._isMoroso;
+  return u._assocKey === key;
+}
 
 /* =========================
    Helpers
@@ -210,7 +228,9 @@ function cacheDom(container) {
 
   $.searchInput = container.querySelector("#searchInput");
   $.typeFilter = container.querySelector("#typeFilter");
-  $.assocFilter = container.querySelector("#associationFilter");
+  $.sortSelect = container.querySelector("#sortSelect");
+  $.assocChips = container.querySelector("#assocChips");
+  $.btnClear = container.querySelector("#btnClearFilters");
 
   $.btnRefresh = container.querySelector("#btnRefresh");
   $.btnNewAssociate = container.querySelector("#btnNewAssociate");
@@ -239,40 +259,29 @@ function renderShell(container) {
       </div>
     </div>
 
-    <div class="row g-2 align-items-end mb-3">
-      <div class="col-12 col-md-4">
-        <label class="form-label mb-1">${TX.buscar}</label>
-        <input id="searchInput" class="form-control" placeholder="${TX.nombreEmailOTelefono}" />
+    <div class="ui-filterbar mb-2">
+      <div class="ui-search">
+        <i class="bi bi-search"></i>
+        <input id="searchInput" type="search" class="form-control" placeholder="${TX.nombreEmailOTelefono}" />
       </div>
+      <select id="typeFilter" class="form-select" aria-label="${TX.tipo}">
+        <option value="all" selected>${TX.todosLosTipos}</option>
+        <option value="player">Jugador/a</option>
+        <option value="supporter">${TX.supporter}</option>
+        <option value="parent">Encargado/a</option>
+        <option value="other">${TX.otro}</option>
+      </select>
+      <select id="sortSelect" class="form-select" aria-label="${TX.ordenar}">
+        <option value="name">${TX.ordenNombre}</option>
+        <option value="end">${TX.ordenVencePronto}</option>
+        <option value="start">${TX.ordenInicioReciente}</option>
+      </select>
+      <button id="btnClearFilters" type="button" class="btn btn-link btn-sm d-none">${TX.limpiar}</button>
+    </div>
 
-      <div class="col-6 col-md-2">
-        <label class="form-label mb-1">${TX.tipo}</label>
-        <select id="typeFilter" class="form-select">
-          <option value="all" selected>${TX.todos}</option>
-          <option value="player">Jugador/a</option>
-          <option value="supporter">${TX.supporter}</option>
-          <option value="parent">Encargado/a</option>
-          <option value="other">${TX.otro}</option>
-        </select>
-      </div>
-
-      <div class="col-6 col-md-3">
-        <label class="form-label mb-1">${TX.asociacion}</label>
-        <select id="associationFilter" class="form-select">
-          <option value="all" selected>${TX.todos}</option>
-          <option value="up_to_date">${TX.alDia2}</option>
-          <option value="moroso">${TX.morosos}</option>
-          <option value="pending">${TX.pendiente}</option>
-          <option value="validating">${TX.validando}</option>
-          <option value="overdue">${TX.vencido}</option>
-          <option value="inactive">${TX.inactivo}</option>
-        </select>
-      </div>
-
-      <div class="col-6 col-md-1">
-        <div class="text-muted small mb-1">&nbsp;</div>
-        <div id="countLabel" class="text-muted small">—</div>
-      </div>
+    <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-3">
+      <div class="ui-chips" id="assocChips"></div>
+      <div id="countLabel" class="text-muted small">—</div>
     </div>
 
     <div class="card shadow-sm">
@@ -352,16 +361,11 @@ function render() {
 
   const qText = normalize($.searchInput?.value);
   const typeVal = $.typeFilter?.value || "all";
-  const assocVal = $.assocFilter?.value || "all";
+  const sortVal = $.sortSelect?.value || "name";
 
   let list = [...all];
 
   if (typeVal !== "all") list = list.filter((u) => getUserType(u) === typeVal);
-
-  if (assocVal !== "all") {
-    if (assocVal === "moroso") list = list.filter((u) => u._isMoroso);
-    else list = list.filter((u) => u._assocKey === assocVal);
-  }
 
   if (qText) {
     list = list.filter((u) => {
@@ -381,7 +385,14 @@ function render() {
     });
   }
 
-  $.countLabel.textContent = `${list.length}`;
+  // Los contadores de los chips respetan búsqueda y tipo, pero no el estado.
+  renderAssocChips(list);
+  list = list.filter((u) => matchesAssoc(u, assocVal));
+  sortList(list, sortVal);
+
+  const filtering = !!qText || typeVal !== "all" || assocVal !== "all" || sortVal !== "name";
+  $.btnClear?.classList.toggle("d-none", !filtering);
+  $.countLabel.textContent = txf(TX.nMiembros, { n: list.length });
 
   if (!list.length) {
     $.tbody.innerHTML = `<tr><td colspan="7" class="text-muted">${TX.noHayMiembrosCon}</td></tr>`;
@@ -477,6 +488,35 @@ function render() {
   });
 }
 
+function renderAssocChips(base) {
+  if (!$.assocChips) return;
+  $.assocChips.innerHTML = ASSOC_CHIPS.map((c) => {
+    const n = base.filter((u) => matchesAssoc(u, c.id)).length;
+    if (c.id !== "all" && c.id !== assocVal && !n) return "";
+    return `<button type="button" class="ui-chip ${c.id === assocVal ? "is-active" : ""}" data-assoc="${c.id}">
+      ${c.label()} <span class="ui-chip__n">${n}</span>
+    </button>`;
+  }).join("");
+}
+
+function sortList(list, sortVal) {
+  const time = (d, fallback) => (d ? d.getTime() : fallback);
+  if (sortVal === "end") {
+    list.sort((a, b) => time(a._membershipEnd, Infinity) - time(b._membershipEnd, Infinity));
+  } else if (sortVal === "start") {
+    list.sort((a, b) => time(b._membershipStart, -Infinity) - time(a._membershipStart, -Infinity));
+  }
+  // "name": ya viene ordenado por nombre desde loadAssociates.
+}
+
+function clearFilters() {
+  if ($.searchInput) $.searchInput.value = "";
+  if ($.typeFilter) $.typeFilter.value = "all";
+  if ($.sortSelect) $.sortSelect.value = "name";
+  assocVal = "all";
+  render();
+}
+
 /* =========================
    Public API
 ========================= */
@@ -484,6 +524,7 @@ let userSavedBound = false;
 
 export async function mount(container, cfg) {
   _cfg = cfg || {};
+  assocVal = "all";
 
   renderShell(container);
   cacheDom(container);
@@ -493,7 +534,14 @@ export async function mount(container, cfg) {
   $.btnRefresh?.addEventListener("click", loadAssociates);
   $.searchInput?.addEventListener("input", render);
   $.typeFilter?.addEventListener("change", render);
-  $.assocFilter?.addEventListener("change", render);
+  $.sortSelect?.addEventListener("change", render);
+  $.btnClear?.addEventListener("click", clearFilters);
+  $.assocChips?.addEventListener("click", (e) => {
+    const chip = e.target.closest("[data-assoc]");
+    if (!chip) return;
+    assocVal = chip.dataset.assoc;
+    render();
+  });
 
   $.btnNewAssociate?.addEventListener("click", () => {
     // deshabilitado por ahora

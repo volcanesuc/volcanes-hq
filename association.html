@@ -9,10 +9,10 @@
     (function () {
       var tab = (new URLSearchParams(location.search).get("tab") || "members").toLowerCase();
       var map = {
-        members: "/gestion.html?tab=personas&view=miembros",
-        memberships: "/gestion.html?tab=personas&view=membresias",
-        payments: "/gestion.html?tab=dinero&view=pagos",
-        accounting: "/gestion.html?tab=dinero&view=contabilidad",
+        members: "/gestion.html?tab=miembros&view=directorio",
+        memberships: "/gestion.html?tab=miembros&view=membresias",
+        payments: "/gestion.html?tab=finanzas&view=pagos",
+        accounting: "/gestion.html?tab=finanzas&view=contabilidad",
         plans: "/admin.html?tab=planes"
       };
       location.replace(map[tab] || map.members);

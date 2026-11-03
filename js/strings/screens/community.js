@@ -33,6 +33,12 @@ export const TX = defineStrings("community", "Comunidad", {
   documento: "Documento",
   anuncio: "Anuncio",
   opinion: "Opinión",
+  opciones: "Opciones",
+  ahora: "ahora",
+  composerPlaceholder: "¿Qué querés compartir, {name}?",
+  composerPlaceholderAnon: "¿Qué querés compartir?",
+  sinResultados: "No hay publicaciones con ese filtro.",
+  agregaTituloOContenido: "Escribí algo o agregá un link para publicar.",
 });
 
 export const txf = fmt;

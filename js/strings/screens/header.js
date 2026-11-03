@@ -11,6 +11,7 @@ export const TX = defineStrings("header", "Menú (header)", {
   cerrar: "Cerrar",
   salir: "Salir",
   hechoConClubStudio: "Hecho con ClubStudioHQ",
+  miPerfil: "Mi perfil",
   google: "Google",
   ingresar: "Ingresar",
   noSePudoIniciar: "No se pudo iniciar sesión con Google.",
