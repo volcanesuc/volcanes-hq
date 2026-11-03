@@ -137,8 +137,6 @@ async function onSave(e) {
       profession: v("pfProfession") || null,
       skills: v("pfSkills") || null,
     },
-    phone: v("pfPhone") || null,
-    emergencyContact,
     updatedAt: serverTimestamp(),
   };
 

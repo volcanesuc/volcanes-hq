@@ -1,5 +1,6 @@
 // /js/features/pickups/pickups_shared.js
 // Lógica pura de Pickups (sin Firestore ni DOM): cupos, tarifas, créditos, morosos.
+import { associationStatusOf, playerStatusOf } from "/js/core/me.js";
 import { APP_CONFIG } from "/js/config/config.js";
 
 export const PICKUP_STATUS = {
@@ -272,11 +273,10 @@ export function suggestTier(tiers = [], profile = {}) {
 
 export function profileFromUserDoc(userDoc = {}, { pickup = null, isFirstTime = false } = {}) {
   const birth = userDoc?.profile?.birthDate ?? userDoc?.birthDate ?? userDoc?.profile?.birthday ?? userDoc?.birthday;
-  const assoc = norm(userDoc?.associationStatus);
   return {
     isMinor: isMinorAt(birth, toDateSafe(pickup?.startAt) || new Date()),
-    isAssociate: assoc === "active" || assoc === "associated_active",
-    isPlayer: userDoc?.isPlayerActive === true || norm(userDoc?.playerStatus) === "active",
+    isAssociate: associationStatusOf(userDoc) === "active",
+    isPlayer: playerStatusOf(userDoc) === "active",
     isFirstTime,
     isGuest: false,
   };

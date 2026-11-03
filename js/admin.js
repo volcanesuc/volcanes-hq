@@ -1,4 +1,11 @@
 import {
+  claimPlayer,
+  deactivatePlayer,
+  ensurePlayerForUser,
+  playerUidOf,
+} from "/js/core/people.js";
+import { associationStatusOf, playerStatusOf } from "/js/core/me.js";
+import {
   defaultRolePermissions,
   loadRolesCatalog as loadRolesCatalogFromMe,
   mergePermissions,
@@ -385,8 +392,7 @@ function comparePlayersByName(a, b) {
 
 function isPendingUser(user) {
   const wantsPlayer = user?.registration?.wantsPlayer === true;
-  const playerStatus = String(user?.playerStatus || "").trim().toLowerCase();
-  return wantsPlayer && playerStatus === "pending";
+  return wantsPlayer && playerStatusOf(user) === "pending";
 }
 
 /* =========================================================
@@ -665,7 +671,7 @@ async function loadCoreUsersPlayers() {
   allPlayers = playersSnap.docs
     .map((d) => {
       const data = d.data() || {};
-      const userId = data.userId || data.uid || null;
+      const userId = playerUidOf(data);
       const user = userId ? usersById.get(userId) : null;
       const profile = getUserProfile(user);
       const hasUserAssigned = Boolean(userId && user);
@@ -699,7 +705,7 @@ async function loadCoreUsersPlayers() {
       ...data,
       profile: data.profile || {},
       membership: getMembershipSummary(data),
-      linkedPlayer: data.playerId ? playersById.get(data.playerId) || null : null,
+      linkedPlayer: playersById.get(d.id) || (data.playerId ? playersById.get(data.playerId) || null : null),
     };
   });
 
@@ -711,7 +717,7 @@ async function loadCoreUsersPlayers() {
 function renderUsersKpis() {
   if ($.usersKpiTotal) $.usersKpiTotal.textContent = String(allUsers.length);
   if ($.usersKpiPending) $.usersKpiPending.textContent = String(pendingUsers.length);
-  if ($.usersKpiNoPlayer) $.usersKpiNoPlayer.textContent = String(allUsers.filter((u) => !u.playerId).length);
+  if ($.usersKpiNoPlayer) $.usersKpiNoPlayer.textContent = String(allUsers.filter((u) => !u.linkedPlayer).length);
   if ($.usersKpiPickups) {
     $.usersKpiPickups.textContent = String(
       allUsers.filter((u) => u.canUsePickups === true).length
@@ -733,12 +739,12 @@ function renderUsersAdminTable() {
     const roleOk = !roleFilter || String(u.role || "") === roleFilter;
 
     let associationOk = true;
-    const associationStatus = String(u.associationStatus || "").trim().toLowerCase();
+    const associationStatus = associationStatusOf(u);
 
     if (associationFilter === "active") {
       associationOk = associationStatus === "active";
     } else if (associationFilter === "inactive") {
-      associationOk = associationStatus === "inactive";
+      associationOk = !!associationStatus && associationStatus !== "active";
     } else if (associationFilter === "none") {
       associationOk = !associationStatus;
     }
@@ -768,7 +774,7 @@ function renderUsersAdminTable() {
     )
     .map((u) => {
       const fullName = getFullUserName(u);
-      const associationStatus = String(u.associationStatus || "").trim().toLowerCase();
+      const associationStatus = associationStatusOf(u);
       const membershipLabel = u.membership?.label || "—";
       const membershipStatus = u.membership?.status || "—";
       const pending = isPendingUser(u);
@@ -788,7 +794,7 @@ function renderUsersAdminTable() {
 
           <td>
             ${
-              u.isPlayerActive === true
+              playerStatusOf(u) === "active"
                 ? renderStatusBadge(TX.activo, "success")
                 : pending
                 ? renderStatusBadge(TX.pendiente, "warning")
@@ -798,7 +804,7 @@ function renderUsersAdminTable() {
 
           <td>
             ${
-              u.playerId
+              u.linkedPlayer
                 ? renderStatusBadge(TX.ligado, "success")
                 : renderStatusBadge(TX.sinPlayer, "neutral")
             }
@@ -807,7 +813,7 @@ function renderUsersAdminTable() {
           <td>
             ${
               renderStatusBadge(
-                u.associationStatus || "—",
+                associationStatus || "—",
                 associationStatus === "active" ? "success" : "neutral"
               )
             }
@@ -899,10 +905,7 @@ function fillExistingPlayersSelect(currentUid = null, currentEmail = "") {
 
   const normalizedEmail = normalizeText(currentEmail);
 
-  const availablePlayers = allPlayers.filter((p) => {
-    const linkedUserId = p.userId || null;
-    return !linkedUserId || linkedUserId === currentUid;
-  });
+  const availablePlayers = allPlayers.filter((p) => !p.userId || p.userId === currentUid || p.id === currentUid);
 
   availablePlayers.sort((a, b) => {
     const aName = normalizeText(getPlayerFullName(a));
@@ -932,10 +935,9 @@ function fillEditExistingPlayersSelect(currentUid = null, currentEmail = "", cur
 
   const normalizedEmail = normalizeText(currentEmail);
 
-  const availablePlayers = allPlayers.filter((p) => {
-    const linkedUserId = p.userId || null;
-    return !linkedUserId || linkedUserId === currentUid || p.id === currentPlayerId;
-  });
+  const availablePlayers = allPlayers.filter(
+    (p) => !p.userId || p.userId === currentUid || p.id === currentUid || p.id === currentPlayerId
+  );
 
   availablePlayers.sort((a, b) => {
     const aName = normalizeText(getPlayerFullName(a));
@@ -972,22 +974,9 @@ function syncEditPlayerModeUI() {
   }
 }
 
-async function unlinkUserFromCurrentPlayer(uid, currentPlayerId) {
-  if (!uid || !currentPlayerId) return;
-
-  const playerRef = doc(db, COL_PLAYERS, currentPlayerId);
-  const snap = await getDoc(playerRef);
-  if (!snap.exists()) return;
-
-  const data = snap.data() || {};
-  const linkedUserId = data.userId || data.uid || null;
-
-  if (linkedUserId === uid) {
-    await updateDoc(playerRef, {
-      userId: null,
-      updatedAt: serverTimestamp(),
-    });
-  }
+// La ficha del usuario es club_players/{uid}: desligar = dejarla inactiva.
+async function unlinkUserFromCurrentPlayer(uid) {
+  if (uid) await deactivatePlayer(uid);
 }
 
 function prefillEditNewPlayerFields(user) {
@@ -1044,12 +1033,12 @@ async function openApproveModal(uid) {
   if ($.approveUid) $.approveUid.value = user.id;
   if ($.approveEmail) $.approveEmail.value = user.email || "";
   if ($.approveSystemRole) $.approveSystemRole.value = user.role || "viewer";
-  if ($.approveLinkMode) $.approveLinkMode.value = user.playerId ? "existing" : "none";
+  if ($.approveLinkMode) $.approveLinkMode.value = user.linkedPlayer ? "existing" : "none";
 
   fillExistingPlayersSelect(uid, user.email || "");
 
   if ($.approveExistingPlayerId) {
-    $.approveExistingPlayerId.value = user.playerId || "";
+    $.approveExistingPlayerId.value = user.linkedPlayer?.id || "";
   }
 
   if ($.newPlayerFirstName) $.newPlayerFirstName.value = profile.firstName || "";
@@ -1089,19 +1078,19 @@ function openEditUserModal(uid) {
   if ($.editUid) $.editUid.value = user.id || "";
   if ($.editEmail) $.editEmail.value = user.email || "";
   if ($.editSystemRole) $.editSystemRole.value = user.role || "viewer";
-  if ($.editAssociationStatus) $.editAssociationStatus.value = user.associationStatus || "";
+  if ($.editAssociationStatus) $.editAssociationStatus.value = associationStatusOf(user);
   if ($.editCanUsePickups) $.editCanUsePickups.checked = user.canUsePickups === true;
-  if ($.editIsPlayerActive) $.editIsPlayerActive.checked = user.isPlayerActive === true;
+  if ($.editIsPlayerActive) $.editIsPlayerActive.checked = playerStatusOf(user) === "active";
 
-  fillEditExistingPlayersSelect(user.id, user.email || "", user.playerId || "");
+  fillEditExistingPlayersSelect(user.id, user.email || "", user.linkedPlayer?.id || "");
   prefillEditNewPlayerFields(user);
 
   if ($.editPlayerMode) {
-    $.editPlayerMode.value = user.playerId ? "existing" : "none";
+    $.editPlayerMode.value = user.linkedPlayer ? "existing" : "none";
   }
 
   if ($.editExistingPlayerId) {
-    $.editExistingPlayerId.value = user.playerId || "";
+    $.editExistingPlayerId.value = user.linkedPlayer?.id || "";
   }
 
   syncEditPlayerModeUI();
@@ -1122,14 +1111,12 @@ async function saveUserEditFlow(ev) {
 
   try {
     const user = allUsers.find((u) => u.id === uid) || null;
-    const currentPlayerId = user?.playerId || null;
     const playerMode = $.editPlayerMode?.value || "none";
+    let hasPlayer = !!user?.linkedPlayer;
 
-    let finalPlayerId = null;
-
-    if (playerMode === "none") {
-      await unlinkUserFromCurrentPlayer(uid, currentPlayerId);
-      finalPlayerId = null;
+    if (playerMode === "none" && hasPlayer) {
+      await unlinkUserFromCurrentPlayer(uid);
+      hasPlayer = false;
     }
 
     if (playerMode === "existing") {
@@ -1137,15 +1124,9 @@ async function saveUserEditFlow(ev) {
       if (!selectedPlayerId) {
         throw new Error(TX.seleccionaUnJugadorExistente);
       }
-
-      await assertPlayerCanBeLinked(selectedPlayerId, uid);
-
-      if (currentPlayerId && currentPlayerId !== selectedPlayerId) {
-        await unlinkUserFromCurrentPlayer(uid, currentPlayerId);
-      }
-
-      await linkExistingPlayer({ playerId: selectedPlayerId, uid });
-      finalPlayerId = selectedPlayerId;
+      // Una ficha sin cuenta (o vieja) pasa a ser club_players/{uid}.
+      await claimPlayer(selectedPlayerId, uid);
+      hasPlayer = true;
     }
 
     if (playerMode === "new") {
@@ -1158,40 +1139,17 @@ async function saveUserEditFlow(ev) {
         throw new Error(TX.completaNombreYApellido);
       }
 
-      if (currentPlayerId) {
-        await unlinkUserFromCurrentPlayer(uid, currentPlayerId);
-      }
-
-      const newPlayerRef = await addDoc(collection(db, COL_PLAYERS), {
-        active: true,
-        userId: uid,
-        firstName,
-        lastName,
-        birthDate: birthDate || null,
-        fieldRole,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-
-      finalPlayerId = newPlayerRef.id;
+      await ensurePlayerForUser(uid, { firstName, lastName, birthDate: birthDate || null, fieldRole, active: true });
+      hasPlayer = true;
     }
 
-    const nextIsPlayerActive = !!$.editIsPlayerActive?.checked;
-
-    let nextPlayerStatus = null;
-    if (nextIsPlayerActive) {
-      nextPlayerStatus = "active";
-    } else if (finalPlayerId) {
-      nextPlayerStatus = "pending";
-    }
+    const playerStatus = $.editIsPlayerActive?.checked ? "active" : hasPlayer ? "pending" : "";
 
     await updateDoc(doc(db, COL_USERS, uid), {
       role: $.editSystemRole?.value || "viewer",
-      associationStatus: ($.editAssociationStatus?.value || "").trim() || null,
+      "status.association": ($.editAssociationStatus?.value || "").trim(),
+      "status.player": playerStatus,
       canUsePickups: !!$.editCanUsePickups?.checked,
-      isPlayerActive: nextIsPlayerActive,
-      playerStatus: nextPlayerStatus,
-      playerId: finalPlayerId || null,
       updatedAt: serverTimestamp(),
     });
 
@@ -1213,7 +1171,7 @@ async function assertPlayerCanBeLinked(playerId, uid) {
   if (!snap.exists()) throw new Error(TX.elJugadorSeleccionadoNo);
 
   const data = snap.data() || {};
-  const currentUserId = data.userId || data.uid || null;
+  const currentUserId = playerUidOf(data);
 
   if (currentUserId && currentUserId !== uid) {
     throw new Error(TX.eseJugadorYaEsta);
@@ -1236,27 +1194,6 @@ async function getRequiredUserProfile(uid) {
   return { user, profile };
 }
 
-async function createPlayerForUser({ uid, fieldRole, gender = null, number = null }) {
-  const ref = await addDoc(collection(db, COL_PLAYERS), {
-    active: true,
-    userId: uid || null,
-    fieldRole: fieldRole || null,
-    gender,
-    number,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
-
-  return ref.id;
-}
-
-async function linkExistingPlayer({ playerId, uid }) {
-  await updateDoc(doc(db, COL_PLAYERS, playerId), {
-    userId: uid || null,
-    updatedAt: serverTimestamp(),
-  });
-}
-
 async function approveUserFlow(ev) {
   ev.preventDefault();
   hideAlert();
@@ -1273,27 +1210,29 @@ async function approveUserFlow(ev) {
   showLoader(TX.aprobandoCuenta);
 
   try {
-    let playerId = null;
-
     if (mode === "existing") {
-      playerId = $.approveExistingPlayerId?.value || null;
+      const playerId = $.approveExistingPlayerId?.value || null;
       if (!playerId) throw new Error(TX.seleccionaUnJugadorExistente);
 
       await assertPlayerCanBeLinked(playerId, uid);
-      await linkExistingPlayer({ playerId, uid });
+      await claimPlayer(playerId, uid);
     }
 
     if (mode === "new") {
-      await getRequiredUserProfile(uid);
+      const { profile } = await getRequiredUserProfile(uid);
       const fieldRole = $.newPlayerFieldRole?.value || null;
-      playerId = await createPlayerForUser({ uid, fieldRole });
+      await ensurePlayerForUser(uid, {
+        firstName: profile.firstName || "",
+        lastName: profile.lastName || "",
+        birthDate: profile.birthDate || null,
+        fieldRole,
+        active: true,
+      });
     }
 
     await updateDoc(doc(db, COL_USERS, uid), {
-      isPlayerActive: true,
       role: systemRole,
-      playerId: playerId || null,
-      playerStatus: "active",
+      "status.player": "active",
       updatedAt: serverTimestamp(),
     });
 
@@ -1322,10 +1261,8 @@ async function denyUserFlow(uid) {
 
   try {
     await updateDoc(doc(db, COL_USERS, uid), {
-      isPlayerActive: false,
-      playerStatus: "rejected",
+      "status.player": "rejected",
       role: "viewer",
-      playerId: null,
       updatedAt: serverTimestamp(),
     });
 

@@ -186,7 +186,7 @@ function bindActions(uid) {
           wantsPlayer: true,
           canUsePickups: true,
         },
-        playerStatus: "pending",
+        status: { player: "pending" },
         updatedAt: serverTimestamp(),
       }, { merge: true });
 

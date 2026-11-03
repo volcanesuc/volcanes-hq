@@ -41,10 +41,8 @@ import "/js/strings/screens/playbook_js.js";
 import "/js/strings/screens/register_auth.js";
 import "/js/strings/screens/register_config.js";
 import "/js/strings/screens/register_plans.js";
-import "/js/strings/screens/register_player.js";
 import "/js/strings/screens/register_services.js";
 import "/js/strings/screens/register_submit.js";
-import "/js/strings/screens/register_training.js";
 import "/js/strings/screens/register_ui.js";
 import "/js/strings/screens/role_routing.js";
 import "/js/strings/screens/roster.js";
@@ -102,7 +100,7 @@ export const NAMESPACE_LABELS = {
 export const TEXT_SCREENS = [
   { id: "general", group: "General", label: "Menú, club y avisos", ns: ["club", "header", "loader", "signout", "role_routing", "media_viewer"] },
   { id: "inicio", group: "Inicio", label: "Inicio", ns: ["html_dashboard", "dashboard", "club_events"] },
-  { id: "sesiones", group: "Entrenar", label: "Sesiones", ns: ["html_trainings_history", "trainings_history", "trainings_ui", "register_training", "html_training_session_modal"] },
+  { id: "sesiones", group: "Entrenar", label: "Sesiones", ns: ["html_trainings_history", "trainings_history", "trainings_ui", "html_training_session_modal"] },
   { id: "asistencia", group: "Entrenar", label: "Asistencia", ns: ["html_attendance", "attendance"] },
   {
     id: "playbook", group: "Entrenar", label: "Playbook y gimnasio",
@@ -113,7 +111,7 @@ export const TEXT_SCREENS = [
       "html_gym_week", "html_gym_exercise_modal", "html_gym_program_editor", "html_gym_routine_editor",
     ],
   },
-  { id: "roster", group: "Equipo", label: "Roster", ns: ["html_roster", "roster", "html_player_modal", "register_player"] },
+  { id: "roster", group: "Equipo", label: "Roster", ns: ["html_roster", "roster", "html_player_modal"] },
   { id: "torneos", group: "Equipo", label: "Torneos", ns: ["tournaments", "tournaments_list", "tournament_editor", "html_tournament_editor", "tournament_roster", "html_tournament_roster"] },
   { id: "feed", group: "Comunidad", label: "Feed", ns: ["html_community", "community", "html_community_post_modal"] },
   { id: "perfil", group: "Comunidad", label: "Mi perfil", ns: ["html_perfil", "perfil"] },

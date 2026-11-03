@@ -1,3 +1,4 @@
+import { newUserDoc } from "/js/core/people.js";
 import { loadAccess } from "/js/core/me.js";
 import { db, auth, storage } from "/js/auth/firebase.js";
 import { APP_CONFIG } from "/js/config/config.js";
@@ -127,25 +128,8 @@ export async function ensureUserDoc(uid, email, user = auth.currentUser) {
 
   if (!usnap?.exists?.()) {
     const createPayload = {
-      uid,
-      email: email || user?.email || null,
-      displayName: user?.displayName || null,
-      photoURL: user?.photoURL || null,
-      onboardingComplete: false,
-      isPlayerActive: false,
+      ...newUserDoc({ uid, email: email || user?.email || null, displayName: user?.displayName, photoURL: user?.photoURL }),
       canUsePickups: true,
-      role: "viewer",
-      playerStatus: null,
-      associationStatus: null,
-      playerId: null,
-      memberId: null,
-      profile: {},
-      consents: {},
-      membershipIds: [],
-      currentMembership: null,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      lastSignInAt: serverTimestamp(),
     };
 
     await setDoc(uref, createPayload, { merge: true });
@@ -171,11 +155,7 @@ export async function ensureUserDoc(uid, email, user = auth.currentUser) {
   if (data.consents === undefined || data.consents === null) updatePayload.consents = {};
   if (!Array.isArray(data.membershipIds)) updatePayload.membershipIds = [];
   if (data.currentMembership === undefined) updatePayload.currentMembership = null;
-  if (data.playerId === undefined) updatePayload.playerId = null;
-  if (data.memberId === undefined) updatePayload.memberId = null;
-  if (data.playerStatus === undefined) updatePayload.playerStatus = null;
-  if (data.associationStatus === undefined) updatePayload.associationStatus = null;
-  if (data.isPlayerActive === undefined) updatePayload.isPlayerActive = false;
+  if (data.status === undefined) updatePayload.status = { player: "", association: "" };
   if (data.canUsePickups !== true) updatePayload.canUsePickups = true;
 
   await setDoc(uref, updatePayload, { merge: true });
@@ -249,9 +229,6 @@ export async function saveUserProfileAndConsents({
       profession,
       skills,
     }),
-
-    phone: phone || null,
-    emergencyContact: emergencyContact || null,
 
     consents: {
       requireInfoDeclaration: !!consents.requireInfoDeclaration,
@@ -442,8 +419,6 @@ export async function markUserOnboardingComplete({
     email: email || auth.currentUser?.email || null,
     displayName: auth.currentUser?.displayName || null,
     photoURL: auth.currentUser?.photoURL || null,
-    phone: phone || null,
-    emergencyContact,
     onboardingComplete: true,
     canUsePickups,
     updatedAt: serverTimestamp(),
@@ -457,8 +432,10 @@ export async function markUserOnboardingComplete({
       committeeInterest: committeeInterest === true,
     },
 
-    playerStatus: wantsPlayer ? "pending" : null,
-    associationStatus: wantsMembershipPayment ? "pending" : null,
+    status: {
+      player: wantsPlayer ? "pending" : "",
+      association: wantsMembershipPayment ? "pending" : "",
+    },
   };
 
   return setDoc(uref, payload, { merge: true });

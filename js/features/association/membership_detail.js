@@ -328,7 +328,7 @@ async function syncUserMembershipStatus() {
 
   const normalizedStatus = normalizeMembershipStatus(membership?.status);
 
-  let associationStatus = null;
+  let associationStatus = "";
   if (normalizedStatus === "active") associationStatus = "active";
   else if (normalizedStatus === "rejected") associationStatus = "rejected";
   else associationStatus = "pending";
@@ -349,11 +349,11 @@ async function syncUserMembershipStatus() {
         coverageStartDate: membership.coverageStartDate || null,
         coverageEndDate: membership.coverageEndDate || null,
       },
-      associationStatus,
+      "status.association": associationStatus,
       updatedAt: serverTimestamp(),
     });
   } catch (e) {
-    console.warn("No se pudo sincronizar currentMembership/associationStatus en users", e?.code || e);
+    console.warn("No se pudo sincronizar currentMembership/status.association en users", e?.code || e);
   }
 }
 

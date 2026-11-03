@@ -4,7 +4,7 @@
 // Esquema unificado:
 // - submission.status: pending | submitted | validated | rejected | error | approved | applied
 // - membership.status: pending | partial | active | rejected
-// - users.associationStatus: pending | active | rejected | null
+// - users.status.association: pending | active | rejected | ""
 // - users.currentMembership.status: pending | partial | active | rejected
 
 import { db } from "/js/auth/firebase.js";
@@ -403,7 +403,7 @@ async function syncUserAssociationStatus(membership, decision) {
 
   const membershipStatus = normalizeMembershipStatus(membership?.status);
 
-  let associationStatus = null;
+  let associationStatus = "";
 
   if (decision === "rejected" || membershipStatus === "rejected") {
     associationStatus = "rejected";
@@ -415,12 +415,12 @@ async function syncUserAssociationStatus(membership, decision) {
 
   try {
     await updateDoc(doc(db, COL_USERS, uid), {
-      associationStatus,
+      "status.association": associationStatus,
       updatedAt: serverTimestamp(),
     });
   } catch (e) {
     console.warn(
-      "[assoc_payments_validation_list] No se pudo sincronizar users.associationStatus",
+      "[assoc_payments_validation_list] No se pudo sincronizar users.status.association",
       e?.code || e
     );
   }
@@ -1038,10 +1038,7 @@ async function ensureAdmin(user) {
   if (!snap.exists()) return false;
 
   const data = snap.data() || {};
-  const role = String(data.role || "").toLowerCase();
-  const active = data.isPlayerActive !== false;
-
-  return role === "admin" && active;
+  return String(data.role || "").toLowerCase() === "admin";
 }
 
 export async function mount(container, cfg) {

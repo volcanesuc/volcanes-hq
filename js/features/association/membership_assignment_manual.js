@@ -668,7 +668,7 @@ async function createMembership() {
           label: `${selectedPlan.name || TX.membresia} ${season}`,
           status: "pending",
         },
-        associationStatus: "pending",
+        "status.association": "pending",
         updatedAt: serverTimestamp(),
       });
     } catch (e) {

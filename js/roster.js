@@ -2,6 +2,7 @@
 /*************************************************
  * IMPORTS
  *************************************************/
+import { createPlaceholderPlayer, playerUidOf } from "./core/people.js";
 import { db } from "./auth/firebase.js";
 import { watchAuth, logout } from "./auth/auth.js";
 import { getCurrentPermissions, applyVisibilityByPermission } from "./auth/permissions.js";
@@ -206,9 +207,9 @@ function getUserDisplayName(userData = {}) {
 }
 
 
+// Dueño de la ficha (uid): ver /js/core/people.js.
 function getClubPlayerUserId(cp = {}) {
-  const safeCp = cp && typeof cp === "object" ? cp : {};
-  return safeCp.userId || safeCp.linkedUserId || safeCp.uid || safeCp.userRefId || null;
+  return playerUidOf(cp && typeof cp === "object" ? cp : {});
 }
 
 function normalizeClubPlayerActive(cp = {}) {
@@ -243,7 +244,7 @@ function getClubPlayerName(cp = {}, user = null) {
 function getClubPlayerRole(cp = {}, user = null) {
   const safeCp = cp && typeof cp === "object" ? cp : {};
   const u = getUserProfile(user || {});
-  return normalizeRoleId(safeCp.role || safeCp.position || u.role || getDefaultRoleId());
+  return normalizeRoleId(safeCp.fieldRole || safeCp.role || safeCp.position || u.role || getDefaultRoleId());
 }
 
 function getClubPlayerNumber(cp = {}, user = null) {
@@ -837,10 +838,9 @@ async function savePlayerFromForm() {
     idNumber: (fields.idNumber.value || "").trim() || null,
     number: fields.number.value === "" ? null : Number(fields.number.value),
     gender: fields.gender.value || null,
-    birthday: fields.birthday.value || null,
-    role,
+    birthDate: fields.birthday.value || null,
+    fieldRole: role,
     active: fields.active.checked,
-    isActive: fields.active.checked,
 
     updatedAt: serverTimestamp()
   };
@@ -852,13 +852,12 @@ async function savePlayerFromForm() {
       await updateDoc(doc(db, CLUB_PLAYERS_COL, fields.id.value), payload);
     } else {
       const nameParts = splitName(displayName);
-      await setDoc(doc(collection(db, CLUB_PLAYERS_COL)), {
-        ...payload,
+      // Jugador sin cuenta: ficha p_xxx; cuando se registre, un admin la liga y pasa a {uid}.
+      const { updatedAt, ...data } = payload;
+      await createPlaceholderPlayer({
+        ...data,
         firstName: firstName || nameParts.firstName || "",
         lastName: lastName || nameParts.lastName || "",
-        userId: null,
-        linkedUserId: null,
-        createdAt: serverTimestamp()
       });
     }
 

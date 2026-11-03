@@ -1,3 +1,4 @@
+import { newUserDoc } from "../core/people.js";
 import { auth, db } from "../auth/firebase.js";
 import {
   GoogleAuthProvider,
@@ -94,25 +95,7 @@ export async function loginWithGoogle(opts = {}) {
       return cred;
     }
 
-    await setDoc(
-      userRef,
-      {
-        uid: user.uid,
-        email: email || null,
-        displayName: user.displayName || null,
-        photoURL: user.photoURL || null,
-        onboardingComplete: false,
-        isPlayerActive: false,
-        playerStatus: null,
-        associationStatus: null,
-        role: "viewer",
-        memberId: null,
-        playerId: null,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
+    await setDoc(userRef, newUserDoc(user), { merge: true });
 
     window.location.href = reg;
     return cred;

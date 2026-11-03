@@ -63,8 +63,10 @@ export async function loadAdminEditUserModal() {
                           </label>
                           <select id="editAssociationStatus" class="form-select">
                             <option value="">${TX.ninguno}</option>
+                            <option value="pending">${TX.pendiente}</option>
                             <option value="active">${TX.activa}</option>
-                            <option value="inactive">${TX.inactiva}</option>
+                            <option value="expired">${TX.vencida}</option>
+                            <option value="rejected">${TX.rechazada}</option>
                           </select>
                         </div>
 
@@ -184,7 +186,7 @@ export async function loadAdminEditUserModal() {
                         <div class="col-12">
                           <div class="alert alert-secondary mb-0">
                             <strong>${TX.nota}</strong> ${TX.siCambiasElVinculo}
-                            <code>users/{uid}</code> como <code>club_players/{playerId}</code>.
+                            <code>users/{uid}</code> como <code>club_players/{uid}</code>.
                           </div>
                         </div>
                       </div>

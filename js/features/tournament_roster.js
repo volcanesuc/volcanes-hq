@@ -1,5 +1,6 @@
 // js/features/tournament_roster.js
 // Roster de un torneo: convocados, estados, player fee (con becas), abonos e invitados.
+import { playerUidOf } from "../core/people.js";
 import { db } from "../auth/firebase.js";
 import { watchAuth, logout } from "../auth/auth.js";
 import { getCurrentPermissions } from "../auth/permissions.js";
@@ -236,9 +237,9 @@ function normalizeClubPlayerActive(cp = {}) {
   return true;
 }
 
+// Dueño de la ficha (uid): ver /js/core/people.js.
 function getClubPlayerUserId(cp = {}) {
-  const safeCp = cp && typeof cp === "object" ? cp : {};
-  return safeCp.userId || safeCp.linkedUserId || safeCp.uid || safeCp.userRefId || null;
+  return playerUidOf(cp && typeof cp === "object" ? cp : {});
 }
 
 function getClubPlayerName(cp = {}, user = null) {
@@ -265,7 +266,7 @@ function getClubPlayerNumber(cp = {}, user = null) {
 function getClubPlayerRole(cp = {}, user = null) {
   const safeCp = cp && typeof cp === "object" ? cp : {};
   const u = getUserProfile(user || {});
-  return normalizeRoleId(safeCp.role || safeCp.position || u.role || "");
+  return normalizeRoleId(safeCp.fieldRole || safeCp.role || safeCp.position || u.role || "");
 }
 
 function getClubPlayerGender(cp = {}, user = null) {

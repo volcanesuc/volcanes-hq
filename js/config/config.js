@@ -9,7 +9,6 @@ export const APP_CONFIG = {
   },
 
   collections: {
-    associates: "associates",
     players: "club_players",
     club_players: "club_players",
     guests: "guest_players",

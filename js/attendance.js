@@ -1,4 +1,5 @@
 ``// attendance.js
+import { playerUidOf } from "./core/people.js";
 import { db } from "./auth/firebase.js";
 import { watchAuth, logout } from "./auth/auth.js";
 import { getCurrentPermissions, applyVisibilityByPermission } from "./auth/permissions.js";
@@ -147,9 +148,9 @@ function normalizeClubPlayerActive(cp = {}) {
   return true;
 }
 
+// Dueño de la ficha (uid): ver /js/core/people.js.
 function getClubPlayerUserId(cp = {}) {
-  const safeCp = cp && typeof cp === "object" ? cp : {};
-  return safeCp.userId || safeCp.linkedUserId || safeCp.uid || safeCp.userRefId || null;
+  return playerUidOf(cp && typeof cp === "object" ? cp : {});
 }
 
 function getClubPlayerName(cp = {}, user = null) {
