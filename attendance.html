@@ -104,10 +104,10 @@
           </div>
         </div>
 
-        <!-- TOP 3 + ENTRENAMIENTOS (mismo alto) -->
-        <div class="row g-3 mb-4 align-items-stretch">
+        <!-- TOP 3 + ENTRENAMIENTOS (mismo alto; se ocultan si no hay asistencia registrada) -->
+        <div class="row g-3 mb-4 align-items-stretch" id="topTrainingsRow">
           <!-- TOP 3 -->
-          <div class="col-12 col-lg-6">
+          <div class="col-12 col-lg-6" id="topPlayersCol">
             <div class="card card-modern h-100">
               <div class="card-header bg-white border-0">
                 <h5 class="mb-0" data-tx="html_attendance.top3Jugadores">🥇 Top 3 jugadores</h5>
@@ -119,7 +119,7 @@
           </div>
 
           <!-- ENTRENAMIENTOS -->
-          <div class="col-12 col-lg-6">
+          <div class="col-12 col-lg-6" id="trainingsCol">
             <div class="card card-modern h-100">
               <div class="card-header bg-white border-0">
                 <h5 class="mb-0" data-tx="html_attendance.entrenamientos">Entrenamientos</h5>

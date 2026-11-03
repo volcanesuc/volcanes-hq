@@ -60,7 +60,14 @@ async function ensureEditor() {
 let permissions = null;
 let allTournaments = [];
 
-const sectionState = loadSectionState();
+// En curso / Próximos / Finalizados como tabs (estilo torneos de ClubStudioHQ).
+const GROUPS = [
+  { key: "active", label: () => TX.enCurso },
+  { key: "upcoming", label: () => TX.proximos },
+  { key: "past", label: () => TX.finalizados },
+];
+const filtersEl = document.getElementById("tournamentFilters");
+let currentGroup = null; // se elige con los datos: el primero que tenga torneos
 
 /* ==========================
    INIT
@@ -117,104 +124,58 @@ function render() {
     : allTournaments;
 
   const grouped = groupTournaments(filtered);
+  if (!currentGroup) currentGroup = GROUPS.find((g) => grouped[g.key].length)?.key || "upcoming";
 
-  renderDesktop(grouped);
-  renderCards(grouped);
+  renderFilters(grouped);
+  renderDesktop(grouped[currentGroup]);
+  renderCards(grouped[currentGroup]);
 }
 
-function renderDesktop(grouped) {
+function renderFilters(grouped) {
+  if (!filtersEl) return;
+  filtersEl.innerHTML = GROUPS.map((g) => `
+    <button type="button" class="ui-seg__item ${g.key === currentGroup ? "is-active" : ""}" data-group="${g.key}">
+      ${escapeHtml(g.label())} <span class="ui-chip__n">${grouped[g.key].length}</span>
+    </button>`).join("");
+}
+
+filtersEl?.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-group]");
+  if (!btn) return;
+  currentGroup = btn.dataset.group;
+  render();
+});
+
+function renderDesktop(list) {
   if (!desktopEl) return;
 
-  desktopEl.innerHTML = `
-    ${renderDesktopSection({
-      key: "active",
-      title: TX.enCurso,
-      subtitle: TX.torneosQueEstanActivos,
-      countClass: "is-active",
-      list: grouped.active,
-    })}
-    ${renderDesktopSection({
-      key: "upcoming",
-      title: TX.proximos,
-      subtitle: TX.torneosQueVienenMas,
-      countClass: "is-upcoming",
-      list: grouped.upcoming,
-    })}
-    ${renderDesktopSection({
-      key: "past",
-      title: TX.finalizados,
-      subtitle: TX.torneosQueYaTerminaron,
-      countClass: "is-past",
-      list: grouped.past,
-    })}
-  `;
-
-  bindEditButtons(desktopEl);
-  bindSectionToggles(desktopEl);
-}
-
-function renderDesktopSection({ key, title, subtitle, countClass, list }) {
-  const expanded = isSectionExpanded(key, list);
-
-  return `
-    <section class="tournament-section">
-      <div class="tournament-section-card">
-        <button
-          class="tournament-section-toggle"
-          type="button"
-          data-section-toggle="${key}"
-          aria-expanded="${expanded ? "true" : "false"}"
-        >
-          <div class="tournament-section-main">
-            <div class="tournament-section-title-wrap">
-              <h2 class="tournament-section__title">${escapeHtml(title)}</h2>
-              <div class="tournament-section__subtitle">${escapeHtml(subtitle)}</div>
-            </div>
-          </div>
-
-          <div class="tournament-section-meta">
-            <span class="tournament-count-badge ${countClass}">
-              ${list.length}
-            </span>
-            <i class="bi bi-chevron-down tournament-section-chevron"></i>
-          </div>
-        </button>
-
-        <div class="collapse ${expanded ? "show" : ""}" id="section-${key}">
-          <div class="tournament-section-body">
-            ${
-              list.length
-                ? `
-                  <div class="card">
-                    <div class="card-body p-0">
-                      <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                          <thead class="table-light text-uppercase small">
-                            <tr>
-                              <th>${escapeHtml(S.list.headers.name)}</th>
-                              <th>${escapeHtml(S.list.headers.date)}</th>
-                              <th>${escapeHtml(S.list.headers.type)}</th>
-                              <th>${escapeHtml(S.list.headers.age)}</th>
-                              <th>${escapeHtml(S.list.headers.venue)}</th>
-                              <th>${escapeHtml(S.list.headers.fees)}</th>
-                              <th class="text-end">${escapeHtml(S.list.headers.actions)}</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            ${list.map(renderDesktopRow).join("")}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
-                `
-                : `<div class="tournament-empty">${TX.noHayTorneosEn}</div>`
-            }
+  desktopEl.innerHTML = list.length
+    ? `
+      <div class="card">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>${escapeHtml(S.list.headers.name)}</th>
+                  <th>${escapeHtml(S.list.headers.date)}</th>
+                  <th>${escapeHtml(S.list.headers.type)}</th>
+                  <th>${escapeHtml(S.list.headers.age)}</th>
+                  <th>${escapeHtml(S.list.headers.venue)}</th>
+                  <th>${escapeHtml(S.list.headers.fees)}</th>
+                  <th class="text-end">${escapeHtml(S.list.headers.actions)}</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${list.map(renderDesktopRow).join("")}
+              </tbody>
+            </table>
           </div>
         </div>
-      </div>
-    </section>
-  `;
+      </div>`
+    : `<div class="ui-empty">${TX.noHayTorneosEn}</div>`;
+
+  bindEditButtons(desktopEl);
 }
 
 function renderDesktopRow(t) {
@@ -258,76 +219,14 @@ function renderDesktopRow(t) {
   `;
 }
 
-function renderCards(grouped) {
+function renderCards(list) {
   if (!cardsEl) return;
 
-  cardsEl.innerHTML = `
-    ${renderCardSection({
-      key: "active",
-      title: TX.enCurso,
-      subtitle: TX.torneosActivosAhora,
-      countClass: "is-active",
-      list: grouped.active,
-    })}
-    ${renderCardSection({
-      key: "upcoming",
-      title: TX.proximos,
-      subtitle: TX.torneosQueVienen,
-      countClass: "is-upcoming",
-      list: grouped.upcoming,
-    })}
-    ${renderCardSection({
-      key: "past",
-      title: TX.finalizados,
-      subtitle: TX.torneosAnteriores,
-      countClass: "is-past",
-      list: grouped.past,
-    })}
-  `;
+  cardsEl.innerHTML = list.length
+    ? list.map(renderCard).join("")
+    : `<div class="ui-empty">${TX.noHayTorneosEn}</div>`;
 
   bindEditButtons(cardsEl);
-  bindSectionToggles(cardsEl);
-}
-
-function renderCardSection({ key, title, subtitle, countClass, list }) {
-  const expanded = isSectionExpanded(key, list);
-
-  return `
-    <section class="tournament-section">
-      <div class="tournament-section-card">
-        <button
-          class="tournament-section-toggle"
-          type="button"
-          data-section-toggle="${key}"
-          aria-expanded="${expanded ? "true" : "false"}"
-        >
-          <div class="tournament-section-main">
-            <div class="tournament-section-title-wrap">
-              <h2 class="tournament-section__title">${escapeHtml(title)}</h2>
-              <div class="tournament-section__subtitle">${escapeHtml(subtitle)}</div>
-            </div>
-          </div>
-
-          <div class="tournament-section-meta">
-            <span class="tournament-count-badge ${countClass}">
-              ${list.length}
-            </span>
-            <i class="bi bi-chevron-down tournament-section-chevron"></i>
-          </div>
-        </button>
-
-        <div class="collapse ${expanded ? "show" : ""}" id="section-${key}">
-          <div class="tournament-section-body">
-            ${
-              list.length
-                ? list.map(renderCard).join("")
-                : `<div class="tournament-empty">${TX.noHayTorneosEn}</div>`
-            }
-          </div>
-        </div>
-      </div>
-    </section>
-  `;
 }
 
 function renderCard(t) {
@@ -381,32 +280,6 @@ function renderCard(t) {
       </div>
     </div>
   `;
-}
-
-/* ==========================
-   SECTION TOGGLES
-========================== */
-function bindSectionToggles(root) {
-  root.querySelectorAll("[data-section-toggle]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const key = btn.getAttribute("data-section-toggle");
-      const collapseEl = root.querySelector(`#section-${key}`);
-      if (!collapseEl) return;
-
-      const expanded = btn.getAttribute("aria-expanded") === "true";
-      btn.setAttribute("aria-expanded", expanded ? "false" : "true");
-
-      const instance = bootstrap.Collapse.getOrCreateInstance(collapseEl, { toggle: false });
-      if (expanded) {
-        instance.hide();
-      } else {
-        instance.show();
-      }
-
-      sectionState[key] = !expanded;
-      saveSectionState();
-    });
-  });
 }
 
 function bindEditButtons(root) {
@@ -552,33 +425,6 @@ function getTodayYMD() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-function isSectionExpanded(key, list = []) {
-  // si el user cambió el estado manualmente
-  if (typeof sectionState[key] === "boolean") {
-    return sectionState[key];
-  }
-  // si está vacío -> cerrado
-  if (!list || list.length === 0) {
-    return false;
-  }
-  return true;
-}
-
-function loadSectionState() {
-  try {
-    return JSON.parse(localStorage.getItem("tournaments:sections") || "{}");
-  } catch {
-    return {};
-  }
-}
-
-function saveSectionState() {
-  try {
-    localStorage.setItem("tournaments:sections", JSON.stringify(sectionState));
-  } catch {
-    // ignore
-  }
-}
 
 function escapeHtml(str) {
   return String(str ?? "")

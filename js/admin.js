@@ -2400,13 +2400,11 @@ const ADMIN_TAB_PARAMS = {
   usuarios: "users-tab",
   inscripcion: "register-tab",
   textos: "texts-tab",
-  planes: "plans-tab",
   pickups: "pickups-tab",
   mantenimiento: "maintenance-tab",
 };
 
 const LAZY_MOUNTS = {
-  plans: async () => (await import("/js/features/subscription_plans.js?v=1")).mount,
   pickups: async () => (await import("/js/features/pickups/pickups_admin_mount.js")).mountSettings,
   maintenance: async () => (await import("/js/features/admin/maintenance_reset.js")).mount,
 };

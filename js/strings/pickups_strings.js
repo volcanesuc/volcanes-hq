@@ -152,6 +152,7 @@ export const PICKUP_STRINGS = {
 
   /* ---------- admin: gestionar ---------- */
   "admin.selectPickup": "Elegí un pickup para ver su lista.",
+  "admin.manageSubtitle": "Crear, publicar y llevar la lista y los pagos de cada pickup.",
   "admin.edit": "Editar",
   "admin.cancelPickup": "Cancelar pickup",
   "admin.cancelPickupConfirm": "¿Cancelar este pickup? Los que pagaron quedan con crédito.",

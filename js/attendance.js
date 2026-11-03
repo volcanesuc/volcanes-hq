@@ -296,17 +296,13 @@ function applyFilter() {
 
   // Si hay filtro y no hay entrenos:
   if ((start2 || end2) && filteredTrainings.length === 0) {
-    if (trainingsTable) {
-      trainingsTable.innerHTML =
-        `<tr><td colspan="2" class="text-muted p-3">${TX.noHayEntrenamientosEn}</td></tr>`;
-    }
+    renderTrainings([]);
 
     if (playersTable) {
       playersTable.innerHTML =
         `<tr><td colspan="3" class="text-muted p-3">${TX.noHayDatosPara}</td></tr>`;
     }
 
-    if (trainingsCards) trainingsCards.innerHTML = "";
     if (playersCards) playersCards.innerHTML = "";
 
     updateKPIs([]);
@@ -466,8 +462,22 @@ async function generatePdf() {
 /* ==========================
    RENDERS
 ========================== */
+// Muestra/oculta una columna del bloque Top 3 + Entrenamientos; si quedan las dos ocultas, el bloque entero.
+function toggleTopTrainingsCol(id, visible) {
+  document.getElementById(id)?.classList.toggle("d-none", !visible);
+  const row = document.getElementById("topTrainingsRow");
+  if (row) {
+    const anyVisible = [...row.children].some((c) => !c.classList.contains("d-none"));
+    row.classList.toggle("d-none", !anyVisible);
+  }
+}
+
 function renderTrainings(list) {
-  const sorted = [...list].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  // solo entrenamientos con al menos una persona registrada
+  const sorted = list
+    .filter((t) => (t.count || 0) > 0)
+    .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  toggleTopTrainingsCol("trainingsCol", sorted.length > 0);
 
   // TABLE (desktop)
   if (trainingsTable) {
@@ -568,7 +578,8 @@ function updateKPIs(trainings) {
 }
 
 function renderTopPlayers(playersArr, totalTrainings) {
-  const top = playersArr.slice(0, 3);
+  const top = playersArr.filter((p) => (p.count || 0) > 0).slice(0, 3);
+  toggleTopTrainingsCol("topPlayersCol", top.length > 0);
   const medals = ["🥇", "🥈", "🥉"];
   const maxCount = top[0]?.count || 1;
 

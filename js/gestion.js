@@ -1,5 +1,5 @@
 // js/gestion.js
-// Gestión del club: Miembros (directorio, membresías) y Finanzas (pagos, contabilidad, pickups).
+// Gestión del club: Miembros (directorio, membresías) y Finanzas (pagos, contabilidad, pickups, planes).
 // Ajustes vive en admin.html. Cada vista es un módulo con mount(container, cfg).
 import { guardPage } from "./page-guard.js";
 import { loadHeader } from "./components/header.js";
@@ -29,6 +29,8 @@ const SECTIONS = {
         label: TX.pickups,
         load: async () => ({ mount: (await import("./features/pickups/pickups_admin_mount.js")).mountFinance }),
       },
+      // los planes van con las finanzas: la gente elige uno para asociarse
+      { id: "planes", label: TX.planes, load: () => import("./features/subscription_plans.js?v=1") },
     ],
   },
 };

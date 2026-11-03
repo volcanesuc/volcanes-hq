@@ -13,6 +13,9 @@ import {
   t,
 } from "/js/features/pickups/pickups_settings.js";
 import { escapeHtml, whatsappUrl } from "/js/features/pickups/pickups_shared.js";
+import { loadMyPickups, renderMyPickups } from "/js/features/pickups/my_pickups.js";
+import { auth } from "/js/auth/firebase.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -82,4 +85,18 @@ function renderAbout() {
     hideLoader();
     document.documentElement.classList.remove("preload");
   }
+
+  // Con sesión: los pickups a los que fui.
+  onAuthStateChanged(auth, async (user) => {
+    $("pcMine").classList.toggle("d-none", !user);
+    if (!user) return;
+    try {
+      const data = await loadMyPickups(user.uid);
+      renderMyPickups(data, { list: $("pcMineList"), empty: $("pcMineEmpty"), credit: $("pcMineCredit") });
+      applyStrings($("pcMine"));
+    } catch (err) {
+      console.warn("[pickups_calendar] mis pickups:", err);
+      $("pcMine").classList.add("d-none");
+    }
+  });
 })();

@@ -121,33 +121,18 @@
       </div>
     </div>
 
-    <!-- TOOLBAR STICKY -->
-    <div class="tournaments-toolbar-sticky mb-4">
-      <div class="tournaments-toolbar card-soft p-3">
-        <div class="tournaments-search-wrap">
-          <label
-            class="form-label small text-muted mb-1"
-            id="searchLabel"
-          >—</label>
-
-          <input
-            id="tournamentSearch"
-            class="form-control"
-            placeholder=""
-          />
-        </div>
-
-        <div class="tournaments-actions">
-          <button
-            id="addTournamentBtn"
-            class="btn btn-primary tournament-add-btn"
-            type="button"
-          >
-            <i class="bi bi-plus-lg"></i>
-            <span>—</span>
-          </button>
-        </div>
+    <!-- TABS + BÚSQUEDA (estilo torneos de ClubStudioHQ) -->
+    <div class="tn-toolbar mb-3">
+      <nav class="ui-seg tn-toolbar__tabs" id="tournamentFilters" aria-label="Estado"></nav>
+      <div class="ui-search tn-toolbar__search">
+        <i class="bi bi-search"></i>
+        <label class="visually-hidden" for="tournamentSearch" id="searchLabel">—</label>
+        <input id="tournamentSearch" type="search" class="form-control" placeholder="" />
       </div>
+      <button id="addTournamentBtn" class="btn btn-primary tournament-add-btn" type="button">
+        <i class="bi bi-plus-lg"></i>
+        <span>—</span>
+      </button>
     </div>
 
     <!-- LISTA MOBILE -->

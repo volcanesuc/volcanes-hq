@@ -30,41 +30,16 @@
       <div class="d-flex flex-wrap justify-content-between align-items-end mb-4 gap-3">
         <div>
           <h1 class="page-title mb-1" data-t="app.title">Pickups</h1>
-          <div class="text-muted" data-t="app.subtitle">Juegos abiertos del club</div>
+          <div class="text-muted" data-t="admin.manageSubtitle">Crear, publicar y llevar la lista y los pagos de cada pickup.</div>
         </div>
         <button class="btn btn-primary btn-sm d-none" id="openCreatePickupBtn" type="button" data-t="list.create">+ Crear pickup</button>
       </div>
 
       <div class="alert d-none" id="alertBox" role="alert"></div>
 
-      <ul class="nav nav-pills gap-2 mb-3" role="tablist">
-        <li class="nav-item" role="presentation">
-          <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tabUpcoming" type="button" role="tab" data-t="list.tabUpcoming">Próximos</button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabMine" type="button" role="tab" data-t="list.tabMine">Mis pickups</button>
-        </li>
-        <li class="nav-item d-none" role="presentation" data-admin-only>
-          <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabManage" type="button" role="tab" data-t="list.tabManage">Gestionar</button>
-        </li>
-      </ul>
-
-      <div class="tab-content">
-        <!-- ===== Próximos ===== -->
-        <section class="tab-pane fade show active" id="tabUpcoming" role="tabpanel">
-          <div class="row g-3" id="upcomingList"></div>
-          <div class="text-muted small mt-3 d-none" id="upcomingEmpty" data-t="list.upcomingEmpty"></div>
-        </section>
-
-        <!-- ===== Mis pickups ===== -->
-        <section class="tab-pane fade" id="tabMine" role="tabpanel">
-          <div class="mb-2"><span class="badge text-bg-success d-none" id="mineCredit"></span></div>
-          <div class="list-group" id="mineList"></div>
-          <div class="text-muted small mt-3 d-none" id="mineEmpty" data-t="mine.empty"></div>
-        </section>
-
-        <!-- ===== Gestionar ===== -->
-        <section class="tab-pane fade" id="tabManage" role="tabpanel">
+      <div>
+        <!-- ===== Gestionar (solo admins; los jugadores usan /public/pickups.html) ===== -->
+        <section id="tabManage">
           <div class="row g-3">
             <div class="col-12 col-lg-4">
               <input class="form-control form-control-sm mb-2" id="managePickupSearch" data-t-placeholder="common.search" />
