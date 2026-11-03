@@ -137,7 +137,8 @@ service cloud.firestore {
     ========================= */
     match /users/{uid} {
       allow read: if (signedIn() && request.auth.uid == uid) || canSeePeople();
-      allow delete: if false;
+      // solo admin (Ajustes › Mantenimiento); el admin no puede borrarse a sí mismo
+      allow delete: if isAdmin() && request.auth.uid != uid;
 
       // Primer login: siempre viewer y sin estados.
       allow create: if signedIn()
@@ -361,7 +362,7 @@ service cloud.firestore {
             && resource.data.status == "pending"
             && changedOnly(["installmentsTotal", "installmentsPending", "installmentsSettled", "nextUnpaidDueDate", "nextUnpaidN", "updatedAt"]));
 
-      allow delete: if false;
+      allow delete: if isAdmin(); // reinicio de datos (Ajustes › Mantenimiento)
     }
 
     match /membership_installments/{docId} {
@@ -381,7 +382,7 @@ service cloud.firestore {
         );
 
       allow update: if canMoney();
-      allow delete: if false;
+      allow delete: if isAdmin(); // reinicio de datos (Ajustes › Mantenimiento)
     }
 
     match /membership_payment_links/{mid} {
@@ -390,7 +391,7 @@ service cloud.firestore {
       allow create, update: if canMoney()
         && request.resource.data.membershipId is string
         && request.resource.data.membershipId == mid;
-      allow delete: if false;
+      allow delete: if isAdmin(); // reinicio de datos (Ajustes › Mantenimiento)
     }
 
     // Comprobante subido desde el link público (sin sesión).
@@ -416,7 +417,8 @@ service cloud.firestore {
         ]);
 
       allow read: if canMoney();
-      allow update, delete: if false;
+      allow update: if false;
+      allow delete: if isAdmin(); // reinicio de datos
     }
 
     // Comprobante subido con sesión.
@@ -448,7 +450,7 @@ service cloud.firestore {
         && (request.resource.data.status == resource.data.status || request.resource.data.status == "error")
       );
 
-      allow delete: if false;
+      allow delete: if isAdmin(); // reinicio de datos (Ajustes › Mantenimiento)
     }
 
     /* =========================
@@ -563,7 +565,7 @@ service cloud.firestore {
         )
       );
 
-      allow delete: if false;
+      allow delete: if isAdmin(); // reinicio de datos (Ajustes › Mantenimiento)
 
       // teléfono, cédula, correo y comprobante
       match /private/{docId} {
@@ -581,7 +583,7 @@ service cloud.firestore {
           && changedOnly(["proof"])
         );
 
-        allow delete: if false;
+        allow delete: if isAdmin(); // reinicio de datos (Ajustes › Mantenimiento)
       }
     }
 

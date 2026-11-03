@@ -133,6 +133,21 @@
               Pickups
             </button>
           </li>
+
+          <li class="nav-item" role="presentation">
+            <button
+              class="nav-link"
+              id="maintenance-tab"
+              data-bs-toggle="pill"
+              data-bs-target="#maintenance-pane"
+              type="button"
+              role="tab"
+              aria-controls="maintenance-pane"
+              aria-selected="false" data-tx="html_admin.mantenimiento"
+            >
+              Mantenimiento
+            </button>
+          </li>
         </ul>
 
         <div class="tab-content" id="adminMainTabsContent">
@@ -1062,6 +1077,11 @@
           <!-- AJUSTES DE PICKUPS (se monta al abrir) -->
           <div class="tab-pane fade" id="pickups-pane" role="tabpanel" aria-labelledby="pickups-tab" tabindex="0" data-hub>
             <div data-lazy-mount="pickups"></div>
+          </div>
+
+          <!-- MANTENIMIENTO (se monta al abrir) -->
+          <div class="tab-pane fade" id="maintenance-pane" role="tabpanel" aria-labelledby="maintenance-tab" tabindex="0">
+            <div data-lazy-mount="maintenance"></div>
           </div>
 
         </div>

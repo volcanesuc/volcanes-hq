@@ -7,6 +7,7 @@ import "/js/cartaglow_strings.js";
 import "/js/strings/membership_strings.js";
 import "/js/strings/playbook_strings.js";
 import "/js/features/pickups/pickups_settings.js";
+import "/js/features/admin/maintenance_reset.js";
 import "/js/strings/screens/admin.js";
 import "/js/strings/screens/admin_edit_user.js";
 import "/js/strings/screens/assoc_accounting.js";
@@ -124,7 +125,7 @@ export const TEXT_SCREENS = [
   },
   { id: "finanzas", group: "Gestión", label: "Finanzas", ns: ["assoc_payments", "assoc_accounting", "payment_modal", "html_payment_modal", "membership_pay"] },
   { id: "pickups", group: "Gestión", label: "Pickups", ns: ["pickups", "pickups_status", "html_pickups_status"] },
-  { id: "ajustes", group: "Gestión", label: "Ajustes", ns: ["html_admin", "admin", "admin_edit_user", "landingAdmin", "subscription_plans", "textsEditor"] },
+  { id: "ajustes", group: "Gestión", label: "Ajustes", ns: ["html_admin", "admin", "admin_edit_user", "landingAdmin", "subscription_plans", "textsEditor", "maintenance"] },
   { id: "landing", group: "Sitio público", label: "Página de inicio", ns: ["html_index", "home", "landing", "html_terms"] },
   {
     id: "registro", group: "Sitio público", label: "Registro y membresía",
