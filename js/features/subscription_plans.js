@@ -1135,7 +1135,8 @@ export async function mount(container, cfg) {
   allPlans = [];
   $ = {};
 
-  const inAssociation = window.location.pathname.endsWith("/association.html");
+  // Dentro de Gestión / Ajustes (data-hub) la página ya trae su propio encabezado.
+  const inAssociation = !!container.closest("[data-hub]");
 
   renderShell(container, { inAssociation });
   cacheDom(container);

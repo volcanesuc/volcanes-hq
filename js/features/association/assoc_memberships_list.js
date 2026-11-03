@@ -529,7 +529,8 @@ function renderShellWithoutHeader(container) {
    Public API
 ========================= */
 export async function mount(container, cfg) {
-  const inAssociation = window.location.pathname.endsWith("/association.html");
+  // Dentro de Gestión / Ajustes (data-hub) la página ya trae su propio encabezado.
+  const inAssociation = !!container.closest("[data-hub]");
   if (inAssociation) renderShellWithoutHeader(container);
   else renderShell(container);
 

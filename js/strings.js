@@ -1,7 +1,7 @@
 // js/strings.js
 import { defineStrings } from "/js/core/texts.js";
 
-const SKIP_KEYS = ["id", "href", "image", "images", "category", "type", "format"];
+const SKIP_KEYS = ["id", "gate", "href", "image", "images", "category", "type", "format"];
 export const CLUB_DATA = defineStrings("club", "Club, menú e inicio", {
   club: {
     id: "volcanes",
@@ -43,7 +43,8 @@ export const CLUB_DATA = defineStrings("club", "Club, menú e inicio", {
         { id: "pickups", label: "Pickups", href: "/pickups.html" }
       ] },
       { id: "manage", label: "Gestión", items: [
-        { id: "association", label: "Asociación", href: "/association.html" },
+        { id: "people", gate: "association", label: "Personas", href: "/gestion.html?tab=personas" },
+        { id: "money", gate: "association", label: "Dinero", href: "/gestion.html?tab=dinero" },
         { id: "admin", label: "Ajustes", href: "/admin.html" }
       ] }
     ],

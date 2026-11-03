@@ -2534,6 +2534,60 @@ function bindTextsTab() {
 }
 
 // =========================
+// PLANES / PICKUPS (se montan al abrir el tab) + ?tab= en la URL
+// =========================
+const ADMIN_TAB_PARAMS = {
+  sitio: "landing-tab",
+  usuarios: "users-tab",
+  inscripcion: "register-tab",
+  textos: "texts-tab",
+  planes: "plans-tab",
+  pickups: "pickups-tab",
+};
+
+const LAZY_MOUNTS = {
+  plans: async () => (await import("/js/features/subscription_plans.js?v=1")).mount,
+  pickups: async () => (await import("/js/features/pickups/pickups_admin_mount.js")).mountSettings,
+};
+
+function bindLazyTabs(cfg) {
+  document.querySelectorAll("[data-lazy-mount]").forEach((mount) => {
+    const pane = mount.closest(".tab-pane");
+    const tab = pane && document.querySelector(`[data-bs-target="#${pane.id}"]`);
+    if (!tab) return;
+    let mounted = false;
+    tab.addEventListener("shown.bs.tab", async () => {
+      if (mounted) return;
+      mounted = true;
+      try {
+        const fn = await LAZY_MOUNTS[mount.dataset.lazyMount]();
+        await fn(mount, cfg);
+      } catch (err) {
+        console.error("[admin] lazy tab:", err);
+        mounted = false;
+        mount.innerHTML = `<div class="alert alert-danger">${esc(err?.message || String(err))}</div>`;
+      }
+    });
+  });
+}
+
+function bindTabParam() {
+  const byTabId = Object.fromEntries(Object.entries(ADMIN_TAB_PARAMS).map(([k, v]) => [v, k]));
+
+  document.querySelectorAll("#adminMainTabs [data-bs-toggle]").forEach((btn) => {
+    btn.addEventListener("shown.bs.tab", () => {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", byTabId[btn.id] || "sitio");
+      history.replaceState({}, "", url);
+    });
+  });
+
+  const wanted = ADMIN_TAB_PARAMS[new URLSearchParams(window.location.search).get("tab") || ""];
+  const btn = wanted && document.getElementById(wanted);
+  if (btn) bootstrap.Tab.getOrCreateInstance(btn).show();
+}
+
+// =========================
 // BOOT
 // =========================
 async function boot() {
@@ -2592,6 +2646,8 @@ async function boot() {
     $.uniformForm?.addEventListener("submit", addUniform);
 
     bindTextsTab();
+    bindLazyTabs(cfg);
+    bindTabParam();
     mountLandingAdminSafe();
 
     $.approveLinkMode?.addEventListener("change", syncApproveModeUI);

@@ -439,38 +439,8 @@ th.sortable.sorted-desc::after { content: " ↓"; }
   padding-left: 22px;
 }
 
-/* Subtabs del grupo activo (debajo del topbar) */
-#app-header .sub-tabs{
-  display: flex;
-  gap: 6px;
-  padding: 8px 14px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  background: color-mix(in srgb, var(--theme-primary) 88%, #000);
-}
-
-#app-header .sub-tabs::-webkit-scrollbar{ display: none; }
+/* Subtabs del grupo activo: el look segmentado está en club-ui.css (.ui-seg) */
 #app-header .sub-tabs.d-none{ display: none; }
-
-#app-header .sub-tab{
-  flex: 0 0 auto;
-  padding: 6px 14px;
-  border-radius: 999px;
-  font-weight: 700;
-  font-size: .9rem;
-  white-space: nowrap;
-  text-decoration: none;
-  color: #fff;
-  opacity: .85;
-}
-
-#app-header .sub-tab:hover{ opacity: 1; background: rgba(255,255,255,0.12); }
-
-#app-header .sub-tab.active{
-  opacity: 1;
-  background: var(--theme-accent);
-  color: var(--theme-primary);
-}
 
 /* Barra inferior (mobile) */
 #app-header .bottom-nav{

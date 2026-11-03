@@ -227,13 +227,16 @@ export async function loadHeader(activeTab, cfgOverride) {
 
   const isOverride = !!cfgOverride;
 
+  // Remote Config y permisos se evalúan con `gate` (la llave de la página real),
+  // así varios items pueden colgar del mismo permiso (ej. Personas y Dinero → association).
   function getVisibleMenu(currentCfg) {
+    const gated = MENU.map((item) => ({ ...item, id: item.gate || item.id, navId: item.id }));
     let visibleMenu = isOverride
-      ? filterMenuStrict(MENU, currentCfg)
-      : filterMenuByConfig(MENU, currentCfg);
+      ? filterMenuStrict(gated, currentCfg)
+      : filterMenuByConfig(gated, currentCfg);
 
     visibleMenu = filterMenuByRolePermissions(visibleMenu, currentCfg);
-    return visibleMenu;
+    return visibleMenu.map((item) => ({ ...item, id: item.navId }));
   }
 
   function filterMenuStrict(menu, localCfg) {
@@ -262,7 +265,7 @@ export async function loadHeader(activeTab, cfgOverride) {
     const sub = subItems
       .map(
         (item) => `
-          <a href="${toAbsHref(item.href)}" class="sub-tab ${activeTab === item.id ? "active" : ""}">
+          <a href="${toAbsHref(item.href)}" class="ui-seg__item ${activeTab === item.id ? "is-active" : ""}">
             ${item.label}
           </a>
         `
@@ -311,7 +314,7 @@ export async function loadHeader(activeTab, cfgOverride) {
 
     if (desktopNav) desktopNav.innerHTML = desktop;
     if (subNav) {
-      subNav.innerHTML = sub;
+      subNav.innerHTML = sub ? `<div class="ui-seg">${sub}</div>` : "";
       subNav.classList.toggle("d-none", !sub);
     }
     if (mobileNav) mobileNav.innerHTML = mobile;

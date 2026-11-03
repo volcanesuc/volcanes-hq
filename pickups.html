@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="/css/main.css" />
   <link rel="stylesheet" href="/css/dashboard.css" />
   <link rel="stylesheet" href="/css/pickups.css" />
+  <link rel="stylesheet" href="/css/club-ui.css" />
 </head>
 <body class="loading">
   <div id="content">
@@ -45,12 +46,6 @@
         </li>
         <li class="nav-item d-none" role="presentation" data-admin-only>
           <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabManage" type="button" role="tab" data-t="list.tabManage">Gestionar</button>
-        </li>
-        <li class="nav-item d-none" role="presentation" data-admin-only>
-          <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabFinance" type="button" role="tab" data-t="list.tabFinance">Finanzas</button>
-        </li>
-        <li class="nav-item d-none" role="presentation" data-admin-only>
-          <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabSettings" type="button" role="tab" data-t="list.tabSettings">Ajustes</button>
         </li>
       </ul>
 
@@ -80,16 +75,6 @@
               <div id="manageDetail" class="d-none"></div>
             </div>
           </div>
-        </section>
-
-        <!-- ===== Finanzas ===== -->
-        <section class="tab-pane fade" id="tabFinance" role="tabpanel">
-          <div id="financeRoot"></div>
-        </section>
-
-        <!-- ===== Ajustes ===== -->
-        <section class="tab-pane fade" id="tabSettings" role="tabpanel">
-          <div id="settingsRoot"></div>
         </section>
       </div>
     </main>

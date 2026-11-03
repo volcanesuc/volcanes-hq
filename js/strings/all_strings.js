@@ -14,11 +14,11 @@ import "/js/strings/screens/assoc_member_modal.js";
 import "/js/strings/screens/assoc_members_list.js";
 import "/js/strings/screens/assoc_memberships_list.js";
 import "/js/strings/screens/assoc_payments.js";
-import "/js/strings/screens/association.js";
 import "/js/strings/screens/attendance.js";
 import "/js/strings/screens/cartaglow_page.js";
 import "/js/strings/screens/community.js";
 import "/js/strings/screens/dashboard.js";
+import "/js/strings/screens/gestion.js";
 import "/js/strings/screens/gym.js";
 import "/js/strings/screens/gym_editors.js";
 import "/js/strings/screens/gym_plan.js";
@@ -97,10 +97,10 @@ export const NAMESPACE_LABELS = {
 // HTML con data-tx: el editor lee los textos por defecto de acá.
 export const HTML_SOURCES = [
   "/admin.html",
-  "/association.html",
   "/attendance.html",
   "/community.html",
   "/dashboard.html",
+  "/gestion.html",
   "/gym_plan.html",
   "/gym_routine.html",
   "/gym_week.html",

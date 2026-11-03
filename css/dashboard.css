@@ -1748,32 +1748,7 @@ mark.search-hit {
   overflow: hidden;
 }
 
-.admin-page .admin-main-tabs {
-  gap: 0.75rem;
-  display: flex;
-  flex-wrap: wrap;
-}
-
-.admin-page .admin-main-tabs .nav-link {
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--bg-soft);
-  color: var(--theme-primary);
-  font-weight: 800;
-  padding: 0.75rem 1rem;
-}
-
-.admin-page .admin-main-tabs .nav-link:hover {
-  background: color-mix(in srgb, var(--theme-primary) 8%, white);
-  border-color: color-mix(in srgb, var(--theme-primary) 20%, white);
-}
-
-.admin-page .admin-main-tabs .nav-link.active {
-  background: var(--theme-primary);
-  color: #fff;
-  border-color: var(--theme-primary);
-}
-
+/* Tabs de Ajustes: look segmentado común en club-ui.css (.nav-pills) */
 .admin-page .admin-tab-intro h2,
 .admin-page .admin-tab-intro h3 {
   color: var(--theme-primary);
@@ -1851,16 +1826,6 @@ mark.search-hit {
 }
 
 @media (max-width: 767.98px) {
-  .admin-page .admin-main-tabs {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
-
-  .admin-page .admin-main-tabs .nav-link {
-    width: 100%;
-    text-align: center;
-  }
-
   .admin-page .admin-kpi-value {
     font-size: 1.6rem;
   }

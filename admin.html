@@ -22,18 +22,22 @@
 
   <link rel="stylesheet" href="/css/main.css" />
   <link rel="stylesheet" href="/css/dashboard.css" />
+  <link rel="stylesheet" href="/css/club-ui.css" />
 </head>
 <body class="loading">
 
   <div id="app-header"></div>
 
-  <main class="container py-4 admin-page">
-    <div class="mb-4">
-      <h1 class="h3 mb-1" data-tx="html_admin.administracion">Ajustes</h1>
-      <p class="text-muted mb-0" data-tx="html_admin.configuracionGeneralDeLa">
-        Configuración general de la plataforma, usuarios y registro público.
-      </p>
-    </div>
+  <main class="container py-4 admin-page ui-page">
+    <section class="ui-hero mb-3">
+      <div>
+        <div class="ui-hero__eyebrow" data-tx="html_admin.gestion">Gestión</div>
+        <h1 class="ui-hero__title" data-tx="html_admin.administracion">Ajustes</h1>
+        <p class="ui-hero__sub mb-0" data-tx="html_admin.configuracionGeneralDeLa">
+          Configuración general de la plataforma, usuarios y registro público.
+        </p>
+      </div>
+    </section>
 
     <div id="alertBox" class="alert d-none" role="alert"></div>
 
@@ -97,6 +101,36 @@
               aria-selected="false" data-tx="html_admin.textos"
             >
               Textos
+            </button>
+          </li>
+
+          <li class="nav-item" role="presentation">
+            <button
+              class="nav-link"
+              id="plans-tab"
+              data-bs-toggle="pill"
+              data-bs-target="#plans-pane"
+              type="button"
+              role="tab"
+              aria-controls="plans-pane"
+              aria-selected="false" data-tx="html_admin.planesDeMembresia"
+            >
+              Planes de membresía
+            </button>
+          </li>
+
+          <li class="nav-item" role="presentation">
+            <button
+              class="nav-link"
+              id="pickups-tab"
+              data-bs-toggle="pill"
+              data-bs-target="#pickups-pane"
+              type="button"
+              role="tab"
+              aria-controls="pickups-pane"
+              aria-selected="false" data-tx="html_admin.pickupsTab"
+            >
+              Pickups
             </button>
           </li>
         </ul>
@@ -769,7 +803,7 @@
                       <tr>
                         <th data-tx="html_admin.rol">Rol</th>
                         <th class="text-center" data-tx="html_admin.tabAdmin">Ver Ajustes</th>
-                        <th class="text-center" data-tx="html_admin.tabAssociation">Ver Asociación</th>
+                        <th class="text-center" data-tx="html_admin.tabAssociation">Ver Personas y Dinero</th>
                         <th class="text-center" data-tx="html_admin.tabAccountability">Ver Accountability</th>
                         <th class="text-center" data-tx="html_admin.users">Usuarios</th>
                         <th class="text-center" data-tx="html_admin.landing">Landing</th>
@@ -1018,6 +1052,16 @@
             tabindex="0"
           >
             <div id="textsEditorMount"></div>
+          </div>
+
+          <!-- PLANES DE MEMBRESÍA (se monta al abrir) -->
+          <div class="tab-pane fade" id="plans-pane" role="tabpanel" aria-labelledby="plans-tab" tabindex="0" data-hub>
+            <div data-lazy-mount="plans"></div>
+          </div>
+
+          <!-- AJUSTES DE PICKUPS (se monta al abrir) -->
+          <div class="tab-pane fade" id="pickups-pane" role="tabpanel" aria-labelledby="pickups-tab" tabindex="0" data-hub>
+            <div data-lazy-mount="pickups"></div>
           </div>
 
         </div>

@@ -1,5 +1,6 @@
 // /js/features/pickups/pickups.js
-// Página Pickups: próximos y mis pickups para todos; Gestionar / Finanzas / Ajustes para admins.
+// Página Pickups: próximos y mis pickups para todos; Gestionar para admins.
+// Finanzas y Ajustes de pickups viven en Gestión (pickups_admin_mount.js).
 import { auth } from "/js/auth/firebase.js";
 import { showLoader, hideLoader } from "/js/ui/loader.js";
 import { guardPage } from "/js/page-guard.js";
@@ -47,8 +48,6 @@ import {
 
 import { setAlert } from "/js/features/pickups/pickups_admin_ui.js";
 import { initManage, renderManage } from "/js/features/pickups/pickups_admin_manage.js";
-import { initFinance, renderFinance } from "/js/features/pickups/pickups_admin_finance.js";
-import { initSettings, renderSettings } from "/js/features/pickups/pickups_admin_settings.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -198,7 +197,6 @@ function renderAll() {
   renderMine();
   if (state.isAdmin) {
     renderManage();
-    renderFinance();
   }
 }
 
@@ -226,9 +224,6 @@ function renderAll() {
 
     if (state.isAdmin) {
       initManage(ctx);
-      initFinance(ctx);
-      initSettings(ctx);
-      renderSettings();
     }
 
     await reload();
