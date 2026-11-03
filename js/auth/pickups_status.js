@@ -1,3 +1,4 @@
+import { ROUTES, destinationFor, loadAccess } from "/js/core/me.js";
 import { db, auth } from "./firebase.js";
 import { loadHeader } from "../components/header.js";
 import { showLoader, hideLoader } from "/js/ui/loader.js";
@@ -57,25 +58,6 @@ function fmtDate(v) {
   } catch {
     return TX.fechaPorDefinir;
   }
-}
-
-function normalizePlayerStatus(data) {
-  const explicit = String(data?.playerStatus || "").trim().toLowerCase();
-  if (explicit) return explicit;
-  return data?.isPlayerActive === true ? "active" : "";
-}
-
-function normalizeAssociationStatus(data) {
-  const explicit = String(data?.associationStatus || "").trim().toLowerCase();
-  if (explicit === "associated_active") return "active";
-  if (explicit === "associated_rejected") return "rejected";
-  if (explicit === "payment_validation_pending") return "pending";
-  return explicit;
-}
-
-async function getUserState(uid) {
-  const snap = await getDoc(doc(db, COL_USERS, uid));
-  return snap.exists() ? snap.data() : null;
 }
 
 function renderEmptyPickups(message = TX.noHayPickupsActivos) {
@@ -264,34 +246,10 @@ async function boot() {
     showLoader(TX.validandoAcceso);
 
     try {
-      const data = await getUserState(user.uid);
-
-      if (!data?.onboardingComplete) {
-        window.location.replace("/register.html");
-        return;
-      }
-
-      const playerStatus = normalizePlayerStatus(data);
-      const associationStatus = normalizeAssociationStatus(data);
-      const canUsePickups = data?.canUsePickups === true;
-
-      if (playerStatus === "active") {
-        window.location.replace("/dashboard.html");
-        return;
-      }
-
-      if (associationStatus === "pending" || associationStatus === "active") {
-        window.location.replace("/member_status.html");
-        return;
-      }
-
-      if (playerStatus === "pending") {
-        window.location.replace("/index.html?state=platform_pending");
-        return;
-      }
-
-      if (!canUsePickups) {
-        window.location.replace("/index.html");
+      // Esta página es para quien solo usa pickups; el resto va a su lugar (me.js).
+      const dest = destinationFor(await loadAccess(user.uid));
+      if (dest !== ROUTES.pickupsOnly) {
+        window.location.replace(dest);
         return;
       }
 

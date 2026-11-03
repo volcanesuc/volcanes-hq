@@ -1,5 +1,6 @@
 // /js/features/association/membership_assignment_manual.js
 
+import { associationStatusOf } from "/js/core/me.js";
 import { db } from "/js/auth/firebase.js";
 import { watchAuth } from "/js/auth/auth.js";
 import { showLoader, hideLoader } from "/js/ui/loader.js";
@@ -250,9 +251,6 @@ async function boot() {
   }
 }
 
-function normalizeAssociationStatus(u = {}) {
-  return String(u.associationStatus || "").trim().toLowerCase() || "";
-}
 
 async function loadUsers() {
   const snap = await getDocs(collection(db, COL_USERS));
@@ -261,7 +259,7 @@ async function loadUsers() {
     .map((d) => ({ id: d.id, ...d.data() }))
     .filter((u) => u.onboardingComplete === true)
     .filter((u) => !!getUserDisplayName(u))
-    .filter((u) => normalizeAssociationStatus(u) !== "rejected")
+    .filter((u) => associationStatusOf(u) !== "rejected")
     .sort((a, b) =>
       getUserDisplayName(a).localeCompare(getUserDisplayName(b), "es", { sensitivity: "base" })
     );

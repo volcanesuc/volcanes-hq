@@ -1,18 +1,14 @@
-import { auth, db } from "../auth/firebase.js";
+import { auth } from "../auth/firebase.js";
 import { loginWithGoogle, logout } from "../auth/auth.js";
 import { routeAfterGoogleLogin } from "../auth/role-routing.js";
 
 import { CLUB_DATA } from "../strings.js";
 import { loadHeaderTabsConfig, filterMenuByConfig } from "../remote-config.js";
-import { APP_CONFIG } from "../config/config.js";
+import { defaultRolePermissions, loadAccess } from "../core/me.js";
 
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { TX } from "/js/strings/screens/header.js";
 import { logoHtml } from "/js/core/theme.js";
-
-const COL = APP_CONFIG.collections;
-const COL_SYSTEM_CONFIG = COL.system_config || "system_config";
 
 /*
   Header único:
@@ -36,129 +32,9 @@ function toAbsHref(href) {
   return u.pathname + u.search + u.hash;
 }
 
-function normalizeRole(role) {
-  return String(role || "viewer").trim().toLowerCase();
-}
-
-function getDefaultRolePermissions(roleId = "") {
-  const role = normalizeRole(roleId);
-
-  const defaults = {
-    tabs: {
-      admin: false,
-      association: false,
-      accountability: false,
-    },
-    adminSections: {
-      users: false,
-      landingSections: false,
-      registerSettings: false,
-    },
-  };
-
-  if (role === "admin") {
-    defaults.tabs.admin = true;
-    defaults.tabs.association = true;
-    defaults.tabs.accountability = true;
-    defaults.adminSections.users = true;
-    defaults.adminSections.landingSections = true;
-    defaults.adminSections.registerSettings = true;
-  }
-
-  return defaults;
-}
-
-function mergePermissions(base = {}, incoming = {}) {
-  return {
-    tabs: {
-      ...(base.tabs || {}),
-      ...(incoming.tabs || {}),
-    },
-    adminSections: {
-      ...(base.adminSections || {}),
-      ...(incoming.adminSections || {}),
-    },
-  };
-}
-
-function normalizeRoleDefinition(role = {}) {
-  const base = getDefaultRolePermissions(role?.id);
-  return {
-    id: normalizeRole(role?.id),
-    label: role?.label || role?.id || "",
-    permissions: mergePermissions(base, role?.permissions || {}),
-  };
-}
-
-function mergeRolesWithFallback(firebaseRoles = [], fallbackRoles = []) {
-  const byId = new Map();
-
-  for (const role of fallbackRoles || []) {
-    if (!role?.id) continue;
-    const normalized = normalizeRoleDefinition(role);
-    byId.set(normalized.id, normalized);
-  }
-
-  for (const role of firebaseRoles || []) {
-    if (!role?.id) continue;
-    const prev = byId.get(normalizeRole(role.id)) || normalizeRoleDefinition({ id: role.id, label: role.label });
-    const normalized = normalizeRoleDefinition({
-      ...prev,
-      ...role,
-      permissions: mergePermissions(prev.permissions || {}, role.permissions || {}),
-    });
-    byId.set(normalized.id, normalized);
-  }
-
-  return Array.from(byId.values());
-}
-
-async function loadRolesCatalog() {
-  try {
-    const snap = await getDoc(doc(db, COL_SYSTEM_CONFIG, "roles"));
-    const data = snap.exists() ? (snap.data() || {}) : {};
-    const firebaseRoles = Array.isArray(data.roles) ? data.roles : [];
-    const fallbackRoles = Array.isArray(APP_CONFIG.userRoles) ? APP_CONFIG.userRoles : [];
-    return mergeRolesWithFallback(firebaseRoles, fallbackRoles);
-  } catch (err) {
-    console.warn("loadRolesCatalog failed in header:", err);
-    const fallbackRoles = Array.isArray(APP_CONFIG.userRoles) ? APP_CONFIG.userRoles : [];
-    return mergeRolesWithFallback([], fallbackRoles);
-  }
-}
-
 async function loadUserAccessContext(user) {
-  if (!user?.uid) {
-    return {
-      role: "viewer",
-      permissions: getDefaultRolePermissions("viewer"),
-    };
-  }
-
-  try {
-    const [userSnap, roles] = await Promise.all([
-      getDoc(doc(db, COL.users, user.uid)),
-      loadRolesCatalog(),
-    ]);
-
-    const userData = userSnap.exists() ? (userSnap.data() || {}) : {};
-    const role = normalizeRole(userData.role || "viewer");
-    const roleDef =
-      roles.find((r) => normalizeRole(r.id) === role) ||
-      normalizeRoleDefinition({ id: role });
-
-    return {
-      role,
-      permissions: roleDef.permissions || getDefaultRolePermissions(role),
-      userData,
-    };
-  } catch (err) {
-    console.warn("loadUserAccessContext failed:", err);
-    return {
-      role: "viewer",
-      permissions: getDefaultRolePermissions("viewer"),
-    };
-  }
+  const access = await loadAccess(user?.uid);
+  return { role: access.role, permissions: access.permissions, userData: access.userData };
 }
 
 function canSeeMenuItemByPermissions(item, cfg = {}) {
@@ -367,7 +243,7 @@ export async function loadHeader(activeTab, cfgOverride) {
 
     const accessCfg = user
       ? { ...cfg, ...(await loadUserAccessContext(user)) }
-      : { ...cfg, role: "viewer", permissions: getDefaultRolePermissions("viewer") };
+      : { ...cfg, role: "viewer", permissions: defaultRolePermissions("viewer") };
 
     renderNav(getVisibleMenu(accessCfg));
 

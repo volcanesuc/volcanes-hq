@@ -1,72 +1,17 @@
 // js/auth/permissions.js
+// Qué puede hacer el usuario actual dentro de una pantalla (editar, exportar…).
+// La regla vive en /js/core/me.js; acá quedan los helpers para mostrar/ocultar elementos.
 import { auth } from "./firebase.js";
-import { getUserAccess } from "./role-routing.js";
-
-let cachedPermissions = null;
-let cachedUid = null;
+import { capabilitiesFor, loadAccess, clearAccessCache } from "../core/me.js";
 
 export async function getCurrentPermissions(force = false) {
-  const uid = auth.currentUser?.uid || null;
-
-  if (!uid) {
-    return buildPermissions(null);
-  }
-
-  if (!force && cachedPermissions && cachedUid === uid) {
-    return cachedPermissions;
-  }
-
-  const accessInfo = await getUserAccess(uid);
-  const permissions = buildPermissions(accessInfo);
-
-  cachedUid = uid;
-  cachedPermissions = permissions;
-
-  return permissions;
+  const access = await loadAccess(auth.currentUser?.uid, { force });
+  return { ...access.caps, isPlayerActive: access.isPlayerActive };
 }
 
+// Compatibilidad: accessInfo = { role, isPlayerActive } (formato de getUserAccess).
 export function buildPermissions(accessInfo) {
-  const isPlayerActive = accessInfo?.isPlayerActive === true;
-  const role = isPlayerActive
-    ? String(accessInfo?.role || "viewer").trim().toLowerCase()
-    : "viewer";
-
-  const isAdmin = ["admin", "owner"].includes(role);
-  const isEditor = ["editor", "manager"].includes(role);
-  const isViewer = role === "viewer";
-
-  const canManageContent = isAdmin || isEditor;
-  const canExportReports = isAdmin || isEditor;
-
-  return {
-    isPlayerActive,
-    role,
-
-    isAdmin,
-    isEditor,
-    isViewer,
-
-    // generales
-    canView: isPlayerActive,
-
-    // capacidades base
-    canManageContent,
-    canExportReports,
-
-    // torneos / roster
-    canManageRoster: canManageContent,
-    canEditTournament: canManageContent,
-    canManagePayments: canManageContent,
-    canCreateGuests: canManageContent,
-
-    // asistencia
-    canExportAttendancePdf: canExportReports,
-
-    // futuro
-    canEditTrainings: canManageContent,
-    canEditPlaybook: canManageContent,
-    canEditPlayers: canManageContent
-  };
+  return { ...capabilitiesFor(accessInfo?.role, { canView: accessInfo?.isPlayerActive === true }), isPlayerActive: accessInfo?.isPlayerActive === true };
 }
 
 export function showIf(condition, ...elements) {
@@ -84,8 +29,7 @@ export function hideIf(condition, ...elements) {
 }
 
 export function clearPermissionsCache() {
-  cachedPermissions = null;
-  cachedUid = null;
+  clearAccessCache();
 }
 
 export function applyVisibilityByPermission(permissions, permissionKey, ...elements) {

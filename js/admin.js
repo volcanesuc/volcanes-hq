@@ -1,3 +1,9 @@
+import {
+  defaultRolePermissions,
+  loadRolesCatalog as loadRolesCatalogFromMe,
+  mergePermissions,
+  roleDefinition,
+} from "/js/core/me.js";
 import { db, storage } from "./auth/firebase.js";
 import { APP_CONFIG } from "./config/config.js";
 import { guardPage } from "./page-guard.js";
@@ -387,96 +393,12 @@ function isPendingUser(user) {
    ROLES / PERMISSIONS
 ========================================================= */
 
-function getDefaultRolePermissions(roleId = "") {
-  const normalized = String(roleId || "").trim().toLowerCase();
-
-  const defaults = {
-    tabs: {
-      admin: false,
-      association: false,
-      accountability: false,
-    },
-    adminSections: {
-      users: false,
-      landingSections: false,
-      registerSettings: false,
-    },
-  };
-
-  if (normalized === "admin") {
-    defaults.tabs.admin = true;
-    defaults.tabs.association = true;
-    defaults.tabs.accountability = true;
-    defaults.adminSections.users = true;
-    defaults.adminSections.landingSections = true;
-    defaults.adminSections.registerSettings = true;
-  }
-
-  return defaults;
-}
-
-function mergePermissions(base = {}, incoming = {}) {
-  return {
-    tabs: {
-      ...(base.tabs || {}),
-      ...(incoming.tabs || {}),
-    },
-    adminSections: {
-      ...(base.adminSections || {}),
-      ...(incoming.adminSections || {}),
-    },
-  };
-}
-
-function normalizeRoleDefinition(role = {}) {
-  const base = getDefaultRolePermissions(role?.id);
-  return {
-    id: String(role?.id || "").trim(),
-    label: role?.label || role?.id || "",
-    permissions: mergePermissions(base, role?.permissions || {}),
-  };
-}
-
-function mergeRolesWithFallback(firebaseRoles = [], fallbackRoles = []) {
-  const byId = new Map();
-
-  for (const role of fallbackRoles) {
-    if (!role?.id) continue;
-    const normalized = normalizeRoleDefinition({
-      id: String(role.id),
-      label: role.label || role.id,
-      permissions: role.permissions || {},
-    });
-    byId.set(String(normalized.id), normalized);
-  }
-
-  for (const role of firebaseRoles) {
-    if (!role?.id) continue;
-    const previous = byId.get(String(role.id)) || { id: role.id, label: role.label || role.id };
-    const normalized = normalizeRoleDefinition({
-      ...previous,
-      ...role,
-      permissions: mergePermissions(previous.permissions || {}, role.permissions || {}),
-    });
-    byId.set(String(normalized.id), normalized);
-  }
-
-  return Array.from(byId.values());
-}
+// Roles y permisos por rol: la regla vive en /js/core/me.js.
+const getDefaultRolePermissions = defaultRolePermissions;
+const normalizeRoleDefinition = roleDefinition;
 
 async function loadRolesCatalog() {
-  try {
-    const snap = await getDoc(doc(db, COL_SYSTEM_CONFIG, "roles"));
-    const data = snap.exists() ? (snap.data() || {}) : {};
-    const firebaseRoles = Array.isArray(data.roles) ? data.roles : [];
-    const fallbackRoles = Array.isArray(APP_CONFIG.userRoles) ? APP_CONFIG.userRoles : [];
-
-    availableRoles = mergeRolesWithFallback(firebaseRoles, fallbackRoles);
-  } catch (err) {
-    console.error("loadRolesCatalog error:", err);
-    const fallbackRoles = Array.isArray(APP_CONFIG.userRoles) ? APP_CONFIG.userRoles : [];
-    availableRoles = mergeRolesWithFallback([], fallbackRoles);
-  }
+  availableRoles = await loadRolesCatalogFromMe({ force: true });
 
   if (!availableRoles.length) {
     availableRoles = [

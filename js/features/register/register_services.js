@@ -1,3 +1,4 @@
+import { loadAccess } from "/js/core/me.js";
 import { db, auth, storage } from "/js/auth/firebase.js";
 import { APP_CONFIG } from "/js/config/config.js";
 
@@ -48,20 +49,11 @@ export function makePayCode(len = 7) {
   return out;
 }
 
-export function normalizePlayerStatus(data) {
-  const explicit = String(data?.playerStatus || "").trim().toLowerCase();
-  if (explicit) return explicit;
-  return data?.isPlayerActive === true ? "active" : "";
-}
-
-export function normalizeAssociationStatus(data) {
-  const explicit = String(data?.associationStatus || "").trim().toLowerCase();
-  if (explicit === "associated_active") return "active";
-  if (explicit === "associated_rejected") return "rejected";
-  if (explicit === "payment_validation_pending") return "pending";
-  if (explicit) return explicit;
-  return "";
-}
+// Estados: la regla vive en me.js (se re-exportan con los nombres de antes).
+export {
+  playerStatusOf as normalizePlayerStatus,
+  associationStatusOf as normalizeAssociationStatus,
+} from "/js/core/me.js";
 
 /* =========================
    Error helpers
@@ -118,36 +110,15 @@ export async function step(name, fn) {
 /* =========================
    User access / bootstrap
 ========================= */
+// Formato de siempre ({ onboardingComplete, isPlayerActive, role, raw }), calculado por me.js.
 export async function getUserAccessState(uid) {
-  try {
-    const userRef = doc(db, COL_USERS, uid);
-    const snap = await getDoc(userRef);
-
-    if (!snap.exists()) {
-      return {
-        onboardingComplete: false,
-        isPlayerActive: false,
-        role: "viewer",
-        raw: null,
-      };
-    }
-
-    const data = snap.data() || {};
-    return {
-      onboardingComplete: data.onboardingComplete === true,
-      isPlayerActive: data.isPlayerActive === true,
-      role: String(data.role || "viewer").trim().toLowerCase(),
-      raw: data,
-    };
-  } catch (e) {
-    console.warn("getUserAccessState failed:", e);
-    return {
-      onboardingComplete: false,
-      isPlayerActive: false,
-      role: "viewer",
-      raw: null,
-    };
-  }
+  const access = await loadAccess(uid);
+  return {
+    onboardingComplete: access.onboardingComplete,
+    isPlayerActive: access.isPlayerActive,
+    role: access.role,
+    raw: access.exists ? access.userData : null,
+  };
 }
 
 export async function ensureUserDoc(uid, email, user = auth.currentUser) {

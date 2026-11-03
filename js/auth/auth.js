@@ -14,62 +14,17 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 import { APP_CONFIG } from "../config/config.js";
+import { ROUTES, destinationFor, loadAccess } from "../core/me.js";
 
 const provider = new GoogleAuthProvider();
 const STORAGE_KEY = "google_login_paths";
 
 const COL = APP_CONFIG.collections;
 
-function normalizePlayerStatus(userData = {}) {
-  const explicit = String(userData.playerStatus || "").trim().toLowerCase();
-  if (explicit) return explicit;
-
-  if (userData.isPlayerActive === true || userData.isActive === true) {
-    return "active";
-  }
-
-  return "";
-}
-
-function normalizeAssociationStatus(userData = {}) {
-  const explicit = String(userData.associationStatus || "").trim().toLowerCase();
-
-  if (explicit === "payment_validation_pending") return "pending";
-  if (explicit === "associated_active") return "active";
-  if (explicit === "associated_rejected") return "rejected";
-
-  return explicit || "";
-}
-
+// Formato de siempre (onLoggedIn recibe esto), calculado por me.js.
 async function getUserAccessState(uid) {
-  if (!uid) {
-    return {
-      exists: false,
-      onboardingComplete: false,
-      isPlayerActive: false,
-      playerStatus: "",
-      associationStatus: "",
-      role: "viewer",
-      userData: {},
-    };
-  }
-
-  const userRef = doc(db, COL.users, uid);
-  const userSnap = await getDoc(userRef).catch(() => null);
-  const userData = userSnap?.exists?.() ? userSnap.data() || {} : {};
-
-  const playerStatus = normalizePlayerStatus(userData);
-  const associationStatus = normalizeAssociationStatus(userData);
-
-  return {
-    exists: !!userSnap?.exists?.(),
-    onboardingComplete: userData.onboardingComplete === true,
-    isPlayerActive: playerStatus === "active",
-    playerStatus,
-    associationStatus,
-    role: String(userData.role || "viewer").trim().toLowerCase(),
-    userData,
-  };
+  const access = await loadAccess(uid);
+  return { ...access, exists: access.exists };
 }
 
 export async function loginWithGoogle(opts = {}) {
@@ -127,32 +82,15 @@ export async function loginWithGoogle(opts = {}) {
         await setDoc(userRef, patch, { merge: true });
       }
 
-      const access = await getUserAccessState(user.uid);
-
-      if (!access.onboardingComplete) {
-        window.location.href = reg;
-        return cred;
-      }
-
-      if (access.isPlayerActive) {
-        window.location.href = dash;
-        return cred;
-      }
-
-      if (
-        access.associationStatus === "pending" ||
-        access.associationStatus === "rejected"
-      ) {
-        window.location.href = memberStatus;
-        return cred;
-      }
-
-      if (access.playerStatus === "pending") {
-        window.location.href = landing;
-        return cred;
-      }
-
-      window.location.href = reg;
+      const access = await loadAccess(user.uid, { force: true });
+      const dest = destinationFor(access);
+      const byRoute = {
+        [ROUTES.dashboard]: dash,
+        [ROUTES.register]: reg,
+        [ROUTES.memberStatus]: memberStatus,
+        [ROUTES.playerPending]: landing,
+      };
+      window.location.href = byRoute[dest] || dest;
       return cred;
     }
 
@@ -212,22 +150,16 @@ export function watchAuth(onLoggedIn, opts = {}) {
 
     try {
       const access = await getUserAccessState(user.uid);
+      const dest = destinationFor(access);
 
-      if (!access.onboardingComplete) {
-        window.location.replace(registerPath);
-        return;
-      }
-
-      if (
-        access.associationStatus === "pending" ||
-        access.associationStatus === "rejected"
-      ) {
-        window.location.replace(memberStatusPath);
-        return;
-      }
-
-      if (requireActiveUser && !access.isPlayerActive) {
-        window.location.replace(pendingPath);
+      if (requireActiveUser && dest !== ROUTES.dashboard) {
+        const byRoute = {
+          [ROUTES.register]: registerPath,
+          [ROUTES.memberStatus]: memberStatusPath,
+          [ROUTES.playerPending]: pendingPath,
+          [ROUTES.landing]: redirectTo,
+        };
+        window.location.replace(byRoute[dest] || dest);
         return;
       }
 

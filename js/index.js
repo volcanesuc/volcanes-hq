@@ -12,6 +12,15 @@ import {
 import { fetchLandingData, readLandingCache } from "/js/features/landing/landing_data.js";
 import { legacyEnabled, renderNewSections } from "/js/features/landing/landing_sections.js";
 import { TX, txf } from "/js/strings/screens/home.js";
+import {
+  ROUTES,
+  associationStatusOf,
+  defaultRolePermissions,
+  destinationFor,
+  hasFullAccess,
+  normalizeRole,
+  playerStatusOf,
+} from "/js/core/me.js";
 
 const COL = APP_CONFIG.collections;
 const COL_CLUB_CONFIG = COL.club_config;
@@ -34,72 +43,24 @@ const pendingLogoutBtn = document.getElementById("pendingLogoutBtn");
    STATUS / ACCESS HELPERS
 ========================================================= */
 
-function normalizeAssociationStatus(data) {
-  const explicit = String(data?.associationStatus || "").trim().toLowerCase();
-  if (explicit === "associated_active") return "active";
-  if (explicit === "associated_rejected") return "rejected";
-  if (explicit === "payment_validation_pending") return "pending";
-  return explicit;
-}
-
-function normalizePlayerStatus(data) {
-  const explicit = String(data?.playerStatus || "").trim().toLowerCase();
-
-  if (explicit === "active" || explicit === "approved") return "active";
-  if (
-    explicit === "pending" ||
-    explicit === "submitted" ||
-    explicit === "validating"
-  ) return "pending";
-  if (explicit === "rejected" || explicit === "denied") return "rejected";
-
-  return data?.isPlayerActive === true ? "active" : "";
-}
-
-function normalizeRole(data) {
-  return String(data?.role || "").trim().toLowerCase();
-}
-
-function hasBackofficeAccess(data) {
-  const role = normalizeRole(data);
-  return ["admin", "viewer", "content_editor"].includes(role);
-}
-
-function hasFullPlatformAccess(data) {
-  const associationStatus = normalizeAssociationStatus(data);
-  const playerStatus = normalizePlayerStatus(data);
-
-  return (
-    associationStatus === "active" ||
-    playerStatus === "active" ||
-    data?.isPlayerActive === true ||
-    hasBackofficeAccess(data)
-  );
-}
-
+// Regla única de me.js, traducida a lo que muestra el inicio.
 function resolveUserAccess(userData = {}) {
-  const associationStatus = normalizeAssociationStatus(userData);
-  const playerStatus = normalizePlayerStatus(userData);
-  const onboardingComplete = userData.onboardingComplete === true;
-  const canUsePickups = userData.canUsePickups === true;
+  const access = {
+    uid: auth.currentUser?.uid || "x",
+    role: normalizeRole(userData.role),
+    playerStatus: playerStatusOf(userData),
+    associationStatus: associationStatusOf(userData),
+    onboardingComplete: userData.onboardingComplete === true,
+    canUsePickups: userData.canUsePickups === true,
+  };
+  access.hasFullPlatformAccess = hasFullAccess({ ...access, permissions: defaultRolePermissions(access.role) });
 
-  if (hasFullPlatformAccess(userData)) {
-    return { kind: "redirect", to: "/dashboard.html" };
-  }
-
-  if (associationStatus === "pending" || associationStatus === "rejected") {
-    return { kind: "association_pending" };
-  }
-
-  if (playerStatus === "pending") {
-    return { kind: "player_pending" };
-  }
-
-  if (canUsePickups && onboardingComplete) {
-    return { kind: "redirect", to: "/pickups_status.html" };
-  }
-
-  return { kind: "landing" };
+  const dest = destinationFor(access);
+  if (dest === ROUTES.memberStatus) return { kind: "association_pending" };
+  if (dest === ROUTES.playerPending) return { kind: "player_pending" };
+  // Sin registro completo el inicio se muestra normal (el botón Ingresar lleva al registro).
+  if (dest === ROUTES.landing || dest === ROUTES.register) return { kind: "landing" };
+  return { kind: "redirect", to: dest };
 }
 
 async function readCurrentUserState(uid) {

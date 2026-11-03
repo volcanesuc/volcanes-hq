@@ -9,32 +9,12 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { TX } from "/js/strings/screens/role_routing.js";
+import { ROUTES, destinationFor, loadAccess } from "/js/core/me.js";
 
 const COL = APP_CONFIG.collections;
 const USERS_COL = COL.users;
 
 //HELPERS
-
-function normalizePlayerStatus(data = {}) {
-  const explicit = String(data.playerStatus || "").trim().toLowerCase();
-  if (explicit) return explicit;
-
-  if (data.isPlayerActive === true) {
-    return "active";
-  }
-
-  return "";
-}
-
-function normalizeAssociationStatus(data = {}) {
-  const explicit = String(data.associationStatus || "").trim().toLowerCase();
-
-  if (explicit === "payment_validation_pending") return "pending";
-  if (explicit === "associated_active") return "active";
-  if (explicit === "associated_rejected") return "rejected";
-
-  return explicit || "";
-}
 
 function samePath(pathname) {
   return window.location.pathname === pathname;
@@ -139,25 +119,18 @@ async function ensureUserDoc(firebaseUser) {
   return { created: true, data: payload };
 }
 
+// Compatibilidad: mismo formato que antes, calculado por me.js.
 export async function getUserAccess(uid) {
   if (!uid) return null;
-
-  const ref = doc(db, USERS_COL, uid);
-  const snap = await getDoc(ref);
-
-  if (!snap.exists()) return null;
-
-  const data = snap.data() || {};
-  const playerStatus = normalizePlayerStatus(data);
-  const associationStatus = normalizeAssociationStatus(data);
-
+  const access = await loadAccess(uid);
+  if (!access.exists) return null;
   return {
-    isPlayerActive: playerStatus === "active",
-    onboardingComplete: data.onboardingComplete === true,
-    role: String(data.role || "viewer").trim().toLowerCase(),
-    playerStatus,
-    associationStatus,
-    raw: data
+    isPlayerActive: access.isPlayerActive,
+    onboardingComplete: access.onboardingComplete,
+    role: access.role,
+    playerStatus: access.playerStatus,
+    associationStatus: access.associationStatus,
+    raw: access.userData,
   };
 }
 
@@ -168,42 +141,17 @@ export async function routeAfterGoogleLogin(firebaseUser) {
   }
 
   const ensured = await ensureUserDoc(firebaseUser);
-  const createdFlag = ensured.created ? "1" : "0";
+  const access = await loadAccess(firebaseUser.uid, { force: true });
+  const dest = destinationFor(access);
 
-  const data = ensured.data || {};
-  const onboardingDone = data.onboardingComplete === true;
-
-  const playerStatus = normalizePlayerStatus(data);
-  const associationStatus = normalizeAssociationStatus(data);
-  const isPlayerActive = playerStatus === "active";
-
-  if (!onboardingDone) {
-    goTo(`/public/register.html?created=${createdFlag}`);
+  if (dest === ROUTES.register) {
+    goTo(`${ROUTES.register}?created=${ensured.created ? "1" : "0"}`);
     return;
   }
 
-  if (isPlayerActive) {
-    goTo("/dashboard.html");
-    return;
-  }
+  // En el inicio (index) quedarse si ese es su lugar.
+  if (dest === ROUTES.landing && (samePath("/index.html") || window.location.pathname === "/")) return;
+  if (dest === ROUTES.playerPending && sameIndexState("platform_pending")) return;
 
-  if (
-    associationStatus === "pending" ||
-    associationStatus === "active" ||
-    associationStatus === "rejected"
-  ) {
-    goTo("/member_status.html");
-    return;
-  }
-
-  if (playerStatus === "pending") {
-    if (!sameIndexState("platform_pending")) {
-      goTo("/index.html?state=platform_pending");
-    }
-    return;
-  }
-
-  if (!samePath("/index.html") && window.location.pathname !== "/") {
-    goTo("/index.html");
-  }
+  goTo(dest);
 }

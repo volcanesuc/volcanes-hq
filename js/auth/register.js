@@ -1,3 +1,4 @@
+import { ROUTES, destinationFor, loadAccess } from "/js/core/me.js";
 import { auth } from "./firebase.js";
 import { logout } from "./auth.js";
 import { loadHeader } from "../components/header.js";
@@ -21,8 +22,6 @@ import {
 import { loadPublicRegConfig } from "../features/register/register_config.js";
 import {
   getUserAccessState,
-  normalizePlayerStatus,
-  normalizeAssociationStatus,
 } from "../features/register/register_services.js";
 import { loadPlans, bindPlanUI } from "../features/register/register_plans.js";
 import { getPlansById } from "../features/register/register_state.js";
@@ -167,31 +166,9 @@ onAuthStateChanged(auth, async (user) => {
       return;
     }
 
-    const playerStatus = normalizePlayerStatus(data);
-    const associationStatus = normalizeAssociationStatus(data);
-    const canUsePickupsFlag = data.canUsePickups === true;
-
-    if (playerStatus === "active") {
-      window.location.replace("/dashboard.html");
-      return;
-    }
-
-    if (associationStatus === "pending" || associationStatus === "active") {
-      window.location.replace("/member_status.html");
-      return;
-    }
-
-    if (playerStatus === "pending") {
-      window.location.replace("/index.html?state=platform_pending");
-      return;
-    }
-
-    if (canUsePickupsFlag) {
-      window.location.replace("/pickups_status.html");
-      return;
-    }
-
-    window.location.replace("/index.html");
+    // Registro completo: ir a donde corresponde según me.js.
+    const dest = destinationFor(await loadAccess(user.uid));
+    window.location.replace(dest === ROUTES.register ? ROUTES.landing : dest);
   } catch (e) {
     console.warn("onAuthStateChanged handler failed:", e);
   } finally {
