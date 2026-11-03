@@ -1,7 +1,7 @@
 /* =========================================================
    CLUB-UI.CSS
    Capa visual común de la app (mismo lenguaje que los torneos de ClubStudioHQ):
-   fondo claro, tarjetas blancas redondeadas, nav oscura tipo vidrio,
+   fondo claro, tarjetas blancas redondeadas, barra con el color del club,
    controles segmentados y hero con degradado.
    Los colores salen del tema del club (--theme-primary / --theme-accent,
    que pone js/core/theme.js), así cada club mantiene su identidad.
@@ -12,7 +12,6 @@
   --ui-main: var(--theme-primary);
   --ui-accent: var(--theme-accent);
   --ui-ink: color-mix(in srgb, var(--theme-primary) 38%, #0b0b10);
-  --ui-nav: color-mix(in srgb, color-mix(in srgb, var(--theme-primary) 26%, #07080b) 94%, transparent);
   --ui-bg: color-mix(in srgb, var(--theme-primary) 4%, #f6f6f9);
   --ui-surface: #fff;
   --ui-surface-2: color-mix(in srgb, var(--theme-primary) 3%, #fafafc);
@@ -40,99 +39,15 @@ body{
 }
 
 /* =========================
-   HEADER (nav oscura tipo vidrio)
+   SUBTABS (debajo del header; la barra está en main.css)
 ========================= */
-#app-header .topbar{
-  position: sticky;
-  top: 0;
-  background: var(--ui-nav);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 255, 255, .08);
-  padding: 10px 16px;
-}
-
-#app-header .logo-link{ font-weight: 800; }
-
-#app-header .top-tabs{ gap: 4px; }
-
-#app-header .top-tab{
-  font-family: inherit;
-  font-weight: 600;
-  font-size: .95rem;
-  color: rgba(255, 255, 255, .68);
-  padding: .4rem .85rem;
-  border-radius: 999px;
-  opacity: 1;
-  transition: color .15s ease, background .15s ease;
-}
-
-#app-header .top-tab:hover{ color: #fff; }
-
-#app-header .top-tab.active{
-  color: #fff;
-  background: rgba(255, 255, 255, .12);
-  box-shadow: inset 0 -2px 0 var(--ui-accent);
-}
-
-#app-header .logout-btn{
-  background: rgba(255, 255, 255, .1);
-  border: 1px solid rgba(255, 255, 255, .14);
-  border-radius: 999px;
-  padding: .35rem .9rem;
-  font-weight: 700;
-  font-size: .85rem;
-  color: #fff;
-}
-
-#app-header .logout-btn:hover{ background: rgba(255, 255, 255, .18); }
-
-#app-header .hamburger{
-  background: rgba(255, 255, 255, .1);
-  border-radius: 12px;
-}
-
-/* Subtabs: control segmentado blanco debajo del header */
 #app-header .sub-tabs{
   display: flex;
   justify-content: center;
   padding: 14px 16px 0;
-  background: transparent;
-  overflow: visible;
 }
 
 #app-header .sub-tabs .ui-seg{ margin: 0; }
-
-/* Barra inferior (mobile) */
-#app-header .bottom-nav{
-  background: var(--ui-nav);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-top: 1px solid rgba(255, 255, 255, .08);
-  box-shadow: none;
-}
-
-#app-header .bottom-tab{
-  color: rgba(255, 255, 255, .6);
-  opacity: 1;
-  font-weight: 600;
-}
-
-#app-header .bottom-tab.active{ color: var(--ui-accent); }
-
-/* Drawer */
-.offcanvas{ background: var(--ui-surface); }
-#app-header .mobile-links .mobile-link{
-  font-family: inherit;
-  text-transform: none;
-  letter-spacing: 0;
-  font-weight: 700;
-  color: var(--ui-text);
-}
-#app-header .mobile-links a.active{
-  background: color-mix(in srgb, var(--ui-main) 10%, transparent);
-  color: var(--ui-main);
-}
 
 /* =========================
    CONTROLES SEGMENTADOS Y CHIPS

@@ -52,8 +52,6 @@ body{
 
 /* títulos del sistema */
 .page-title,
-.topbar .logo-link,
-#app-header .top-tab,
 .offcanvas-title{
   font-family: var(--font-title, system-ui, -apple-system, sans-serif);
 }
@@ -144,37 +142,207 @@ body:not(.loading) .loading-overlay { display: none; }
 }
 
 /* =========================
-   HEADER / NAV PRINCIPAL
+   HEADER (misma barra que los torneos de ClubStudioHQ, con el color del club)
 ========================= */
-.topbar {
-  background: var(--theme-primary);
-  color: var(--card);
+#app-header .hq-nav{
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+  background: color-mix(in srgb, var(--theme-primary) 94%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, .1);
+  color: #fff;
+}
+
+#app-header .hq-nav__inner{
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0.6rem 1rem;
+  gap: .75rem;
+  padding-top: .5rem;
+  padding-bottom: .5rem;
+  min-height: 54px;
 }
 
-.logo {
-  font-family: "ClubFont";
-  font-size: 1.4rem;
-  font-weight: 700;
-  letter-spacing: 1px;
+#app-header .hq-nav__brand,
+#app-header .hq-nav__brand:visited{
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  color: #fff;
+  font-family: var(--font-title, inherit);
+  font-weight: 800;
+  font-size: 1.15rem;
+  text-decoration: none;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 
-.logout-btn {
-  background: var(--theme-accent);
-  color: var(--theme-primary);
-  border: none;
-  padding: 0.4rem 0.8rem;
-  border-radius: 6px;
-  font-weight: 700;
-  cursor: pointer;
+#app-header .hq-nav__brand:hover{ color: #fff; opacity: .9; }
+#app-header .hq-nav__brand-short{ display: none; }
+
+/* sello de ClubStudioHQ */
+#app-header .hq-nav__cs{
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  flex: 0 0 auto;
+  padding-left: .75rem;
+  border-left: 1px solid rgba(255, 255, 255, .22);
+  color: #fff;
+  font-weight: 800;
+  font-size: .85rem;
+  text-decoration: none;
+  white-space: nowrap;
+  opacity: .9;
 }
 
-.logout-btn:hover{
-  background: var(--theme-accent);
-  filter: brightness(1.05);
+#app-header .hq-nav__cs:hover{ opacity: 1; }
+#app-header .hq-nav__cs img{ border-radius: 7px; flex: 0 0 auto; }
+
+#app-header .hq-nav__hq{
+  background: linear-gradient(135deg, #c4b5fd, #67e8f9);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* tabs principales */
+#app-header .top-tabs{
+  display: flex;
+  gap: .25rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+#app-header .top-tabs::-webkit-scrollbar{ display: none; }
+
+#app-header .top-tab{
+  color: rgba(255, 255, 255, .72);
+  text-decoration: none;
+  padding: .3rem .75rem;
+  border-radius: 999px;
+  font-size: .92rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: color .15s ease, background .15s ease;
+}
+
+#app-header .top-tab:hover{ color: #fff; }
+
+#app-header .top-tab.active{
+  color: #fff;
+  font-weight: 600;
+  background: rgba(255, 255, 255, .16);
+}
+
+/* sesión: foto de perfil + salir */
+#app-header .hq-nav__cta{
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+#app-header .hq-nav__me{ display: inline-flex; }
+
+/* el spinner global (.spinner-border) es grande: en la barra va chico */
+#app-header .hq-nav__cta .spinner-border{
+  width: 1.1rem;
+  height: 1.1rem;
+  border-width: .15em;
+  color: #fff;
+}
+
+#app-header .hq-nav__avatar{
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, .35);
+}
+
+#app-header .hq-nav__avatar--empty{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, .18);
+  color: #fff;
+  font-weight: 800;
+  font-size: .85rem;
+}
+
+#app-header .hq-nav__logout{
+  border-radius: 999px;
+  padding: .25rem .8rem;
+  font-weight: 600;
+}
+
+/* Subtabs del grupo activo: el look segmentado está en club-ui.css (.ui-seg) */
+#app-header .sub-tabs.d-none{ display: none; }
+
+/* Barra inferior (mobile) */
+#app-header .bottom-nav{
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1030;
+  display: flex;
+  justify-content: space-around;
+  padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--theme-primary) 96%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(255, 255, 255, .1);
+}
+
+#app-header .bottom-nav.d-none{ display: none; }
+
+#app-header .bottom-tab{
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 4px 2px;
+  border-radius: 12px;
+  font-size: .7rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: rgba(255, 255, 255, .7);
+}
+
+#app-header .bottom-tab span{
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#app-header .bottom-tab.active{
+  color: #fff;
+  background: rgba(255, 255, 255, .16);
+}
+
+body.has-bottom-nav{
+  padding-bottom: calc(68px + env(safe-area-inset-bottom));
+}
+
+@media (max-width: 767.98px){
+  #app-header .top-tabs{ display: none; }
+  #app-header .hq-nav__brand-full{ display: none; }
+  #app-header .hq-nav__brand-short{ display: inline-flex; }
+  #app-header .hq-nav__cs-text{ display: none; }
+}
+
+@media (min-width: 768px){
+  #app-header .bottom-nav{ display: none; }
+  body.has-bottom-nav{ padding-bottom: 0; }
 }
 
 /* =========================
@@ -262,110 +430,6 @@ th.sortable.sorted-desc::after { content: " ↓"; }
   font-weight: 700;
 }
 
-/* Hamburger */
-.hamburger {
-  background: none;
-  border: none;
-  color: var(--card);
-  font-size: 1.6rem;
-  line-height: 1;
-  padding: 0;
-  margin: 0;
-  cursor: pointer;
-}
-
-/* Responsive header controls */
-@media (max-width: 768px) {
-  .nav-tabs { display: none; }
-  .hamburger { display: block; }
-}
-
-@media (min-width: 769px) {
-  .hamburger { display: none; }
-}
-
-
-/* =========================
-   Header: logo-link blanco (clickeable)
-========================= */
-#app-header .logo-link,
-#app-header .logo-link:visited {
-  color: var(--card) !important;
-  text-decoration: none !important;
-}
-
-#app-header .logo-link:hover,
-#app-header .logo-link:focus {
-  color: var(--theme-accent) !important;
-  text-decoration: none !important;
-}
-
-
-/* Header brand */
-.app-header a,
-.app-header a:visited {
-  color: var(--card);                 /* blanco */
-  text-decoration: none;       /* sin underline */
-}
-
-.app-header a:hover {
-  color: var(--theme-accent); 
-  text-decoration: none;
-}
-
-.app-header a:active {
-  color: var(--card);
-}
-
-/* =========================
-   HEADER GLOBAL (no choca con Bootstrap)
-========================= */
-
-#app-header .topbar{
-  position: sticky;
-  top: 0;
-  z-index: 1030;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 14px;
-  background: var(--theme-primary);
-  color: var(--card);
-}
-
-#app-header .left{
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-}
-
-#app-header .logo-link{
-  text-decoration: none;
-  color: inherit;
-  font-weight: 900;
-  letter-spacing: .2px;
-}
-
-#app-header .hamburger{
-  border: 0;
-  background: rgba(255,255,255,0.12);
-  color: var(--card);
-  border-radius: 10px;
-  padding: 6px 10px;
-  font-size: 20px;
-  line-height: 1;
-}
-
-#app-header .logout-btn{
-  border: 0;
-  background: rgba(255,255,255,0.12);
-  color: var(--card);
-  border-radius: 10px;
-  padding: 8px 10px;
-  font-weight: 800;
-}
-
 /* Mantener consistente el espacio del botón a la derecha */
 #weekAccordion .accordion-header .btn {
   white-space: nowrap;
@@ -374,125 +438,6 @@ th.sortable.sorted-desc::after { content: " ↓"; }
 /* Evitar que el bloque derecho crezca de más */
 #weekAccordion .accordion-header > div.pe-2 {
   flex: 0 0 auto;
-}
-
-/* Desktop tabs (clase propia, NO Bootstrap) */
-#app-header .top-tabs{
-  display: none; /* mobile */
-  gap: 8px;
-  align-items: center;
-}
-
-#app-header .top-tab{
-  text-decoration: none;
-  color: var(--card);
-  padding: 8px 10px;
-  border-radius: 10px;
-  font-weight: 800;
-  opacity: .92;
-}
-
-#app-header .top-tab.active{
-  background: var(--theme-accent);
-  color: var(--theme-primary);
-}
-
-/* Desktop */
-@media (min-width: 768px){
-  #app-header .hamburger{ display: none; }
-  #app-header .top-tabs{ display: inline-flex; }
-}
-
-/* Mobile drawer links */
-#app-header .mobile-links a{
-  display: block;
-  padding: 12px 10px;
-  border-radius: 10px;
-  text-decoration: none;
-  font-weight: 900;
-  color: var(--theme-primary);
-}
-
-#app-header .mobile-links .mobile-link{
-  font-family: var(--font-title, system-ui, -apple-system, sans-serif);
-  font-weight: 900;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-}
-
-#app-header .mobile-links a.active{
-  background: var(--theme-accent);
-  color: var(--theme-primary);
-}
-
-#app-header .mobile-links .mobile-group{
-  margin-top: 10px;
-  padding: 4px 10px;
-  font-size: .75rem;
-  font-weight: 800;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--text-soft);
-}
-
-#app-header .mobile-links .mobile-sublink{
-  padding-left: 22px;
-}
-
-/* Subtabs del grupo activo: el look segmentado está en club-ui.css (.ui-seg) */
-#app-header .sub-tabs.d-none{ display: none; }
-
-/* Barra inferior (mobile) */
-#app-header .bottom-nav{
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 1030;
-  display: flex;
-  justify-content: space-around;
-  padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
-  background: var(--theme-primary);
-  box-shadow: 0 -4px 16px rgba(0,0,0,0.18);
-}
-
-#app-header .bottom-nav.d-none{ display: none; }
-
-#app-header .bottom-tab{
-  flex: 1 1 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  min-width: 0;
-  padding: 4px 2px;
-  border-radius: 10px;
-  font-size: .7rem;
-  font-weight: 700;
-  text-decoration: none;
-  color: #fff;
-  opacity: .75;
-}
-
-#app-header .bottom-tab span{
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-#app-header .bottom-tab.active{
-  opacity: 1;
-  color: var(--theme-accent);
-}
-
-body.has-bottom-nav{
-  padding-bottom: calc(68px + env(safe-area-inset-bottom));
-}
-
-@media (min-width: 768px){
-  #app-header .bottom-nav{ display: none; }
-  body.has-bottom-nav{ padding-bottom: 0; }
 }
 
 /* =========================

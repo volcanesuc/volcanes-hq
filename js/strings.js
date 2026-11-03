@@ -49,7 +49,7 @@ export const CLUB_DATA = defineStrings("club", "Club, menú e inicio", {
       ] }
     ],
     logout: {
-      label: "SALIR"
+      label: "Salir"
     }
   },
 

@@ -272,30 +272,6 @@ export async function loadHeader(activeTab, cfgOverride) {
       )
       .join("");
 
-    const mobile = groups
-      .map((group) => {
-        if (group.items.length === 1) {
-          return `
-            <a href="${groupHref(group)}" class="mobile-link ${isActiveGroup(group) ? "active" : ""}">
-              ${group.label}
-            </a>
-          `;
-        }
-        return `
-          <div class="mobile-group">${group.label}</div>
-          ${group.items
-            .map(
-              (item) => `
-                <a href="${toAbsHref(item.href)}" class="mobile-link mobile-sublink ${activeTab === item.id ? "active" : ""}">
-                  ${item.label}
-                </a>
-              `
-            )
-            .join("")}
-        `;
-      })
-      .join("");
-
     const bottom = groups
       .map(
         (group) => `
@@ -309,7 +285,6 @@ export async function loadHeader(activeTab, cfgOverride) {
 
     const desktopNav = header.querySelector(".top-tabs");
     const subNav = header.querySelector(".sub-tabs");
-    const mobileNav = header.querySelector(".mobile-links");
     const bottomNav = header.querySelector(".bottom-nav");
 
     if (desktopNav) desktopNav.innerHTML = desktop;
@@ -317,7 +292,6 @@ export async function loadHeader(activeTab, cfgOverride) {
       subNav.innerHTML = sub ? `<div class="ui-seg">${sub}</div>` : "";
       subNav.classList.toggle("d-none", !sub);
     }
-    if (mobileNav) mobileNav.innerHTML = mobile;
     if (bottomNav) {
       bottomNav.innerHTML = bottom;
       bottomNav.classList.toggle("d-none", !groups.length);
@@ -338,66 +312,45 @@ export async function loadHeader(activeTab, cfgOverride) {
     readyResolve(val);
   };
 
+  const logoFull = CLUB_DATA.header.logoText || TX.club;
+  const logoShort = CLUB_DATA.header.mobileTitle || logoFull;
+
+  // Misma barra que los torneos de ClubStudioHQ, con el color del club.
   header.innerHTML = `
-    <header class="topbar">
-      <div class="left">
-        <button
-          class="hamburger"
-          type="button"
-          data-bs-toggle="offcanvas"
-          data-bs-target="#mobileMenu"
-          aria-controls="mobileMenu"
-          aria-label="${TX.abrirMenu}"
-        >☰</button>
-
-        <a class="logo logo-link" href="${HOME_HREF}" title="${TX.irAlInicio}" data-club-logo="${CLUB_DATA.header.logoText || TX.club}">
-          ${logoHtml(CLUB_DATA.header.logoText || TX.club)}
+    <nav class="hq-nav">
+      <div class="container hq-nav__inner">
+        <a class="hq-nav__brand logo-link" href="${HOME_HREF}" title="${TX.irAlInicio}">
+          <span class="hq-nav__brand-full" data-club-logo="${logoFull}">${logoHtml(logoFull)}</span>
+          <span class="hq-nav__brand-short" data-club-logo="${logoShort}">${logoHtml(logoShort)}</span>
         </a>
+
+        <a class="hq-nav__cs" href="https://www.clubstudiohq.com" target="_blank" rel="noopener" title="${TX.hechoConClubStudio}">
+          <img src="/img/clubstudiohq.svg" width="24" height="24" alt="ClubStudioHQ" />
+          <span class="hq-nav__cs-text">ClubStudio<span class="hq-nav__hq">HQ</span></span>
+        </a>
+
+        <div class="top-tabs"></div>
+
+        <div class="hq-nav__cta" id="headerCta"></div>
       </div>
-
-      <nav class="top-tabs"></nav>
-
-      <div class="header-cta d-flex align-items-center gap-2" id="headerCta"></div>
-    </header>
+    </nav>
 
     <nav class="sub-tabs d-none" aria-label="${TX.subsecciones}"></nav>
 
     <nav class="bottom-nav d-none" aria-label="${TX.menuPrincipal}"></nav>
-
-    <div class="offcanvas offcanvas-start" tabindex="-1" id="mobileMenu" aria-labelledby="mobileMenuLabel">
-      <div class="offcanvas-header">
-        <a class="offcanvas-title logo-link" id="mobileMenuLabel" href="${HOME_HREF}" title="${TX.irAlInicio}" data-club-logo="${CLUB_DATA.header.mobileTitle || CLUB_DATA.header.logoText || TX.club}">
-          ${logoHtml(CLUB_DATA.header.mobileTitle || CLUB_DATA.header.logoText || TX.club)}
-        </a>
-        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="${TX.cerrar}"></button>
-      </div>
-
-      <div class="offcanvas-body">
-        <div class="mobile-links"></div>
-
-        <hr />
-
-        <div class="d-grid gap-2" id="mobileCta"></div>
-      </div>
-    </div>
   `;
 
   renderNav(getVisibleMenu(cfg));
 
   const initialCta = document.getElementById("headerCta");
-  const initialMcta = document.getElementById("mobileCta");
   if (initialCta) {
     initialCta.innerHTML = `<div class="spinner-border spinner-border-sm text-light" role="status"></div>`;
-  }
-  if (initialMcta) {
-    initialMcta.innerHTML = `<div class="spinner-border spinner-border-sm" role="status"></div>`;
   }
 
   onAuthStateChanged(auth, async (user) => {
     const cta = document.getElementById("headerCta");
-    const mcta = document.getElementById("mobileCta");
 
-    if (!cta || !mcta) {
+    if (!cta) {
       resolveOnce({ user, reason: "no-cta" });
       return;
     }
@@ -423,13 +376,6 @@ export async function loadHeader(activeTab, cfgOverride) {
         </button>
       `;
 
-      mcta.innerHTML = `
-        <button id="googleLoginBtnMobile" class="btn btn-light w-100 d-flex align-items-center justify-content-center gap-2">
-          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="16" height="16" alt="${TX.google}">
-          ${TX.ingresar}
-        </button>
-      `;
-
       const doLogin = async () => {
         try {
           await loginWithGoogle();
@@ -440,7 +386,6 @@ export async function loadHeader(activeTab, cfgOverride) {
       };
 
       document.getElementById("googleLoginBtn")?.addEventListener("click", doLogin);
-      document.getElementById("googleLoginBtnMobile")?.addEventListener("click", doLogin);
 
       resolveOnce({ user: null, reason: "logged-out" });
       return;
@@ -458,12 +403,14 @@ export async function loadHeader(activeTab, cfgOverride) {
       return;
     }
 
-    cta.innerHTML = `
-      <button id="logoutBtn" class="logout-btn">${logoutLabel}</button>
-    `;
+    const name = user.displayName || user.email || "";
+    const avatar = user.photoURL
+      ? `<img class="hq-nav__avatar" src="${escAttr(user.photoURL)}" alt="${escAttr(name)}" referrerpolicy="no-referrer" />`
+      : `<span class="hq-nav__avatar hq-nav__avatar--empty">${escAttr((name.trim()[0] || "?").toUpperCase())}</span>`;
 
-    mcta.innerHTML = `
-      <button class="btn btn-outline-primary w-100 mt-2" id="logoutBtnMobile">${logoutLabel}</button>
+    cta.innerHTML = `
+      <span class="hq-nav__me" title="${escAttr(name)}">${avatar}</span>
+      <button id="logoutBtn" class="btn btn-sm btn-outline-light hq-nav__logout">${logoutLabel}</button>
     `;
 
     bindHeaderEvents();
@@ -473,7 +420,10 @@ export async function loadHeader(activeTab, cfgOverride) {
   return { ready };
 }
 
+function escAttr(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
+
 function bindHeaderEvents() {
   document.getElementById("logoutBtn")?.addEventListener("click", logout);
-  document.getElementById("logoutBtnMobile")?.addEventListener("click", logout);
 }
