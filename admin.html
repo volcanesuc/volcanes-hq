@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title data-tx="html_admin.administracion">Administración</title>
+  <title data-tx="html_admin.administracion">Ajustes</title>
 
   <script>document.documentElement.classList.add("preload");</script>
   <script src="/js/ui/loader.preload.js"></script>
@@ -29,7 +29,7 @@
 
   <main class="container py-4 admin-page">
     <div class="mb-4">
-      <h1 class="h3 mb-1" data-tx="html_admin.administracion">Administración</h1>
+      <h1 class="h3 mb-1" data-tx="html_admin.administracion">Ajustes</h1>
       <p class="text-muted mb-0" data-tx="html_admin.configuracionGeneralDeLa">
         Configuración general de la plataforma, usuarios y registro público.
       </p>
@@ -51,7 +51,7 @@
               aria-controls="landing-pane"
               aria-selected="true" data-tx="html_admin.landingSettings"
             >
-              Landing settings
+              Sitio público
             </button>
           </li>
 
@@ -66,7 +66,7 @@
               aria-controls="users-pane"
               aria-selected="false" data-tx="html_admin.users"
             >
-              Users
+              Usuarios
             </button>
           </li>
 
@@ -81,7 +81,7 @@
               aria-controls="register-pane"
               aria-selected="false" data-tx="html_admin.registerSettings"
             >
-              Register settings
+              Inscripción
             </button>
           </li>
 
@@ -112,7 +112,7 @@
             tabindex="0"
           >
             <div class="admin-tab-intro mb-4">
-              <h2 class="h5 mb-1" data-tx="html_admin.landingSettings">Landing settings</h2>
+              <h2 class="h5 mb-1" data-tx="html_admin.landingSettings">Sitio público</h2>
               <p class="text-muted mb-0" data-tx="html_admin.configuracionDeVisibilidadY">
                 Configuración de visibilidad y contenido público del landing.
               </p>
@@ -656,7 +656,7 @@
             tabindex="0"
           >
             <div class="admin-tab-intro mb-4">
-              <h2 class="h5 mb-1" data-tx="html_admin.users">Users</h2>
+              <h2 class="h5 mb-1" data-tx="html_admin.users">Usuarios</h2>
               <p class="text-muted mb-0" data-tx="html_admin.gestionDeUsuariosJugadores">
                 Gestión de usuarios, jugadores, vínculos y accesos de plataforma.
               </p>
@@ -715,7 +715,7 @@
                 <div class="row g-3 admin-kpis">
                   <div class="col-md-6 col-xl-3">
                     <div class="admin-kpi-box">
-                      <span class="admin-kpi-label" data-tx="html_admin.totalUsers">Total users</span>
+                      <span class="admin-kpi-label" data-tx="html_admin.totalUsers">Total usuarios</span>
                       <strong id="usersKpiTotal" class="admin-kpi-value">—</strong>
                     </div>
                   </div>
@@ -729,7 +729,7 @@
 
                   <div class="col-md-6 col-xl-3">
                     <div class="admin-kpi-box">
-                      <span class="admin-kpi-label" data-tx="html_admin.sinPlayer">Sin player</span>
+                      <span class="admin-kpi-label" data-tx="html_admin.sinPlayer">Sin jugador</span>
                       <strong id="usersKpiNoPlayer" class="admin-kpi-value">—</strong>
                     </div>
                   </div>
@@ -768,10 +768,10 @@
                     <thead>
                       <tr>
                         <th data-tx="html_admin.rol">Rol</th>
-                        <th class="text-center" data-tx="html_admin.tabAdmin">Tab Admin</th>
-                        <th class="text-center" data-tx="html_admin.tabAssociation">Tab Association</th>
-                        <th class="text-center" data-tx="html_admin.tabAccountability">Tab Accountability</th>
-                        <th class="text-center" data-tx="html_admin.users">Users</th>
+                        <th class="text-center" data-tx="html_admin.tabAdmin">Ver Ajustes</th>
+                        <th class="text-center" data-tx="html_admin.tabAssociation">Ver Asociación</th>
+                        <th class="text-center" data-tx="html_admin.tabAccountability">Ver Accountability</th>
+                        <th class="text-center" data-tx="html_admin.users">Usuarios</th>
                         <th class="text-center" data-tx="html_admin.landing">Landing</th>
                         <th class="text-center" data-tx="html_admin.register">Register</th>
                         <th class="text-end" data-tx="html_admin.accion">Acción</th>
@@ -792,7 +792,7 @@
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                   <div>
                     <h3 class="h6 mb-1" data-tx="html_admin.tablaDeUsuarios">Tabla de usuarios</h3>
-                    <p class="text-muted mb-0" data-tx="html_admin.vistaConsolidadaDeUsers">Vista consolidada de users + players + estados clave.</p>
+                    <p class="text-muted mb-0" data-tx="html_admin.vistaConsolidadaDeUsers">Vista consolidada de usuarios, jugadores y estados clave.</p>
                   </div>
                 </div>
 
@@ -831,7 +831,7 @@
             tabindex="0"
           >
             <div class="admin-tab-intro mb-4">
-              <h2 class="h5 mb-1" data-tx="html_admin.registerSettings">Register settings</h2>
+              <h2 class="h5 mb-1" data-tx="html_admin.registerSettings">Inscripción</h2>
               <p class="text-muted mb-0" data-tx="html_admin.configuracionDelRegistroPublico">
                 Configuración del registro público, textos legales y bloque de asociación.
               </p>
@@ -923,7 +923,7 @@
             <section class="card shadow-sm border-0 admin-inner-card">
               <div class="card-body">
                 <div class="mb-3">
-                  <h3 class="h6 mb-1" data-tx="html_admin.associationDetails">Association details</h3>
+                  <h3 class="h6 mb-1" data-tx="html_admin.associationDetails">Datos de la asociación</h3>
                   <p class="text-muted mb-0" data-tx="html_admin.contenidoEditableDelBloque">
                     Contenido editable del bloque institucional/association mostrado en registro.
                   </p>

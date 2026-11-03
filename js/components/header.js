@@ -176,11 +176,28 @@ function filterMenuByRolePermissions(menu, cfg) {
   return (menu || []).filter((item) => canSeeMenuItemByPermissions(item, cfg));
 }
 
-// Tabs que el usuario puede ver con este cfg (el de guardPage): para accesos directos.
-export function getVisibleMenuItems(cfg) {
-  const enabled = cfg?.enabledTabs || {};
-  const menu = (CLUB_DATA.header.menu || []).filter((item) => enabled[item.id] === true);
-  return filterMenuByRolePermissions(menu, cfg).map((item) => ({ ...item, href: toAbsHref(item.href) }));
+// Íconos de la barra inferior (mobile), por id de grupo.
+const NAV_ICONS = {
+  home: `<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>`,
+  train: `<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/>`,
+  team: `<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>`,
+  social: `<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>`,
+  manage: `<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>`,
+};
+
+function navIcon(groupId) {
+  return `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${NAV_ICONS[groupId] || NAV_ICONS.home}</svg>`;
+}
+
+// Arma los grupos con solo los items visibles; un grupo sin items no se muestra.
+function buildNavGroups(nav, visibleItems) {
+  const visibleIds = new Set((visibleItems || []).map((item) => item.id));
+  return (nav || [])
+    .map((group) => ({
+      ...group,
+      items: (group.items || []).filter((item) => visibleIds.has(item.id)),
+    }))
+    .filter((group) => group.items.length > 0);
 }
 
 // si el tema cambia (logo nuevo) después de pintar el header
@@ -194,7 +211,8 @@ export async function loadHeader(activeTab, cfgOverride) {
   const header = document.getElementById("app-header");
   if (!header) return { ready: Promise.resolve() };
 
-  const MENU = CLUB_DATA.header.menu || [];
+  const NAV = CLUB_DATA.header.nav || [];
+  const MENU = NAV.flatMap((group) => group.items || []);
   const HOME_HREF = toAbsHref(CLUB_DATA.header.homeHref || "dashboard.html");
 
   let cfg = cfgOverride;
@@ -224,31 +242,84 @@ export async function loadHeader(activeTab, cfgOverride) {
   }
 
   function renderNav(menu) {
-    const desktop = (menu || [])
+    const groups = buildNavGroups(NAV, menu);
+    const activeGroup = groups.find((group) => group.items.some((item) => item.id === activeTab));
+    const isActiveGroup = (group) => group === activeGroup;
+    const groupHref = (group) => toAbsHref(group.items[0].href);
+
+    const desktop = groups
+      .map(
+        (group) => `
+          <a href="${groupHref(group)}" class="top-tab ${isActiveGroup(group) ? "active" : ""}">
+            ${group.label}
+          </a>
+        `
+      )
+      .join("");
+
+    // Subtabs: solo si el grupo activo tiene más de una página visible.
+    const subItems = activeGroup && activeGroup.items.length > 1 ? activeGroup.items : [];
+    const sub = subItems
       .map(
         (item) => `
-          <a href="${toAbsHref(item.href)}" class="top-tab ${activeTab === item.id ? "active" : ""}">
+          <a href="${toAbsHref(item.href)}" class="sub-tab ${activeTab === item.id ? "active" : ""}">
             ${item.label}
           </a>
         `
       )
       .join("");
 
-    const mobile = (menu || [])
+    const mobile = groups
+      .map((group) => {
+        if (group.items.length === 1) {
+          return `
+            <a href="${groupHref(group)}" class="mobile-link ${isActiveGroup(group) ? "active" : ""}">
+              ${group.label}
+            </a>
+          `;
+        }
+        return `
+          <div class="mobile-group">${group.label}</div>
+          ${group.items
+            .map(
+              (item) => `
+                <a href="${toAbsHref(item.href)}" class="mobile-link mobile-sublink ${activeTab === item.id ? "active" : ""}">
+                  ${item.label}
+                </a>
+              `
+            )
+            .join("")}
+        `;
+      })
+      .join("");
+
+    const bottom = groups
       .map(
-        (item) => `
-          <a href="${toAbsHref(item.href)}" class="mobile-link ${activeTab === item.id ? "active" : ""}">
-            ${item.label}
+        (group) => `
+          <a href="${groupHref(group)}" class="bottom-tab ${isActiveGroup(group) ? "active" : ""}">
+            ${navIcon(group.id)}
+            <span>${group.label}</span>
           </a>
         `
       )
       .join("");
 
     const desktopNav = header.querySelector(".top-tabs");
+    const subNav = header.querySelector(".sub-tabs");
     const mobileNav = header.querySelector(".mobile-links");
+    const bottomNav = header.querySelector(".bottom-nav");
 
     if (desktopNav) desktopNav.innerHTML = desktop;
+    if (subNav) {
+      subNav.innerHTML = sub;
+      subNav.classList.toggle("d-none", !sub);
+    }
     if (mobileNav) mobileNav.innerHTML = mobile;
+    if (bottomNav) {
+      bottomNav.innerHTML = bottom;
+      bottomNav.classList.toggle("d-none", !groups.length);
+    }
+    document.body.classList.toggle("has-bottom-nav", groups.length > 0);
   }
 
   let resolvedOnce = false;
@@ -285,6 +356,10 @@ export async function loadHeader(activeTab, cfgOverride) {
 
       <div class="header-cta d-flex align-items-center gap-2" id="headerCta"></div>
     </header>
+
+    <nav class="sub-tabs d-none" aria-label="${TX.subsecciones}"></nav>
+
+    <nav class="bottom-nav d-none" aria-label="${TX.menuPrincipal}"></nav>
 
     <div class="offcanvas offcanvas-start" tabindex="-1" id="mobileMenu" aria-labelledby="mobileMenuLabel">
       <div class="offcanvas-header">

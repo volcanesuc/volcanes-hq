@@ -5,6 +5,8 @@ import { defineStrings, fmt } from "/js/core/texts.js";
 export const TX = defineStrings("header", "Menú (header)", {
   club: "Club",
   abrirMenu: "Abrir menú",
+  menuPrincipal: "Menú principal",
+  subsecciones: "Subsecciones",
   irAlInicio: "Ir al inicio",
   cerrar: "Cerrar",
   salir: "SALIR",

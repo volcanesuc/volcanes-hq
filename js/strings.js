@@ -23,17 +23,29 @@ export const CLUB_DATA = defineStrings("club", "Club, menú e inicio", {
         href: "public/register.html"
       }
     },
-    menu: [
-      { id: "home", label: "Home", href: "/dashboard.html" },
-      { id: "roster", label: "Roster", href: "/roster.html" },
-      { id: "trainings", label: "Entrenamientos", href: "/trainings_history.html" },
-      { id: "attendance", label: "Asistencia", href: "/attendance.html" },
-      { id: "tournaments", label: "Torneos", href: "/tournaments.html" },
-      { id: "playbook", label: "Playbook", href: "/playbook.html" },
-      { id: "community", label: "Comunidad", href: "/community.html" },
-      { id: "association", label: "Asociación", href: "/association.html" },
-      { id: "pickups", label: "Pickups", href: "/pickups.html" },
-      { id: "admin", label: "Admin", href: "/admin.html" }
+    // Menú en grupos: cada grupo es un tab del header (y de la barra inferior en mobile);
+    // sus items son los subtabs. Los ids de los items son los de Remote Config / permisos.
+    nav: [
+      { id: "home", label: "Inicio", items: [
+        { id: "home", label: "Inicio", href: "/dashboard.html" }
+      ] },
+      { id: "train", label: "Entrenar", items: [
+        { id: "trainings", label: "Sesiones", href: "/trainings_history.html" },
+        { id: "attendance", label: "Asistencia", href: "/attendance.html" },
+        { id: "playbook", label: "Playbook", href: "/playbook.html" }
+      ] },
+      { id: "team", label: "Equipo", items: [
+        { id: "roster", label: "Roster", href: "/roster.html" },
+        { id: "tournaments", label: "Torneos", href: "/tournaments.html" }
+      ] },
+      { id: "social", label: "Comunidad", items: [
+        { id: "community", label: "Feed", href: "/community.html" },
+        { id: "pickups", label: "Pickups", href: "/pickups.html" }
+      ] },
+      { id: "manage", label: "Gestión", items: [
+        { id: "association", label: "Asociación", href: "/association.html" },
+        { id: "admin", label: "Ajustes", href: "/admin.html" }
+      ] }
     ],
     logout: {
       label: "SALIR"

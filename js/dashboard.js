@@ -11,7 +11,7 @@ import { APP_CONFIG } from "./config/config.js";
 import { showLoader, hideLoader } from "./ui/loader.js";
 
 import { guardPage } from "./page-guard.js";
-import { getVisibleMenuItems, loadHeader } from "./components/header.js";
+import { loadHeader } from "./components/header.js";
 import { mountEventsCalendar } from "./components/events_calendar.js";
 import { loadClubCalendarEvents } from "./features/calendar/club_events.js";
 import { loadLandingConfig } from "./features/landing/landing_data.js";
@@ -24,7 +24,6 @@ import { TX, txf } from "/js/strings/screens/dashboard.js";
 const { cfg, redirected } = await guardPage("dashboard");
 if (!redirected) {
   await loadHeader("home", cfg);
-  renderQuickLinks(cfg);
 }
 
 watchAuth(async (user, access) => {
@@ -343,30 +342,6 @@ async function loadDashboard({ user, access } = {}) {
   const alerts = calculateAlerts({ players, trainings });
   const visibleAlerts = filterAlertsForViewer(alerts, { user, access });
   renderAlerts(visibleAlerts);
-}
-
-/* =========================================================
-   ACCESOS RÁPIDOS
-========================================================= */
-function renderQuickLinks(cfg) {
-  const section = document.getElementById("quickLinksSection");
-  const wrap = document.getElementById("quickLinks");
-  if (!section || !wrap) return;
-
-  const items = getVisibleMenuItems(cfg).filter((item) => item.id !== "home");
-  if (cfg?.enabledTabs?.pickups === true) {
-    items.push({ id: "publicPickups", label: TX.publicPickupsLabel, href: "/public/pickups.html" });
-  }
-
-  document.getElementById("quickLinksTitle").textContent = TX.quickLinksTitle;
-  wrap.innerHTML = items.map((item) => `
-    <div class="col-6 col-md-4 col-xl-3">
-      <a class="quick-link" href="${escapeHtml(item.href)}">
-        <span class="quick-link__label">${escapeHtml(item.label)}</span>
-        <span class="quick-link__desc">${escapeHtml(TX[`link_${item.id}`] || "")}</span>
-      </a>
-    </div>`).join("");
-  section.classList.toggle("d-none", !items.length);
 }
 
 /* =========================================================

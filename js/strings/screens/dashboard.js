@@ -3,22 +3,10 @@
 import { defineStrings, fmt } from "/js/core/texts.js";
 
 export const TX = defineStrings("dashboard", "Dashboard", {
-  quickLinksTitle: "Accesos rápidos",
   galleryCardTitle: "📸 Galería del club",
   galleryCardHint: "Subí tus fotos de entrenos, torneos y pickups. Un admin las revisa y aparecen en la página de inicio.",
   galleryCardPending: "Tenés {n} foto(s) esperando aprobación.",
   galleryCardButton: "Subir fotos",
-  link_roster: "👥 Jugadores y perfiles",
-  link_trainings: "📋 Historial y planes de entreno",
-  link_attendance: "✅ Pasar y revisar asistencia",
-  link_tournaments: "🏆 Torneos y rosters",
-  link_playbook: "📘 Drills, planes y gimnasio",
-  link_community: "💬 Anuncios y comunidad",
-  link_association: "🏛️ Membresías y pagos",
-  link_pickups: "⚡ Juegos abiertos",
-  link_admin: "⚙️ Ajustes del club",
-  link_publicPickups: "📅 Calendario público de pickups",
-  publicPickupsLabel: "Pickups (público)",
   calendarTitle: "📅 Próximos eventos",
   calendarHint: "Entrenos, pickups y torneos. Tocá un día para ver qué hay.",
   calendarUpcoming: "Próximos eventos",
