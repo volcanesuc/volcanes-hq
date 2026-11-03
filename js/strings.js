@@ -32,7 +32,8 @@ export const CLUB_DATA = defineStrings("club", "Club, menú e inicio", {
       { id: "train", label: "Entrenar", items: [
         { id: "trainings", label: "Sesiones", href: "/trainings_history.html" },
         { id: "attendance", label: "Asistencia", href: "/attendance.html" },
-        { id: "playbook", label: "Playbook", href: "/playbook.html" }
+        { id: "playbook", label: "Playbook", href: "/playbook.html" },
+        { id: "gym", gate: "playbook", label: "Gimnasio", href: "/gimnasio.html" }
       ] },
       { id: "team", label: "Equipo", items: [
         { id: "roster", label: "Roster", href: "/roster.html" },

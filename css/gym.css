@@ -1,0 +1,268 @@
+/* ======================================================
+   GIMNASIO (gimnasio.html) y EJERCICIOS (gym_ejercicios.html)
+====================================================== */
+
+.gx-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.gx-head__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+
+.gx-back {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  margin-bottom: .75rem;
+  font-weight: 700;
+  font-size: .9rem;
+  text-decoration: none;
+  color: var(--ui-muted, rgba(0, 0, 0, .58));
+}
+
+.gx-back:hover { color: var(--theme-primary); }
+
+.gx-list {
+  display: grid;
+  gap: 1rem;
+}
+
+/* ===== plan ===== */
+.gx-plan {
+  background: #fff;
+  border: 1px solid var(--ui-border, rgba(0, 0, 0, .08));
+  border-radius: 18px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .04);
+  overflow: hidden;
+}
+
+.gx-plan__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: .9rem 1.1rem;
+  background: var(--ui-surface-2, #fafafc);
+  border-bottom: 1px solid var(--ui-border, rgba(0, 0, 0, .08));
+}
+
+.gx-plan__title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.gx-plan__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  font-size: .8rem;
+  color: var(--ui-muted, rgba(0, 0, 0, .58));
+}
+
+.gx-badge {
+  padding: 0 .5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--theme-primary) 12%, #fff);
+  color: var(--theme-primary);
+  font-weight: 700;
+}
+
+.gx-plan__body {
+  padding: .35rem .5rem;
+}
+
+/* ===== rutina (desplegable) ===== */
+.gx-routine {
+  border-radius: 12px;
+}
+
+.gx-routine + .gx-routine {
+  border-top: 1px solid var(--ui-border, rgba(0, 0, 0, .08));
+}
+
+.gx-routine > summary {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  padding: .7rem .6rem;
+  cursor: pointer;
+  list-style: none;
+  border-radius: 12px;
+}
+
+.gx-routine > summary::-webkit-details-marker { display: none; }
+.gx-routine > summary:hover { background: rgba(0, 0, 0, .03); }
+
+.gx-routine__chev {
+  transition: transform .15s ease;
+  color: var(--ui-muted, rgba(0, 0, 0, .58));
+}
+
+.gx-routine[open] .gx-routine__chev { transform: rotate(90deg); }
+
+.gx-routine__title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  align-items: baseline;
+}
+
+.gx-routine__label {
+  font-size: .72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--theme-primary);
+}
+
+.gx-routine__count {
+  font-size: .8rem;
+  color: var(--ui-muted, rgba(0, 0, 0, .58));
+  white-space: nowrap;
+}
+
+.gx-routine__desc {
+  margin: 0 .6rem .5rem 2.2rem;
+  font-size: .9rem;
+  color: var(--ui-muted, rgba(0, 0, 0, .58));
+}
+
+.gx-edit { border-radius: 10px; }
+
+/* ===== ejercicios de una rutina ===== */
+.gx-exlist {
+  margin: 0 0 .6rem;
+  padding: 0 .6rem 0 2.2rem;
+  display: grid;
+  gap: .4rem;
+}
+
+.gx-ex {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: .75rem;
+  padding: .55rem .75rem;
+  border-radius: 12px;
+  background: var(--ui-surface-2, #fafafc);
+}
+
+.gx-ex__main { min-width: 0; }
+
+.gx-ex__name { font-weight: 700; }
+
+.gx-ex__link {
+  border: 0;
+  padding: 0;
+  background: none;
+  font-weight: 700;
+  color: inherit;
+  text-align: left;
+}
+
+.gx-ex__link:hover { color: var(--theme-primary); text-decoration: underline; }
+
+.gx-ex__dose {
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--theme-primary);
+}
+
+.gx-ex__notes {
+  font-size: .85rem;
+  color: var(--ui-muted, rgba(0, 0, 0, .58));
+  white-space: pre-wrap;
+}
+
+.gx-empty-inline {
+  padding: .5rem .6rem .75rem 2.2rem;
+  font-size: .9rem;
+  color: var(--ui-muted, rgba(0, 0, 0, .58));
+}
+
+/* ===== tags de músculo ===== */
+.gx-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem;
+  margin-top: .35rem;
+}
+
+.gx-tags span {
+  font-size: .72rem;
+  font-weight: 700;
+  padding: .1rem .5rem;
+  border-radius: 999px;
+  background: #f0f2f5;
+  color: #4b4a57;
+}
+
+.gx-tags span.is-primary {
+  background: color-mix(in srgb, var(--theme-primary) 14%, #fff);
+  color: var(--theme-primary);
+}
+
+/* ===== grilla de ejercicios ===== */
+.gx-muscle-chips { flex-wrap: wrap; }
+
+.gx-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: .75rem;
+}
+
+.gx-card {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  padding: .85rem 1rem;
+  background: #fff;
+  border: 1px solid var(--ui-border, rgba(0, 0, 0, .08));
+  border-radius: 16px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .04);
+}
+
+.gx-card__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: .5rem;
+}
+
+.gx-card__name {
+  font-size: .98rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.gx-card__foot {
+  margin-top: auto;
+  padding-top: .5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .5rem;
+}
+
+.gx-card__equip {
+  font-size: .8rem;
+  color: var(--ui-muted, rgba(0, 0, 0, .58));
+}
+
+@media (max-width: 575.98px) {
+  .gx-exlist { padding-left: .6rem; }
+  .gx-routine__desc, .gx-empty-inline { margin-left: .6rem; padding-left: .6rem; }
+  .gx-ex { flex-direction: column; }
+}

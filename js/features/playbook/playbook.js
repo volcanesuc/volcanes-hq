@@ -11,8 +11,6 @@ import { PLAYBOOK_STRINGS as S } from "../../strings/playbook_strings.js";
 import { loadPartialOnce } from "/js/ui/loadPartial.js";
 import { createTrainingEditor } from "./training_plan_editor.js";
 
-import { initGymTab } from "./gym/gym.js";
-import { initGymEditors } from "./gym/gym_editors.js";
 
 import { openMediaViewerModal } from "../../ui/media_viewer_modal.js";
 
@@ -74,13 +72,7 @@ watchAuth(async () => {
 
     await loadDrills();
     await loadTrainings();
-    try {
-      await initGymTab({ db, canEdit });
-      await initGymEditors({ db, canEdit, modalMountId: "modalMount" });
-    } catch (e) {
-      console.error("[playbook] Gym init error:", e);
-      showAlert(TX.laPestanaGimnasioFallo, "warning");
-    }
+    // El gimnasio vive en su propia pantalla (gimnasio.html).
   } finally {
     hideLoader();
     document.body.classList.remove("loading");

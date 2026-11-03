@@ -20,6 +20,7 @@ import "/js/strings/screens/cartaglow_page.js";
 import "/js/strings/screens/community.js";
 import "/js/strings/screens/dashboard.js";
 import "/js/strings/screens/gestion.js";
+import "/js/strings/screens/gimnasio.js";
 import "/js/strings/screens/perfil.js";
 import "/js/strings/screens/gym.js";
 import "/js/strings/screens/gym_editors.js";
@@ -104,11 +105,16 @@ export const TEXT_SCREENS = [
   { id: "sesiones", group: "Entrenar", label: "Sesiones", ns: ["html_trainings_history", "trainings_history", "trainings_ui", "html_training_session_modal"] },
   { id: "asistencia", group: "Entrenar", label: "Asistencia", ns: ["html_attendance", "attendance"] },
   {
-    id: "playbook", group: "Entrenar", label: "Playbook y gimnasio",
+    id: "playbook", group: "Entrenar", label: "Playbook",
     ns: [
       "html_playbook", "playbook", "playbook_js", "html_drill_create_modal", "html_drill_editor_modal",
       "training_plan_editor", "html_training_plan_editor", "html_training_plan", "training_plan_view",
-      "gym", "gym_editors", "gym_plan", "gym_routine", "gym_public_routine", "html_gym_plan", "html_gym_routine",
+    ],
+  },
+  {
+    id: "gimnasio", group: "Entrenar", label: "Gimnasio",
+    ns: [
+      "gimnasio", "gym", "gym_editors", "gym_plan", "gym_routine", "gym_public_routine", "html_gym_plan", "html_gym_routine",
       "html_gym_week", "html_gym_exercise_modal", "html_gym_program_editor", "html_gym_routine_editor",
     ],
   },

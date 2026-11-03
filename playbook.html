@@ -65,11 +65,6 @@
               Planes de entrenamiento
             </button>
           </li>
-          <li class="nav-item" role="presentation">
-            <button class="nav-link" id="tabGymBtn" data-bs-toggle="pill" data-bs-target="#tabGym" type="button" role="tab" data-tx="html_playbook.gimnasio">
-              Gimnasio
-            </button>
-          </li>
         </ul>
       </div>
     </div>
@@ -148,74 +143,6 @@
         </div>
 
       </section>
-      <!-- TAB GIMNASIO -->
-      <section class="tab-pane fade" id="tabGym" role="tabpanel" aria-labelledby="tabGymBtn">
-
-        <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
-          <div>
-            <h2 class="h5 mb-0" data-tx="html_playbook.gimnasio">Gimnasio</h2>
-            <div class="text-muted small" data-tx="html_playbook.ejerciciosRutinasYPlanes">Ejercicios, rutinas y planes de ejercicio</div>
-          </div>
-
-          <div class="d-flex gap-2 flex-wrap">
-            <button class="btn btn-outline-secondary btn-sm" id="refreshGymBtn" data-tx="html_playbook.refrescar">Refrescar</button>
-
-            <!-- admin only -->
-            <button class="btn btn-outline-primary btn-sm d-none" id="openCreateGymExerciseBtn" type="button" data-tx="html_playbook.ejercicio">+ Ejercicio</button>
-            <button class="btn btn-outline-primary btn-sm d-none" id="openCreateGymRoutineBtn" type="button" data-tx="html_playbook.rutina">+ Rutina</button>
-            <button class="btn btn-primary btn-sm d-none" id="openCreateGymWeekBtn" type="button" data-tx="html_playbook.plan">+ Plan</button>
-          </div>
-        </div>
-
-        <div class="row g-3">
-          <!-- Ejercicios -->
-          <div class="col-12 col-lg-4">
-            <div class="card">
-              <div class="card-body">
-                <div class="fw-semibold mb-2" data-tx="html_playbook.ejercicios">Ejercicios</div>
-                <div class="input-group mb-2">
-                  <span class="input-group-text">🔎</span>
-                  <input class="form-control" id="gymExerciseSearch" placeholder="Buscar ejercicio…" data-tx-placeholder="html_playbook.buscarEjercicio" />
-                </div>
-                <div class="list-group" id="gymExercisesList"></div>
-                <div class="text-muted small mt-2 d-none" id="gymExercisesEmpty" data-tx="html_playbook.noHayEjercicios">No hay ejercicios.</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Rutinas -->
-          <div class="col-12 col-lg-4">
-            <div class="card">
-              <div class="card-body">
-                <div class="fw-semibold mb-2" data-tx="html_playbook.rutinas">Rutinas</div>
-                <div class="input-group mb-2">
-                  <span class="input-group-text">🔎</span>
-                  <input class="form-control" id="gymRoutineSearch" placeholder="Buscar rutina…" data-tx-placeholder="html_playbook.buscarRutina" />
-                </div>
-                <div class="list-group" id="gymRoutinesList"></div>
-                <div class="text-muted small mt-2 d-none" id="gymRoutinesEmpty" data-tx="html_playbook.noHayRutinas">No hay rutinas.</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Semanas -->
-          <div class="col-12 col-lg-4">
-            <div class="card">
-              <div class="card-body">
-                <div class="fw-semibold mb-2" data-tx="html_playbook.planesDeGimnasio">Planes de Gimnasio</div>
-                <div class="input-group mb-2">
-                  <span class="input-group-text">🔎</span>
-                  <input class="form-control" id="gymWeekSearch" placeholder="Buscar plan..." data-tx-placeholder="html_playbook.buscarPlan" />
-                </div>
-                <div class="list-group" id="gymWeeksList"></div>
-                <div class="text-muted small mt-2 d-none" id="gymWeeksEmpty" data-tx="html_playbook.noHayPlanesDe">No hay planes de gimnasio.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </section>
-
     </div>
   </main>
   </div>
