@@ -3,8 +3,7 @@
 // La persona es users/{uid}. Todo lo que antes estaba copiado en header, page-guard,
 // role-routing, permissions, auth, index, register y pickups_status sale de acá.
 //
-// Lee el modelo nuevo (status.player / status.association) y, mientras existan datos
-// viejos, también playerStatus / isPlayerActive / associationStatus.
+// Estados: users.status.player y users.status.association.
 import { auth, db } from "/js/auth/firebase.js";
 import { APP_CONFIG } from "/js/config/config.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -30,22 +29,14 @@ export function normalizeRole(role) {
 
 // "active" | "pending" | "rejected" | ""
 export function playerStatusOf(data = {}) {
-  const raw = String(data?.status?.player ?? data?.playerStatus ?? "").trim().toLowerCase();
-  if (["active", "approved"].includes(raw)) return "active";
-  if (["pending", "submitted", "validating"].includes(raw)) return "pending";
-  if (["rejected", "denied"].includes(raw)) return "rejected";
-  if (raw === "inactive") return "inactive";
-  if (data?.isPlayerActive === true || data?.isActive === true) return "active";
-  return "";
+  const raw = String(data?.status?.player ?? "").trim().toLowerCase();
+  return ["active", "pending", "rejected", "inactive"].includes(raw) ? raw : "";
 }
 
 // "active" | "pending" | "rejected" | "expired" | ""
 export function associationStatusOf(data = {}) {
-  const raw = String(data?.status?.association ?? data?.associationStatus ?? "").trim().toLowerCase();
-  if (raw === "associated_active") return "active";
-  if (raw === "associated_rejected") return "rejected";
-  if (raw === "payment_validation_pending") return "pending";
-  return raw;
+  const raw = String(data?.status?.association ?? "").trim().toLowerCase();
+  return ["active", "pending", "rejected", "expired"].includes(raw) ? raw : "";
 }
 
 /* =========================

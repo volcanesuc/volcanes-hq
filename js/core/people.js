@@ -37,9 +37,9 @@ export const ASSOCIATION_STATUS = ["", "pending", "active", "expired", "rejected
 /* =========================
    Lectura
 ========================= */
-// uid de la persona dueña de una ficha (formato nuevo y viejos).
+// uid de la persona dueña de una ficha (null si todavía no tiene cuenta).
 export function playerUidOf(cp = {}) {
-  return cp?.uid || cp?.userId || cp?.linkedUserId || cp?.userRefId || null;
+  return cp?.uid || null;
 }
 
 export function isPlaceholderId(id) {
@@ -72,7 +72,7 @@ export function playerBirthDate(cp = {}, user = null) {
 }
 
 export function playerIsActive(cp = {}) {
-  return !(cp?.active === false || cp?.isActive === false || cp?.status === "inactive");
+  return cp?.active !== false;
 }
 
 /* =========================
@@ -158,8 +158,7 @@ export async function claimPlayer(oldId, uid) {
   const owner = playerUidOf(data);
   if (owner && owner !== uid) throw new Error("Esa ficha ya pertenece a otra persona.");
 
-  const { userId, linkedUserId, userRefId, ...rest } = data;
-  await setDoc(doc(db, COL_PLAYERS, uid), { ...rest, uid, active: true, claimedFrom: oldId, updatedAt: serverTimestamp() }, { merge: true });
+  await setDoc(doc(db, COL_PLAYERS, uid), { ...data, uid, active: true, claimedFrom: oldId, updatedAt: serverTimestamp() }, { merge: true });
 
   // Asistencia: reemplazar el id viejo por el uid.
   const trainings = await getDocs(query(collection(db, COL_TRAININGS), where("attendees", "array-contains", oldId)));

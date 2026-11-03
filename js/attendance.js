@@ -139,13 +139,7 @@ function getUserDisplayName(userData = {}) {
 function normalizeClubPlayerActive(cp = {}) {
   if (!cp || typeof cp !== "object") return false;
 
-  if (cp.active === false) return false; // nueva convención
-  if (cp.isActive === false) return false;  // compatibilidad vieja
-
-  const status = String(cp.status || "").toLowerCase();
-  if (status === "inactive" || status === "disabled") return false; // algunos modelos usan status
-
-  return true;
+  return cp.active !== false;
 }
 
 // Dueño de la ficha (uid): ver /js/core/people.js.
@@ -186,55 +180,9 @@ function getClubPlayerPhoto(cp = {}, user = null) {
   return safeCp.photoURL || safeCp.avatarUrl || u.photoURL || "";
 }
 
-/**
- * Intenta resolver el attendeeId a un clubPlayerId.
- * Soporta:
- * - attendees guardando clubPlayerId
- * - attendees guardando userId
- * - attendees guardando objetos { clubPlayerId, userId, id, uid }
- */
+// trainings.attendees guarda ids de ficha (el uid para quien tiene cuenta).
 function resolveAttendanceKey(attendee) {
-  if (!attendee) return null;
-
-  const clubPlayerKeys = Object.keys(allPlayers);
-
-  // Caso simple: string
-  if (typeof attendee === "string") {
-    if (allPlayers[attendee]) return attendee;
-
-    const byUser = clubPlayerKeys.find(
-      (key) => allPlayers[key]?.player?.userId === attendee
-    );
-    return byUser || null;
-  }
-
-  // Caso objeto
-  if (typeof attendee === "object") {
-    const possibleClubPlayerId =
-      attendee.clubPlayerId ||
-      attendee.playerId ||
-      attendee.id ||
-      null;
-
-    if (possibleClubPlayerId && allPlayers[possibleClubPlayerId]) {
-      return possibleClubPlayerId;
-    }
-
-    const possibleUserId =
-      attendee.userId ||
-      attendee.uid ||
-      attendee.linkedUserId ||
-      null;
-
-    if (possibleUserId) {
-      const byUser = clubPlayerKeys.find(
-        (key) => allPlayers[key]?.player?.userId === possibleUserId
-      );
-      if (byUser) return byUser;
-    }
-  }
-
-  return null;
+  return typeof attendee === "string" && allPlayers[attendee] ? attendee : null;
 }
 
 setDefaultRange();
@@ -457,33 +405,7 @@ async function generatePdf() {
       for (const t of trainingsInRange) {
         const attendees = Array.isArray(t.attendees) ? t.attendees : [];
 
-        const attended = attendees.some((attendee) => {
-          // clubPlayer directo
-          if (typeof attendee === "string") {
-            return attendee === pl.clubPlayerId || (!!pl.userId && attendee === pl.userId);
-          }
-
-          if (typeof attendee === "object" && attendee) {
-            const attendeeClubPlayerId =
-              attendee.clubPlayerId ||
-              attendee.playerId ||
-              attendee.id ||
-              null;
-
-            const attendeeUserId =
-              attendee.userId ||
-              attendee.uid ||
-              attendee.linkedUserId ||
-              null;
-
-            return (
-              attendeeClubPlayerId === pl.clubPlayerId ||
-              (!!pl.userId && attendeeUserId === pl.userId)
-            );
-          }
-
-          return false;
-        });
+        const attended = attendees.includes(pl.clubPlayerId);
 
         if (attended) count++;
       }

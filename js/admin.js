@@ -705,7 +705,7 @@ async function loadCoreUsersPlayers() {
       ...data,
       profile: data.profile || {},
       membership: getMembershipSummary(data),
-      linkedPlayer: playersById.get(d.id) || (data.playerId ? playersById.get(data.playerId) || null : null),
+      linkedPlayer: playersById.get(d.id) || null,
     };
   });
 

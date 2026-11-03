@@ -36,19 +36,12 @@ service cloud.firestore {
       return hasMe() ? me().get("role", "viewer") : "viewer";
     }
 
-    // Formato nuevo (status.*) y, mientras existan datos viejos, isPlayerActive / associationStatus.
     function myPlayerActive() {
-      return hasMe() && (
-        me().get("status", {}).get("player", "") == "active"
-        || me().get("isPlayerActive", false) == true
-      );
+      return hasMe() && me().get("status", {}).get("player", "") == "active";
     }
 
     function myAssociationActive() {
-      return hasMe() && (
-        me().get("status", {}).get("association", "") == "active"
-        || me().get("associationStatus", "") in ["active", "associated_active"]
-      );
+      return hasMe() && me().get("status", {}).get("association", "") == "active";
     }
 
     /* =========================

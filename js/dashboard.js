@@ -62,11 +62,7 @@ function normalizeRoleId(role) {
 }
 
 function normalizeClubPlayerActive(cp = {}) {
-  const safeCp = cp && typeof cp === "object" ? cp : {};
-  if (safeCp.active === false) return false;
-  if (safeCp.isActive === false) return false;
-  if (safeCp.status === "inactive") return false;
-  return true;
+  return (cp && typeof cp === "object" ? cp : {}).active !== false;
 }
 
 // Dueño de la ficha (uid): ver /js/core/people.js.
@@ -223,38 +219,9 @@ function buildPlayersFromClubData({ usersDocs = [], clubPlayersDocs = [] }) {
 }
 
 
-function resolveAttendancePlayerId(attendee, playersById, playersByUserId) {
-  if (!attendee) return null;
-
-  if (typeof attendee === "string") {
-    if (playersById.has(attendee)) return attendee;
-    if (playersByUserId.has(attendee)) return playersByUserId.get(attendee)?.id || null;
-    return null;
-  }
-
-  if (typeof attendee === "object") {
-    const clubPlayerId =
-      attendee.clubPlayerId ||
-      attendee.playerId ||
-      attendee.id ||
-      null;
-
-    if (clubPlayerId && playersById.has(clubPlayerId)) {
-      return clubPlayerId;
-    }
-
-    const userId =
-      attendee.userId ||
-      attendee.uid ||
-      attendee.linkedUserId ||
-      null;
-
-    if (userId && playersByUserId.has(userId)) {
-      return playersByUserId.get(userId)?.id || null;
-    }
-  }
-
-  return null;
+// trainings.attendees guarda ids de ficha (el uid para quien tiene cuenta).
+function resolveAttendancePlayerId(attendee, playersById) {
+  return typeof attendee === "string" && playersById.has(attendee) ? attendee : null;
 }
 
 function getTrainingAttendeePlayerIds(training, playersById, playersByUserId) {
