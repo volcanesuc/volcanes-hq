@@ -248,7 +248,7 @@ if (redirected) {
       const a = e.target.closest("[data-pf-tab]");
       if (!a) return;
       e.preventDefault();
-      history.replaceState({}, "", a.getAttribute("href"));
+      // no se guarda en la URL: al volver o recargar, el perfil abre siempre en Mi información
       showTab(a.dataset.pfTab);
     });
     window.addEventListener("hashchange", () => showTab(tabFromHash()));
