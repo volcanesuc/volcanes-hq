@@ -101,8 +101,8 @@ export const PICKUP_STRINGS = {
   "joinDialog.companionId": "Cédula (opcional)",
   "joinDialog.remove": "Quitar",
   "joinDialog.useCredit": "Usar mi crédito ({amount} disponible)",
-  "joinDialog.proof": "Comprobante de pago (screenshot)",
-  "joinDialog.proofHint": "Un solo screenshot puede cubrir a todas las personas.",
+  "joinDialog.proof": "Comprobante de pago (opcional)",
+  "joinDialog.proofHint": "Podés subirlo ahora o después desde Mis inscripciones. Un solo screenshot puede cubrir a todas las personas.",
   "joinDialog.total": "Total a pagar: {amount}",
   "joinDialog.totalCovered": "Tu crédito cubre el total. No necesitás comprobante.",
   "joinDialog.submit": "Confirmar inscripción",
@@ -110,6 +110,7 @@ export const PICKUP_STRINGS = {
   "joinDialog.errorProof": "Adjuntá el comprobante de pago.",
   "joinDialog.errorName": "Cada acompañante necesita un nombre.",
   "joinDialog.success": "¡Listo! Quedaste inscrito.",
+  "joinDialog.successPayLater": "¡Listo! Quedaste inscrito. Tu pago queda pendiente: subí el comprobante desde Mis inscripciones.",
   "joinDialog.successWaitlist": "Quedaste en lista de espera. Te avisamos si se libera un cupo.",
 
   /* ---------- formulario invitado ---------- */
@@ -121,7 +122,7 @@ export const PICKUP_STRINGS = {
   "guest.category": "Categoría",
   "guest.errorFields": "Nombre, teléfono y cédula son obligatorios.",
   "guest.linkTitle": "Guardá este link",
-  "guest.linkHelp": "Con este link privado podés subir otro comprobante o salirte del pickup.",
+  "guest.linkHelp": "Con este link privado podés subir el comprobante después o salirte del pickup.",
   "guest.shareLink": "Enviármelo por WhatsApp",
   "guest.shareText": "Mi link para el pickup {title}: {url}",
 
@@ -138,7 +139,7 @@ export const PICKUP_STRINGS = {
   "mine.proofSent": "Comprobante enviado. Un admin lo va a revisar.",
   "mine.creditBalance": "Crédito disponible: {amount}",
   "mine.empty": "No tenés pickups inscritos todavía.",
-  "mine.payNow": "¡Se liberó un cupo! Pagá para confirmar.",
+  "mine.payNow": "Tu pago está pendiente. Subí el comprobante para confirmar tu cupo.",
 
   /* ---------- página de pickups (lista) ---------- */
   "list.tabUpcoming": "Próximos",

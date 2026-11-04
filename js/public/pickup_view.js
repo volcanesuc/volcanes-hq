@@ -208,6 +208,13 @@ function paymentFieldsFor(item, hasProof) {
   return { paymentStatus: PAYMENT_STATUS.PENDING, paymentMethod: null };
 }
 
+// Si quedó en la lista con monto por pagar y sin comprobante, se le recuerda subirlo después.
+function successText(plan, proof) {
+  if (plan.allWaitlist) return t("joinDialog.successWaitlist");
+  const owesCash = plan.items.some((x) => x.spot === SPOT.IN && x.amount - x.credit > 0);
+  return owesCash && !proof ? t("joinDialog.successPayLater") : t("joinDialog.success");
+}
+
 function totalText(plan) {
   if (plan.cashTotal <= 0 && plan.creditUsed > 0) return t("joinDialog.totalCovered");
   return t("joinDialog.total", { amount: money(plan.cashTotal) });
@@ -593,12 +600,12 @@ async function submitJoin(ev) {
   if (entries.some((e) => e.kind === "companion" && !e.name)) return fail(t("joinDialog.errorName"));
   if (plan.waitlistBlocked) return fail(t("public.full"));
 
+  // El comprobante es opcional: sin él la inscripción queda "Pago pendiente" y se sube después.
   const file = $("joinProof").files?.[0] || null;
-  if (plan.cashTotal > 0 && !file) return fail(t("joinDialog.errorProof"));
 
   showLoader();
   try {
-    const proof = plan.cashTotal > 0 ? await uploadProof(file, state.pickup.id) : null;
+    const proof = plan.cashTotal > 0 && file ? await uploadProof(file, state.pickup.id) : null;
     const u = state.userDoc || {};
     const myName = `${u.profile?.firstName || ""} ${u.profile?.lastName || ""}`.trim()
       || u.displayName || state.user.displayName || state.user.email || "—";
@@ -642,7 +649,7 @@ async function submitJoin(ev) {
     await reloadRegs();
     await refreshAccountContext();
     renderAll();
-    showInfo(plan.allWaitlist ? t("joinDialog.successWaitlist") : t("joinDialog.success"));
+    showInfo(successText(plan, proof));
   } catch (err) {
     console.error("[pickup] join error:", err);
     fail(err?.message || t("common.error"));
@@ -726,11 +733,11 @@ async function submitGuest(ev) {
     if (!tier) return fail(t("joinDialog.errorTier"));
     if (plan.waitlistBlocked) return fail(t("public.full"));
 
+    // Opcional también para invitados: lo pueden subir luego desde su link privado.
     const file = $("guestProof").files?.[0] || null;
-    if (plan.cashTotal > 0 && !file) return fail(t("joinDialog.errorProof"));
 
     await ensureSignedIn();
-    const proof = plan.cashTotal > 0 ? await uploadProof(file, state.pickup.id) : null;
+    const proof = plan.cashTotal > 0 && file ? await uploadProof(file, state.pickup.id) : null;
     const item = plan.items[0];
     const pay = paymentFieldsFor(item, !!proof);
     const key = randomToken();
@@ -768,7 +775,7 @@ async function submitGuest(ev) {
 
     await reloadRegs();
     renderAll();
-    showInfo(plan.allWaitlist ? t("joinDialog.successWaitlist") : t("joinDialog.success"));
+    showInfo(successText(plan, proof));
     openLinkDialog(regId, key, phone);
   } catch (err) {
     console.error("[pickup] guest join error:", err);
