@@ -276,8 +276,10 @@ export const PICKUP_STRINGS = {
   "editor.status": "Estado",
   "editor.slug": "Link",
   "editor.slugHint": "Se arma con el título. Si lo cambiás, los links que ya compartiste dejan de funcionar.",
-  "editor.start": "Inicio",
-  "editor.end": "Fin",
+  "editor.date": "Fecha",
+  "editor.startTime": "Hora de inicio",
+  "editor.endTime": "Hora de cierre",
+  "editor.endNextDay": "Termina al día siguiente",
   "editor.venue": "Cancha",
   "editor.venueCustom": "Otra (escribir)",
   "editor.venueName": "Nombre del lugar",
@@ -291,7 +293,7 @@ export const PICKUP_STRINGS = {
   "editor.tiers": "Tarifas",
   "editor.notes": "Notas / reglas",
   "editor.save": "Guardar pickup",
-  "editor.errorStart": "Falta la fecha de inicio.",
+  "editor.errorStart": "Falta la fecha o la hora de inicio.",
   "editor.errorTiers": "Agregá al menos una tarifa.",
 
   /* ---------- plantillas WhatsApp ---------- */

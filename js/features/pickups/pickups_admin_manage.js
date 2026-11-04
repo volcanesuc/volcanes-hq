@@ -626,8 +626,20 @@ async function openEditor(pickup) {
     if (!$("peSlug").dataset.touched) $("peSlug").value = slugify($("peTitle").value);
   };
   $("peStatus").value = p.status || PICKUP_STATUS.DRAFT;
-  $("peStartAt").value = dateToClubLocalInput(p.startAt);
-  $("peEndAt").value = dateToClubLocalInput(p.endAt);
+  // Fecha + horas. Pickup nuevo: hora en punto (la del último pickup, o 20:00) y cierre 2 h después.
+  const startLocal = dateToClubLocalInput(p.startAt);
+  const endLocal = dateToClubLocalInput(p.endAt);
+  $("peDate").value = startLocal.slice(0, 10);
+  $("peStartTime").value = startLocal.slice(11, 16) || defaultStartTime();
+  $("peEndTime").value = endLocal.slice(11, 16) || (pickup ? "" : addHours($("peStartTime").value, PICKUP_DEFAULT_HOURS));
+  // el cierre sigue a la hora de inicio hasta que lo cambien a mano
+  $("peEndTime").dataset.touched = pickup && p.endAt ? "1" : "";
+  $("peEndTime").oninput = () => { $("peEndTime").dataset.touched = "1"; updateEndHint(); };
+  $("peStartTime").oninput = () => {
+    if (!$("peEndTime").dataset.touched) $("peEndTime").value = addHours($("peStartTime").value, PICKUP_DEFAULT_HOURS);
+    updateEndHint();
+  };
+  updateEndHint();
   $("peVenue").value = p.venueId || "";
   $("peVenueName").value = p.venueName || "";
   $("peVenueAddress").value = p.venueAddress || "";
@@ -650,6 +662,41 @@ async function openEditor(pickup) {
   editor.modal.show();
 }
 
+/* ---------- fecha y horas del editor ---------- */
+const PICKUP_DEFAULT_HOURS = 2;
+
+// "20:00" + 2 -> "22:00" (da la vuelta a medianoche: "23:00" + 2 -> "01:00")
+function addHours(time, hours) {
+  const m = String(time || "").match(/^(\d{2}):(\d{2})/);
+  if (!m) return "";
+  const h = (Number(m[1]) + hours) % 24;
+  return `${String(h).padStart(2, "0")}:${m[2]}`;
+}
+
+// La hora en punto del pickup más reciente (suelen ser a la misma hora), o 20:00.
+function defaultStartTime() {
+  const last = [...ctx.getPickups()].sort((a, b) => (b.startAt?.toMillis?.() || 0) - (a.startAt?.toMillis?.() || 0))[0];
+  const h = dateToClubLocalInput(last?.startAt).slice(11, 13);
+  return `${h || "20"}:00`;
+}
+
+// Cierre igual o antes que el inicio = termina al día siguiente (ej. 22:00 a 00:00).
+function endsNextDay(start, end) {
+  return !!start && !!end && end <= start;
+}
+
+function updateEndHint() {
+  $("peEndHint").textContent = endsNextDay($("peStartTime").value, $("peEndTime").value) ? t("editor.endNextDay") : "";
+}
+
+// "2026-11-14" + "20:00" -> "2026-11-15T22:00" si hay que pasar al otro día
+function localDateTime(date, time, plusDays = 0) {
+  if (!date || !time) return "";
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + plusDays);
+  return `${d.toISOString().slice(0, 10)}T${time}`;
+}
+
 // "pickup-jueves", y si ya existe: "pickup-jueves-2", "pickup-jueves-3"...
 function uniqueSlug(base, ownId) {
   const taken = new Set(ctx.getPickups().filter((x) => x.id !== ownId).map((x) => x.slug));
@@ -662,8 +709,12 @@ async function onEditorSubmit(ev) {
   ev.preventDefault();
   const fail = (msg) => { $("peError").textContent = msg; $("peError").classList.remove("d-none"); };
 
-  const startAt = clubLocalInputToDate($("peStartAt").value);
+  const date = $("peDate").value;
+  const startTime = $("peStartTime").value;
+  const endTime = $("peEndTime").value;
+  const startAt = clubLocalInputToDate(localDateTime(date, startTime));
   if (!startAt) return fail(t("editor.errorStart"));
+  const endAt = endTime ? clubLocalInputToDate(localDateTime(date, endTime, endsNextDay(startTime, endTime) ? 1 : 0)) : null;
   const tiers = editor.tierEditor.read();
   if (!tiers.length) return fail(t("editor.errorTiers"));
 
@@ -680,7 +731,7 @@ async function onEditorSubmit(ev) {
     venueAddress: $("peVenueAddress").value.trim(),
     mapsUrl: safeUrl($("peMapsUrl").value),
     startAt,
-    endAt: clubLocalInputToDate($("peEndAt").value),
+    endAt,
     capacity: Math.max(0, Number($("peCapacity").value || 0)),
     cancellationHours: Math.max(0, Number($("peCancelHours").value || 0)),
     allowWaitlist: $("peAllowWaitlist").checked,

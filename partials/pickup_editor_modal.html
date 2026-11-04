@@ -30,14 +30,20 @@
               <div class="form-text" data-t="editor.slugHint"></div>
             </div>
 
-            <div class="col-12 col-md-6">
-              <label class="form-label" for="peStartAt" data-t="editor.start">Inicio</label>
-              <input id="peStartAt" type="datetime-local" class="form-control" required />
+            <!-- Un solo día: fecha + hora de inicio y de cierre (si cierra después de medianoche, termina al día siguiente) -->
+            <div class="col-12 col-md-4">
+              <label class="form-label" for="peDate" data-t="editor.date">Fecha</label>
+              <input id="peDate" type="date" class="form-control" required />
               <div class="form-text" id="peTzHint"></div>
             </div>
-            <div class="col-12 col-md-6">
-              <label class="form-label" for="peEndAt" data-t="editor.end">Fin</label>
-              <input id="peEndAt" type="datetime-local" class="form-control" />
+            <div class="col-6 col-md-4">
+              <label class="form-label" for="peStartTime" data-t="editor.startTime">Hora de inicio</label>
+              <input id="peStartTime" type="time" step="900" class="form-control" required />
+            </div>
+            <div class="col-6 col-md-4">
+              <label class="form-label" for="peEndTime" data-t="editor.endTime">Hora de cierre</label>
+              <input id="peEndTime" type="time" step="900" class="form-control" />
+              <div class="form-text" id="peEndHint"></div>
             </div>
 
             <div class="col-12 col-md-4">
