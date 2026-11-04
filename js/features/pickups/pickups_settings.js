@@ -32,6 +32,7 @@ function buildSettings(remote = {}) {
     allowWaitlistByDefault: bool(remote.allowWaitlistByDefault, DEFAULTS.allowWaitlistByDefault ?? true),
     noShowMustPayByDefault: bool(remote.noShowMustPayByDefault, DEFAULTS.noShowMustPayByDefault ?? true),
     blockMorosos: bool(remote.blockMorosos, DEFAULTS.blockMorosos ?? false),
+    requireProofOnJoin: bool(remote.requireProofOnJoin, DEFAULTS.requireProofOnJoin ?? false),
     allowGuests: bool(remote.allowGuests, DEFAULTS.allowGuests ?? true),
     allowCompanions: bool(remote.allowCompanions, DEFAULTS.allowCompanions ?? true),
 

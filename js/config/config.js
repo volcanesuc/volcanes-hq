@@ -60,6 +60,7 @@ export const APP_CONFIG = {
     allowWaitlistByDefault: true,
     noShowMustPayByDefault: true,
     blockMorosos: false,
+    requireProofOnJoin: false, // false = pueden inscribirse y subir el comprobante después
     allowGuests: true,
     allowCompanions: true,
     whatsappCountryCode: "506",

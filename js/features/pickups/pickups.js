@@ -20,6 +20,7 @@ import {
   SPOT,
   buildPickupPublicUrl,
   computeCredits,
+  computeMorosos,
   escapeHtml,
   getPickupCapacity,
   getSpotMap,
@@ -91,7 +92,24 @@ async function reload() {
    Render
 ========================= */
 function renderAll() {
+  renderMora();
   renderManage();
+}
+
+// Mora total de todos los pickups (los que ya empezaron y siguen sin pagar).
+function renderMora() {
+  const el = $("pkMora");
+  const morosos = [...computeMorosos(state.pickups, state.regs).values()];
+  const total = morosos.reduce((s, m) => s + m.owed, 0);
+  el.classList.remove("d-none");
+  el.classList.toggle("is-clear", total <= 0);
+  el.innerHTML = `
+    <div class="pkm-mora__main">
+      <span class="pkm-mora__label">${escapeHtml(t("admin.moraTitle"))}</span>
+      <b class="pkm-mora__value">${escapeHtml(money(total))}</b>
+      <span class="pkm-mora__sub">${escapeHtml(total > 0 ? t("admin.moraPeople", { n: morosos.length }) : t("admin.moraNone"))}</span>
+    </div>
+    <span class="pkm-mora__link">${escapeHtml(t("admin.moraLink"))} <i class="bi bi-arrow-right"></i></span>`;
 }
 
 // Pickups | Ajustes (los ajustes se montan la primera vez que se abren). ?view=ajustes abre directo.

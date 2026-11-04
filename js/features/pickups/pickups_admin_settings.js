@@ -102,6 +102,7 @@ export function renderSettings() {
             <label class="form-label small" for="stInstructions">${escapeHtml(t("settings.paymentInstructions"))}</label>
             <textarea id="stInstructions" class="form-control form-control-sm" rows="2">${escapeHtml(s.payment.instructions)}</textarea>
           </div>
+          ${toggle("stRequireProof", "settings.requireProof", s.requireProofOnJoin)}
           ${toggle("stPostFinance", "settings.postToFinance", s.postToFinance)}
           ${field("stFinanceCategory", "settings.financeCategory", `<input id="stFinanceCategory" class="form-control form-control-sm" value="${escapeHtml(s.financeCategory)}" />`)}
         </div>
@@ -202,6 +203,7 @@ async function onSave(ev) {
     allowWaitlistByDefault: c("stWaitlist"),
     noShowMustPayByDefault: c("stNoShow"),
     blockMorosos: c("stBlockMorosos"),
+    requireProofOnJoin: c("stRequireProof"),
     allowGuests: c("stGuests"),
     allowCompanions: c("stCompanions"),
     payment: {

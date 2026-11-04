@@ -208,6 +208,15 @@ function paymentFieldsFor(item, hasProof) {
   return { paymentStatus: PAYMENT_STATUS.PENDING, paymentMethod: null };
 }
 
+// Ajustes › Pago: si el club exige comprobante al inscribirse o deja subirlo después.
+const proofRequired = () => state.settings.requireProofOnJoin === true;
+
+function applyProofMode(inputId, hintId = null) {
+  const label = document.querySelector(`label[for="${inputId}"]`);
+  if (label) label.textContent = t(proofRequired() ? "joinDialog.proof" : "joinDialog.proofOptional");
+  if (hintId && $(hintId)) $(hintId).textContent = t(proofRequired() ? "joinDialog.proofHint" : "joinDialog.proofHintOptional");
+}
+
 // Si quedó en la lista con monto por pagar y sin comprobante, se le recuerda subirlo después.
 function successText(plan, proof) {
   if (plan.allWaitlist) return t("joinDialog.successWaitlist");
@@ -444,7 +453,7 @@ function renderActions() {
 
   if (s.blockMorosos && state.isMoroso) {
     joinBtn.disabled = true;
-    hint.textContent = t("join.blockedMoroso");
+    hint.textContent = t("join.blockedMoroso", { amount: money(state.morosoOwed) });
     return;
   }
 
@@ -469,13 +478,15 @@ async function loadHistoryFor(payerKey, legacyUid = null) {
   const credit = computeCredits(history).get(payerKey)?.balance || 0;
 
   let moroso = false;
+  let owed = 0;
   if (state.settings.blockMorosos && history.length) {
     const ids = [...new Set(history.map((r) => r.pickupId))];
     const pickups = (await Promise.all(ids.map((id) => loadPickup(id).catch(() => null)))).filter(Boolean);
-    moroso = computeMorosos(pickups, history).has(payerKey);
+    owed = computeMorosos(pickups, history).get(payerKey)?.owed || 0;
+    moroso = owed > 0;
   }
 
-  return { history, credit, moroso };
+  return { history, credit, moroso, owed };
 }
 
 async function refreshAccountContext() {
@@ -483,6 +494,7 @@ async function refreshAccountContext() {
   state.payerKey = null;
   state.creditBalance = 0;
   state.isMoroso = false;
+  state.morosoOwed = 0;
   state.isFirstTime = false;
 
   if (!state.user) return;
@@ -498,9 +510,10 @@ async function refreshAccountContext() {
   if (!state.payerKey) return;
 
   try {
-    const { history, credit, moroso } = await loadHistoryFor(state.payerKey, state.user.uid);
+    const { history, credit, moroso, owed } = await loadHistoryFor(state.payerKey, state.user.uid);
     state.creditBalance = credit;
     state.isMoroso = moroso;
+    state.morosoOwed = owed;
     state.isFirstTime = !history.some((r) => r.personKey === state.payerKey && r.pickupId !== state.pickup.id);
   } catch (err) {
     console.warn("[pickup] historial no disponible:", err);
@@ -581,6 +594,7 @@ function openJoinDialog() {
   $("joinUseCreditLabel").textContent = t("joinDialog.useCredit", { amount: money(state.creditBalance) });
 
   $("joinProof").value = "";
+  applyProofMode("joinProof", "joinProofHint");
   $("joinSinpe").textContent = sinpeText();
   $("joinError").classList.add("d-none");
 
@@ -600,8 +614,9 @@ async function submitJoin(ev) {
   if (entries.some((e) => e.kind === "companion" && !e.name)) return fail(t("joinDialog.errorName"));
   if (plan.waitlistBlocked) return fail(t("public.full"));
 
-  // El comprobante es opcional: sin él la inscripción queda "Pago pendiente" y se sube después.
+  // Si el club no lo exige, sin comprobante la inscripción queda "Pago pendiente" y se sube después.
   const file = $("joinProof").files?.[0] || null;
+  if (proofRequired() && plan.cashTotal > 0 && !file) return fail(t("joinDialog.errorProof"));
 
   showLoader();
   try {
@@ -664,13 +679,14 @@ async function submitJoin(ev) {
 async function refreshGuestHistory() {
   const idNumber = $("guestId").value.trim();
   const personKey = await personKeyFromId(idNumber);
-  const g = { personKey, credit: 0, moroso: false, firstTime: true };
+  const g = { personKey, credit: 0, moroso: false, owed: 0, firstTime: true };
 
   if (personKey) {
     try {
-      const { history, credit, moroso } = await loadHistoryFor(personKey);
+      const { history, credit, moroso, owed } = await loadHistoryFor(personKey);
       g.credit = credit;
       g.moroso = moroso;
+      g.owed = owed;
       g.firstTime = !history.some((r) => r.personKey === personKey);
     } catch (err) {
       console.warn("[pickup] historial invitado no disponible:", err);
@@ -704,6 +720,7 @@ function openGuestDialog() {
   $("guestForm").reset();
   delete $("guestTier").dataset.touched;
   $("guestTier").innerHTML = tierOptions(tiers, suggested?.id);
+  applyProofMode("guestProof");
   $("guestSinpe").textContent = sinpeText();
   $("guestError").classList.add("d-none");
   $("guestCreditWrap").classList.add("d-none");
@@ -727,14 +744,15 @@ async function submitGuest(ev) {
   try {
     await refreshGuestHistory();
     const g = state.guestHistory;
-    if (state.settings.blockMorosos && g.moroso) return fail(t("join.blockedMoroso"));
+    if (state.settings.blockMorosos && g.moroso) return fail(t("join.blockedMoroso", { amount: money(g.owed) }));
 
     const { tier, plan } = updateGuestSummary();
     if (!tier) return fail(t("joinDialog.errorTier"));
     if (plan.waitlistBlocked) return fail(t("public.full"));
 
-    // Opcional también para invitados: lo pueden subir luego desde su link privado.
+    // Si el club no lo exige, el invitado lo sube luego desde su link privado.
     const file = $("guestProof").files?.[0] || null;
+    if (proofRequired() && plan.cashTotal > 0 && !file) return fail(t("joinDialog.errorProof"));
 
     await ensureSignedIn();
     const proof = plan.cashTotal > 0 && file ? await uploadProof(file, state.pickup.id) : null;

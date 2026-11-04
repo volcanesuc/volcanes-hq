@@ -220,3 +220,13 @@ details.pkm-group > summary::-webkit-details-marker { display: none; }
   .pkm-list { max-height: none; }
   .pkm-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* Mora total (pickups admin) */
+.pkm-mora { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; padding: .75rem 1rem; border-radius: 16px; background: #fef3c7; color: #92400e; text-decoration: none; border: 1px solid #fde68a; }
+.pkm-mora:hover { color: #78350f; background: #fde68a; }
+.pkm-mora.is-clear { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+.pkm-mora__main { display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; }
+.pkm-mora__label { font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.pkm-mora__value { font-size: 1.35rem; }
+.pkm-mora__sub { font-size: .875rem; }
+.pkm-mora__link { font-size: .875rem; font-weight: 600; white-space: nowrap; }
