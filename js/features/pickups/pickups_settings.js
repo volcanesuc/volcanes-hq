@@ -178,6 +178,11 @@ function fmt(value, options) {
   return new Intl.DateTimeFormat(settings.locale, { timeZone: settings.timezone, ...options }).format(d);
 }
 
+// Fecha en la zona del club con las opciones de Intl que se necesiten.
+export function fmtWith(value, options) {
+  return fmt(value, options);
+}
+
 export function fmtDate(value) {
   return fmt(value, { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
 }

@@ -1,4 +1,7 @@
 import { TX } from "/js/strings/screens/admin_edit_user.js";
+import { APP_CONFIG } from "/js/config/config.js";
+
+const GENDERS = APP_CONFIG.roster?.filters?.genders || [];
 export async function loadAdminEditUserModal() {
   if (document.getElementById("editUserModal")) return;
 
@@ -177,6 +180,19 @@ export async function loadAdminEditUserModal() {
                                     ${TX.posicionRolDeCancha}
                                   </label>
                                   <select id="editNewPlayerFieldRole" class="form-select"></select>
+                                </div>
+
+                                <div class="col-6 col-md-6">
+                                  <label for="editNewPlayerGender" class="form-label">${TX.genero}</label>
+                                  <select id="editNewPlayerGender" class="form-select">
+                                    <option value="">${TX.sinDefinir}</option>
+                                    ${GENDERS.map((g) => `<option value="${g.value}">${g.label}</option>`).join("")}
+                                  </select>
+                                </div>
+
+                                <div class="col-6 col-md-6">
+                                  <label for="editNewPlayerNumber" class="form-label">${TX.numeroCamiseta}</label>
+                                  <input type="number" min="0" max="99" id="editNewPlayerNumber" class="form-control" />
                                 </div>
                               </div>
                             </div>

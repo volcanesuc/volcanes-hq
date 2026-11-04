@@ -22,15 +22,16 @@ const SECTIONS = {
     title: TX.finanzasTitulo,
     subtitle: TX.finanzasSub,
     views: [
-      { id: "pagos", label: TX.pagos, load: () => import("./features/association/assoc_payments_validation_list.js?v=1") },
+      // la primera vista es la que abre por defecto
       { id: "contabilidad", label: TX.contabilidad, load: () => import("./features/association/assoc_accounting.js?v=1") },
+      { id: "pagos", label: TX.pagos, load: () => import("./features/association/assoc_payments_validation_list.js?v=1") },
+      // los planes van con las finanzas: la gente elige uno para asociarse
+      { id: "planes", label: TX.planes, load: () => import("./features/subscription_plans.js?v=1") },
       {
         id: "pickups",
         label: TX.pickups,
         load: async () => ({ mount: (await import("./features/pickups/pickups_admin_mount.js")).mountFinance }),
       },
-      // los planes van con las finanzas: la gente elige uno para asociarse
-      { id: "planes", label: TX.planes, load: () => import("./features/subscription_plans.js?v=1") },
     ],
   },
 };

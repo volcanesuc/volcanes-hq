@@ -190,6 +190,8 @@ const $ = {
   editNewPlayerLastName: null,
   editNewPlayerBirthday: null,
   editNewPlayerFieldRole: null,
+  editNewPlayerGender: null,
+  editNewPlayerNumber: null,
 };
 
 let approveModal = null;
@@ -222,6 +224,8 @@ function bindDynamicDomRefs() {
   $.editNewPlayerLastName = document.getElementById("editNewPlayerLastName");
   $.editNewPlayerBirthday = document.getElementById("editNewPlayerBirthday");
   $.editNewPlayerFieldRole = document.getElementById("editNewPlayerFieldRole");
+  $.editNewPlayerGender = document.getElementById("editNewPlayerGender");
+  $.editNewPlayerNumber = document.getElementById("editNewPlayerNumber");
 }
 
 function showAlert(msg, type = "danger") {
@@ -986,6 +990,8 @@ function prefillEditNewPlayerFields(user) {
   if ($.editNewPlayerLastName) $.editNewPlayerLastName.value = profile.lastName || "";
   if ($.editNewPlayerBirthday) $.editNewPlayerBirthday.value = profile.birthDate || "";
   if ($.editNewPlayerFieldRole) $.editNewPlayerFieldRole.value = "";
+  if ($.editNewPlayerGender) $.editNewPlayerGender.value = profile.gender || "";
+  if ($.editNewPlayerNumber) $.editNewPlayerNumber.value = "";
 
   if (!$.editNewPlayerFirstName?.value && !$.editNewPlayerLastName?.value) {
     const displayName = String(user?.displayName || "").trim();
@@ -1134,12 +1140,15 @@ async function saveUserEditFlow(ev) {
       const lastName = ($.editNewPlayerLastName?.value || "").trim();
       const birthDate = ($.editNewPlayerBirthday?.value || "").trim();
       const fieldRole = ($.editNewPlayerFieldRole?.value || "").trim() || null;
+      const gender = ($.editNewPlayerGender?.value || "").trim() || null;
+      const numberRaw = ($.editNewPlayerNumber?.value || "").trim();
+      const number = numberRaw === "" ? null : Number(numberRaw);
 
       if (!firstName || !lastName) {
         throw new Error(TX.completaNombreYApellido);
       }
 
-      await ensurePlayerForUser(uid, { firstName, lastName, birthDate: birthDate || null, fieldRole, active: true });
+      await ensurePlayerForUser(uid, { firstName, lastName, birthDate: birthDate || null, fieldRole, gender, number, active: true });
       hasPlayer = true;
     }
 
@@ -2400,12 +2409,10 @@ const ADMIN_TAB_PARAMS = {
   usuarios: "users-tab",
   inscripcion: "register-tab",
   textos: "texts-tab",
-  pickups: "pickups-tab",
   mantenimiento: "maintenance-tab",
 };
 
 const LAZY_MOUNTS = {
-  pickups: async () => (await import("/js/features/pickups/pickups_admin_mount.js")).mountSettings,
   maintenance: async () => (await import("/js/features/admin/maintenance_reset.js")).mount,
 };
 

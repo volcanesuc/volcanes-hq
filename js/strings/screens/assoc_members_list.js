@@ -45,6 +45,7 @@ export const TX = defineStrings("assoc_members_list", "Asociación: asociados", 
   ordenInicioReciente: "Inicio más reciente",
   limpiar: "Limpiar filtros",
   nMiembros: "{n} miembros",
+  sinMembresia: "Sin membresía",
 });
 
 export const txf = fmt;

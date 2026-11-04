@@ -94,6 +94,28 @@ function renderAll() {
   renderManage();
 }
 
+// Pickups | Ajustes (los ajustes se montan la primera vez que se abren). ?view=ajustes abre directo.
+let settingsMounted = false;
+
+async function showView(view) {
+  const settings = view === "settings";
+  $("tabManage").classList.toggle("d-none", settings);
+  $("tabSettings").classList.toggle("d-none", !settings);
+  $("openCreatePickupBtn").classList.toggle("d-none", settings);
+  document.querySelectorAll("#pkViews [data-view]").forEach((b) => b.classList.toggle("is-active", b.dataset.view === view));
+
+  const url = new URL(window.location.href);
+  if (settings) url.searchParams.set("view", "ajustes");
+  else url.searchParams.delete("view");
+  history.replaceState({}, "", url);
+
+  if (settings && !settingsMounted) {
+    settingsMounted = true;
+    const { mountSettings } = await import("/js/features/pickups/pickups_admin_mount.js");
+    await mountSettings($("pickupsSettingsMount"));
+  }
+}
+
 /* =========================
    Init
 ========================= */
@@ -120,11 +142,17 @@ function renderAll() {
     document.querySelectorAll("[data-admin-only]").forEach((el) => el.classList.toggle("d-none", !state.isAdmin));
     $("openCreatePickupBtn").classList.toggle("d-none", !state.isAdmin);
 
+    $("pkViews").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-view]");
+      if (b) showView(b.dataset.view);
+    });
+
     if (state.isAdmin) {
       initManage(ctx);
     }
 
     await reload();
+    if (new URLSearchParams(window.location.search).get("view") === "ajustes") await showView("settings");
   } catch (err) {
     console.error("[pickups] init error:", err);
     ctx.alert(err?.message || t("common.error"), "danger");

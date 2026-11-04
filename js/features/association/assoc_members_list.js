@@ -30,6 +30,7 @@ const ASSOC_CHIPS = [
   { id: "pending", label: () => TX.pendiente },
   { id: "overdue", label: () => TX.vencido },
   { id: "inactive", label: () => TX.inactivo },
+  { id: "none", label: () => TX.sinMembresia },
 ];
 
 function matchesAssoc(u, key) {
@@ -176,7 +177,8 @@ function getCoverageEnd(cm) {
 }
 
 function userKeyFromCurrentMembership(cm) {
-  if (!cm) return "pending";
+  // sin membresía no es moroso: simplemente no está asociado
+  if (!cm) return "none";
 
   const s = (cm.status || "").toLowerCase();
   const today = startOfToday();
@@ -212,6 +214,7 @@ function membershipBadge(key, currentMembership) {
   if (key === "validating") return badge(`Validando${suffix}`, "yellow");
   if (key === "overdue") return badge(`Vencido${suffix}`, "red");
   if (key === "inactive") return badge(TX.inactivo, "gray");
+  if (key === "none") return badge(TX.sinMembresia, "gray");
   return badge(`Pendiente${suffix}`, "orange");
 }
 

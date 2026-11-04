@@ -15,8 +15,8 @@ export const TX = defineStrings("gestion", "Gestión", {
   membresias: "Membresías",
 
   finanzasTitulo: "Finanzas",
-  finanzasSub: "Pagos de miembros, contabilidad, finanzas de pickups y planes de membresía.",
-  pagos: "Miembros",
+  finanzasSub: "Contabilidad, pagos de membresías, planes y finanzas de pickups.",
+  pagos: "Pagos",
   planes: "Planes de membresía",
   contabilidad: "Contabilidad",
   pickups: "Pickups",

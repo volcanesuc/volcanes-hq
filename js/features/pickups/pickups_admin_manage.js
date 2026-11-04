@@ -8,6 +8,7 @@ import {
   clubLocalInputToDate,
   dateToClubLocalInput,
   fmtDateTime,
+  fmtWith,
   getPickupSettings,
   money,
   t,
@@ -21,6 +22,7 @@ import {
   SPOT,
   buildPickupPublicUrl,
   computeCredits,
+  hasStarted,
   escapeHtml,
   getActiveTiers,
   getSpotMap,
@@ -62,11 +64,24 @@ let selectedId = null;
 let privateByReg = new Map();
 let reviewRegId = null;
 let editor = { id: null, tierEditor: null, modal: null };
+let when = "upcoming"; // upcoming | past | all
+
+const WHEN = [
+  { id: "upcoming", key: "admin.whenUpcoming" },
+  { id: "past", key: "admin.whenPast" },
+  { id: "all", key: "admin.whenAll" },
+];
 
 export function initManage(context) {
   ctx = context;
 
   $("managePickupSearch").addEventListener("input", renderPickupList);
+  $("manageWhen").addEventListener("click", (ev) => {
+    const b = ev.target.closest("[data-when]");
+    if (!b) return;
+    when = b.getAttribute("data-when");
+    renderPickupList();
+  });
   $("managePickupList").addEventListener("click", (ev) => {
     const item = ev.target.closest("[data-pickup-id]");
     if (item) selectPickup(item.getAttribute("data-pickup-id"));
@@ -92,24 +107,62 @@ export function renderManage() {
 /* =========================
    Lista de pickups
 ========================= */
+// Próximos: no empezaron (o empezaron hace menos de 6 h) y no están cancelados/finalizados.
+function isUpcoming(p) {
+  const status = norm(p.status);
+  if ([PICKUP_STATUS.CANCELLED, PICKUP_STATUS.FINISHED].includes(status)) return false;
+  const start = p.startAt?.toDate?.() || null;
+  return !start || !hasStarted(p) || Date.now() - start.getTime() < 6 * 3600e3;
+}
+
+function inWhen(p) {
+  if (when === "all") return true;
+  return when === "upcoming" ? isUpcoming(p) : !isUpcoming(p);
+}
+
 function renderPickupList() {
   const term = norm($("managePickupSearch").value);
-  const items = ctx.getPickups().filter((p) => !term || norm(`${p.title} ${p.venueName}`).includes(term));
+  const all = ctx.getPickups();
+  const ts = (p) => p.startAt?.toMillis?.() || 0;
 
-  $("managePickupList").innerHTML = items.map((p) => {
+  $("manageWhen").innerHTML = WHEN.map((w) => `
+    <button type="button" class="ui-seg__item ${w.id === when ? "is-active" : ""}" data-when="${w.id}">
+      ${escapeHtml(t(w.key))} <span class="ui-chip__n">${all.filter((p) => w.id === "all" || (w.id === "upcoming" ? isUpcoming(p) : !isUpcoming(p))).length}</span>
+    </button>`).join("");
+
+  const items = all
+    .filter(inWhen)
+    .filter((p) => !term || norm(`${p.title} ${p.venueName}`).includes(term))
+    // próximos: el más cercano primero; pasados: el más reciente primero
+    .sort((a, b) => (when === "upcoming" ? ts(a) - ts(b) : ts(b) - ts(a)));
+
+  $("managePickupList").innerHTML = items.length ? items.map((p) => {
     const regs = ctx.getRegs().filter((r) => r.pickupId === p.id);
-    const { inList } = splitSpots(p, regs);
+    const { inList, waitlist } = splitSpots(p, regs);
+    const cap = Number(p.capacity || 0);
+    const pct = cap ? Math.min(100, Math.round((inList.length / cap) * 100)) : 0;
     const toReview = regs.filter((r) => norm(r.paymentStatus) === PAYMENT_STATUS.SUBMITTED && norm(r.registrationStatus) !== "cancelled").length;
+    const status = norm(p.status) || "draft";
     return `
-      <button type="button" class="list-group-item list-group-item-action pk-pickup-item ${p.id === selectedId ? "active" : ""}" data-pickup-id="${escapeHtml(p.id)}">
-        <div class="d-flex justify-content-between gap-2">
-          <span class="fw-semibold text-truncate">${escapeHtml(p.title || "—")}</span>
-          <span class="badge ${pickupStatusBadge(p.status)}">${escapeHtml(t(`status.pickup.${norm(p.status) || "draft"}`))}</span>
+      <button type="button" class="pkm-item ${p.id === selectedId ? "is-active" : ""}" data-pickup-id="${escapeHtml(p.id)}">
+        <div class="pkm-date">
+          <b>${escapeHtml(fmtWith(p.startAt, { day: "2-digit" }))}</b>
+          <span>${escapeHtml(fmtWith(p.startAt, { month: "short" }).replace(".", ""))}</span>
         </div>
-        <div class="small text-muted">${escapeHtml(fmtDateTime(p.startAt))} · ${inList.length}${p.capacity ? `/${p.capacity}` : ""}
-          ${toReview ? ` · <span class="text-warning-emphasis">${toReview} ${escapeHtml(t("admin.kpiToReview"))}</span>` : ""}</div>
+        <div class="pkm-item__main">
+          <div class="pkm-item__top">
+            <span class="pkm-item__title">${escapeHtml(p.title || "—")}</span>
+            <span class="pkm-status pkm-status--${escapeHtml(status)}">${escapeHtml(t(`status.pickup.${status}`))}${p.isPublic === true ? "" : " · 🔒"}</span>
+          </div>
+          <div class="pkm-item__meta">${escapeHtml(fmtWith(p.startAt, { weekday: "short", hour: "2-digit", minute: "2-digit" }))}${p.venueName ? ` · ${escapeHtml(p.venueName)}` : ""}</div>
+          <div class="pkm-cap">
+            ${cap ? `<div class="pkm-bar"><i style="width:${pct}%"></i></div>` : ""}
+            <span>${inList.length}${cap ? ` / ${cap}` : ""}${waitlist.length ? ` · +${waitlist.length}` : ""}</span>
+            ${toReview ? `<span class="pkm-flag">${toReview} ${escapeHtml(t("admin.kpiToReview"))}</span>` : ""}
+          </div>
+        </div>
       </button>`;
-  }).join("");
+  }).join("") : `<div class="ui-empty">${escapeHtml(t("admin.noPickups"))}</div>`;
 }
 
 async function selectPickup(id) {
@@ -165,102 +218,108 @@ function renderDetail() {
   const collected = regs.filter(isApproved).reduce((s, r) => s + regCashDue(r), 0);
   const isCancelled = norm(p.status) === PICKUP_STATUS.CANCELLED;
 
-  const kpi = (label, value) => `
-    <div class="col-6 col-md-3"><div class="card shadow-sm pk-kpi"><div class="card-body py-2">
-      <div class="small text-muted">${escapeHtml(label)}</div><div class="h4 mb-0">${escapeHtml(value)}</div>
-    </div></div></div>`;
+  const stat = (label, value, hot = false) => `
+    <div class="pkm-stat ${hot ? "is-hot" : ""}">
+      <div class="pkm-stat__value">${escapeHtml(value)}</div>
+      <div class="pkm-stat__label">${escapeHtml(label)}</div>
+    </div>`;
+
+  const initial = (name) => escapeHtml(String(name || "?").trim().charAt(0).toUpperCase() || "?");
 
   const row = (r, idx) => {
     const spot = spots.get(r.id);
     const status = norm(r.paymentStatus || PAYMENT_STATUS.PENDING);
     const phone = phoneOf(r);
     const credit = regCreditApplied(r);
+    const cancelledRow = spot === SPOT.CANCELLED;
     return `
-      <tr data-reg-id="${escapeHtml(r.id)}">
-        <td>${idx + 1}</td>
-        <td class="pk-wrap">
-          <div class="fw-semibold">${escapeHtml(r.displayName || "—")}</div>
-          <div class="small text-muted">${escapeHtml([sourceNote(r), phone].filter(Boolean).join(" · "))}</div>
-        </td>
-        <td>
-          <select class="form-select form-select-sm" data-act="tier" ${spot === SPOT.CANCELLED ? "disabled" : ""}>
+      <div class="pkm-reg ${cancelledRow ? "is-cancelled" : ""}" data-reg-id="${escapeHtml(r.id)}">
+        <div class="pkm-reg__who">
+          <span class="pkm-reg__n">${idx + 1}</span>
+          <span class="pkm-avatar">${initial(r.displayName)}</span>
+          <div class="min-w-0">
+            <div class="pkm-reg__name">${escapeHtml(r.displayName || "—")}</div>
+            <div class="pkm-reg__sub">${escapeHtml([sourceNote(r), phone].filter(Boolean).join(" · ")) || "&nbsp;"}</div>
+          </div>
+        </div>
+
+        <div class="pkm-reg__tier">
+          <select class="form-select form-select-sm" data-act="tier" ${cancelledRow ? "disabled" : ""} aria-label="${escapeHtml(t("admin.colTier"))}">
             ${tiers.map((x) => `<option value="${escapeHtml(x.id)}" ${x.id === r.tierId ? "selected" : ""}>${escapeHtml(x.label)} · ${escapeHtml(money(x.amount))}</option>`).join("")}
             ${tiers.some((x) => x.id === r.tierId) ? "" : `<option selected>${escapeHtml(regTierLabel(r))}</option>`}
           </select>
           ${r.tierSuggestedId && r.tierSuggestedId !== r.tierId ? `<div class="small text-warning-emphasis">≠ ${escapeHtml(tiers.find((x) => x.id === r.tierSuggestedId)?.label || r.tierSuggestedId)}</div>` : ""}
-        </td>
-        <td><span class="badge ${spotBadge(spot)}">${escapeHtml(t(`status.spot.${spot}`))}</span></td>
-        <td>
+        </div>
+
+        <div class="pkm-reg__pay">
           <span class="badge ${paymentBadge(status)}">${escapeHtml(t(`status.payment.${status}`))}</span>
-          <div class="small text-muted">${escapeHtml(money(r.amountDue))}${credit ? ` (−${escapeHtml(money(credit))})` : ""}</div>
-        </td>
-        <td>
-          <select class="form-select form-select-sm" data-act="attendance" ${spot !== SPOT.IN ? "disabled" : ""}>
+          <span class="pkm-reg__amount">${escapeHtml(money(r.amountDue))}${credit ? ` (−${escapeHtml(money(credit))})` : ""}</span>
+        </div>
+
+        <div class="pkm-reg__att">
+          <select class="form-select form-select-sm" data-act="attendance" ${spot !== SPOT.IN ? "disabled" : ""} aria-label="${escapeHtml(t("admin.colAttendance"))}">
             <option value="" ${!r.attendance ? "selected" : ""}>${escapeHtml(t("status.attendance.unknown"))}</option>
             <option value="${ATTENDANCE.ATTENDED}" ${r.attendance === ATTENDANCE.ATTENDED ? "selected" : ""}>${escapeHtml(t("status.attendance.attended"))}</option>
             <option value="${ATTENDANCE.NO_SHOW}" ${r.attendance === ATTENDANCE.NO_SHOW ? "selected" : ""}>${escapeHtml(t("status.attendance.no_show"))}</option>
           </select>
-        </td>
-        <td>
-          <div class="pk-actions">
-            ${spot !== SPOT.CANCELLED ? `
-              <button type="button" class="btn btn-sm ${status === PAYMENT_STATUS.SUBMITTED ? "btn-warning" : "btn-outline-secondary"}" data-act="review">
-                ${escapeHtml(status === PAYMENT_STATUS.SUBMITTED ? t("admin.approve") : t("admin.markPaid"))}</button>
-              <button type="button" class="btn btn-sm btn-outline-success" data-act="wa">${escapeHtml(t("common.whatsapp"))}</button>
-              <button type="button" class="btn btn-sm btn-outline-danger" data-act="remove">${escapeHtml(t("admin.remove"))}</button>
-            ` : ""}
-            ${spot === SPOT.CANCELLED && isApproved(r) && r.creditRefunded !== true && (credits.get(regPayerKey(r))?.balance || 0) > 0 ? `
-              <button type="button" class="btn btn-sm btn-outline-secondary" data-act="refund">${escapeHtml(t("admin.refundCredit"))}</button>` : ""}
-          </div>
-        </td>
-      </tr>`;
+        </div>
+
+        <div class="pkm-reg__actions">
+          ${!cancelledRow ? `
+            <button type="button" class="btn btn-sm ${status === PAYMENT_STATUS.SUBMITTED ? "btn-warning" : "btn-outline-secondary"}" data-act="review">
+              ${escapeHtml(status === PAYMENT_STATUS.SUBMITTED ? t("admin.approve") : t("admin.markPaid"))}</button>
+            <button type="button" class="btn btn-sm btn-outline-success" data-act="wa" title="${escapeHtml(t("common.whatsapp"))}"><i class="bi bi-whatsapp"></i></button>
+            <button type="button" class="btn btn-sm btn-outline-danger" data-act="remove" title="${escapeHtml(t("admin.remove"))}"><i class="bi bi-trash3"></i></button>
+          ` : ""}
+          ${cancelledRow && isApproved(r) && r.creditRefunded !== true && (credits.get(regPayerKey(r))?.balance || 0) > 0 ? `
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-act="refund">${escapeHtml(t("admin.refundCredit"))}</button>` : ""}
+        </div>
+      </div>`;
   };
 
-  const table = (list, offset = 0) => list.length ? `
-    <div class="table-responsive">
-      <table class="table table-sm align-middle pk-table">
-        <thead><tr>
-          <th>#</th><th>${escapeHtml(t("admin.colPlayer"))}</th><th>${escapeHtml(t("admin.colTier"))}</th>
-          <th>${escapeHtml(t("admin.colSpot"))}</th><th>${escapeHtml(t("admin.colPayment"))}</th>
-          <th>${escapeHtml(t("admin.colAttendance"))}</th><th>${escapeHtml(t("admin.colActions"))}</th>
-        </tr></thead>
-        <tbody>${list.map((r, i) => row(r, i + offset)).join("")}</tbody>
-      </table>
-    </div>` : "";
+  const group = (title, list, offset = 0, extraClass = "") => `
+    <section class="pkm-group ${extraClass}">
+      <h3 class="pkm-group__title">${escapeHtml(title)} <span class="ui-chip__n">${list.length}</span></h3>
+      ${list.length ? `<div class="pkm-regs">${list.map((r, i) => row(r, i + offset)).join("")}</div>`
+        : `<div class="pkm-group__empty">${escapeHtml(t("admin.noRegs"))}</div>`}
+    </section>`;
 
+  const status = norm(p.status) || "draft";
   $("manageDetail").innerHTML = `
-    <div class="card shadow-sm mb-3">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
-          <div>
-            <h2 class="h5 mb-1">${escapeHtml(p.title || "—")}</h2>
-            <div class="small text-muted">${escapeHtml(fmtDateTime(p.startAt))} · ${escapeHtml(p.venueName || "")}</div>
-          </div>
-          <div class="pk-actions">
-            <a class="btn btn-sm btn-outline-secondary" href="${escapeHtml(buildPickupPublicUrl(p))}" target="_blank" rel="noopener">${escapeHtml(t("list.open"))}</a>
-            <button type="button" class="btn btn-sm btn-outline-secondary" data-act="copy">${escapeHtml(t("common.copyLink"))}</button>
-            <button type="button" class="btn btn-sm btn-outline-primary" data-act="edit">${escapeHtml(t("admin.edit"))}</button>
-            ${isCancelled ? "" : `
-              <button type="button" class="btn btn-sm btn-primary" data-act="add">${escapeHtml(t("admin.addPlayer"))}</button>
-              <button type="button" class="btn btn-sm btn-outline-danger" data-act="cancel">${escapeHtml(t("admin.cancelPickup"))}</button>`}
+    <section class="pkm-hero">
+      <div class="pkm-hero__top">
+        <div class="min-w-0">
+          <span class="pkm-status pkm-status--${escapeHtml(status)} pkm-status--light">${escapeHtml(t(`status.pickup.${status}`))}${p.isPublic === true ? "" : " · 🔒"}</span>
+          <h2 class="pkm-hero__title">${escapeHtml(p.title || "—")}</h2>
+          <div class="pkm-hero__meta">
+            <span><i class="bi bi-calendar-event"></i> ${escapeHtml(fmtDateTime(p.startAt))}</span>
+            ${p.venueName ? `<span><i class="bi bi-geo-alt"></i> ${escapeHtml(p.venueName)}</span>` : ""}
           </div>
         </div>
       </div>
+      <div class="pkm-hero__actions">
+        <a class="btn btn-sm btn-light" href="${escapeHtml(buildPickupPublicUrl(p))}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i>${escapeHtml(t("list.open"))}</a>
+        <button type="button" class="btn btn-sm btn-outline-light" data-act="copy"><i class="bi bi-link-45deg me-1"></i>${escapeHtml(t("common.copyLink"))}</button>
+        <button type="button" class="btn btn-sm btn-outline-light" data-act="edit"><i class="bi bi-pencil me-1"></i>${escapeHtml(t("admin.edit"))}</button>
+        ${isCancelled ? "" : `
+          <button type="button" class="btn btn-sm btn-light" data-act="add"><i class="bi bi-person-plus me-1"></i>${escapeHtml(t("admin.addPlayer"))}</button>
+          <button type="button" class="btn btn-sm btn-outline-light pkm-danger" data-act="cancel">${escapeHtml(t("admin.cancelPickup"))}</button>`}
+      </div>
+    </section>
+
+    <div class="pkm-stats">
+      ${stat(t("admin.kpiIn"), `${inList.length}${p.capacity ? ` / ${p.capacity}` : ""}`)}
+      ${stat(t("admin.kpiWaitlist"), String(waitlist.length))}
+      ${stat(t("admin.kpiToReview"), String(toReview), toReview > 0)}
+      ${stat(t("admin.kpiCollected"), money(collected))}
     </div>
 
-    <div class="row g-2 mb-3">
-      ${kpi(t("admin.kpiIn"), `${inList.length}${p.capacity ? ` / ${p.capacity}` : ""}`)}
-      ${kpi(t("admin.kpiWaitlist"), String(waitlist.length))}
-      ${kpi(t("admin.kpiToReview"), String(toReview))}
-      ${kpi(t("admin.kpiCollected"), money(collected))}
-    </div>
-
-    ${table(inList)}
-    ${waitlist.length ? `<h3 class="h6 mt-3">${escapeHtml(t("public.waitlistTitle"))}</h3>${table(waitlist, inList.length)}` : ""}
+    ${group(t("admin.inListTitle"), inList)}
+    ${waitlist.length ? group(t("public.waitlistTitle"), waitlist, inList.length) : ""}
     ${cancelled.length ? `
-      <details class="mt-3">
-        <summary class="small text-muted">${escapeHtml(t("status.spot.cancelled"))} (${cancelled.length})</summary>
-        ${table(cancelled)}
+      <details class="pkm-group pkm-group--cancelled">
+        <summary class="pkm-group__title">${escapeHtml(t("status.spot.cancelled"))} <span class="ui-chip__n">${cancelled.length}</span></summary>
+        <div class="pkm-regs">${cancelled.map((r, i) => row(r, i)).join("")}</div>
       </details>` : ""}
   `;
 }
