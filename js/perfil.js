@@ -212,7 +212,7 @@ async function onPostAction(e) {
 }
 
 /* =========================
-   Tabs (#publicaciones / #informacion)
+   Tabs (#informacion por defecto / #publicaciones)
 ========================= */
 function showTab(tab) {
   const isInfo = tab === "info";
@@ -222,7 +222,7 @@ function showTab(tab) {
 }
 
 function tabFromHash() {
-  return window.location.hash === "#informacion" ? "info" : "posts";
+  return window.location.hash === "#publicaciones" ? "posts" : "info";
 }
 
 /* =========================

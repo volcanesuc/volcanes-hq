@@ -48,12 +48,12 @@
       </section>
 
       <nav class="ui-seg" id="pfTabs" aria-label="Secciones del perfil">
-        <a href="#publicaciones" class="ui-seg__item is-active" data-pf-tab="posts" data-tx="html_perfil.publicaciones">Publicaciones</a>
-        <a href="#informacion" class="ui-seg__item" data-pf-tab="info" data-tx="html_perfil.miInformacion">Mi información</a>
+        <a href="#informacion" class="ui-seg__item is-active" data-pf-tab="info" data-tx="html_perfil.miInformacion">Mi información</a>
+        <a href="#publicaciones" class="ui-seg__item" data-pf-tab="posts" data-tx="html_perfil.publicaciones">Publicaciones</a>
       </nav>
 
       <!-- Publicaciones -->
-      <section id="pfPostsPanel">
+      <section id="pfPostsPanel" hidden>
         <a class="feed-composer d-block text-decoration-none mb-3" href="/community.html?new=1">
           <div class="feed-composer__row">
             <span id="pfComposerAvatar"></span>
@@ -69,7 +69,7 @@
       </section>
 
       <!-- Mi información -->
-      <section id="pfInfoPanel" hidden>
+      <section id="pfInfoPanel">
         <div class="alert d-none" id="pfAlert" role="alert"></div>
 
         <form id="pfForm" class="card" novalidate>
