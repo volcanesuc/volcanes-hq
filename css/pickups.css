@@ -119,7 +119,8 @@
 .pkm-layout { display: grid; grid-template-columns: 310px minmax(0, 1fr); gap: 1.25rem; align-items: start; }
 .pkm-side { position: sticky; top: 72px; display: grid; gap: .6rem; }
 .pkm-when { margin: 0; width: 100%; }
-.pkm-when .ui-seg__item { flex: 1; text-align: center; }
+.pkm-when .ui-seg__item { flex: 1 0 auto; text-align: center; white-space: nowrap; }
+.pkm-when .ui-seg__item.is-hot:not(.is-active) .ui-chip__n { background: #fef3c7; color: #92400e; }
 .pkm-list { display: grid; gap: .5rem; max-height: calc(100vh - 230px); overflow-y: auto; padding-right: 2px; }
 
 /* tarjeta de pickup en la lista */

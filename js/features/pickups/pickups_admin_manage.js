@@ -64,11 +64,13 @@ let selectedId = null;
 let privateByReg = new Map();
 let reviewRegId = null;
 let editor = { id: null, tierEditor: null, modal: null };
-let when = "upcoming"; // upcoming | past | all
+let when = "upcoming"; // upcoming | review | past | cancelled | all
 
 const WHEN = [
   { id: "upcoming", key: "admin.whenUpcoming" },
+  { id: "review", key: "admin.whenReview" },
   { id: "past", key: "admin.whenPast" },
+  { id: "cancelled", key: "admin.whenCancelled" },
   { id: "all", key: "admin.whenAll" },
 ];
 
@@ -107,6 +109,8 @@ export function renderManage() {
 /* =========================
    Lista de pickups
 ========================= */
+const isCancelledPickup = (p) => norm(p.status) === PICKUP_STATUS.CANCELLED;
+
 // Próximos: no empezaron (o empezaron hace menos de 6 h) y no están cancelados/finalizados.
 function isUpcoming(p) {
   const status = norm(p.status);
@@ -115,9 +119,24 @@ function isUpcoming(p) {
   return !start || !hasStarted(p) || Date.now() - start.getTime() < 6 * 3600e3;
 }
 
-function inWhen(p) {
-  if (when === "all") return true;
-  return when === "upcoming" ? isUpcoming(p) : !isUpcoming(p);
+// Pagos enviados que esperan aprobación (sin contar inscripciones canceladas).
+function reviewCount(p) {
+  return ctx.getRegs().filter((r) =>
+    r.pickupId === p.id &&
+    norm(r.paymentStatus) === PAYMENT_STATUS.SUBMITTED &&
+    norm(r.registrationStatus) !== "cancelled"
+  ).length;
+}
+
+// Cancelados van aparte (no en Pasados), sin importar la fecha.
+function matchesWhen(p, id) {
+  switch (id) {
+    case "upcoming": return isUpcoming(p);
+    case "review": return reviewCount(p) > 0;
+    case "past": return !isCancelledPickup(p) && !isUpcoming(p);
+    case "cancelled": return isCancelledPickup(p);
+    default: return true;
+  }
 }
 
 function renderPickupList() {
@@ -125,23 +144,28 @@ function renderPickupList() {
   const all = ctx.getPickups();
   const ts = (p) => p.startAt?.toMillis?.() || 0;
 
-  $("manageWhen").innerHTML = WHEN.map((w) => `
-    <button type="button" class="ui-seg__item ${w.id === when ? "is-active" : ""}" data-when="${w.id}">
-      ${escapeHtml(t(w.key))} <span class="ui-chip__n">${all.filter((p) => w.id === "all" || (w.id === "upcoming" ? isUpcoming(p) : !isUpcoming(p))).length}</span>
-    </button>`).join("");
+  $("manageWhen").innerHTML = WHEN.map((w) => {
+    const n = all.filter((p) => matchesWhen(p, w.id)).length;
+    const hot = w.id === "review" && n > 0;
+    return `
+    <button type="button" class="ui-seg__item ${w.id === when ? "is-active" : ""} ${hot ? "is-hot" : ""}" data-when="${w.id}">
+      ${escapeHtml(t(w.key))} <span class="ui-chip__n">${n}</span>
+    </button>`;
+  }).join("");
 
+  // próximos y por revisar: el más cercano primero; el resto: el más reciente primero
+  const soonestFirst = when === "upcoming" || when === "review";
   const items = all
-    .filter(inWhen)
+    .filter((p) => matchesWhen(p, when))
     .filter((p) => !term || norm(`${p.title} ${p.venueName}`).includes(term))
-    // próximos: el más cercano primero; pasados: el más reciente primero
-    .sort((a, b) => (when === "upcoming" ? ts(a) - ts(b) : ts(b) - ts(a)));
+    .sort((a, b) => (soonestFirst ? ts(a) - ts(b) : ts(b) - ts(a)));
 
   $("managePickupList").innerHTML = items.length ? items.map((p) => {
     const regs = ctx.getRegs().filter((r) => r.pickupId === p.id);
     const { inList, waitlist } = splitSpots(p, regs);
     const cap = Number(p.capacity || 0);
     const pct = cap ? Math.min(100, Math.round((inList.length / cap) * 100)) : 0;
-    const toReview = regs.filter((r) => norm(r.paymentStatus) === PAYMENT_STATUS.SUBMITTED && norm(r.registrationStatus) !== "cancelled").length;
+    const toReview = reviewCount(p);
     const status = norm(p.status) || "draft";
     return `
       <button type="button" class="pkm-item ${p.id === selectedId ? "is-active" : ""}" data-pickup-id="${escapeHtml(p.id)}">
@@ -157,7 +181,7 @@ function renderPickupList() {
           <div class="pkm-item__meta">${escapeHtml(fmtWith(p.startAt, { weekday: "short", hour: "2-digit", minute: "2-digit" }))}${p.venueName ? ` · ${escapeHtml(p.venueName)}` : ""}</div>
           <div class="pkm-cap">
             ${cap ? `<div class="pkm-bar"><i style="width:${pct}%"></i></div>` : ""}
-            <span>${inList.length}${cap ? ` / ${cap}` : ""}${waitlist.length ? ` · +${waitlist.length}` : ""}</span>
+            <span>${cap ? `${inList.length} / ${cap}` : escapeHtml(t("admin.inListCount", { n: inList.length }))}${waitlist.length ? ` · +${waitlist.length}` : ""}</span>
             ${toReview ? `<span class="pkm-flag">${toReview} ${escapeHtml(t("admin.kpiToReview"))}</span>` : ""}
           </div>
         </div>

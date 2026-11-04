@@ -108,7 +108,7 @@ export function t(key, vars = {}) {
   const override = getOverride(`pickups.${key}`) ?? settings.strings?.[key];
   const base = typeof override === "string" && override.trim() ? override : PICKUP_STRINGS[key];
   const text = base ?? key;
-  return String(text).replace(/\{(\w+)\}/g, (_, k) => (vars[k] ?? vars[k] === 0 ? String(vars[k]) : ""));
+  return String(text).replace(/\{(\w+)\}/g, (_, k) => (vars[k] != null ? String(vars[k]) : ""));
 }
 
 export function getAllStringKeys() {
